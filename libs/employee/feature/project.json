@@ -1,0 +1,20 @@
+{
+  "name": "employee-feature",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/employee/feature/src",
+  "projectType": "library",
+  "tags": ["scope:employee", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/employee/feature",
+        "tsConfig": "libs/employee/feature/tsconfig.lib.json",
+        "packageJson": "libs/employee/feature/package.json",
+        "main": "libs/employee/feature/src/index.ts",
+        "assets": ["libs/employee/feature/*.md"]
+      }
+    }
+  }
+}

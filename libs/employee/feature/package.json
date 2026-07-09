@@ -1,5 +1,5 @@
 {
-  "name": "@africahr/tenancy-feature",
+  "name": "@africahr/employee-feature",
   "version": "0.0.1",
   "private": true,
   "type": "commonjs",
@@ -8,13 +8,13 @@
   "dependencies": {
     "tslib": "^2.3.0",
     "@nestjs/swagger": "^11.4.5",
-    "class-validator": "^0.15.1",
-    "@africahr/tenancy-domain": "0.0.1",
-    "@nestjs/common": "^11.0.0",
     "@prisma/client": "^7.8.0",
-    "@africahr/tenancy-data-access": "0.0.1",
+    "class-validator": "^0.15.1",
+    "@africahr/employee-domain": "0.0.1",
+    "@nestjs/common": "^11.0.0",
     "@africahr/platform-auth": "0.0.1",
     "@africahr/platform-audit": "0.0.1",
+    "@africahr/employee-data-access": "0.0.1",
     "@africahr/platform-core": "0.0.1"
   }
 }

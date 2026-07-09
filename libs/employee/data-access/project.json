@@ -1,0 +1,20 @@
+{
+  "name": "employee-data-access",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/employee/data-access/src",
+  "projectType": "library",
+  "tags": ["scope:employee", "type:data-access"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/employee/data-access",
+        "tsConfig": "libs/employee/data-access/tsconfig.lib.json",
+        "packageJson": "libs/employee/data-access/package.json",
+        "main": "libs/employee/data-access/src/index.ts",
+        "assets": ["libs/employee/data-access/*.md"]
+      }
+    }
+  }
+}

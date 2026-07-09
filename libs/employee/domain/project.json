@@ -1,0 +1,20 @@
+{
+  "name": "employee-domain",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/employee/domain/src",
+  "projectType": "library",
+  "tags": ["scope:employee", "type:domain"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/employee/domain",
+        "tsConfig": "libs/employee/domain/tsconfig.lib.json",
+        "packageJson": "libs/employee/domain/package.json",
+        "main": "libs/employee/domain/src/index.ts",
+        "assets": ["libs/employee/domain/*.md"]
+      }
+    }
+  }
+}

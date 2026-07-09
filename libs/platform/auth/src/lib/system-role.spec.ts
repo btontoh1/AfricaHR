@@ -26,4 +26,19 @@ describe('hasPermission', () => {
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.USER_READ)).toBe(false);
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.USER_MANAGE)).toBe(false);
   });
+
+  it('grants HR managers full employee management', () => {
+    expect(hasPermission(SystemRole.HR_MANAGER, Permission.EMPLOYEE_MANAGE)).toBe(true);
+    expect(hasPermission(SystemRole.HR_MANAGER, Permission.EMPLOYEE_READ)).toBe(true);
+  });
+
+  it('grants payroll managers read-only employee access', () => {
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.EMPLOYEE_READ)).toBe(true);
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.EMPLOYEE_MANAGE)).toBe(false);
+  });
+
+  it('grants employees no employee-management permissions', () => {
+    expect(hasPermission(SystemRole.EMPLOYEE, Permission.EMPLOYEE_READ)).toBe(false);
+    expect(hasPermission(SystemRole.EMPLOYEE, Permission.EMPLOYEE_MANAGE)).toBe(false);
+  });
 });

@@ -5,3 +5,4 @@ export * from './lib/config/env.schema';
 export * from './lib/logging/logging.module';
 export * from './lib/exceptions/global-exception.filter';
 export * from './lib/validation/create-validation-pipe';
+export * from './lib/hierarchy/would-create-cycle';

@@ -6,3 +6,4 @@ export * from './lib/jwt-auth.guard';
 export * from './lib/permissions.guard';
 export * from './lib/require-permissions.decorator';
 export * from './lib/current-user.decorator';
+export * from './lib/assert-tenant-scope';

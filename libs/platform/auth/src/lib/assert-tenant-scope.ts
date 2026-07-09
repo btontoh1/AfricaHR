@@ -1,5 +1,6 @@
 import { ForbiddenException } from '@nestjs/common';
-import { RequestUser, SystemRole } from '@africahr/platform-auth';
+import { RequestUser } from './jwt-payload.interface';
+import { SystemRole } from './system-role';
 
 /**
  * Platform admins may act on any tenant; everyone else may only act on

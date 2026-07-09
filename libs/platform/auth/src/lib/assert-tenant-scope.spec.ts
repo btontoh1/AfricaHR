@@ -1,5 +1,6 @@
 import { ForbiddenException } from '@nestjs/common';
-import { RequestUser, SystemRole } from '@africahr/platform-auth';
+import { RequestUser } from './jwt-payload.interface';
+import { SystemRole } from './system-role';
 import { assertTenantScope } from './assert-tenant-scope';
 
 describe('assertTenantScope', () => {

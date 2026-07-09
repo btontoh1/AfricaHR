@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
+  assertTenantScope,
   CurrentUser,
   JwtAuthGuard,
   Permission,
@@ -10,7 +11,6 @@ import {
 } from '@africahr/platform-auth';
 import { OrganizationService } from './organization.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
-import { assertTenantScope } from './assert-tenant-scope';
 
 @ApiTags('organizations')
 @ApiBearerAuth()

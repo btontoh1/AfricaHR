@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { OrganizationUnit } from '@prisma/client';
+import { wouldCreateCycle } from '@africahr/platform-core';
 import { AuditService } from '@africahr/platform-audit';
 import { OrganizationRepository, OrganizationUnitRepository } from '@africahr/tenancy-data-access';
-import { wouldCreateCycle } from '@africahr/tenancy-domain';
 import { CreateOrganizationUnitDto } from './dto/create-organization-unit.dto';
 
 @Injectable()

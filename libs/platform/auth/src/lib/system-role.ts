@@ -19,6 +19,8 @@ export const Permission = {
   ORGANIZATION_MANAGE: 'organization:manage',
   USER_MANAGE: 'user:manage',
   USER_READ: 'user:read',
+  EMPLOYEE_MANAGE: 'employee:manage',
+  EMPLOYEE_READ: 'employee:read',
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
@@ -29,14 +31,22 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.ORGANIZATION_MANAGE,
     Permission.USER_MANAGE,
     Permission.USER_READ,
+    Permission.EMPLOYEE_MANAGE,
+    Permission.EMPLOYEE_READ,
   ],
   [SystemRole.TENANT_ADMIN]: [
     Permission.ORGANIZATION_MANAGE,
     Permission.USER_MANAGE,
     Permission.USER_READ,
+    Permission.EMPLOYEE_MANAGE,
+    Permission.EMPLOYEE_READ,
   ],
-  [SystemRole.HR_MANAGER]: [Permission.USER_READ],
-  [SystemRole.PAYROLL_MANAGER]: [],
+  [SystemRole.HR_MANAGER]: [
+    Permission.USER_READ,
+    Permission.EMPLOYEE_MANAGE,
+    Permission.EMPLOYEE_READ,
+  ],
+  [SystemRole.PAYROLL_MANAGER]: [Permission.EMPLOYEE_READ],
   [SystemRole.EMPLOYEE]: [],
 };
 

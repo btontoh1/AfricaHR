@@ -5,7 +5,6 @@ export * from './lib/organization-unit.service';
 export * from './lib/tenant.controller';
 export * from './lib/organization.controller';
 export * from './lib/organization-unit.controller';
-export * from './lib/assert-tenant-scope';
 export * from './lib/dto/create-tenant.dto';
 export * from './lib/dto/update-tenant-status.dto';
 export * from './lib/dto/create-organization.dto';

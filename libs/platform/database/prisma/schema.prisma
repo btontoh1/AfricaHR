@@ -67,8 +67,9 @@ model Organization {
   createdBy String?   @map("created_by")
   updatedBy String?   @map("updated_by")
 
-  tenant Tenant             @relation(fields: [tenantId], references: [id])
-  units  OrganizationUnit[]
+  tenant    Tenant             @relation(fields: [tenantId], references: [id])
+  units     OrganizationUnit[]
+  employees Employee[]
 
   @@index([tenantId])
   @@map("organizations")
@@ -92,6 +93,7 @@ model OrganizationUnit {
   organization Organization       @relation(fields: [organizationId], references: [id])
   parent       OrganizationUnit?  @relation("OrganizationUnitToParent", fields: [parentId], references: [id])
   children     OrganizationUnit[] @relation("OrganizationUnitToParent")
+  employees    Employee[]
 
   @@index([tenantId])
   @@index([organizationId])
@@ -137,6 +139,7 @@ model User {
 
   tenant        Tenant?        @relation(fields: [tenantId], references: [id])
   refreshTokens RefreshToken[]
+  employee      Employee?
 
   @@index([tenantId])
   @@map("users")
@@ -178,4 +181,107 @@ model AuditLog {
   @@index([tenantId])
   @@index([resourceType, resourceId])
   @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Employee Management (Module 3)
+// ---------------------------------------------------------------------------
+
+enum EmploymentStatus {
+  PENDING_ONBOARDING
+  ACTIVE
+  ON_LEAVE
+  SUSPENDED
+  TERMINATED
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERN
+}
+
+/// The employee's HR record. userId is nullable and independent of
+/// employmentStatus — HR can onboard someone into the system (or employ
+/// someone who never needs portal access) without a User account existing
+/// (see project memory for that decision). Compensation here is a current
+/// summary only; actual payroll processing (pay runs, tax, payslips) is
+/// Module 4's responsibility, which reads this rather than duplicating it.
+model Employee {
+  id                 String  @id @default(uuid())
+  tenantId           String  @map("tenant_id")
+  organizationId     String  @map("organization_id")
+  organizationUnitId String? @map("organization_unit_id")
+  userId             String? @unique @map("user_id")
+  managerId          String? @map("manager_id")
+
+  employeeNumber String @map("employee_number")
+
+  firstName     String    @map("first_name")
+  lastName      String    @map("last_name")
+  dateOfBirth   DateTime? @map("date_of_birth")
+  gender        String?
+  nationality   String?
+  phone         String?
+  personalEmail String?   @map("personal_email")
+
+  jobTitle         String           @map("job_title")
+  employmentType   EmploymentType   @map("employment_type")
+  employmentStatus EmploymentStatus @default(PENDING_ONBOARDING) @map("employment_status")
+  hireDate         DateTime         @map("hire_date")
+  terminationDate  DateTime?        @map("termination_date")
+
+  baseSalary   Decimal? @map("base_salary")
+  payFrequency String?  @map("pay_frequency")
+  currency     String?
+
+  countryCode String @map("country_code")
+  /// Country-specific fields without a dedicated column (e.g. Ghana Card
+  /// number), same pattern as Organization.metadata.
+  metadata    Json?
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  organization     Organization             @relation(fields: [organizationId], references: [id])
+  organizationUnit OrganizationUnit?        @relation(fields: [organizationUnitId], references: [id])
+  user             User?                    @relation(fields: [userId], references: [id])
+  manager          Employee?                @relation("EmployeeManager", fields: [managerId], references: [id])
+  directReports    Employee[]               @relation("EmployeeManager")
+  historyEntries   EmploymentHistoryEntry[]
+
+  @@unique([tenantId, employeeNumber])
+  @@index([tenantId])
+  @@index([organizationId])
+  @@index([organizationUnitId])
+  @@index([managerId])
+  @@map("employees")
+}
+
+/// Structured, queryable point-in-time history of employment changes (title,
+/// department, salary, status) — chosen over relying on AuditLog's generic
+/// JSON trail, since "what was X's title on date Y" is a standard HR
+/// reporting need AuditLog isn't built to answer well.
+model EmploymentHistoryEntry {
+  id            String   @id @default(uuid())
+  tenantId      String   @map("tenant_id")
+  employeeId    String   @map("employee_id")
+  /// e.g. "TITLE_CHANGE", "DEPARTMENT_TRANSFER", "STATUS_CHANGE", "SALARY_CHANGE"
+  changeType    String   @map("change_type")
+  fieldName     String   @map("field_name")
+  oldValue      String?  @map("old_value")
+  newValue      String?  @map("new_value")
+  effectiveDate DateTime @map("effective_date")
+  createdAt     DateTime @default(now()) @map("created_at")
+  createdBy     String?  @map("created_by")
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@index([tenantId])
+  @@index([employeeId])
+  @@map("employment_history_entries")
 }

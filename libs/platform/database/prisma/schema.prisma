@@ -70,6 +70,7 @@ model Organization {
   tenant    Tenant             @relation(fields: [tenantId], references: [id])
   units     OrganizationUnit[]
   employees Employee[]
+  payRuns   PayRun[]
 
   @@index([tenantId])
   @@map("organizations")
@@ -253,6 +254,7 @@ model Employee {
   manager          Employee?                @relation("EmployeeManager", fields: [managerId], references: [id])
   directReports    Employee[]               @relation("EmployeeManager")
   historyEntries   EmploymentHistoryEntry[]
+  payslips         Payslip[]
 
   @@unique([tenantId, employeeNumber])
   @@index([tenantId])
@@ -284,4 +286,172 @@ model EmploymentHistoryEntry {
   @@index([tenantId])
   @@index([employeeId])
   @@map("employment_history_entries")
+}
+
+// ---------------------------------------------------------------------------
+// Payroll Engine (Module 4)
+// ---------------------------------------------------------------------------
+
+/// GRA-published monthly PAYE tax bands. Platform-root reference data — no
+/// tenantId, no RLS, same exemption as Tenant (see RLS_CONVENTION.md): a
+/// tenant does not get to set its own income tax law. Effective-dated so a
+/// historical payslip stays reproducible after a rate change. Seeded with
+/// placeholder figures that must be confirmed against GRA's current
+/// published table before any real payroll run (see seed.ts).
+model StatutoryTaxBand {
+  id            String    @id @default(uuid())
+  countryCode   String    @map("country_code")
+  /// Ascending band order within (countryCode, effectiveFrom); band 1 is the
+  /// lowest chargeable-income band.
+  order         Int
+  lowerBound    Decimal   @map("lower_bound")
+  /// null = no upper bound (the top band).
+  upperBound    Decimal?  @map("upper_bound")
+  rate          Decimal
+  effectiveFrom DateTime  @map("effective_from")
+  effectiveTo   DateTime? @map("effective_to")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  createdBy String?  @map("created_by")
+
+  @@index([countryCode, effectiveFrom])
+  @@map("statutory_tax_bands")
+}
+
+enum StatutoryRateCode {
+  SSNIT_EMPLOYEE
+  SSNIT_EMPLOYER
+}
+
+/// SSNIT contribution rates, applied to basic salary. Same platform-root,
+/// effective-dated, no-RLS convention as StatutoryTaxBand. Models the
+/// aggregate Tier 1 employee/employer split only — Tier 2 occupational
+/// pension trustee routing is a deliberate v1 scope cut (see project
+/// memory), left to a future Benefits/Pensions module.
+model StatutoryRate {
+  id            String            @id @default(uuid())
+  countryCode   String            @map("country_code")
+  code          StatutoryRateCode
+  rate          Decimal
+  effectiveFrom DateTime          @map("effective_from")
+  effectiveTo   DateTime?         @map("effective_to")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  createdBy String?  @map("created_by")
+
+  @@unique([countryCode, code, effectiveFrom])
+  @@map("statutory_rates")
+}
+
+enum PayRunStatus {
+  DRAFT
+  PROCESSING
+  APPROVED
+  PAID
+  CLOSED
+  CANCELLED
+}
+
+/// One pay cycle for an Organization. Payslips are (re)computed freely while
+/// the run is DRAFT/PROCESSING; APPROVED locks the numbers (enforced in
+/// PayRunService, not a DB constraint); PAID/CLOSED are terminal
+/// record-keeping states.
+model PayRun {
+  id             String       @id @default(uuid())
+  tenantId       String       @map("tenant_id")
+  organizationId String       @map("organization_id")
+  periodStart    DateTime     @map("period_start")
+  periodEnd      DateTime     @map("period_end")
+  payDate        DateTime     @map("pay_date")
+  status         PayRunStatus @default(DRAFT)
+  approvedAt     DateTime?    @map("approved_at")
+  approvedBy     String?      @map("approved_by")
+  paidAt         DateTime?    @map("paid_at")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  payslips     Payslip[]
+
+  @@unique([tenantId, organizationId, periodStart, periodEnd])
+  @@index([tenantId])
+  @@index([organizationId])
+  @@map("pay_runs")
+}
+
+enum PayslipStatus {
+  DRAFT
+  APPROVED
+  PAID
+}
+
+/// One employee's computed pay for a PayRun. baseSalary/currency are copied
+/// from Employee at computation time (not re-read live), so an approved
+/// payslip's numbers don't silently drift if the employee's compensation
+/// changes afterward.
+model Payslip {
+  id         String        @id @default(uuid())
+  tenantId   String        @map("tenant_id")
+  payRunId   String        @map("pay_run_id")
+  employeeId String        @map("employee_id")
+  status     PayslipStatus @default(DRAFT)
+
+  countryCode     String  @map("country_code")
+  basicSalary     Decimal @map("basic_salary")
+  grossPay        Decimal @map("gross_pay")
+  taxableIncome   Decimal @map("taxable_income")
+  payeTax         Decimal @map("paye_tax")
+  ssnitEmployee   Decimal @map("ssnit_employee")
+  ssnitEmployer   Decimal @map("ssnit_employer")
+  totalDeductions Decimal @map("total_deductions")
+  netPay          Decimal @map("net_pay")
+  currency        String
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  payRun    PayRun            @relation(fields: [payRunId], references: [id])
+  employee  Employee          @relation(fields: [employeeId], references: [id])
+  lineItems PayslipLineItem[]
+
+  @@unique([payRunId, employeeId])
+  @@index([tenantId])
+  @@index([payRunId])
+  @@index([employeeId])
+  @@map("payslips")
+}
+
+enum PayslipLineItemType {
+  EARNING
+  DEDUCTION
+}
+
+/// Ad-hoc earnings/deductions entered per pay run (overtime, allowances,
+/// loan repayments, ...). No recurring-allowance catalog in v1 — a
+/// deliberate scope cut (see project memory); can be layered on later
+/// without changing the payslip shape.
+model PayslipLineItem {
+  id          String              @id @default(uuid())
+  tenantId    String              @map("tenant_id")
+  payslipId   String              @map("payslip_id")
+  type        PayslipLineItemType
+  code        String
+  description String?
+  amount      Decimal
+
+  createdAt DateTime @default(now()) @map("created_at")
+  createdBy String?  @map("created_by")
+
+  payslip Payslip @relation(fields: [payslipId], references: [id])
+
+  @@index([tenantId])
+  @@index([payslipId])
+  @@map("payslip_line_items")
 }

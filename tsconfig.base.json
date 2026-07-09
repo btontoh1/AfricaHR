@@ -32,7 +32,12 @@
       "@africahr/employee-data-access": [
         "./libs/employee/data-access/src/index.ts"
       ],
-      "@africahr/employee-feature": ["./libs/employee/feature/src/index.ts"]
+      "@africahr/employee-feature": ["./libs/employee/feature/src/index.ts"],
+      "@africahr/payroll-domain": ["./libs/payroll/domain/src/index.ts"],
+      "@africahr/payroll-data-access": [
+        "./libs/payroll/data-access/src/index.ts"
+      ],
+      "@africahr/payroll-feature": ["./libs/payroll/feature/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

@@ -41,4 +41,31 @@ describe('hasPermission', () => {
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.EMPLOYEE_READ)).toBe(false);
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.EMPLOYEE_MANAGE)).toBe(false);
   });
+
+  it('grants payroll managers full payroll management', () => {
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.PAYROLL_MANAGE)).toBe(true);
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.PAYROLL_READ)).toBe(true);
+  });
+
+  it('grants HR managers read-only payroll access', () => {
+    expect(hasPermission(SystemRole.HR_MANAGER, Permission.PAYROLL_READ)).toBe(true);
+    expect(hasPermission(SystemRole.HR_MANAGER, Permission.PAYROLL_MANAGE)).toBe(false);
+  });
+
+  it('restricts statutory payroll config management to platform admins', () => {
+    expect(
+      hasPermission(SystemRole.PLATFORM_ADMIN, Permission.PLATFORM_PAYROLL_CONFIG_MANAGE),
+    ).toBe(true);
+    expect(
+      hasPermission(SystemRole.TENANT_ADMIN, Permission.PLATFORM_PAYROLL_CONFIG_MANAGE),
+    ).toBe(false);
+    expect(
+      hasPermission(SystemRole.PAYROLL_MANAGER, Permission.PLATFORM_PAYROLL_CONFIG_MANAGE),
+    ).toBe(false);
+  });
+
+  it('grants employees no payroll permissions', () => {
+    expect(hasPermission(SystemRole.EMPLOYEE, Permission.PAYROLL_READ)).toBe(false);
+    expect(hasPermission(SystemRole.EMPLOYEE, Permission.PAYROLL_MANAGE)).toBe(false);
+  });
 });

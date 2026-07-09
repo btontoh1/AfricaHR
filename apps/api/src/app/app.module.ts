@@ -4,6 +4,7 @@ import { HealthModule } from '@africahr/platform-health';
 import { IamFeatureModule } from '@africahr/iam-feature';
 import { TenancyFeatureModule } from '@africahr/tenancy-feature';
 import { EmployeeFeatureModule } from '@africahr/employee-feature';
+import { PayrollFeatureModule } from '@africahr/payroll-feature';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { EmployeeFeatureModule } from '@africahr/employee-feature';
     IamFeatureModule,
     TenancyFeatureModule,
     EmployeeFeatureModule,
+    PayrollFeatureModule,
   ],
 })
 export class AppModule {}

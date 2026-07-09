@@ -1,0 +1,136 @@
+import { Injectable } from '@nestjs/common';
+import { Payslip, PayslipStatus, Prisma } from '@prisma/client';
+import { PrismaService } from '@africahr/platform-database';
+
+export type PayslipWithLineItems = Prisma.PayslipGetPayload<{ include: { lineItems: true } }>;
+
+export interface UpsertPayslipInput {
+  payRunId: string;
+  employeeId: string;
+  countryCode: string;
+  basicSalary: Prisma.Decimal | number;
+  grossPay: Prisma.Decimal | number;
+  taxableIncome: Prisma.Decimal | number;
+  payeTax: Prisma.Decimal | number;
+  ssnitEmployee: Prisma.Decimal | number;
+  ssnitEmployer: Prisma.Decimal | number;
+  totalDeductions: Prisma.Decimal | number;
+  netPay: Prisma.Decimal | number;
+  currency: string;
+  actorId?: string;
+}
+
+@Injectable()
+export class PayslipRepository {
+  constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Recomputation is idempotent: while a PayRun is editable, calling this
+   * again for the same (payRunId, employeeId) replaces the computed totals
+   * without touching the payslip's line items (those are inputs to the
+   * calculation, not outputs — see PayslipLineItemRepository).
+   */
+  upsert(tenantId: string, input: UpsertPayslipInput): Promise<Payslip> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.payslip.upsert({
+        where: {
+          payRunId_employeeId: { payRunId: input.payRunId, employeeId: input.employeeId },
+        },
+        create: {
+          tenantId,
+          payRunId: input.payRunId,
+          employeeId: input.employeeId,
+          countryCode: input.countryCode,
+          basicSalary: input.basicSalary,
+          grossPay: input.grossPay,
+          taxableIncome: input.taxableIncome,
+          payeTax: input.payeTax,
+          ssnitEmployee: input.ssnitEmployee,
+          ssnitEmployer: input.ssnitEmployer,
+          totalDeductions: input.totalDeductions,
+          netPay: input.netPay,
+          currency: input.currency,
+          createdBy: input.actorId,
+          updatedBy: input.actorId,
+        },
+        update: {
+          countryCode: input.countryCode,
+          basicSalary: input.basicSalary,
+          grossPay: input.grossPay,
+          taxableIncome: input.taxableIncome,
+          payeTax: input.payeTax,
+          ssnitEmployee: input.ssnitEmployee,
+          ssnitEmployer: input.ssnitEmployer,
+          totalDeductions: input.totalDeductions,
+          netPay: input.netPay,
+          currency: input.currency,
+          updatedBy: input.actorId,
+        },
+      }),
+    );
+  }
+
+  findById(tenantId: string, id: string): Promise<PayslipWithLineItems | null> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.payslip.findFirst({
+        where: { id, tenantId, deletedAt: null },
+        include: { lineItems: true },
+      }),
+    );
+  }
+
+  findByPayRunAndEmployee(
+    tenantId: string,
+    payRunId: string,
+    employeeId: string,
+  ): Promise<PayslipWithLineItems | null> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.payslip.findFirst({
+        where: { tenantId, payRunId, employeeId, deletedAt: null },
+        include: { lineItems: true },
+      }),
+    );
+  }
+
+  listByPayRun(tenantId: string, payRunId: string): Promise<PayslipWithLineItems[]> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.payslip.findMany({
+        where: { tenantId, payRunId, deletedAt: null },
+        include: { lineItems: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+    );
+  }
+
+  listByEmployee(tenantId: string, employeeId: string): Promise<PayslipWithLineItems[]> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.payslip.findMany({
+        where: { tenantId, employeeId, deletedAt: null },
+        include: { lineItems: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+    );
+  }
+
+  updateStatus(
+    tenantId: string,
+    id: string,
+    status: PayslipStatus,
+    updatedBy?: string,
+  ): Promise<Payslip> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.payslip.update({ where: { id }, data: { status, updatedBy } }),
+    );
+  }
+
+  updateManyStatusByPayRun(
+    tenantId: string,
+    payRunId: string,
+    status: PayslipStatus,
+    updatedBy?: string,
+  ): Promise<Prisma.BatchPayload> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.payslip.updateMany({ where: { tenantId, payRunId }, data: { status, updatedBy } }),
+    );
+  }
+}

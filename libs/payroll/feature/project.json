@@ -1,0 +1,19 @@
+{
+  "name": "payroll-feature",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/payroll/feature/src",
+  "projectType": "library",
+  "tags": ["scope:payroll", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/payroll/feature",
+        "main": "libs/payroll/feature/src/index.ts",
+        "tsConfig": "libs/payroll/feature/tsconfig.lib.json",
+        "assets": ["libs/payroll/feature/*.md"]
+      }
+    }
+  }
+}

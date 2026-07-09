@@ -1,18 +1,14 @@
-// Bootstraps the first PLATFORM_ADMIN user. Run directly via Prisma
-// (`prisma db seed`), not through the API — creating a platform admin
-// through the API would need an existing platform admin to authorize it,
-// which is exactly the chicken-and-egg problem this script exists to break.
+// Bootstraps the first PLATFORM_ADMIN user and placeholder payroll
+// statutory reference data. Run directly via Prisma (`prisma db seed`),
+// not through the API — creating a platform admin through the API would
+// need an existing platform admin to authorize it, which is exactly the
+// chicken-and-egg problem this script exists to break.
 import 'dotenv/config';
 import * as argon2 from 'argon2';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient, SystemRole } from '@prisma/client';
+import { PrismaClient, StatutoryRateCode, SystemRole } from '@prisma/client';
 
-async function main(): Promise<void> {
-  const databaseUrl = process.env['DATABASE_URL'];
-  if (!databaseUrl) {
-    throw new Error('DATABASE_URL must be set to run the seed script');
-  }
-
+async function seedPlatformAdmin(prisma: PrismaClient): Promise<void> {
   const email = process.env['SEED_ADMIN_EMAIL'] ?? 'admin@africahr.local';
   const password = process.env['SEED_ADMIN_PASSWORD'];
   if (!password) {
@@ -21,29 +17,98 @@ async function main(): Promise<void> {
     );
   }
 
+  const existing = await prisma.user.findFirst({ where: { email } });
+  if (existing) {
+    console.log(`Seed: platform admin "${email}" already exists, skipping.`);
+    return;
+  }
+
+  const passwordHash = await argon2.hash(password);
+
+  await prisma.user.create({
+    data: {
+      tenantId: null,
+      email,
+      passwordHash,
+      firstName: 'Platform',
+      lastName: 'Admin',
+      role: SystemRole.PLATFORM_ADMIN,
+    },
+  });
+
+  console.log(`Seed: created platform admin "${email}".`);
+}
+
+/**
+ * PLACEHOLDER Ghana PAYE tax bands and SSNIT rates, so a fresh environment
+ * has something to compute payroll against end-to-end. These figures are
+ * deliberately round numbers, NOT the current GRA/SSNIT published tables —
+ * see project memory: statutory tax data is never hardcoded into
+ * application logic, and this seed must be replaced with GRA/SSNIT's
+ * actual current figures (via the platform-admin-only
+ * POST /payroll/statutory/{tax-bands,rates} endpoints) before any real
+ * payroll run.
+ */
+async function seedGhanaStatutoryData(prisma: PrismaClient): Promise<void> {
+  const countryCode = 'GH';
+  const effectiveFrom = new Date('2026-01-01');
+
+  const existingBands = await prisma.statutoryTaxBand.findFirst({ where: { countryCode } });
+  if (existingBands) {
+    console.log(`Seed: statutory tax bands for "${countryCode}" already exist, skipping.`);
+  } else {
+    await prisma.statutoryTaxBand.createMany({
+      data: [
+        { countryCode, order: 1, lowerBound: 0, upperBound: 500, rate: 0, effectiveFrom },
+        { countryCode, order: 2, lowerBound: 500, upperBound: 1000, rate: 0.05, effectiveFrom },
+        { countryCode, order: 3, lowerBound: 1000, upperBound: 2000, rate: 0.1, effectiveFrom },
+        { countryCode, order: 4, lowerBound: 2000, upperBound: 3000, rate: 0.175, effectiveFrom },
+        { countryCode, order: 5, lowerBound: 3000, upperBound: 5000, rate: 0.25, effectiveFrom },
+        { countryCode, order: 6, lowerBound: 5000, upperBound: null, rate: 0.3, effectiveFrom },
+      ],
+    });
+    console.log(
+      `Seed: created PLACEHOLDER PAYE tax bands for "${countryCode}" — confirm against GRA's current published table before real payroll runs.`,
+    );
+  }
+
+  const existingRates = await prisma.statutoryRate.findFirst({ where: { countryCode } });
+  if (existingRates) {
+    console.log(`Seed: statutory rates for "${countryCode}" already exist, skipping.`);
+  } else {
+    await prisma.statutoryRate.createMany({
+      data: [
+        {
+          countryCode,
+          code: StatutoryRateCode.SSNIT_EMPLOYEE,
+          rate: 0.055,
+          effectiveFrom,
+        },
+        {
+          countryCode,
+          code: StatutoryRateCode.SSNIT_EMPLOYER,
+          rate: 0.13,
+          effectiveFrom,
+        },
+      ],
+    });
+    console.log(
+      `Seed: created PLACEHOLDER SSNIT rates for "${countryCode}" — confirm against SSNIT's current published rates before real payroll runs.`,
+    );
+  }
+}
+
+async function main(): Promise<void> {
+  const databaseUrl = process.env['DATABASE_URL'];
+  if (!databaseUrl) {
+    throw new Error('DATABASE_URL must be set to run the seed script');
+  }
+
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl }) });
 
   try {
-    const existing = await prisma.user.findFirst({ where: { email } });
-    if (existing) {
-      console.log(`Seed: platform admin "${email}" already exists, skipping.`);
-      return;
-    }
-
-    const passwordHash = await argon2.hash(password);
-
-    await prisma.user.create({
-      data: {
-        tenantId: null,
-        email,
-        passwordHash,
-        firstName: 'Platform',
-        lastName: 'Admin',
-        role: SystemRole.PLATFORM_ADMIN,
-      },
-    });
-
-    console.log(`Seed: created platform admin "${email}".`);
+    await seedPlatformAdmin(prisma);
+    await seedGhanaStatutoryData(prisma);
   } finally {
     await prisma.$disconnect();
   }

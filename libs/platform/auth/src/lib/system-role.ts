@@ -21,6 +21,12 @@ export const Permission = {
   USER_READ: 'user:read',
   EMPLOYEE_MANAGE: 'employee:manage',
   EMPLOYEE_READ: 'employee:read',
+  PAYROLL_MANAGE: 'payroll:manage',
+  PAYROLL_READ: 'payroll:read',
+  // Platform-admin only: editing GRA/SSNIT statutory reference data is ops
+  // work, not a tenant-level payroll permission (see RLS_CONVENTION.md and
+  // project memory — a tenant does not get to set its own tax law).
+  PLATFORM_PAYROLL_CONFIG_MANAGE: 'platform:payroll-config:manage',
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
@@ -33,6 +39,9 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.USER_READ,
     Permission.EMPLOYEE_MANAGE,
     Permission.EMPLOYEE_READ,
+    Permission.PAYROLL_MANAGE,
+    Permission.PAYROLL_READ,
+    Permission.PLATFORM_PAYROLL_CONFIG_MANAGE,
   ],
   [SystemRole.TENANT_ADMIN]: [
     Permission.ORGANIZATION_MANAGE,
@@ -40,13 +49,20 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.USER_READ,
     Permission.EMPLOYEE_MANAGE,
     Permission.EMPLOYEE_READ,
+    Permission.PAYROLL_MANAGE,
+    Permission.PAYROLL_READ,
   ],
   [SystemRole.HR_MANAGER]: [
     Permission.USER_READ,
     Permission.EMPLOYEE_MANAGE,
     Permission.EMPLOYEE_READ,
+    Permission.PAYROLL_READ,
   ],
-  [SystemRole.PAYROLL_MANAGER]: [Permission.EMPLOYEE_READ],
+  [SystemRole.PAYROLL_MANAGER]: [
+    Permission.EMPLOYEE_READ,
+    Permission.PAYROLL_MANAGE,
+    Permission.PAYROLL_READ,
+  ],
   [SystemRole.EMPLOYEE]: [],
 };
 

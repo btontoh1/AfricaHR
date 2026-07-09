@@ -1,0 +1,19 @@
+{
+  "name": "payroll-data-access",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/payroll/data-access/src",
+  "projectType": "library",
+  "tags": ["scope:payroll", "type:data-access"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/payroll/data-access",
+        "main": "libs/payroll/data-access/src/index.ts",
+        "tsConfig": "libs/payroll/data-access/tsconfig.lib.json",
+        "assets": ["libs/payroll/data-access/*.md"]
+      }
+    }
+  }
+}

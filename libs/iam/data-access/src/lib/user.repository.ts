@@ -13,6 +13,17 @@ export interface CreateUserInput {
   createdBy?: string;
 }
 
+export interface UserForLogin {
+  id: string;
+  tenantId: string | null;
+  email: string;
+  passwordHash: string;
+  firstName: string;
+  lastName: string;
+  role: SystemRole;
+  isActive: boolean;
+}
+
 @Injectable()
 export class UserRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -20,10 +31,17 @@ export class UserRepository {
   /**
    * Deliberately bypasses tenant scoping: login only has an email, not yet a
    * tenant, so this is the one lookup that must run unscoped by design (see
-   * RLS_CONVENTION.md §4).
+   * RLS_CONVENTION.md §4). Under the least-privilege app role, a plain
+   * SELECT can't see tenant-scoped rows with no tenant context set, so this
+   * goes through find_user_for_login(), a narrow SECURITY DEFINER function
+   * (owned by the superuser/owner role) rather than the app role's own
+   * (RLS-restricted) read access — see the login-lookup-function migration.
    */
-  findByEmail(email: string): Promise<User | null> {
-    return this.prisma.user.findFirst({ where: { email, deletedAt: null } });
+  async findByEmail(email: string): Promise<UserForLogin | null> {
+    const rows = await this.prisma.$queryRaw<
+      UserForLogin[]
+    >`SELECT * FROM find_user_for_login(${email})`;
+    return rows[0] ?? null;
   }
 
   findById(tenantId: string | null, id: string): Promise<User | null> {

@@ -80,3 +80,45 @@ the row is platform-admin-owned AND no tenant context is set. This keeps
 both directions strict: a tenant-scoped query never sees platform-admin
 rows, and an unscoped (platform-admin) query never accidentally sees another
 tenant's rows.
+
+Note this does **not** make tenant-scoped rows visible to an unscoped query
+— it only exempts platform-admin rows. A genuinely cross-tenant unscoped
+lookup (e.g. login resolving a user by email alone, before any tenant is
+known) needs the pattern in §5 instead.
+
+## 5. Genuinely cross-tenant lookups (`SECURITY DEFINER` functions)
+
+Some lookups have no tenant to scope by yet — e.g. login must resolve a
+`User` from email alone, since email is globally unique and the tenant
+isn't known until *after* that lookup succeeds. The app connects as
+`africahr_app`, a least-privilege, non-superuser role (see the
+2026-07-09 RLS-bypass fix in project memory), so a plain unscoped query
+only ever sees platform-admin rows under the §4 policy — every
+tenant-scoped row stays invisible.
+
+For exactly these cases, add a narrow Postgres function, owned by the
+migration/owner role (`africahr`, superuser) and marked `SECURITY DEFINER`,
+so it runs with the owner's RLS-bypassing privileges regardless of caller —
+then grant `EXECUTE` on it to `africahr_app`. This is a deliberate,
+auditable exception scoped to exactly the columns the caller needs, not a
+general RLS bypass:
+
+```sql
+CREATE FUNCTION find_user_for_login(p_email TEXT)
+RETURNS TABLE (id TEXT, "tenantId" TEXT, /* ...only what's needed */ )
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT id, tenant_id, /* ... */
+  FROM users
+  WHERE email = p_email AND deleted_at IS NULL;
+$$;
+
+GRANT EXECUTE ON FUNCTION find_user_for_login(TEXT) TO africahr_app;
+```
+
+Called from the repository via `this.prisma.$queryRaw` (see
+`UserRepository.findByEmail`) — never widen `africahr_app`'s own grants to
+cover this instead, since that would defeat RLS for every other query the
+app role runs on that table.

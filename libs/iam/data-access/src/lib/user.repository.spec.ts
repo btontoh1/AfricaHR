@@ -11,7 +11,8 @@ describe('UserRepository', () => {
     update: jest.Mock;
   };
   let withTenantContext: jest.Mock;
-  let prisma: { user: typeof userDelegate; withTenantContext: jest.Mock };
+  let queryRaw: jest.Mock;
+  let prisma: { user: typeof userDelegate; withTenantContext: jest.Mock; $queryRaw: jest.Mock };
 
   beforeEach(() => {
     userDelegate = {
@@ -21,19 +22,39 @@ describe('UserRepository', () => {
       update: jest.fn(),
     };
     withTenantContext = jest.fn((_tenantId, fn) => fn({ user: userDelegate }));
-    prisma = { user: userDelegate, withTenantContext };
+    queryRaw = jest.fn().mockResolvedValue([]);
+    prisma = { user: userDelegate, withTenantContext, $queryRaw: queryRaw };
 
     repository = new UserRepository(prisma as unknown as PrismaService);
   });
 
   describe('findByEmail', () => {
-    it('queries directly, bypassing tenant scoping', async () => {
-      await repository.findByEmail('admin@africahr.com');
+    it('looks up via the find_user_for_login SECURITY DEFINER function, bypassing tenant scoping', async () => {
+      const row = {
+        id: 'user-1',
+        tenantId: 'tenant-1',
+        email: 'admin@africahr.com',
+        passwordHash: 'hash',
+        firstName: 'Ama',
+        lastName: 'Owusu',
+        role: SystemRole.HR_MANAGER,
+        isActive: true,
+      };
+      queryRaw.mockResolvedValue([row]);
+
+      const result = await repository.findByEmail('admin@africahr.com');
 
       expect(withTenantContext).not.toHaveBeenCalled();
-      expect(userDelegate.findFirst).toHaveBeenCalledWith({
-        where: { email: 'admin@africahr.com', deletedAt: null },
-      });
+      expect(queryRaw).toHaveBeenCalled();
+      expect(result).toEqual(row);
+    });
+
+    it('returns null when no user matches the email', async () => {
+      queryRaw.mockResolvedValue([]);
+
+      const result = await repository.findByEmail('missing@africahr.com');
+
+      expect(result).toBeNull();
     });
   });
 

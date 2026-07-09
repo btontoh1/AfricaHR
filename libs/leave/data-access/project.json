@@ -1,0 +1,19 @@
+{
+  "name": "leave-data-access",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/leave/data-access/src",
+  "projectType": "library",
+  "tags": ["scope:leave", "type:data-access"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/leave/data-access",
+        "main": "libs/leave/data-access/src/index.ts",
+        "tsConfig": "libs/leave/data-access/tsconfig.lib.json",
+        "assets": ["libs/leave/data-access/*.md"]
+      }
+    }
+  }
+}

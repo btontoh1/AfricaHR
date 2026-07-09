@@ -1,0 +1,19 @@
+{
+  "name": "leave-domain",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/leave/domain/src",
+  "projectType": "library",
+  "tags": ["scope:leave", "type:domain"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/leave/domain",
+        "main": "libs/leave/domain/src/index.ts",
+        "tsConfig": "libs/leave/domain/tsconfig.lib.json",
+        "assets": ["libs/leave/domain/*.md"]
+      }
+    }
+  }
+}

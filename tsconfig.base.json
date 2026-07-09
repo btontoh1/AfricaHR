@@ -37,7 +37,10 @@
       "@africahr/payroll-data-access": [
         "./libs/payroll/data-access/src/index.ts"
       ],
-      "@africahr/payroll-feature": ["./libs/payroll/feature/src/index.ts"]
+      "@africahr/payroll-feature": ["./libs/payroll/feature/src/index.ts"],
+      "@africahr/leave-domain": ["./libs/leave/domain/src/index.ts"],
+      "@africahr/leave-data-access": ["./libs/leave/data-access/src/index.ts"],
+      "@africahr/leave-feature": ["./libs/leave/feature/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

@@ -68,4 +68,20 @@ describe('hasPermission', () => {
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.PAYROLL_READ)).toBe(false);
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.PAYROLL_MANAGE)).toBe(false);
   });
+
+  it('grants HR managers and tenant admins full leave management', () => {
+    expect(hasPermission(SystemRole.HR_MANAGER, Permission.LEAVE_MANAGE)).toBe(true);
+    expect(hasPermission(SystemRole.HR_MANAGER, Permission.LEAVE_READ)).toBe(true);
+    expect(hasPermission(SystemRole.TENANT_ADMIN, Permission.LEAVE_MANAGE)).toBe(true);
+  });
+
+  it('grants payroll managers no leave permissions', () => {
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.LEAVE_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.LEAVE_READ)).toBe(false);
+  });
+
+  it('grants employees no leave-management permissions (self-service is handled separately, not via this permission)', () => {
+    expect(hasPermission(SystemRole.EMPLOYEE, Permission.LEAVE_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.EMPLOYEE, Permission.LEAVE_READ)).toBe(false);
+  });
 });

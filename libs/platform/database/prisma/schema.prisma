@@ -255,6 +255,8 @@ model Employee {
   directReports    Employee[]               @relation("EmployeeManager")
   historyEntries   EmploymentHistoryEntry[]
   payslips         Payslip[]
+  leaveBalances    LeaveBalance[]
+  leaveRequests    LeaveRequest[]
 
   @@unique([tenantId, employeeNumber])
   @@index([tenantId])
@@ -454,4 +456,105 @@ model PayslipLineItem {
   @@index([tenantId])
   @@index([payslipId])
   @@map("payslip_line_items")
+}
+
+// ---------------------------------------------------------------------------
+// Leave Management (Module 5)
+// ---------------------------------------------------------------------------
+
+/// The tenant's own leave-type catalog (e.g. "Annual Leave", "Sick Leave").
+/// Unlike Payroll's statutory reference data, this is tenant-owned business
+/// policy, not national law applied uniformly, so it's tenantId-scoped and
+/// managed by TENANT_ADMIN/HR_MANAGER rather than platform-admin. No
+/// statutory-minimum enforcement in v1 (see project memory) — HR is
+/// trusted to set defaultEntitlementDays correctly, same as baseSalary.
+model LeaveType {
+  id                     String  @id @default(uuid())
+  tenantId               String  @map("tenant_id")
+  name                   String
+  code                   String
+  isPaid                 Boolean @default(true) @map("is_paid")
+  defaultEntitlementDays Decimal @map("default_entitlement_days")
+  isActive               Boolean @default(true) @map("is_active")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  balances LeaveBalance[]
+  requests LeaveRequest[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("leave_types")
+}
+
+/// Per-employee, per-leave-type, per-year balance. Annual lump-sum
+/// entitlement only in v1 — no monthly accrual engine, no carry-forward
+/// rollover job (see project memory for those scope cuts).
+model LeaveBalance {
+  id           String  @id @default(uuid())
+  tenantId     String  @map("tenant_id")
+  employeeId   String  @map("employee_id")
+  leaveTypeId  String  @map("leave_type_id")
+  year         Int
+  entitledDays Decimal @map("entitled_days")
+  usedDays     Decimal @default(0) @map("used_days")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  employee  Employee  @relation(fields: [employeeId], references: [id])
+  leaveType LeaveType @relation(fields: [leaveTypeId], references: [id])
+
+  @@unique([tenantId, employeeId, leaveTypeId, year])
+  @@index([tenantId])
+  @@index([employeeId])
+  @@map("leave_balances")
+}
+
+enum LeaveRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+/// Whole-day date ranges only in v1 — no half/partial-day requests, and
+/// daysRequested counts weekdays only (no public holiday calendar). See
+/// project memory for those scope cuts. Self-service: an EMPLOYEE-role
+/// caller may only create/view/cancel their own requests (resolved via
+/// Employee.userId, not an arbitrary employeeId) — see project memory,
+/// this is the first module where the EMPLOYEE role does anything.
+model LeaveRequest {
+  id              String             @id @default(uuid())
+  tenantId        String             @map("tenant_id")
+  employeeId      String             @map("employee_id")
+  leaveTypeId     String             @map("leave_type_id")
+  startDate       DateTime           @map("start_date")
+  endDate         DateTime           @map("end_date")
+  daysRequested   Decimal            @map("days_requested")
+  reason          String?
+  status          LeaveRequestStatus @default(PENDING)
+  approverUserId  String?            @map("approver_user_id")
+  approvedAt      DateTime?          @map("approved_at")
+  rejectionReason String?            @map("rejection_reason")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  employee  Employee  @relation(fields: [employeeId], references: [id])
+  leaveType LeaveType @relation(fields: [leaveTypeId], references: [id])
+
+  @@index([tenantId])
+  @@index([employeeId])
+  @@index([leaveTypeId])
+  @@map("leave_requests")
 }

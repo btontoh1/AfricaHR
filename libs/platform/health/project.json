@@ -1,0 +1,20 @@
+{
+  "name": "health",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/platform/health/src",
+  "projectType": "library",
+  "tags": ["scope:platform", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/platform/health",
+        "tsConfig": "libs/platform/health/tsconfig.lib.json",
+        "packageJson": "libs/platform/health/package.json",
+        "main": "libs/platform/health/src/index.ts",
+        "assets": ["libs/platform/health/*.md"]
+      }
+    }
+  }
+}

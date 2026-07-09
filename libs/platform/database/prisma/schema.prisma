@@ -1,0 +1,15 @@
+// AfricaHR — shared-schema, multi-tenant PostgreSQL database.
+//
+// Tenant isolation convention (see RLS_CONVENTION.md in this directory):
+// every tenant-scoped model gets a `tenantId` column, an index on it, and a
+// matching Postgres Row-Level Security policy applied via a raw-SQL migration.
+// Domain models are added by the module that owns them (Tenancy adds the
+// first ones) — this schema intentionally has no models yet.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}

@@ -1,0 +1,20 @@
+{
+  "name": "redis",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/platform/redis/src",
+  "projectType": "library",
+  "tags": ["scope:platform", "type:util"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/platform/redis",
+        "tsConfig": "libs/platform/redis/tsconfig.lib.json",
+        "packageJson": "libs/platform/redis/package.json",
+        "main": "libs/platform/redis/src/index.ts",
+        "assets": ["libs/platform/redis/*.md"]
+      }
+    }
+  }
+}

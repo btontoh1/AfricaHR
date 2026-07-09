@@ -1,0 +1,17 @@
+{
+  "name": "@africahr/platform-core",
+  "version": "0.0.1",
+  "private": true,
+  "type": "commonjs",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "dependencies": {
+    "tslib": "^2.3.0",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.4",
+    "zod": "^4.4.3",
+    "@nestjs/core": "^11.0.0",
+    "nestjs-pino": "^4.6.1",
+    "express": "5.2.1"
+  }
+}

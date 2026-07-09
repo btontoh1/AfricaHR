@@ -13,7 +13,12 @@
     "lib": ["es2020", "dom"],
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
-    "paths": {}
+    "paths": {
+      "@africahr/platform-core": ["./libs/platform/core/src/index.ts"],
+      "@africahr/platform-database": ["./libs/platform/database/src/index.ts"],
+      "@africahr/platform-redis": ["./libs/platform/redis/src/index.ts"],
+      "@africahr/platform-health": ["./libs/platform/health/src/index.ts"]
+    }
   },
   "exclude": ["node_modules", "tmp"]
 }

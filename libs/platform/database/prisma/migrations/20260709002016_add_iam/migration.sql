@@ -92,7 +92,7 @@ ALTER TABLE "users" FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY tenant_isolation ON "users"
   USING (
-    tenant_id = current_setting('app.current_tenant_id', true)::uuid
+    tenant_id = current_setting('app.current_tenant_id', true)
     OR (tenant_id IS NULL AND current_setting('app.current_tenant_id', true) IS NULL)
   );
 
@@ -101,7 +101,7 @@ ALTER TABLE "refresh_tokens" FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY tenant_isolation ON "refresh_tokens"
   USING (
-    tenant_id = current_setting('app.current_tenant_id', true)::uuid
+    tenant_id = current_setting('app.current_tenant_id', true)
     OR (tenant_id IS NULL AND current_setting('app.current_tenant_id', true) IS NULL)
   );
 
@@ -110,6 +110,6 @@ ALTER TABLE "audit_logs" FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY tenant_isolation ON "audit_logs"
   USING (
-    tenant_id = current_setting('app.current_tenant_id', true)::uuid
+    tenant_id = current_setting('app.current_tenant_id', true)
     OR (tenant_id IS NULL AND current_setting('app.current_tenant_id', true) IS NULL)
   );

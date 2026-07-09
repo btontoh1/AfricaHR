@@ -22,6 +22,10 @@ export class AppConfigService {
     return this.configService.get('DATABASE_URL', { infer: true });
   }
 
+  get appDatabaseUrl(): string {
+    return this.configService.get('APP_DATABASE_URL', { infer: true });
+  }
+
   get redis(): { host: string; port: number; password?: string } {
     return {
       host: this.configService.get('REDIS_HOST', { infer: true }),

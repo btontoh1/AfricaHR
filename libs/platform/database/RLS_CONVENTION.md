@@ -28,8 +28,12 @@ ALTER TABLE "employees" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "employees" FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY tenant_isolation ON "employees"
-  USING (tenant_id = current_setting('app.current_tenant_id', true)::uuid);
+  USING (tenant_id = current_setting('app.current_tenant_id', true));
 ```
+
+`tenantId` is stored as Postgres `TEXT` (Prisma's `String @default(uuid())` does not map to
+the native `uuid` type), so the policy compares as text — do not add a `::uuid` cast, since
+`current_setting` also returns text and `text = uuid` has no operator.
 
 `FORCE ROW LEVEL SECURITY` matters: without it, the table owner role (which
 Prisma's connection typically uses) bypasses RLS entirely.
@@ -66,7 +70,7 @@ Use this variant instead:
 ```sql
 CREATE POLICY tenant_isolation ON "users"
   USING (
-    tenant_id = current_setting('app.current_tenant_id', true)::uuid
+    tenant_id = current_setting('app.current_tenant_id', true)
     OR (tenant_id IS NULL AND current_setting('app.current_tenant_id', true) IS NULL)
   );
 ```

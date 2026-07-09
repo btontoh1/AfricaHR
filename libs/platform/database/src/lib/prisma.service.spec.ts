@@ -6,7 +6,7 @@ describe('PrismaService', () => {
 
   beforeEach(() => {
     const config = {
-      databaseUrl: 'postgresql://user:pass@localhost:5432/africahr_test',
+      appDatabaseUrl: 'postgresql://app_user:pass@localhost:5432/africahr_test',
     } as AppConfigService;
 
     service = new PrismaService(config);

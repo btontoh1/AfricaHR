@@ -4,6 +4,7 @@ describe('validateEnv', () => {
   const validEnv = {
     NODE_ENV: 'test',
     DATABASE_URL: 'postgresql://user:pass@localhost:5432/africahr',
+    APP_DATABASE_URL: 'postgresql://app_user:pass@localhost:5432/africahr',
   };
 
   it('applies defaults for optional fields', () => {
@@ -33,7 +34,15 @@ describe('validateEnv', () => {
   });
 
   it('throws with a readable message when DATABASE_URL is missing', () => {
-    expect(() => validateEnv({ NODE_ENV: 'test' })).toThrow(/DATABASE_URL/);
+    expect(() => validateEnv({ NODE_ENV: 'test', APP_DATABASE_URL: validEnv.APP_DATABASE_URL })).toThrow(
+      /DATABASE_URL/,
+    );
+  });
+
+  it('throws with a readable message when APP_DATABASE_URL is missing', () => {
+    expect(() => validateEnv({ NODE_ENV: 'test', DATABASE_URL: validEnv.DATABASE_URL })).toThrow(
+      /APP_DATABASE_URL/,
+    );
   });
 
   it('throws when NODE_ENV is not one of the allowed values', () => {

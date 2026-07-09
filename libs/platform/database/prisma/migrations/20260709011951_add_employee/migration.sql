@@ -100,10 +100,10 @@ ALTER TABLE "employees" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "employees" FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY tenant_isolation ON "employees"
-  USING (tenant_id = current_setting('app.current_tenant_id', true)::uuid);
+  USING (tenant_id = current_setting('app.current_tenant_id', true));
 
 ALTER TABLE "employment_history_entries" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "employment_history_entries" FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY tenant_isolation ON "employment_history_entries"
-  USING (tenant_id = current_setting('app.current_tenant_id', true)::uuid);
+  USING (tenant_id = current_setting('app.current_tenant_id', true));

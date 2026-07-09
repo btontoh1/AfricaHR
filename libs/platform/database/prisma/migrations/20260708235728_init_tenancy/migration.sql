@@ -86,10 +86,10 @@ ALTER TABLE "organizations" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "organizations" FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY tenant_isolation ON "organizations"
-  USING (tenant_id = current_setting('app.current_tenant_id', true)::uuid);
+  USING (tenant_id = current_setting('app.current_tenant_id', true));
 
 ALTER TABLE "organization_units" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "organization_units" FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY tenant_isolation ON "organization_units"
-  USING (tenant_id = current_setting('app.current_tenant_id', true)::uuid);
+  USING (tenant_id = current_setting('app.current_tenant_id', true));

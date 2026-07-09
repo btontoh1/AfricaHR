@@ -4,7 +4,12 @@ export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
 
+  // Owner/superuser connection, used only for running migrations (see prisma.config.ts).
   DATABASE_URL: z.string().url(),
+  // Least-privilege runtime connection the app actually queries through, so Postgres
+  // Row-Level Security applies (RLS is unconditionally bypassed by superusers and table
+  // owners regardless of FORCE ROW LEVEL SECURITY — see RLS_CONVENTION.md).
+  APP_DATABASE_URL: z.string().url(),
 
   REDIS_HOST: z.string().default('localhost'),
   REDIS_PORT: z.coerce.number().int().positive().default(6379),

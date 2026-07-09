@@ -1,0 +1,20 @@
+{
+  "name": "tenancy-feature",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/tenancy/feature/src",
+  "projectType": "library",
+  "tags": ["scope:tenancy", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/tenancy/feature",
+        "tsConfig": "libs/tenancy/feature/tsconfig.lib.json",
+        "packageJson": "libs/tenancy/feature/package.json",
+        "main": "libs/tenancy/feature/src/index.ts",
+        "assets": ["libs/tenancy/feature/*.md"]
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "tenancy-domain",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/tenancy/domain/src",
+  "projectType": "library",
+  "tags": ["scope:tenancy", "type:domain"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/tenancy/domain",
+        "tsConfig": "libs/tenancy/domain/tsconfig.lib.json",
+        "packageJson": "libs/tenancy/domain/package.json",
+        "main": "libs/tenancy/domain/src/index.ts",
+        "assets": ["libs/tenancy/domain/*.md"]
+      }
+    }
+  }
+}

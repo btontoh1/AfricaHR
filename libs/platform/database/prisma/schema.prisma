@@ -3,8 +3,7 @@
 // Tenant isolation convention (see RLS_CONVENTION.md in this directory):
 // every tenant-scoped model gets a `tenantId` column, an index on it, and a
 // matching Postgres Row-Level Security policy applied via a raw-SQL migration.
-// Domain models are added by the module that owns them (Tenancy adds the
-// first ones) — this schema intentionally has no models yet.
+// `Tenant` itself is the tenant registry (platform-root) and is exempt.
 
 generator client {
   provider = "prisma-client-js"
@@ -12,4 +11,88 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Tenancy & Organization (Module 1)
+// ---------------------------------------------------------------------------
+
+enum TenantStatus {
+  TRIAL
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+/// The SaaS account. Platform-root table — no tenantId, no RLS.
+model Tenant {
+  id       String       @id @default(uuid())
+  name     String
+  slug     String       @unique
+  status   TenantStatus @default(TRIAL)
+  country  String
+  currency String
+  timezone String
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  organizations Organization[]
+
+  @@map("tenants")
+}
+
+/// A legal entity under a tenant (a tenant may own more than one — e.g. a
+/// holding company with subsidiaries — so this is tenantId-scoped rather
+/// than folded into Tenant as a 1:1).
+model Organization {
+  id                      String  @id @default(uuid())
+  tenantId                String  @map("tenant_id")
+  legalName               String  @map("legal_name")
+  tradingName             String? @map("trading_name")
+  countryCode             String  @map("country_code")
+  registrationNumber      String  @map("registration_number")
+  taxIdentificationNumber String? @map("tax_identification_number")
+  /// Country-specific registration fields that don't warrant a dedicated
+  /// column yet (e.g. Ghana SSNIT employer number).
+  metadata                Json?
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  tenant Tenant             @relation(fields: [tenantId], references: [id])
+  units  OrganizationUnit[]
+
+  @@index([tenantId])
+  @@map("organizations")
+}
+
+/// Department/branch within an Organization. Self-referencing hierarchy.
+model OrganizationUnit {
+  id             String  @id @default(uuid())
+  tenantId       String  @map("tenant_id")
+  organizationId String  @map("organization_id")
+  parentId       String? @map("parent_id")
+  name           String
+  code           String
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  organization Organization       @relation(fields: [organizationId], references: [id])
+  parent       OrganizationUnit?  @relation("OrganizationUnitToParent", fields: [parentId], references: [id])
+  children     OrganizationUnit[] @relation("OrganizationUnitToParent")
+
+  @@index([tenantId])
+  @@index([organizationId])
+  @@map("organization_units")
 }

@@ -1,0 +1,20 @@
+{
+  "name": "tenancy-data-access",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/tenancy/data-access/src",
+  "projectType": "library",
+  "tags": ["scope:tenancy", "type:data-access"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/tenancy/data-access",
+        "tsConfig": "libs/tenancy/data-access/tsconfig.lib.json",
+        "packageJson": "libs/tenancy/data-access/package.json",
+        "main": "libs/tenancy/data-access/src/index.ts",
+        "assets": ["libs/tenancy/data-access/*.md"]
+      }
+    }
+  }
+}

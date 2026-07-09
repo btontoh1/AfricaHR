@@ -1,5 +1,6 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Tenant } from '@prisma/client';
+import { AuditService } from '@africahr/platform-audit';
 import { TenantRepository } from '@africahr/tenancy-data-access';
 import { TenantStatus } from '@africahr/tenancy-domain';
 import { TenantService } from './tenant.service';
@@ -7,6 +8,7 @@ import { TenantService } from './tenant.service';
 describe('TenantService', () => {
   let service: TenantService;
   let repo: jest.Mocked<TenantRepository>;
+  let audit: jest.Mocked<AuditService>;
 
   const baseTenant: Tenant = {
     id: 'tenant-1',
@@ -33,7 +35,9 @@ describe('TenantService', () => {
       softDelete: jest.fn(),
     } as unknown as jest.Mocked<TenantRepository>;
 
-    service = new TenantService(repo);
+    audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
+
+    service = new TenantService(repo, audit);
   });
 
   describe('create', () => {
@@ -51,6 +55,9 @@ describe('TenantService', () => {
       expect(repo.findBySlug).toHaveBeenCalledWith('acme-ghana-ltd');
       expect(repo.create).toHaveBeenCalledWith(
         expect.objectContaining({ slug: 'acme-ghana-ltd' }),
+      );
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'tenant.created', tenantId: baseTenant.id }),
       );
     });
 

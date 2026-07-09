@@ -1,0 +1,20 @@
+{
+  "name": "iam-feature",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/iam/feature/src",
+  "projectType": "library",
+  "tags": ["scope:iam", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/iam/feature",
+        "tsConfig": "libs/iam/feature/tsconfig.lib.json",
+        "packageJson": "libs/iam/feature/package.json",
+        "main": "libs/iam/feature/src/index.ts",
+        "assets": ["libs/iam/feature/*.md"]
+      }
+    }
+  }
+}

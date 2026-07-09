@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { OrganizationUnit } from '@prisma/client';
+import { AuditService } from '@africahr/platform-audit';
 import { OrganizationRepository, OrganizationUnitRepository } from '@africahr/tenancy-data-access';
 import { wouldCreateCycle } from '@africahr/tenancy-domain';
 import { CreateOrganizationUnitDto } from './dto/create-organization-unit.dto';
@@ -9,6 +10,7 @@ export class OrganizationUnitService {
   constructor(
     private readonly units: OrganizationUnitRepository,
     private readonly organizations: OrganizationRepository,
+    private readonly audit: AuditService,
   ) {}
 
   async create(
@@ -30,13 +32,23 @@ export class OrganizationUnitService {
       }
     }
 
-    return this.units.create(tenantId, {
+    const unit = await this.units.create(tenantId, {
       organizationId: dto.organizationId,
       parentId: dto.parentId ?? null,
       name: dto.name,
       code: dto.code,
       createdBy: actorId,
     });
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'organization_unit.created',
+      resourceType: 'OrganizationUnit',
+      resourceId: unit.id,
+    });
+
+    return unit;
   }
 
   async findById(tenantId: string, id: string): Promise<OrganizationUnit> {
@@ -74,6 +86,17 @@ export class OrganizationUnitService {
       throw new BadRequestException('Cannot move a unit under one of its own descendants');
     }
 
-    return this.units.updateParent(tenantId, id, newParentId, actorId);
+    const updated = await this.units.updateParent(tenantId, id, newParentId, actorId);
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'organization_unit.moved',
+      resourceType: 'OrganizationUnit',
+      resourceId: id,
+      metadata: { from: unit.parentId, to: newParentId },
+    });
+
+    return updated;
   }
 }

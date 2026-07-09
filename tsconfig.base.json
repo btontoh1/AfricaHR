@@ -22,7 +22,12 @@
       "@africahr/tenancy-data-access": [
         "./libs/tenancy/data-access/src/index.ts"
       ],
-      "@africahr/tenancy-feature": ["./libs/tenancy/feature/src/index.ts"]
+      "@africahr/tenancy-feature": ["./libs/tenancy/feature/src/index.ts"],
+      "@africahr/platform-auth": ["./libs/platform/auth/src/index.ts"],
+      "@africahr/platform-audit": ["./libs/platform/audit/src/index.ts"],
+      "@africahr/iam-domain": ["./libs/iam/domain/src/index.ts"],
+      "@africahr/iam-data-access": ["./libs/iam/data-access/src/index.ts"],
+      "@africahr/iam-feature": ["./libs/iam/feature/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

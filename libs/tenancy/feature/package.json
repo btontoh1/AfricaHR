@@ -12,6 +12,8 @@
     "@africahr/tenancy-domain": "0.0.1",
     "@nestjs/common": "^11.0.0",
     "@prisma/client": "^7.8.0",
-    "@africahr/tenancy-data-access": "0.0.1"
+    "@africahr/tenancy-data-access": "0.0.1",
+    "@africahr/platform-auth": "0.0.1",
+    "@africahr/platform-audit": "0.0.1"
   }
 }

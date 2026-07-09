@@ -1,5 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { Organization, Tenant } from '@prisma/client';
+import { AuditService } from '@africahr/platform-audit';
 import { OrganizationRepository, TenantRepository } from '@africahr/tenancy-data-access';
 import { TenantStatus } from '@africahr/tenancy-domain';
 import { OrganizationService } from './organization.service';
@@ -8,6 +9,7 @@ describe('OrganizationService', () => {
   let service: OrganizationService;
   let organizations: jest.Mocked<OrganizationRepository>;
   let tenants: jest.Mocked<TenantRepository>;
+  let audit: jest.Mocked<AuditService>;
 
   const tenant: Tenant = {
     id: 'tenant-1',
@@ -52,7 +54,9 @@ describe('OrganizationService', () => {
       findById: jest.fn(),
     } as unknown as jest.Mocked<TenantRepository>;
 
-    service = new OrganizationService(organizations, tenants);
+    audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
+
+    service = new OrganizationService(organizations, tenants, audit);
   });
 
   describe('create', () => {

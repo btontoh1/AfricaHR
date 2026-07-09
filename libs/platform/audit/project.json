@@ -1,0 +1,20 @@
+{
+  "name": "audit",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/platform/audit/src",
+  "projectType": "library",
+  "tags": ["scope:platform", "type:util"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/platform/audit",
+        "tsConfig": "libs/platform/audit/tsconfig.lib.json",
+        "packageJson": "libs/platform/audit/package.json",
+        "main": "libs/platform/audit/src/index.ts",
+        "assets": ["libs/platform/audit/*.md"]
+      }
+    }
+  }
+}

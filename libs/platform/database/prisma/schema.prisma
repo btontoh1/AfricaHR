@@ -41,6 +41,7 @@ model Tenant {
   updatedBy String?   @map("updated_by")
 
   organizations Organization[]
+  users         User[]
 
   @@map("tenants")
 }
@@ -95,4 +96,86 @@ model OrganizationUnit {
   @@index([tenantId])
   @@index([organizationId])
   @@map("organization_units")
+}
+
+// ---------------------------------------------------------------------------
+// IAM (Module 2)
+// ---------------------------------------------------------------------------
+
+/// Fixed, system-defined roles. Tenants assign users to these; they cannot
+/// define their own roles (see project memory for why — a deliberate v1
+/// scope cut, not an oversight).
+enum SystemRole {
+  PLATFORM_ADMIN
+  TENANT_ADMIN
+  HR_MANAGER
+  PAYROLL_MANAGER
+  EMPLOYEE
+}
+
+/// tenantId is nullable: null identifies a platform admin, who isn't scoped
+/// to any tenant (tenants are ops-provisioned by platform admins, not
+/// self-serve). email is globally unique (not per-tenant) so login can
+/// resolve a user from email+password alone, without first knowing which
+/// tenant to look in.
+model User {
+  id           String     @id @default(uuid())
+  tenantId     String?    @map("tenant_id")
+  email        String     @unique
+  passwordHash String     @map("password_hash")
+  firstName    String     @map("first_name")
+  lastName     String     @map("last_name")
+  role         SystemRole
+  isActive     Boolean    @default(true) @map("is_active")
+  lastLoginAt  DateTime?  @map("last_login_at")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  tenant        Tenant?        @relation(fields: [tenantId], references: [id])
+  refreshTokens RefreshToken[]
+
+  @@index([tenantId])
+  @@map("users")
+}
+
+/// Opaque, hashed, stateful — unlike the (stateless, JWT) access token, so
+/// logout/revocation is possible. Rotated on every refresh.
+model RefreshToken {
+  id        String    @id @default(uuid())
+  tenantId  String?   @map("tenant_id")
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  userAgent String?   @map("user_agent")
+  ipAddress String?   @map("ip_address")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+/// Generic audit trail, written via explicit AuditService.record() calls
+/// from any module's services — deliberately not automatic/interceptor-based,
+/// to keep exactly what gets logged predictable and easy to test.
+model AuditLog {
+  id           String   @id @default(uuid())
+  tenantId     String?  @map("tenant_id")
+  actorUserId  String?  @map("actor_user_id")
+  action       String
+  resourceType String   @map("resource_type")
+  resourceId   String?  @map("resource_id")
+  metadata     Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([resourceType, resourceId])
+  @@map("audit_logs")
 }

@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Organization, Prisma } from '@prisma/client';
+import { AuditService } from '@africahr/platform-audit';
 import { OrganizationRepository, TenantRepository } from '@africahr/tenancy-data-access';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 
@@ -8,6 +9,7 @@ export class OrganizationService {
   constructor(
     private readonly organizations: OrganizationRepository,
     private readonly tenants: TenantRepository,
+    private readonly audit: AuditService,
   ) {}
 
   async create(
@@ -20,7 +22,7 @@ export class OrganizationService {
       throw new NotFoundException(`Tenant "${tenantId}" not found`);
     }
 
-    return this.organizations.create(tenantId, {
+    const organization = await this.organizations.create(tenantId, {
       legalName: dto.legalName,
       tradingName: dto.tradingName,
       countryCode: dto.countryCode,
@@ -29,6 +31,16 @@ export class OrganizationService {
       metadata: dto.metadata as Prisma.InputJsonValue | undefined,
       createdBy: actorId,
     });
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'organization.created',
+      resourceType: 'Organization',
+      resourceId: organization.id,
+    });
+
+    return organization;
   }
 
   async findById(tenantId: string, id: string): Promise<Organization> {
@@ -45,6 +57,16 @@ export class OrganizationService {
 
   async softDelete(tenantId: string, id: string, actorId?: string): Promise<Organization> {
     await this.findById(tenantId, id);
-    return this.organizations.softDelete(tenantId, id, actorId);
+    const deleted = await this.organizations.softDelete(tenantId, id, actorId);
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'organization.deleted',
+      resourceType: 'Organization',
+      resourceId: id,
+    });
+
+    return deleted;
   }
 }

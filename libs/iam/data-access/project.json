@@ -1,0 +1,20 @@
+{
+  "name": "iam-data-access",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/iam/data-access/src",
+  "projectType": "library",
+  "tags": ["scope:iam", "type:data-access"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/iam/data-access",
+        "tsConfig": "libs/iam/data-access/tsconfig.lib.json",
+        "packageJson": "libs/iam/data-access/package.json",
+        "main": "libs/iam/data-access/src/index.ts",
+        "assets": ["libs/iam/data-access/*.md"]
+      }
+    }
+  }
+}

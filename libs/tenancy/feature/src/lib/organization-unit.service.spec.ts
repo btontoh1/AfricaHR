@@ -1,5 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Organization, OrganizationUnit } from '@prisma/client';
+import { AuditService } from '@africahr/platform-audit';
 import { OrganizationRepository, OrganizationUnitRepository } from '@africahr/tenancy-data-access';
 import { OrganizationUnitService } from './organization-unit.service';
 
@@ -7,6 +8,7 @@ describe('OrganizationUnitService', () => {
   let service: OrganizationUnitService;
   let units: jest.Mocked<OrganizationUnitRepository>;
   let organizations: jest.Mocked<OrganizationRepository>;
+  let audit: jest.Mocked<AuditService>;
 
   const organization = { id: 'org-1', tenantId: 'tenant-1' } as Organization;
 
@@ -40,7 +42,9 @@ describe('OrganizationUnitService', () => {
       findById: jest.fn(),
     } as unknown as jest.Mocked<OrganizationRepository>;
 
-    service = new OrganizationUnitService(units, organizations);
+    audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
+
+    service = new OrganizationUnitService(units, organizations, audit);
   });
 
   describe('create', () => {

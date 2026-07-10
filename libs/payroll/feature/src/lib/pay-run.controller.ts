@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
   assertTenantScope,
   CurrentUser,
@@ -11,6 +11,7 @@ import {
 } from '@africahr/platform-auth';
 import { PayRunService } from './pay-run.service';
 import { CreatePayRunDto } from './dto/create-pay-run.dto';
+import { PayRunResponseDto } from './dto/pay-run-response.dto';
 
 @ApiTags('pay-runs')
 @ApiBearerAuth()
@@ -21,6 +22,7 @@ export class PayRunController {
 
   @Post()
   @RequirePermissions(Permission.PAYROLL_MANAGE)
+  @ApiOkResponse({ type: PayRunResponseDto })
   create(
     @Param('tenantId') tenantId: string,
     @Body() dto: CreatePayRunDto,
@@ -32,6 +34,8 @@ export class PayRunController {
 
   @Get()
   @RequirePermissions(Permission.PAYROLL_READ)
+  @ApiOkResponse({ type: PayRunResponseDto, isArray: true })
+  @ApiQuery({ name: 'organizationId', required: false })
   list(
     @Param('tenantId') tenantId: string,
     @CurrentUser() actor: RequestUser,
@@ -43,6 +47,7 @@ export class PayRunController {
 
   @Get(':id')
   @RequirePermissions(Permission.PAYROLL_READ)
+  @ApiOkResponse({ type: PayRunResponseDto })
   findById(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -54,6 +59,7 @@ export class PayRunController {
 
   @Post(':id/process')
   @RequirePermissions(Permission.PAYROLL_MANAGE)
+  @ApiOkResponse({ type: PayRunResponseDto })
   process(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -65,6 +71,7 @@ export class PayRunController {
 
   @Post(':id/approve')
   @RequirePermissions(Permission.PAYROLL_MANAGE)
+  @ApiOkResponse({ type: PayRunResponseDto })
   approve(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -76,6 +83,7 @@ export class PayRunController {
 
   @Post(':id/pay')
   @RequirePermissions(Permission.PAYROLL_MANAGE)
+  @ApiOkResponse({ type: PayRunResponseDto })
   markPaid(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -87,6 +95,7 @@ export class PayRunController {
 
   @Post(':id/close')
   @RequirePermissions(Permission.PAYROLL_MANAGE)
+  @ApiOkResponse({ type: PayRunResponseDto })
   close(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -98,6 +107,7 @@ export class PayRunController {
 
   @Post(':id/cancel')
   @RequirePermissions(Permission.PAYROLL_MANAGE)
+  @ApiOkResponse({ type: PayRunResponseDto })
   cancel(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,

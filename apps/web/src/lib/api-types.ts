@@ -1827,6 +1827,49 @@ export interface components {
             periodEnd: string;
             payDate: string;
         };
+        PayRunResponseDto: {
+            id: string;
+            organizationId: string;
+            periodStart: string;
+            periodEnd: string;
+            payDate: string;
+            /** @enum {string} */
+            status: "DRAFT" | "PROCESSING" | "APPROVED" | "PAID" | "CLOSED" | "CANCELLED";
+            approvedAt?: string;
+            paidAt?: string;
+            createdAt: string;
+            updatedAt: string;
+        };
+        PayslipLineItemResponseDto: {
+            id: string;
+            payslipId: string;
+            /** @enum {string} */
+            type: "EARNING" | "DEDUCTION";
+            code: string;
+            description?: string;
+            amount: string;
+            createdAt: string;
+        };
+        PayslipResponseDto: {
+            id: string;
+            payRunId: string;
+            employeeId: string;
+            /** @enum {string} */
+            status: "DRAFT" | "APPROVED" | "PAID";
+            countryCode: string;
+            basicSalary: string;
+            grossPay: string;
+            taxableIncome: string;
+            payeTax: string;
+            ssnitEmployee: string;
+            ssnitEmployer: string;
+            totalDeductions: string;
+            netPay: string;
+            currency: string;
+            lineItems: components["schemas"]["PayslipLineItemResponseDto"][];
+            createdAt: string;
+            updatedAt: string;
+        };
         CreatePayslipLineItemDto: {
             /** @enum {string} */
             type: "EARNING" | "DEDUCTION";
@@ -3097,8 +3140,8 @@ export interface operations {
     };
     PayRunController_list: {
         parameters: {
-            query: {
-                organizationId: string;
+            query?: {
+                organizationId?: string;
             };
             header?: never;
             path: {
@@ -3112,7 +3155,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PayRunResponseDto"][];
+                };
             };
         };
     };
@@ -3131,11 +3176,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PayRunResponseDto"];
+                };
             };
         };
     };
@@ -3155,7 +3202,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PayRunResponseDto"];
+                };
             };
         };
     };
@@ -3171,11 +3220,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PayRunResponseDto"];
+                };
             };
         };
     };
@@ -3191,11 +3242,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PayRunResponseDto"];
+                };
             };
         };
     };
@@ -3211,11 +3264,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PayRunResponseDto"];
+                };
             };
         };
     };
@@ -3231,11 +3286,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PayRunResponseDto"];
+                };
             };
         };
     };
@@ -3251,19 +3308,21 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PayRunResponseDto"];
+                };
             };
         };
     };
     PayslipController_list: {
         parameters: {
-            query: {
-                payRunId: string;
-                employeeId: string;
+            query?: {
+                payRunId?: string;
+                employeeId?: string;
             };
             header?: never;
             path: {
@@ -3277,7 +3336,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PayslipResponseDto"][];
+                };
             };
         };
     };
@@ -3297,7 +3358,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PayslipResponseDto"];
+                };
             };
         };
     };
@@ -3317,11 +3380,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PayslipLineItemResponseDto"];
+                };
             };
         };
     };

@@ -11,7 +11,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
   assertTenantScope,
   CurrentUser,
@@ -23,6 +23,8 @@ import {
 } from '@africahr/platform-auth';
 import { PayslipService } from './payslip.service';
 import { CreatePayslipLineItemDto } from './dto/create-payslip-line-item.dto';
+import { PayslipResponseDto } from './dto/payslip-response.dto';
+import { PayslipLineItemResponseDto } from './dto/payslip-line-item-response.dto';
 
 @ApiTags('payslips')
 @ApiBearerAuth()
@@ -33,6 +35,9 @@ export class PayslipController {
 
   @Get()
   @RequirePermissions(Permission.PAYROLL_READ)
+  @ApiOkResponse({ type: PayslipResponseDto, isArray: true })
+  @ApiQuery({ name: 'payRunId', required: false })
+  @ApiQuery({ name: 'employeeId', required: false })
   list(
     @Param('tenantId') tenantId: string,
     @CurrentUser() actor: RequestUser,
@@ -51,6 +56,7 @@ export class PayslipController {
 
   @Get(':id')
   @RequirePermissions(Permission.PAYROLL_READ)
+  @ApiOkResponse({ type: PayslipResponseDto })
   findById(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -62,6 +68,7 @@ export class PayslipController {
 
   @Post(':id/line-items')
   @RequirePermissions(Permission.PAYROLL_MANAGE)
+  @ApiOkResponse({ type: PayslipLineItemResponseDto })
   addLineItem(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,

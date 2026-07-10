@@ -41,6 +41,11 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
     { label: 'Dashboard', href: '/dashboard' },
     ...(hasAdminAccess ? [{ label: 'Employees', href: '/employees' }] : []),
     ...(hasAdminAccess ? [{ label: 'Organizations', href: '/organizations' }] : []),
+    // TENANT_ADMIN, HR_MANAGER, and PAYROLL_MANAGER all hold PAYROLL_READ
+    // (HR_MANAGER read-only, the other two also MANAGE) — hasAdminAccess
+    // happens to match this module's real permission boundary exactly,
+    // unlike Leave's narrower check just above.
+    ...(hasAdminAccess ? [{ label: 'Payroll', href: '/payroll' }] : []),
     ...(isTenantMember ? [{ label: 'Leave', href: '/leave' }] : []),
     ...(hasLeaveAdminAccess ? [{ label: 'Leave Requests', href: '/leave/requests' }] : []),
     ...(hasLeaveAdminAccess ? [{ label: 'Leave Types', href: '/leave/types' }] : []),

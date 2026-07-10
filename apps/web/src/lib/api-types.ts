@@ -1850,11 +1850,37 @@ export interface components {
              */
             defaultEntitlementDays: number;
         };
+        LeaveTypeResponseDto: {
+            id: string;
+            name: string;
+            code: string;
+            isPaid: boolean;
+            defaultEntitlementDays: string;
+            isActive: boolean;
+            createdAt: string;
+            updatedAt: string;
+        };
         UpdateLeaveTypeDto: {
             name?: string;
             isPaid?: boolean;
             defaultEntitlementDays?: number;
             isActive?: boolean;
+        };
+        LeaveRequestResponseDto: {
+            id: string;
+            employeeId: string;
+            leaveTypeId: string;
+            startDate: string;
+            endDate: string;
+            daysRequested: string;
+            reason?: string;
+            /** @enum {string} */
+            status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+            approverUserId?: string;
+            approvedAt?: string;
+            rejectionReason?: string;
+            createdAt: string;
+            updatedAt: string;
         };
         CreateLeaveRequestDto: {
             leaveTypeId: string;
@@ -3322,8 +3348,8 @@ export interface operations {
     };
     LeaveTypeController_list: {
         parameters: {
-            query: {
-                activeOnly: string;
+            query?: {
+                activeOnly?: string;
             };
             header?: never;
             path: {
@@ -3337,7 +3363,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["LeaveTypeResponseDto"][];
+                };
             };
         };
     };
@@ -3356,11 +3384,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["LeaveTypeResponseDto"];
+                };
             };
         };
     };
@@ -3384,7 +3414,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["LeaveTypeResponseDto"];
+                };
             };
         };
     };
@@ -3403,7 +3435,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["LeaveRequestResponseDto"][];
+                };
             };
         };
     };
@@ -3422,11 +3456,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["LeaveRequestResponseDto"];
+                };
             };
         };
     };
@@ -3442,18 +3478,21 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["LeaveRequestResponseDto"];
+                };
             };
         };
     };
     LeaveRequestController_list: {
         parameters: {
-            query: {
-                employeeId: string;
+            query?: {
+                employeeId?: string;
+                status?: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
             };
             header?: never;
             path: {
@@ -3467,7 +3506,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["LeaveRequestResponseDto"][];
+                };
             };
         };
     };
@@ -3487,7 +3528,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["LeaveRequestResponseDto"];
+                };
             };
         };
     };
@@ -3503,11 +3546,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["LeaveRequestResponseDto"];
+                };
             };
         };
     };
@@ -3527,11 +3572,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["LeaveRequestResponseDto"];
+                };
             };
         };
     };

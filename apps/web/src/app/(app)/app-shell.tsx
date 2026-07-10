@@ -24,17 +24,26 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
 
   const initials = user.email.slice(0, 2).toUpperCase();
 
-  // EMPLOYEE holds no Employee permission at all, and PLATFORM_ADMIN has
-  // no tenant context (tenantId is always null for that role) — showing
-  // the link to either would just lead to a 403 or a broken /tenants/null
-  // request, so this stays a simple client-side visibility check, not a
-  // duplicate of the backend's full permission matrix (see project notes
-  // on Module 2 scope: the backend remains the real enforcement point).
-  const hasTenantContext = Boolean(user.tenantId) && user.role !== 'EMPLOYEE';
+  // Coarse, cheap client-side visibility checks only — the backend remains
+  // the real enforcement point (see project notes on Module 2 scope).
+  // PLATFORM_ADMIN has no tenant context (tenantId always null) and no
+  // linked Employee record, so it's excluded from every tenant-scoped
+  // item including self-service leave. EMPLOYEE holds no Employee/
+  // Organization permission at all, but self-service leave has no
+  // permission gate — it's for every tenant member, EMPLOYEE included.
+  const isTenantMember = Boolean(user.tenantId);
+  const hasAdminAccess = isTenantMember && user.role !== 'EMPLOYEE';
+  // PAYROLL_MANAGER is admin-ish but doesn't hold LEAVE_READ/LEAVE_MANAGE
+  // (see system-role.ts) — narrower than hasAdminAccess on purpose.
+  const hasLeaveAdminAccess =
+    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
   const navItems = [
     { label: 'Dashboard', href: '/dashboard' },
-    ...(hasTenantContext ? [{ label: 'Employees', href: '/employees' }] : []),
-    ...(hasTenantContext ? [{ label: 'Organizations', href: '/organizations' }] : []),
+    ...(hasAdminAccess ? [{ label: 'Employees', href: '/employees' }] : []),
+    ...(hasAdminAccess ? [{ label: 'Organizations', href: '/organizations' }] : []),
+    ...(isTenantMember ? [{ label: 'Leave', href: '/leave' }] : []),
+    ...(hasLeaveAdminAccess ? [{ label: 'Leave Requests', href: '/leave/requests' }] : []),
+    ...(hasLeaveAdminAccess ? [{ label: 'Leave Types', href: '/leave/types' }] : []),
   ];
 
   return (

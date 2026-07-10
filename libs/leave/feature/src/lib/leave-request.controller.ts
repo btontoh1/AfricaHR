@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
   assertTenantScope,
   CurrentUser,
@@ -12,6 +12,7 @@ import {
 import { LeaveRequestStatus } from '@prisma/client';
 import { LeaveRequestService } from './leave-request.service';
 import { RejectLeaveRequestDto } from './dto/reject-leave-request.dto';
+import { LeaveRequestResponseDto } from './dto/leave-request-response.dto';
 
 @ApiTags('leave-requests')
 @ApiBearerAuth()
@@ -22,6 +23,9 @@ export class LeaveRequestController {
 
   @Get()
   @RequirePermissions(Permission.LEAVE_READ)
+  @ApiOkResponse({ type: LeaveRequestResponseDto, isArray: true })
+  @ApiQuery({ name: 'employeeId', required: false })
+  @ApiQuery({ name: 'status', required: false, enum: Object.values(LeaveRequestStatus) })
   list(
     @Param('tenantId') tenantId: string,
     @CurrentUser() actor: RequestUser,
@@ -34,6 +38,7 @@ export class LeaveRequestController {
 
   @Get(':id')
   @RequirePermissions(Permission.LEAVE_READ)
+  @ApiOkResponse({ type: LeaveRequestResponseDto })
   findById(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -45,6 +50,7 @@ export class LeaveRequestController {
 
   @Post(':id/approve')
   @RequirePermissions(Permission.LEAVE_MANAGE)
+  @ApiOkResponse({ type: LeaveRequestResponseDto })
   approve(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -56,6 +62,7 @@ export class LeaveRequestController {
 
   @Post(':id/reject')
   @RequirePermissions(Permission.LEAVE_MANAGE)
+  @ApiOkResponse({ type: LeaveRequestResponseDto })
   reject(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,

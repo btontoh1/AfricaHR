@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
   assertTenantScope,
   CurrentUser,
@@ -12,6 +12,7 @@ import {
 import { LeaveTypeService } from './leave-type.service';
 import { CreateLeaveTypeDto } from './dto/create-leave-type.dto';
 import { UpdateLeaveTypeDto } from './dto/update-leave-type.dto';
+import { LeaveTypeResponseDto } from './dto/leave-type-response.dto';
 
 @ApiTags('leave-types')
 @ApiBearerAuth()
@@ -22,6 +23,7 @@ export class LeaveTypeController {
 
   @Post()
   @RequirePermissions(Permission.LEAVE_MANAGE)
+  @ApiOkResponse({ type: LeaveTypeResponseDto })
   create(
     @Param('tenantId') tenantId: string,
     @Body() dto: CreateLeaveTypeDto,
@@ -34,6 +36,8 @@ export class LeaveTypeController {
   // No permission requirement beyond authentication: every employee needs
   // to see the catalog in order to file their own leave request.
   @Get()
+  @ApiOkResponse({ type: LeaveTypeResponseDto, isArray: true })
+  @ApiQuery({ name: 'activeOnly', required: false })
   list(
     @Param('tenantId') tenantId: string,
     @CurrentUser() actor: RequestUser,
@@ -45,6 +49,7 @@ export class LeaveTypeController {
 
   @Patch(':id')
   @RequirePermissions(Permission.LEAVE_MANAGE)
+  @ApiOkResponse({ type: LeaveTypeResponseDto })
   update(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,

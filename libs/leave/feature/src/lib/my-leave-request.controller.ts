@@ -1,8 +1,9 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { assertTenantScope, CurrentUser, JwtAuthGuard, PermissionsGuard, RequestUser } from '@africahr/platform-auth';
 import { LeaveRequestService } from './leave-request.service';
 import { CreateLeaveRequestDto } from './dto/create-leave-request.dto';
+import { LeaveRequestResponseDto } from './dto/leave-request-response.dto';
 
 /**
  * Self-service: no @RequirePermissions on this controller — any
@@ -20,12 +21,14 @@ export class MyLeaveRequestController {
   constructor(private readonly leaveRequests: LeaveRequestService) {}
 
   @Get()
+  @ApiOkResponse({ type: LeaveRequestResponseDto, isArray: true })
   list(@Param('tenantId') tenantId: string, @CurrentUser() actor: RequestUser) {
     assertTenantScope(actor, tenantId);
     return this.leaveRequests.listForSelf(tenantId, actor.sub);
   }
 
   @Post()
+  @ApiOkResponse({ type: LeaveRequestResponseDto })
   create(
     @Param('tenantId') tenantId: string,
     @Body() dto: CreateLeaveRequestDto,
@@ -36,6 +39,7 @@ export class MyLeaveRequestController {
   }
 
   @Post(':id/cancel')
+  @ApiOkResponse({ type: LeaveRequestResponseDto })
   cancel(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,

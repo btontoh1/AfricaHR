@@ -1,0 +1,19 @@
+{
+  "name": "recruitment-domain",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/recruitment/domain/src",
+  "projectType": "library",
+  "tags": ["scope:recruitment", "type:domain"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/recruitment/domain",
+        "main": "libs/recruitment/domain/src/index.ts",
+        "tsConfig": "libs/recruitment/domain/tsconfig.lib.json",
+        "assets": ["libs/recruitment/domain/*.md"]
+      }
+    }
+  }
+}

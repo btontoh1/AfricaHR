@@ -1,0 +1,19 @@
+{
+  "name": "recruitment-feature",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/recruitment/feature/src",
+  "projectType": "library",
+  "tags": ["scope:recruitment", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/recruitment/feature",
+        "main": "libs/recruitment/feature/src/index.ts",
+        "tsConfig": "libs/recruitment/feature/tsconfig.lib.json",
+        "assets": ["libs/recruitment/feature/*.md"]
+      }
+    }
+  }
+}

@@ -67,10 +67,11 @@ model Organization {
   createdBy String?   @map("created_by")
   updatedBy String?   @map("updated_by")
 
-  tenant    Tenant             @relation(fields: [tenantId], references: [id])
-  units     OrganizationUnit[]
-  employees Employee[]
-  payRuns   PayRun[]
+  tenant          Tenant             @relation(fields: [tenantId], references: [id])
+  units           OrganizationUnit[]
+  employees       Employee[]
+  payRuns         PayRun[]
+  jobRequisitions JobRequisition[]
 
   @@index([tenantId])
   @@map("organizations")
@@ -91,10 +92,11 @@ model OrganizationUnit {
   createdBy String?   @map("created_by")
   updatedBy String?   @map("updated_by")
 
-  organization Organization       @relation(fields: [organizationId], references: [id])
-  parent       OrganizationUnit?  @relation("OrganizationUnitToParent", fields: [parentId], references: [id])
-  children     OrganizationUnit[] @relation("OrganizationUnitToParent")
-  employees    Employee[]
+  organization    Organization       @relation(fields: [organizationId], references: [id])
+  parent          OrganizationUnit?  @relation("OrganizationUnitToParent", fields: [parentId], references: [id])
+  children        OrganizationUnit[] @relation("OrganizationUnitToParent")
+  employees       Employee[]
+  jobRequisitions JobRequisition[]
 
   @@index([tenantId])
   @@index([organizationId])
@@ -261,6 +263,8 @@ model Employee {
   benefitEnrollments BenefitEnrollment[]
   performanceGoals   PerformanceGoal[]
   performanceReviews PerformanceReview[]
+  hiringRequisitions JobRequisition[]         @relation("JobRequisitionHiringManager")
+  hiredApplications  Application[]            @relation("ApplicationHiredEmployee")
 
   @@unique([tenantId, employeeNumber])
   @@index([tenantId])
@@ -803,4 +807,127 @@ model PerformanceReview {
   @@index([employeeId])
   @@index([cycleId])
   @@map("performance_reviews")
+}
+
+// ---------------------------------------------------------------------------
+// Recruitment (Module 9)
+// ---------------------------------------------------------------------------
+
+enum JobRequisitionStatus {
+  DRAFT
+  OPEN
+  ON_HOLD
+  CLOSED
+  CANCELLED
+}
+
+/// A request to hire for a role. hiringManagerId is optional (a requisition
+/// can exist before a hiring manager is assigned) and is what makes the
+/// hiring-manager authorization tier possible — the second application of
+/// the manager-authorization pattern introduced in Module 8 (see project
+/// memory), this time on JobRequisition rather than Employee.managerId.
+model JobRequisition {
+  id                 String               @id @default(uuid())
+  tenantId           String               @map("tenant_id")
+  organizationId     String               @map("organization_id")
+  organizationUnitId String?              @map("organization_unit_id")
+  hiringManagerId    String?              @map("hiring_manager_id")
+  title              String
+  description        String?
+  employmentType     EmploymentType       @map("employment_type")
+  openings           Int                  @default(1)
+  status             JobRequisitionStatus @default(DRAFT)
+  targetHireDate     DateTime?            @map("target_hire_date")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  organization     Organization      @relation(fields: [organizationId], references: [id])
+  organizationUnit OrganizationUnit? @relation(fields: [organizationUnitId], references: [id])
+  hiringManager    Employee?         @relation("JobRequisitionHiringManager", fields: [hiringManagerId], references: [id])
+  applications     Application[]
+
+  @@index([tenantId])
+  @@index([organizationId])
+  @@index([hiringManagerId])
+  @@map("job_requisitions")
+}
+
+/// A person applying — standalone, tenant-scoped; not tied to a single
+/// requisition (can apply to several via separate Application rows).
+model Candidate {
+  id        String  @id @default(uuid())
+  tenantId  String  @map("tenant_id")
+  firstName String  @map("first_name")
+  lastName  String  @map("last_name")
+  email     String
+  phone     String?
+  source    String?
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  applications Application[]
+
+  @@index([tenantId])
+  @@map("candidates")
+}
+
+enum ApplicationStage {
+  APPLIED
+  SCREENING
+  INTERVIEW
+  OFFER
+  HIRED
+  REJECTED
+  WITHDRAWN
+}
+
+/// Links a Candidate to a JobRequisition and tracks the pipeline. Offer
+/// details are folded in directly rather than a separate Offer model — one
+/// offer per application is the norm (see project memory). No automatic
+/// Employee creation when an offer is accepted — HR creates the Employee
+/// via the existing Module 3 flow and can optionally set hiredEmployeeId
+/// afterward for traceability (see project memory: modules stay decoupled,
+/// wired later, same pattern as Leave/Attendance/Benefits <-> Payroll).
+model Application {
+  id              String           @id @default(uuid())
+  tenantId        String           @map("tenant_id")
+  candidateId     String           @map("candidate_id")
+  requisitionId   String           @map("requisition_id")
+  stage           ApplicationStage @default(APPLIED)
+  appliedAt       DateTime         @default(now()) @map("applied_at")
+  notes           String?
+  rejectionReason String?          @map("rejection_reason")
+
+  offeredSalary    Decimal?  @map("offered_salary")
+  offeredStartDate DateTime? @map("offered_start_date")
+  offerSentAt      DateTime? @map("offer_sent_at")
+  offerRespondedAt DateTime? @map("offer_responded_at")
+  offerAccepted    Boolean?  @map("offer_accepted")
+
+  hiredEmployeeId String? @map("hired_employee_id")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  candidate     Candidate      @relation(fields: [candidateId], references: [id])
+  requisition   JobRequisition @relation(fields: [requisitionId], references: [id])
+  hiredEmployee Employee?      @relation("ApplicationHiredEmployee", fields: [hiredEmployeeId], references: [id])
+
+  @@unique([tenantId, candidateId, requisitionId])
+  @@index([tenantId])
+  @@index([candidateId])
+  @@index([requisitionId])
+  @@index([hiredEmployeeId])
+  @@map("applications")
 }

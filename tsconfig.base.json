@@ -61,6 +61,15 @@
       ],
       "@africahr/performance-feature": [
         "./libs/performance/feature/src/index.ts"
+      ],
+      "@africahr/recruitment-domain": [
+        "./libs/recruitment/domain/src/index.ts"
+      ],
+      "@africahr/recruitment-data-access": [
+        "./libs/recruitment/data-access/src/index.ts"
+      ],
+      "@africahr/recruitment-feature": [
+        "./libs/recruitment/feature/src/index.ts"
       ]
     }
   },

@@ -1,0 +1,19 @@
+{
+  "name": "recruitment-data-access",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/recruitment/data-access/src",
+  "projectType": "library",
+  "tags": ["scope:recruitment", "type:data-access"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/recruitment/data-access",
+        "main": "libs/recruitment/data-access/src/index.ts",
+        "tsConfig": "libs/recruitment/data-access/tsconfig.lib.json",
+        "assets": ["libs/recruitment/data-access/*.md"]
+      }
+    }
+  }
+}

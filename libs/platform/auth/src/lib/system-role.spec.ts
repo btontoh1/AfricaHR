@@ -132,4 +132,20 @@ describe('hasPermission', () => {
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.PERFORMANCE_MANAGE)).toBe(false);
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.PERFORMANCE_READ)).toBe(false);
   });
+
+  it('grants HR managers and tenant admins full recruitment management', () => {
+    expect(hasPermission(SystemRole.HR_MANAGER, Permission.RECRUITMENT_MANAGE)).toBe(true);
+    expect(hasPermission(SystemRole.HR_MANAGER, Permission.RECRUITMENT_READ)).toBe(true);
+    expect(hasPermission(SystemRole.TENANT_ADMIN, Permission.RECRUITMENT_MANAGE)).toBe(true);
+  });
+
+  it('grants payroll managers no recruitment permissions', () => {
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.RECRUITMENT_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.RECRUITMENT_READ)).toBe(false);
+  });
+
+  it('grants employees no recruitment-management permissions (hiring-manager access is handled separately)', () => {
+    expect(hasPermission(SystemRole.EMPLOYEE, Permission.RECRUITMENT_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.EMPLOYEE, Permission.RECRUITMENT_READ)).toBe(false);
+  });
 });

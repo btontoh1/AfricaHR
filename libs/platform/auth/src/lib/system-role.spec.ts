@@ -84,4 +84,20 @@ describe('hasPermission', () => {
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.LEAVE_MANAGE)).toBe(false);
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.LEAVE_READ)).toBe(false);
   });
+
+  it('grants HR managers and tenant admins full attendance management', () => {
+    expect(hasPermission(SystemRole.HR_MANAGER, Permission.ATTENDANCE_MANAGE)).toBe(true);
+    expect(hasPermission(SystemRole.HR_MANAGER, Permission.ATTENDANCE_READ)).toBe(true);
+    expect(hasPermission(SystemRole.TENANT_ADMIN, Permission.ATTENDANCE_MANAGE)).toBe(true);
+  });
+
+  it('grants payroll managers no attendance permissions', () => {
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.ATTENDANCE_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.ATTENDANCE_READ)).toBe(false);
+  });
+
+  it('grants employees no attendance-management permissions (self-service clock-in/out is handled separately)', () => {
+    expect(hasPermission(SystemRole.EMPLOYEE, Permission.ATTENDANCE_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.EMPLOYEE, Permission.ATTENDANCE_READ)).toBe(false);
+  });
 });

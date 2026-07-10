@@ -248,15 +248,16 @@ model Employee {
   createdBy String?   @map("created_by")
   updatedBy String?   @map("updated_by")
 
-  organization     Organization             @relation(fields: [organizationId], references: [id])
-  organizationUnit OrganizationUnit?        @relation(fields: [organizationUnitId], references: [id])
-  user             User?                    @relation(fields: [userId], references: [id])
-  manager          Employee?                @relation("EmployeeManager", fields: [managerId], references: [id])
-  directReports    Employee[]               @relation("EmployeeManager")
-  historyEntries   EmploymentHistoryEntry[]
-  payslips         Payslip[]
-  leaveBalances    LeaveBalance[]
-  leaveRequests    LeaveRequest[]
+  organization      Organization             @relation(fields: [organizationId], references: [id])
+  organizationUnit  OrganizationUnit?        @relation(fields: [organizationUnitId], references: [id])
+  user              User?                    @relation(fields: [userId], references: [id])
+  manager           Employee?                @relation("EmployeeManager", fields: [managerId], references: [id])
+  directReports     Employee[]               @relation("EmployeeManager")
+  historyEntries    EmploymentHistoryEntry[]
+  payslips          Payslip[]
+  leaveBalances     LeaveBalance[]
+  leaveRequests     LeaveRequest[]
+  attendanceRecords AttendanceRecord[]
 
   @@unique([tenantId, employeeNumber])
   @@index([tenantId])
@@ -557,4 +558,58 @@ model LeaveRequest {
   @@index([employeeId])
   @@index([leaveTypeId])
   @@map("leave_requests")
+}
+
+// ---------------------------------------------------------------------------
+// Attendance (Module 6)
+// ---------------------------------------------------------------------------
+
+/// One clock-in/clock-out policy per tenant — not per-organization, per-role,
+/// or per-employment-type (a deliberate v1 scope cut, see project memory).
+/// Tenant-owned business policy, not national law — unlike Payroll's
+/// statutory data, no platform-admin governance needed; never hardcoded,
+/// same reasoning as LeaveType.defaultEntitlementDays.
+model AttendancePolicy {
+  id                 String  @id @default(uuid())
+  tenantId           String  @unique @map("tenant_id")
+  standardDailyHours Decimal @map("standard_daily_hours")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  @@map("attendance_policies")
+}
+
+/// One row per employee per calendar day. No status column — "currently
+/// clocked in" is just clockOut IS NULL, not persisted redundant state.
+/// hoursWorked/overtimeHours are computed and stored at clock-out time
+/// (same denormalization principle as Payslip), so a day's numbers don't
+/// drift if the tenant's AttendancePolicy changes afterward. No break/
+/// pause tracking in v1 — one clock-in/clock-out pair per day (see
+/// project memory).
+model AttendanceRecord {
+  id            String    @id @default(uuid())
+  tenantId      String    @map("tenant_id")
+  employeeId    String    @map("employee_id")
+  date          DateTime
+  clockIn       DateTime? @map("clock_in")
+  clockOut      DateTime? @map("clock_out")
+  hoursWorked   Decimal?  @map("hours_worked")
+  overtimeHours Decimal?  @map("overtime_hours")
+  notes         String?
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([tenantId, employeeId, date])
+  @@index([tenantId])
+  @@index([employeeId])
+  @@map("attendance_records")
 }

@@ -1,0 +1,19 @@
+{
+  "name": "attendance-data-access",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/attendance/data-access/src",
+  "projectType": "library",
+  "tags": ["scope:attendance", "type:data-access"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/attendance/data-access",
+        "main": "libs/attendance/data-access/src/index.ts",
+        "tsConfig": "libs/attendance/data-access/tsconfig.lib.json",
+        "assets": ["libs/attendance/data-access/*.md"]
+      }
+    }
+  }
+}

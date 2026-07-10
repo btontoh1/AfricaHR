@@ -1,0 +1,19 @@
+{
+  "name": "@africahr/attendance-feature",
+  "version": "0.0.1",
+  "private": true,
+  "type": "commonjs",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "dependencies": {
+    "tslib": "^2.3.0",
+    "@nestjs/common": "^11.0.0",
+    "@africahr/platform-auth": "0.0.1",
+    "@africahr/platform-audit": "0.0.1",
+    "@africahr/attendance-data-access": "0.0.1",
+    "@nestjs/swagger": "^11.4.5",
+    "@prisma/client": "^7.8.0",
+    "@africahr/attendance-domain": "0.0.1",
+    "class-validator": "^0.15.1"
+  }
+}

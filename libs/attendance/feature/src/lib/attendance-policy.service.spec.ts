@@ -1,0 +1,58 @@
+import { NotFoundException } from '@nestjs/common';
+import { AttendancePolicy, Prisma } from '@prisma/client';
+import { AuditService } from '@africahr/platform-audit';
+import { AttendancePolicyRepository } from '@africahr/attendance-data-access';
+import { AttendancePolicyService } from './attendance-policy.service';
+
+describe('AttendancePolicyService', () => {
+  let service: AttendancePolicyService;
+  let policies: jest.Mocked<AttendancePolicyRepository>;
+  let audit: jest.Mocked<AuditService>;
+
+  function makePolicy(overrides: Partial<AttendancePolicy> = {}): AttendancePolicy {
+    return {
+      id: 'policy-1',
+      tenantId: 'tenant-1',
+      standardDailyHours: new Prisma.Decimal(8),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      createdBy: null,
+      updatedBy: null,
+      ...overrides,
+    } as AttendancePolicy;
+  }
+
+  beforeEach(() => {
+    policies = { upsert: jest.fn(), find: jest.fn() } as unknown as jest.Mocked<AttendancePolicyRepository>;
+    audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
+    service = new AttendancePolicyService(policies, audit);
+  });
+
+  describe('upsert', () => {
+    it('audits on success', async () => {
+      const policy = makePolicy();
+      policies.upsert.mockResolvedValue(policy);
+
+      await service.upsert('tenant-1', { standardDailyHours: 8 }, 'hr-1');
+
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'attendance.policy.upserted', resourceId: policy.id }),
+      );
+    });
+  });
+
+  describe('find', () => {
+    it('throws NotFoundException when no policy is configured', async () => {
+      policies.find.mockResolvedValue(null);
+
+      await expect(service.find('tenant-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('returns the policy when configured', async () => {
+      const policy = makePolicy();
+      policies.find.mockResolvedValue(policy);
+
+      await expect(service.find('tenant-1')).resolves.toEqual(policy);
+    });
+  });
+});

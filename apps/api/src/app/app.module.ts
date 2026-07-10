@@ -6,6 +6,7 @@ import { TenancyFeatureModule } from '@africahr/tenancy-feature';
 import { EmployeeFeatureModule } from '@africahr/employee-feature';
 import { PayrollFeatureModule } from '@africahr/payroll-feature';
 import { LeaveFeatureModule } from '@africahr/leave-feature';
+import { AttendanceFeatureModule } from '@africahr/attendance-feature';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { LeaveFeatureModule } from '@africahr/leave-feature';
     EmployeeFeatureModule,
     PayrollFeatureModule,
     LeaveFeatureModule,
+    AttendanceFeatureModule,
   ],
 })
 export class AppModule {}

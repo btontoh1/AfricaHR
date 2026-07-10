@@ -1,0 +1,19 @@
+{
+  "name": "attendance-feature",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/attendance/feature/src",
+  "projectType": "library",
+  "tags": ["scope:attendance", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/attendance/feature",
+        "main": "libs/attendance/feature/src/index.ts",
+        "tsConfig": "libs/attendance/feature/tsconfig.lib.json",
+        "assets": ["libs/attendance/feature/*.md"]
+      }
+    }
+  }
+}

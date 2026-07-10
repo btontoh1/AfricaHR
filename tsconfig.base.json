@@ -40,7 +40,12 @@
       "@africahr/payroll-feature": ["./libs/payroll/feature/src/index.ts"],
       "@africahr/leave-domain": ["./libs/leave/domain/src/index.ts"],
       "@africahr/leave-data-access": ["./libs/leave/data-access/src/index.ts"],
-      "@africahr/leave-feature": ["./libs/leave/feature/src/index.ts"]
+      "@africahr/leave-feature": ["./libs/leave/feature/src/index.ts"],
+      "@africahr/attendance-domain": ["./libs/attendance/domain/src/index.ts"],
+      "@africahr/attendance-data-access": [
+        "./libs/attendance/data-access/src/index.ts"
+      ],
+      "@africahr/attendance-feature": ["./libs/attendance/feature/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

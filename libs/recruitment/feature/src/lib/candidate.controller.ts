@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
   assertTenantScope,
   CurrentUser,
@@ -10,6 +10,7 @@ import {
   RequirePermissions,
 } from '@africahr/platform-auth';
 import { CandidateService } from './candidate.service';
+import { CandidateResponseDto } from './dto/candidate-response.dto';
 import { CreateCandidateDto } from './dto/create-candidate.dto';
 import { UpdateCandidateDto } from './dto/update-candidate.dto';
 
@@ -22,6 +23,8 @@ export class CandidateController {
 
   @Get()
   @RequirePermissions(Permission.RECRUITMENT_READ)
+  @ApiOkResponse({ type: CandidateResponseDto, isArray: true })
+  @ApiQuery({ name: 'email', required: false })
   list(
     @Param('tenantId') tenantId: string,
     @CurrentUser() actor: RequestUser,
@@ -33,6 +36,7 @@ export class CandidateController {
 
   @Get(':id')
   @RequirePermissions(Permission.RECRUITMENT_READ)
+  @ApiOkResponse({ type: CandidateResponseDto })
   findById(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -44,6 +48,7 @@ export class CandidateController {
 
   @Post()
   @RequirePermissions(Permission.RECRUITMENT_MANAGE)
+  @ApiOkResponse({ type: CandidateResponseDto })
   create(
     @Param('tenantId') tenantId: string,
     @Body() dto: CreateCandidateDto,
@@ -55,6 +60,7 @@ export class CandidateController {
 
   @Patch(':id')
   @RequirePermissions(Permission.RECRUITMENT_MANAGE)
+  @ApiOkResponse({ type: CandidateResponseDto })
   update(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,

@@ -1,8 +1,12 @@
 import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { assertTenantScope, CurrentUser, JwtAuthGuard, PermissionsGuard, RequestUser } from '@africahr/platform-auth';
 import { ApplicationService } from './application.service';
 import { AdvanceApplicationDto } from './dto/advance-application.dto';
+import {
+  ApplicationResponseDto,
+  ApplicationWithRelationsResponseDto,
+} from './dto/application-response.dto';
 
 /**
  * Hiring-manager access: no @RequirePermissions — authorization is checked
@@ -23,12 +27,14 @@ export class MyApplicationController {
   constructor(private readonly applications: ApplicationService) {}
 
   @Get()
+  @ApiOkResponse({ type: ApplicationWithRelationsResponseDto, isArray: true })
   list(@Param('tenantId') tenantId: string, @CurrentUser() actor: RequestUser) {
     assertTenantScope(actor, tenantId);
     return this.applications.listForHiringManager(tenantId, actor.sub);
   }
 
   @Get(':id')
+  @ApiOkResponse({ type: ApplicationWithRelationsResponseDto })
   findById(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -39,6 +45,7 @@ export class MyApplicationController {
   }
 
   @Patch(':id/stage')
+  @ApiOkResponse({ type: ApplicationResponseDto })
   advance(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,

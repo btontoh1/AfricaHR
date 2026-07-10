@@ -2156,6 +2156,23 @@ export interface components {
             employeeId: string;
             cycleId: string;
         };
+        JobRequisitionResponseDto: {
+            id: string;
+            tenantId: string;
+            organizationId: string;
+            organizationUnitId?: string | null;
+            hiringManagerId?: string | null;
+            title: string;
+            description?: string | null;
+            /** @enum {string} */
+            employmentType: "FULL_TIME" | "PART_TIME" | "CONTRACT" | "INTERN";
+            openings: number;
+            /** @enum {string} */
+            status: "DRAFT" | "OPEN" | "ON_HOLD" | "CLOSED" | "CANCELLED";
+            targetHireDate?: string | null;
+            createdAt: string;
+            updatedAt: string;
+        };
         UpdateJobRequisitionDto: {
             title?: string;
             description?: string;
@@ -2180,6 +2197,17 @@ export interface components {
             openings: number;
             targetHireDate?: string;
         };
+        CandidateResponseDto: {
+            id: string;
+            tenantId: string;
+            firstName: string;
+            lastName: string;
+            email: string;
+            phone?: string | null;
+            source?: string | null;
+            createdAt: string;
+            updatedAt: string;
+        };
         CreateCandidateDto: {
             firstName: string;
             lastName: string;
@@ -2198,12 +2226,52 @@ export interface components {
             phone?: string;
             source?: string;
         };
+        ApplicationWithRelationsResponseDto: {
+            id: string;
+            tenantId: string;
+            candidateId: string;
+            requisitionId: string;
+            /** @enum {string} */
+            stage: "APPLIED" | "SCREENING" | "INTERVIEW" | "OFFER" | "HIRED" | "REJECTED" | "WITHDRAWN";
+            appliedAt: string;
+            notes?: string | null;
+            rejectionReason?: string | null;
+            offeredSalary?: string | null;
+            offeredStartDate?: string | null;
+            offerSentAt?: string | null;
+            offerRespondedAt?: string | null;
+            offerAccepted?: boolean | null;
+            hiredEmployeeId?: string | null;
+            createdAt: string;
+            updatedAt: string;
+            candidate: components["schemas"]["CandidateResponseDto"];
+            requisition: components["schemas"]["JobRequisitionResponseDto"];
+        };
         AdvanceApplicationDto: {
             /** @enum {string} */
             stage: "APPLIED" | "SCREENING" | "INTERVIEW" | "OFFER" | "HIRED" | "REJECTED" | "WITHDRAWN";
             /** @description Required when stage is REJECTED */
             rejectionReason?: string;
             notes?: string;
+        };
+        ApplicationResponseDto: {
+            id: string;
+            tenantId: string;
+            candidateId: string;
+            requisitionId: string;
+            /** @enum {string} */
+            stage: "APPLIED" | "SCREENING" | "INTERVIEW" | "OFFER" | "HIRED" | "REJECTED" | "WITHDRAWN";
+            appliedAt: string;
+            notes?: string | null;
+            rejectionReason?: string | null;
+            offeredSalary?: string | null;
+            offeredStartDate?: string | null;
+            offerSentAt?: string | null;
+            offerRespondedAt?: string | null;
+            offerAccepted?: boolean | null;
+            hiredEmployeeId?: string | null;
+            createdAt: string;
+            updatedAt: string;
         };
         CreateApplicationDto: {
             candidateId: string;
@@ -4751,7 +4819,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["JobRequisitionResponseDto"][];
+                };
             };
         };
     };
@@ -4771,7 +4841,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["JobRequisitionResponseDto"];
+                };
             };
         };
     };
@@ -4795,15 +4867,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["JobRequisitionResponseDto"];
+                };
             };
         };
     };
     JobRequisitionController_list: {
         parameters: {
-            query: {
-                organizationId: string;
-                hiringManagerId: string;
+            query?: {
+                organizationId?: string;
+                hiringManagerId?: string;
+                status?: unknown;
             };
             header?: never;
             path: {
@@ -4817,7 +4892,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["JobRequisitionResponseDto"][];
+                };
             };
         };
     };
@@ -4836,11 +4913,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["JobRequisitionResponseDto"];
+                };
             };
         };
     };
@@ -4860,7 +4939,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["JobRequisitionResponseDto"];
+                };
             };
         };
     };
@@ -4884,14 +4965,16 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["JobRequisitionResponseDto"];
+                };
             };
         };
     };
     CandidateController_list: {
         parameters: {
-            query: {
-                email: string;
+            query?: {
+                email?: string;
             };
             header?: never;
             path: {
@@ -4905,7 +4988,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["CandidateResponseDto"][];
+                };
             };
         };
     };
@@ -4924,11 +5009,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["CandidateResponseDto"];
+                };
             };
         };
     };
@@ -4948,7 +5035,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["CandidateResponseDto"];
+                };
             };
         };
     };
@@ -4972,7 +5061,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["CandidateResponseDto"];
+                };
             };
         };
     };
@@ -4991,7 +5082,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApplicationWithRelationsResponseDto"][];
+                };
             };
         };
     };
@@ -5011,7 +5104,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApplicationWithRelationsResponseDto"];
+                };
             };
         };
     };
@@ -5035,15 +5130,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApplicationResponseDto"];
+                };
             };
         };
     };
     ApplicationController_list: {
         parameters: {
-            query: {
-                candidateId: string;
-                requisitionId: string;
+            query?: {
+                candidateId?: string;
+                requisitionId?: string;
+                stage?: unknown;
             };
             header?: never;
             path: {
@@ -5057,7 +5155,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApplicationWithRelationsResponseDto"][];
+                };
             };
         };
     };
@@ -5076,11 +5176,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApplicationResponseDto"];
+                };
             };
         };
     };
@@ -5100,7 +5202,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApplicationWithRelationsResponseDto"];
+                };
             };
         };
     };
@@ -5124,7 +5228,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApplicationResponseDto"];
+                };
             };
         };
     };
@@ -5144,11 +5250,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApplicationResponseDto"];
+                };
             };
         };
     };
@@ -5168,11 +5276,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApplicationResponseDto"];
+                };
             };
         };
     };
@@ -5192,11 +5302,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApplicationResponseDto"];
+                };
             };
         };
     };

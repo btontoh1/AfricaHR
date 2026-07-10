@@ -48,6 +48,9 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
   // PERFORMANCE_READ/MANAGE are wired the same way — PAYROLL_MANAGER excluded.
   const hasPerformanceAdminAccess =
     isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
+  // RECRUITMENT_READ/MANAGE are wired the same way — PAYROLL_MANAGER excluded.
+  const hasRecruitmentAdminAccess =
+    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
   const navItems = [
     { label: 'Dashboard', href: '/dashboard' },
     ...(hasAdminAccess ? [{ label: 'Employees', href: '/employees' }] : []),
@@ -85,6 +88,24 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
       : []),
     ...(hasPerformanceAdminAccess
       ? [{ label: 'All Reviews', href: '/performance/reviews/all' }]
+      : []),
+    ...(hasRecruitmentAdminAccess
+      ? [{ label: 'Requisitions', href: '/recruitment/requisitions' }]
+      : []),
+    ...(hasRecruitmentAdminAccess
+      ? [{ label: 'Candidates', href: '/recruitment/candidates' }]
+      : []),
+    ...(hasRecruitmentAdminAccess
+      ? [{ label: 'Applications', href: '/recruitment/applications' }]
+      : []),
+    // Hiring-manager tier, visible to every tenant member same as Team
+    // Reviews — being a hiring manager is a dynamic JobRequisition.
+    // hiringManagerId relationship, not a role permission.
+    ...(isTenantMember
+      ? [{ label: 'My Requisitions', href: '/recruitment/requisitions/mine' }]
+      : []),
+    ...(isTenantMember
+      ? [{ label: 'My Applications', href: '/recruitment/applications/mine' }]
       : []),
   ];
 

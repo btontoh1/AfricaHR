@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
   assertTenantScope,
   CurrentUser,
@@ -12,6 +12,7 @@ import {
 import { JobRequisitionStatus } from '@prisma/client';
 import { JobRequisitionService } from './job-requisition.service';
 import { CreateJobRequisitionDto } from './dto/create-job-requisition.dto';
+import { JobRequisitionResponseDto } from './dto/job-requisition-response.dto';
 import { UpdateJobRequisitionDto } from './dto/update-job-requisition.dto';
 
 @ApiTags('recruitment-requisitions')
@@ -23,6 +24,10 @@ export class JobRequisitionController {
 
   @Get()
   @RequirePermissions(Permission.RECRUITMENT_READ)
+  @ApiOkResponse({ type: JobRequisitionResponseDto, isArray: true })
+  @ApiQuery({ name: 'organizationId', required: false })
+  @ApiQuery({ name: 'hiringManagerId', required: false })
+  @ApiQuery({ name: 'status', required: false })
   list(
     @Param('tenantId') tenantId: string,
     @CurrentUser() actor: RequestUser,
@@ -36,6 +41,7 @@ export class JobRequisitionController {
 
   @Get(':id')
   @RequirePermissions(Permission.RECRUITMENT_READ)
+  @ApiOkResponse({ type: JobRequisitionResponseDto })
   findById(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -47,6 +53,7 @@ export class JobRequisitionController {
 
   @Post()
   @RequirePermissions(Permission.RECRUITMENT_MANAGE)
+  @ApiOkResponse({ type: JobRequisitionResponseDto })
   create(
     @Param('tenantId') tenantId: string,
     @Body() dto: CreateJobRequisitionDto,
@@ -58,6 +65,7 @@ export class JobRequisitionController {
 
   @Patch(':id')
   @RequirePermissions(Permission.RECRUITMENT_MANAGE)
+  @ApiOkResponse({ type: JobRequisitionResponseDto })
   update(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,

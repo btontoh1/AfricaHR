@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
   assertTenantScope,
   CurrentUser,
@@ -12,6 +12,10 @@ import {
 import { ApplicationStage } from '@prisma/client';
 import { ApplicationService } from './application.service';
 import { AdvanceApplicationDto } from './dto/advance-application.dto';
+import {
+  ApplicationResponseDto,
+  ApplicationWithRelationsResponseDto,
+} from './dto/application-response.dto';
 import { CreateApplicationDto } from './dto/create-application.dto';
 import { LinkHiredEmployeeDto } from './dto/link-hired-employee.dto';
 import { SendOfferDto } from './dto/send-offer.dto';
@@ -26,6 +30,10 @@ export class ApplicationController {
 
   @Get()
   @RequirePermissions(Permission.RECRUITMENT_READ)
+  @ApiOkResponse({ type: ApplicationWithRelationsResponseDto, isArray: true })
+  @ApiQuery({ name: 'candidateId', required: false })
+  @ApiQuery({ name: 'requisitionId', required: false })
+  @ApiQuery({ name: 'stage', required: false })
   list(
     @Param('tenantId') tenantId: string,
     @CurrentUser() actor: RequestUser,
@@ -39,6 +47,7 @@ export class ApplicationController {
 
   @Get(':id')
   @RequirePermissions(Permission.RECRUITMENT_READ)
+  @ApiOkResponse({ type: ApplicationWithRelationsResponseDto })
   findById(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -50,6 +59,7 @@ export class ApplicationController {
 
   @Post()
   @RequirePermissions(Permission.RECRUITMENT_MANAGE)
+  @ApiOkResponse({ type: ApplicationResponseDto })
   create(
     @Param('tenantId') tenantId: string,
     @Body() dto: CreateApplicationDto,
@@ -61,6 +71,7 @@ export class ApplicationController {
 
   @Patch(':id/stage')
   @RequirePermissions(Permission.RECRUITMENT_MANAGE)
+  @ApiOkResponse({ type: ApplicationResponseDto })
   advance(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -73,6 +84,7 @@ export class ApplicationController {
 
   @Post(':id/offer')
   @RequirePermissions(Permission.RECRUITMENT_MANAGE)
+  @ApiOkResponse({ type: ApplicationResponseDto })
   sendOffer(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -85,6 +97,7 @@ export class ApplicationController {
 
   @Post(':id/offer/response')
   @RequirePermissions(Permission.RECRUITMENT_MANAGE)
+  @ApiOkResponse({ type: ApplicationResponseDto })
   respondToOffer(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -97,6 +110,7 @@ export class ApplicationController {
 
   @Post(':id/hired-employee')
   @RequirePermissions(Permission.RECRUITMENT_MANAGE)
+  @ApiOkResponse({ type: ApplicationResponseDto })
   linkHiredEmployee(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,

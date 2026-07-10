@@ -8,6 +8,8 @@ import { useSession } from '@/app/(app)/session-provider';
 import { useCreateEmployee } from './queries';
 import { employeeFormSchema, EMPLOYMENT_TYPE_OPTIONS, type EmployeeFormValues } from './employee-form-schema';
 import { getApiErrorMessage } from '@/lib/api-error';
+import { OrganizationPicker } from '@/features/organizations/organization-picker';
+import { OrganizationUnitPicker } from '@/features/organizations/organization-unit-picker';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -96,9 +98,16 @@ export function CreateEmployeeForm() {
               name="organizationId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Organization ID</FormLabel>
+                  <FormLabel>Organization</FormLabel>
                   <FormControl>
-                    <Input placeholder="Organization UUID" {...field} />
+                    <OrganizationPicker
+                      tenantId={tenantId}
+                      value={field.value}
+                      onChange={(value) => {
+                        field.onChange(value);
+                        form.setValue('organizationUnitId', '');
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -109,9 +118,14 @@ export function CreateEmployeeForm() {
               name="organizationUnitId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Organization unit ID (optional)</FormLabel>
+                  <FormLabel>Organization unit (optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="Unit UUID" {...field} />
+                    <OrganizationUnitPicker
+                      tenantId={tenantId}
+                      organizationId={form.watch('organizationId')}
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

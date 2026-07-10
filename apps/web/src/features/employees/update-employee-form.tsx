@@ -10,6 +10,7 @@ import {
 } from './update-employee-form-schema';
 import { getApiErrorMessage } from '@/lib/api-error';
 import type { Employee } from './types';
+import { OrganizationUnitPicker } from '@/features/organizations/organization-unit-picker';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -68,9 +69,14 @@ export function UpdateEmployeeForm({ tenantId, employee }: { tenantId: string; e
           name="organizationUnitId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Organization unit ID</FormLabel>
+              <FormLabel>Organization unit</FormLabel>
               <FormControl>
-                <Input placeholder="Unit UUID" {...field} />
+                <OrganizationUnitPicker
+                  tenantId={tenantId}
+                  organizationId={employee.organizationId}
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

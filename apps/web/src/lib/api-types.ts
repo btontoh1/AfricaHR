@@ -1663,6 +1663,16 @@ export interface components {
              */
             metadata?: Record<string, never>;
         };
+        OrganizationResponseDto: {
+            id: string;
+            legalName: string;
+            tradingName?: string;
+            countryCode: string;
+            registrationNumber: string;
+            taxIdentificationNumber?: string;
+            createdAt: string;
+            updatedAt: string;
+        };
         CreateOrganizationUnitDto: {
             organizationId: string;
             /** @description Parent unit id. Omit to create a root unit. */
@@ -1672,9 +1682,18 @@ export interface components {
             /** @example HR */
             code: string;
         };
+        OrganizationUnitResponseDto: {
+            id: string;
+            organizationId: string;
+            parentId?: string | null;
+            name: string;
+            code: string;
+            createdAt: string;
+            updatedAt: string;
+        };
         UpdateOrganizationUnitParentDto: {
             /** @description New parent unit id. Omit/null to make it a root unit. */
-            parentId?: string;
+            parentId?: string | null;
         };
         CreateEmployeeDto: {
             organizationId: string;
@@ -2700,7 +2719,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OrganizationResponseDto"][];
+                };
             };
         };
     };
@@ -2719,11 +2740,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OrganizationResponseDto"];
+                };
             };
         };
     };
@@ -2743,7 +2766,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OrganizationResponseDto"];
+                };
             };
         };
     };
@@ -2764,7 +2789,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OrganizationUnitResponseDto"][];
+                };
             };
         };
     };
@@ -2783,11 +2810,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OrganizationUnitResponseDto"];
+                };
             };
         };
     };
@@ -2811,7 +2840,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OrganizationUnitResponseDto"];
+                };
             };
         };
     };

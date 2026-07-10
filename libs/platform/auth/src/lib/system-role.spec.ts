@@ -17,6 +17,18 @@ describe('hasPermission', () => {
     expect(hasPermission(SystemRole.TENANT_ADMIN, Permission.ORGANIZATION_MANAGE)).toBe(true);
   });
 
+  it('grants HR managers and payroll managers read-only organization access, not management', () => {
+    expect(hasPermission(SystemRole.HR_MANAGER, Permission.ORGANIZATION_READ)).toBe(true);
+    expect(hasPermission(SystemRole.HR_MANAGER, Permission.ORGANIZATION_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.ORGANIZATION_READ)).toBe(true);
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.ORGANIZATION_MANAGE)).toBe(false);
+  });
+
+  it('grants employees no organization permissions', () => {
+    expect(hasPermission(SystemRole.EMPLOYEE, Permission.ORGANIZATION_READ)).toBe(false);
+    expect(hasPermission(SystemRole.EMPLOYEE, Permission.ORGANIZATION_MANAGE)).toBe(false);
+  });
+
   it('grants HR managers read-only user access', () => {
     expect(hasPermission(SystemRole.HR_MANAGER, Permission.USER_READ)).toBe(true);
     expect(hasPermission(SystemRole.HR_MANAGER, Permission.USER_MANAGE)).toBe(false);

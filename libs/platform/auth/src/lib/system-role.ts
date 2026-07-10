@@ -17,6 +17,11 @@ export type SystemRole = (typeof SystemRole)[keyof typeof SystemRole];
 export const Permission = {
   PLATFORM_TENANT_MANAGE: 'platform:tenant:manage',
   ORGANIZATION_MANAGE: 'organization:manage',
+  // Added when Organization got its first read-only consumer (the
+  // Employee frontend's organization picker) — Module 1 predates the
+  // MANAGE/READ pairing every later module follows, so this was missing
+  // until then. See project memory.
+  ORGANIZATION_READ: 'organization:read',
   USER_MANAGE: 'user:manage',
   USER_READ: 'user:read',
   EMPLOYEE_MANAGE: 'employee:manage',
@@ -50,6 +55,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
   [SystemRole.PLATFORM_ADMIN]: [
     Permission.PLATFORM_TENANT_MANAGE,
     Permission.ORGANIZATION_MANAGE,
+    Permission.ORGANIZATION_READ,
     Permission.USER_MANAGE,
     Permission.USER_READ,
     Permission.EMPLOYEE_MANAGE,
@@ -73,6 +79,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
   ],
   [SystemRole.TENANT_ADMIN]: [
     Permission.ORGANIZATION_MANAGE,
+    Permission.ORGANIZATION_READ,
     Permission.USER_MANAGE,
     Permission.USER_READ,
     Permission.EMPLOYEE_MANAGE,
@@ -94,6 +101,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.NOTIFICATIONS_READ,
   ],
   [SystemRole.HR_MANAGER]: [
+    Permission.ORGANIZATION_READ,
     Permission.USER_READ,
     Permission.EMPLOYEE_MANAGE,
     Permission.EMPLOYEE_READ,
@@ -113,6 +121,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.NOTIFICATIONS_READ,
   ],
   [SystemRole.PAYROLL_MANAGER]: [
+    Permission.ORGANIZATION_READ,
     Permission.EMPLOYEE_READ,
     Permission.PAYROLL_MANAGE,
     Permission.PAYROLL_READ,

@@ -30,9 +30,11 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
   // request, so this stays a simple client-side visibility check, not a
   // duplicate of the backend's full permission matrix (see project notes
   // on Module 2 scope: the backend remains the real enforcement point).
+  const hasTenantContext = Boolean(user.tenantId) && user.role !== 'EMPLOYEE';
   const navItems = [
     { label: 'Dashboard', href: '/dashboard' },
-    ...(user.tenantId && user.role !== 'EMPLOYEE' ? [{ label: 'Employees', href: '/employees' }] : []),
+    ...(hasTenantContext ? [{ label: 'Employees', href: '/employees' }] : []),
+    ...(hasTenantContext ? [{ label: 'Organizations', href: '/organizations' }] : []),
   ];
 
   return (

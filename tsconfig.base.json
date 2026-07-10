@@ -70,7 +70,12 @@
       ],
       "@africahr/recruitment-feature": [
         "./libs/recruitment/feature/src/index.ts"
-      ]
+      ],
+      "@africahr/reporting-domain": ["./libs/reporting/domain/src/index.ts"],
+      "@africahr/reporting-data-access": [
+        "./libs/reporting/data-access/src/index.ts"
+      ],
+      "@africahr/reporting-feature": ["./libs/reporting/feature/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

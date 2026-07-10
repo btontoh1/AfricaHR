@@ -1,0 +1,19 @@
+{
+  "name": "reporting-domain",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/reporting/domain/src",
+  "projectType": "library",
+  "tags": ["scope:reporting", "type:domain"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/reporting/domain",
+        "main": "libs/reporting/domain/src/index.ts",
+        "tsConfig": "libs/reporting/domain/tsconfig.lib.json",
+        "assets": ["libs/reporting/domain/*.md"]
+      }
+    }
+  }
+}

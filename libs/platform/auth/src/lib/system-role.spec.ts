@@ -148,4 +148,15 @@ describe('hasPermission', () => {
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.RECRUITMENT_MANAGE)).toBe(false);
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.RECRUITMENT_READ)).toBe(false);
   });
+
+  it('grants platform admins, tenant admins, HR managers, and payroll managers read access to reports', () => {
+    expect(hasPermission(SystemRole.PLATFORM_ADMIN, Permission.REPORTING_READ)).toBe(true);
+    expect(hasPermission(SystemRole.TENANT_ADMIN, Permission.REPORTING_READ)).toBe(true);
+    expect(hasPermission(SystemRole.HR_MANAGER, Permission.REPORTING_READ)).toBe(true);
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.REPORTING_READ)).toBe(true);
+  });
+
+  it('grants employees no reporting permissions', () => {
+    expect(hasPermission(SystemRole.EMPLOYEE, Permission.REPORTING_READ)).toBe(false);
+  });
 });

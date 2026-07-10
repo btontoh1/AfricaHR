@@ -1,0 +1,19 @@
+{
+  "name": "benefits-feature",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/benefits/feature/src",
+  "projectType": "library",
+  "tags": ["scope:benefits", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/benefits/feature",
+        "main": "libs/benefits/feature/src/index.ts",
+        "tsConfig": "libs/benefits/feature/tsconfig.lib.json",
+        "assets": ["libs/benefits/feature/*.md"]
+      }
+    }
+  }
+}

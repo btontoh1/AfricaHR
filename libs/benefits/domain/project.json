@@ -1,0 +1,19 @@
+{
+  "name": "benefits-domain",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/benefits/domain/src",
+  "projectType": "library",
+  "tags": ["scope:benefits", "type:domain"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/benefits/domain",
+        "main": "libs/benefits/domain/src/index.ts",
+        "tsConfig": "libs/benefits/domain/tsconfig.lib.json",
+        "assets": ["libs/benefits/domain/*.md"]
+      }
+    }
+  }
+}

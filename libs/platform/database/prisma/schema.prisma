@@ -248,16 +248,17 @@ model Employee {
   createdBy String?   @map("created_by")
   updatedBy String?   @map("updated_by")
 
-  organization      Organization             @relation(fields: [organizationId], references: [id])
-  organizationUnit  OrganizationUnit?        @relation(fields: [organizationUnitId], references: [id])
-  user              User?                    @relation(fields: [userId], references: [id])
-  manager           Employee?                @relation("EmployeeManager", fields: [managerId], references: [id])
-  directReports     Employee[]               @relation("EmployeeManager")
-  historyEntries    EmploymentHistoryEntry[]
-  payslips          Payslip[]
-  leaveBalances     LeaveBalance[]
-  leaveRequests     LeaveRequest[]
-  attendanceRecords AttendanceRecord[]
+  organization       Organization             @relation(fields: [organizationId], references: [id])
+  organizationUnit   OrganizationUnit?        @relation(fields: [organizationUnitId], references: [id])
+  user               User?                    @relation(fields: [userId], references: [id])
+  manager            Employee?                @relation("EmployeeManager", fields: [managerId], references: [id])
+  directReports      Employee[]               @relation("EmployeeManager")
+  historyEntries     EmploymentHistoryEntry[]
+  payslips           Payslip[]
+  leaveBalances      LeaveBalance[]
+  leaveRequests      LeaveRequest[]
+  attendanceRecords  AttendanceRecord[]
+  benefitEnrollments BenefitEnrollment[]
 
   @@unique([tenantId, employeeNumber])
   @@index([tenantId])
@@ -612,4 +613,80 @@ model AttendanceRecord {
   @@index([tenantId])
   @@index([employeeId])
   @@map("attendance_records")
+}
+
+// ---------------------------------------------------------------------------
+// Benefits (Module 7)
+// ---------------------------------------------------------------------------
+
+enum BenefitContributionType {
+  PERCENTAGE
+  FIXED
+}
+
+/// The tenant's own benefit-plan catalog (e.g. "Private Health Insurance",
+/// "Group Life"). Tenant-owned business policy, not national law — same
+/// governance model as LeaveType (TENANT_ADMIN/HR_MANAGER managed, not
+/// platform-admin). employeeContribution/employerContribution are
+/// interpreted as a fraction of base salary (PERCENTAGE) or a flat monthly
+/// amount (FIXED) depending on contributionType — same employee/employer
+/// split shape as Payroll's SSNIT rates.
+model BenefitPlan {
+  id                   String                  @id @default(uuid())
+  tenantId             String                  @map("tenant_id")
+  name                 String
+  code                 String
+  description          String?
+  contributionType     BenefitContributionType @map("contribution_type")
+  employeeContribution Decimal                 @map("employee_contribution")
+  employerContribution Decimal                 @map("employer_contribution")
+  isActive             Boolean                 @default(true) @map("is_active")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  enrollments BenefitEnrollment[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("benefit_plans")
+}
+
+enum BenefitEnrollmentStatus {
+  ACTIVE
+  CANCELLED
+}
+
+/// Links an Employee to a BenefitPlan. No denormalized contribution amount
+/// here — unlike Payslip/AttendanceRecord, an enrollment has no single
+/// point-in-time event to snapshot at; the current contribution is always
+/// computed live from the employee's current baseSalary and the plan's
+/// current rates (see project memory). "One active enrollment per employee
+/// per plan" is enforced at the service layer only, not a DB constraint —
+/// same accepted v1 gap as Employee's employee-number generation.
+model BenefitEnrollment {
+  id            String                  @id @default(uuid())
+  tenantId      String                  @map("tenant_id")
+  employeeId    String                  @map("employee_id")
+  benefitPlanId String                  @map("benefit_plan_id")
+  status        BenefitEnrollmentStatus @default(ACTIVE)
+  effectiveDate DateTime                @map("effective_date")
+  endDate       DateTime?               @map("end_date")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  employee    Employee    @relation(fields: [employeeId], references: [id])
+  benefitPlan BenefitPlan @relation(fields: [benefitPlanId], references: [id])
+
+  @@index([tenantId])
+  @@index([employeeId])
+  @@index([benefitPlanId])
+  @@map("benefit_enrollments")
 }

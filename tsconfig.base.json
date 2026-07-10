@@ -45,7 +45,14 @@
       "@africahr/attendance-data-access": [
         "./libs/attendance/data-access/src/index.ts"
       ],
-      "@africahr/attendance-feature": ["./libs/attendance/feature/src/index.ts"]
+      "@africahr/attendance-feature": [
+        "./libs/attendance/feature/src/index.ts"
+      ],
+      "@africahr/benefits-domain": ["./libs/benefits/domain/src/index.ts"],
+      "@africahr/benefits-data-access": [
+        "./libs/benefits/data-access/src/index.ts"
+      ],
+      "@africahr/benefits-feature": ["./libs/benefits/feature/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

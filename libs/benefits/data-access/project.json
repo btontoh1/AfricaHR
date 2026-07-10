@@ -1,0 +1,19 @@
+{
+  "name": "benefits-data-access",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/benefits/data-access/src",
+  "projectType": "library",
+  "tags": ["scope:benefits", "type:data-access"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/benefits/data-access",
+        "main": "libs/benefits/data-access/src/index.ts",
+        "tsConfig": "libs/benefits/data-access/tsconfig.lib.json",
+        "assets": ["libs/benefits/data-access/*.md"]
+      }
+    }
+  }
+}

@@ -42,6 +42,9 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
   // here too, same reasoning as hasLeaveAdminAccess above.
   const hasAttendanceAdminAccess =
     isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
+  // BENEFITS_READ/MANAGE are wired the same way — PAYROLL_MANAGER excluded.
+  const hasBenefitsAdminAccess =
+    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
   const navItems = [
     { label: 'Dashboard', href: '/dashboard' },
     ...(hasAdminAccess ? [{ label: 'Employees', href: '/employees' }] : []),
@@ -60,6 +63,11 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
       : []),
     ...(hasAttendanceAdminAccess
       ? [{ label: 'Attendance Policy', href: '/attendance/policy' }]
+      : []),
+    ...(isTenantMember ? [{ label: 'Benefits', href: '/benefits' }] : []),
+    ...(hasBenefitsAdminAccess ? [{ label: 'Benefit Plans', href: '/benefits/plans' }] : []),
+    ...(hasBenefitsAdminAccess
+      ? [{ label: 'Benefit Enrollments', href: '/benefits/enrollments' }]
       : []),
   ];
 

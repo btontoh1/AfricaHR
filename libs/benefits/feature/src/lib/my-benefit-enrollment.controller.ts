@@ -1,7 +1,12 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { assertTenantScope, CurrentUser, JwtAuthGuard, PermissionsGuard, RequestUser } from '@africahr/platform-auth';
 import { BenefitEnrollmentService } from './benefit-enrollment.service';
+import { BenefitContributionResponseDto } from './dto/benefit-contribution-response.dto';
+import {
+  BenefitEnrollmentResponseDto,
+  BenefitEnrollmentWithPlanResponseDto,
+} from './dto/benefit-enrollment-response.dto';
 import { CreateBenefitEnrollmentDto } from './dto/create-benefit-enrollment.dto';
 
 /**
@@ -20,12 +25,14 @@ export class MyBenefitEnrollmentController {
   constructor(private readonly enrollments: BenefitEnrollmentService) {}
 
   @Get()
+  @ApiOkResponse({ type: BenefitEnrollmentWithPlanResponseDto, isArray: true })
   list(@Param('tenantId') tenantId: string, @CurrentUser() actor: RequestUser) {
     assertTenantScope(actor, tenantId);
     return this.enrollments.listForSelf(tenantId, actor.sub);
   }
 
   @Post()
+  @ApiOkResponse({ type: BenefitEnrollmentResponseDto })
   enroll(
     @Param('tenantId') tenantId: string,
     @Body() dto: CreateBenefitEnrollmentDto,
@@ -36,6 +43,7 @@ export class MyBenefitEnrollmentController {
   }
 
   @Post(':id/cancel')
+  @ApiOkResponse({ type: BenefitEnrollmentResponseDto })
   cancel(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -43,5 +51,16 @@ export class MyBenefitEnrollmentController {
   ) {
     assertTenantScope(actor, tenantId);
     return this.enrollments.cancelForSelf(tenantId, actor.sub, id);
+  }
+
+  @Get(':id/contribution')
+  @ApiOkResponse({ type: BenefitContributionResponseDto })
+  getContribution(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.enrollments.getContributionForSelf(tenantId, actor.sub, id);
   }
 }

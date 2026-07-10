@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
   assertTenantScope,
   CurrentUser,
@@ -11,6 +11,11 @@ import {
 } from '@africahr/platform-auth';
 import { BenefitEnrollmentStatus } from '@prisma/client';
 import { BenefitEnrollmentService } from './benefit-enrollment.service';
+import { BenefitContributionResponseDto } from './dto/benefit-contribution-response.dto';
+import {
+  BenefitEnrollmentResponseDto,
+  BenefitEnrollmentWithPlanResponseDto,
+} from './dto/benefit-enrollment-response.dto';
 import { EnrollEmployeeDto } from './dto/enroll-employee.dto';
 
 @ApiTags('benefit-enrollments')
@@ -22,6 +27,10 @@ export class BenefitEnrollmentController {
 
   @Get()
   @RequirePermissions(Permission.BENEFITS_READ)
+  @ApiOkResponse({ type: BenefitEnrollmentWithPlanResponseDto, isArray: true })
+  @ApiQuery({ name: 'employeeId', required: false })
+  @ApiQuery({ name: 'benefitPlanId', required: false })
+  @ApiQuery({ name: 'status', required: false })
   list(
     @Param('tenantId') tenantId: string,
     @CurrentUser() actor: RequestUser,
@@ -35,6 +44,7 @@ export class BenefitEnrollmentController {
 
   @Get(':id')
   @RequirePermissions(Permission.BENEFITS_READ)
+  @ApiOkResponse({ type: BenefitEnrollmentWithPlanResponseDto })
   findById(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -46,6 +56,7 @@ export class BenefitEnrollmentController {
 
   @Get(':id/contribution')
   @RequirePermissions(Permission.BENEFITS_READ)
+  @ApiOkResponse({ type: BenefitContributionResponseDto })
   getContribution(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -57,6 +68,7 @@ export class BenefitEnrollmentController {
 
   @Post()
   @RequirePermissions(Permission.BENEFITS_MANAGE)
+  @ApiOkResponse({ type: BenefitEnrollmentResponseDto })
   enroll(
     @Param('tenantId') tenantId: string,
     @Body() dto: EnrollEmployeeDto,
@@ -68,6 +80,7 @@ export class BenefitEnrollmentController {
 
   @Post(':id/cancel')
   @RequirePermissions(Permission.BENEFITS_MANAGE)
+  @ApiOkResponse({ type: BenefitEnrollmentResponseDto })
   cancel(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,

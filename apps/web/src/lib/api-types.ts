@@ -842,6 +842,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/benefit-enrollments/me/{id}/contribution": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyBenefitEnrollmentController_getContribution"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/benefit-enrollments": {
         parameters: {
             query?: never;
@@ -1994,6 +2010,20 @@ export interface components {
              */
             employerContribution: number;
         };
+        BenefitPlanResponseDto: {
+            id: string;
+            tenantId: string;
+            name: string;
+            code: string;
+            description?: string | null;
+            /** @enum {string} */
+            contributionType: "PERCENTAGE" | "FIXED";
+            employeeContribution: string;
+            employerContribution: string;
+            isActive: boolean;
+            createdAt: string;
+            updatedAt: string;
+        };
         UpdateBenefitPlanDto: {
             name?: string;
             description?: string;
@@ -2003,10 +2033,39 @@ export interface components {
             employerContribution?: number;
             isActive?: boolean;
         };
+        BenefitEnrollmentWithPlanResponseDto: {
+            id: string;
+            tenantId: string;
+            employeeId: string;
+            benefitPlanId: string;
+            /** @enum {string} */
+            status: "ACTIVE" | "CANCELLED";
+            effectiveDate: string;
+            endDate?: string | null;
+            createdAt: string;
+            updatedAt: string;
+            benefitPlan: components["schemas"]["BenefitPlanResponseDto"];
+        };
         CreateBenefitEnrollmentDto: {
             benefitPlanId: string;
             /** @description Defaults to today if omitted */
             effectiveDate?: string;
+        };
+        BenefitEnrollmentResponseDto: {
+            id: string;
+            tenantId: string;
+            employeeId: string;
+            benefitPlanId: string;
+            /** @enum {string} */
+            status: "ACTIVE" | "CANCELLED";
+            effectiveDate: string;
+            endDate?: string | null;
+            createdAt: string;
+            updatedAt: string;
+        };
+        BenefitContributionResponseDto: {
+            employee: number;
+            employer: number;
         };
         EnrollEmployeeDto: {
             employeeId: string;
@@ -3879,8 +3938,8 @@ export interface operations {
     };
     BenefitPlanController_list: {
         parameters: {
-            query: {
-                activeOnly: string;
+            query?: {
+                activeOnly?: string;
             };
             header?: never;
             path: {
@@ -3894,7 +3953,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["BenefitPlanResponseDto"][];
+                };
             };
         };
     };
@@ -3913,11 +3974,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["BenefitPlanResponseDto"];
+                };
             };
         };
     };
@@ -3941,7 +4004,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["BenefitPlanResponseDto"];
+                };
             };
         };
     };
@@ -3960,7 +4025,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["BenefitEnrollmentWithPlanResponseDto"][];
+                };
             };
         };
     };
@@ -3979,11 +4046,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["BenefitEnrollmentResponseDto"];
+                };
             };
         };
     };
@@ -3999,19 +4068,44 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["BenefitEnrollmentResponseDto"];
+                };
+            };
+        };
+    };
+    MyBenefitEnrollmentController_getContribution: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BenefitContributionResponseDto"];
+                };
             };
         };
     };
     BenefitEnrollmentController_list: {
         parameters: {
-            query: {
-                employeeId: string;
-                benefitPlanId: string;
+            query?: {
+                employeeId?: string;
+                benefitPlanId?: string;
+                status?: unknown;
             };
             header?: never;
             path: {
@@ -4025,7 +4119,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["BenefitEnrollmentWithPlanResponseDto"][];
+                };
             };
         };
     };
@@ -4044,11 +4140,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["BenefitEnrollmentResponseDto"];
+                };
             };
         };
     };
@@ -4068,7 +4166,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["BenefitEnrollmentWithPlanResponseDto"];
+                };
             };
         };
     };
@@ -4088,7 +4188,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["BenefitContributionResponseDto"];
+                };
             };
         };
     };
@@ -4104,11 +4206,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["BenefitEnrollmentResponseDto"];
+                };
             };
         };
     };

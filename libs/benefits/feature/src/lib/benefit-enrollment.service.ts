@@ -131,6 +131,20 @@ export class BenefitEnrollmentService {
     return updated;
   }
 
+  async getContributionForSelf(
+    tenantId: string,
+    userId: string,
+    id: string,
+  ): Promise<BenefitContribution> {
+    const employeeId = await this.resolveOwnEmployeeId(tenantId, userId);
+    const enrollment = await this.findById(tenantId, id);
+    if (enrollment.employeeId !== employeeId) {
+      // Don't reveal that an enrollment belonging to someone else exists.
+      throw new NotFoundException(`Benefit enrollment "${id}" not found`);
+    }
+    return this.getContribution(tenantId, id);
+  }
+
   /** Live-computed current contribution — never denormalized (see project memory). */
   async getContribution(tenantId: string, id: string): Promise<BenefitContribution> {
     const enrollment = await this.findById(tenantId, id);

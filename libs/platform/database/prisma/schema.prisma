@@ -143,6 +143,7 @@ model User {
   tenant        Tenant?        @relation(fields: [tenantId], references: [id])
   refreshTokens RefreshToken[]
   employee      Employee?
+  notifications Notification[]
 
   @@index([tenantId])
   @@map("users")
@@ -930,4 +931,85 @@ model Application {
   @@index([requisitionId])
   @@index([hiredEmployeeId])
   @@map("applications")
+}
+
+// ---------------------------------------------------------------------------
+// Notifications (Module 11)
+// ---------------------------------------------------------------------------
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+/// Tenant-owned reusable message content ({{variable}} placeholders in
+/// subject/body), same governance pattern as LeaveType/BenefitPlan/
+/// PerformanceReviewCycle — TENANT_ADMIN/HR_MANAGER manage it directly, no
+/// platform-admin governance. Notification does not reference this by id
+/// once sent (see Notification's own doc comment), so editing or deleting a
+/// template never rewrites history.
+model NotificationTemplate {
+  id              String              @id @default(uuid())
+  tenantId        String              @map("tenant_id")
+  code            String
+  name            String
+  channel         NotificationChannel
+  subjectTemplate String              @map("subject_template")
+  bodyTemplate    String              @map("body_template")
+  isActive        Boolean             @default(true) @map("is_active")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("notification_templates")
+}
+
+/// A notification sent to a User, not an Employee — a notification is
+/// inherently a portal-identity concern, so self-service resolves the
+/// recipient directly from the JWT's userId with no Employee lookup, unlike
+/// every self-service module since Leave (Module 5). subject/body are the
+/// rendered text at send time, not a live reference to the template that
+/// produced them — same denormalization principle as Payslip/
+/// AttendanceRecord, so a later template edit never rewrites history.
+/// IN_APP delivery is the row itself (status SENT the moment it's created);
+/// EMAIL goes through a NotificationDispatcher and can end up FAILED.
+/// No automatic cross-module triggers in v1 (see project memory) — every
+/// row here was created by an explicit send() call, HR-initiated or
+/// system-initiated, never an implicit side effect of another module's
+/// business event.
+model Notification {
+  id      String              @id @default(uuid())
+  tenantId String             @map("tenant_id")
+  userId  String              @map("user_id")
+  channel NotificationChannel
+  subject String
+  body    String
+  status  NotificationStatus  @default(PENDING)
+  isRead  Boolean             @default(false) @map("is_read")
+  readAt  DateTime?           @map("read_at")
+  sentAt  DateTime?           @map("sent_at")
+  failureReason String?       @map("failure_reason")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([userId])
+  @@map("notifications")
 }

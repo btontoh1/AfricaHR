@@ -1,0 +1,19 @@
+{
+  "name": "notifications-data-access",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/notifications/data-access/src",
+  "projectType": "library",
+  "tags": ["scope:notifications", "type:data-access"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/notifications/data-access",
+        "main": "libs/notifications/data-access/src/index.ts",
+        "tsConfig": "libs/notifications/data-access/tsconfig.lib.json",
+        "assets": ["libs/notifications/data-access/*.md"]
+      }
+    }
+  }
+}

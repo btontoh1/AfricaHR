@@ -1,0 +1,19 @@
+{
+  "name": "notifications-feature",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/notifications/feature/src",
+  "projectType": "library",
+  "tags": ["scope:notifications", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/notifications/feature",
+        "main": "libs/notifications/feature/src/index.ts",
+        "tsConfig": "libs/notifications/feature/tsconfig.lib.json",
+        "assets": ["libs/notifications/feature/*.md"]
+      }
+    }
+  }
+}

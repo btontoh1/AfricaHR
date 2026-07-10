@@ -36,6 +36,8 @@ export const Permission = {
   // Read-only — reports are computed on demand, never created/edited, so
   // there is no REPORTING_MANAGE counterpart.
   REPORTING_READ: 'reporting:read',
+  NOTIFICATIONS_MANAGE: 'notifications:manage',
+  NOTIFICATIONS_READ: 'notifications:read',
   // Platform-admin only: editing GRA/SSNIT statutory reference data is ops
   // work, not a tenant-level payroll permission (see RLS_CONVENTION.md and
   // project memory — a tenant does not get to set its own tax law).
@@ -66,6 +68,8 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.RECRUITMENT_MANAGE,
     Permission.RECRUITMENT_READ,
     Permission.REPORTING_READ,
+    Permission.NOTIFICATIONS_MANAGE,
+    Permission.NOTIFICATIONS_READ,
   ],
   [SystemRole.TENANT_ADMIN]: [
     Permission.ORGANIZATION_MANAGE,
@@ -86,6 +90,8 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.RECRUITMENT_MANAGE,
     Permission.RECRUITMENT_READ,
     Permission.REPORTING_READ,
+    Permission.NOTIFICATIONS_MANAGE,
+    Permission.NOTIFICATIONS_READ,
   ],
   [SystemRole.HR_MANAGER]: [
     Permission.USER_READ,
@@ -103,6 +109,8 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.RECRUITMENT_MANAGE,
     Permission.RECRUITMENT_READ,
     Permission.REPORTING_READ,
+    Permission.NOTIFICATIONS_MANAGE,
+    Permission.NOTIFICATIONS_READ,
   ],
   [SystemRole.PAYROLL_MANAGER]: [
     Permission.EMPLOYEE_READ,

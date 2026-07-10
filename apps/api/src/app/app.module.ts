@@ -11,6 +11,7 @@ import { BenefitsFeatureModule } from '@africahr/benefits-feature';
 import { PerformanceFeatureModule } from '@africahr/performance-feature';
 import { RecruitmentFeatureModule } from '@africahr/recruitment-feature';
 import { ReportingFeatureModule } from '@africahr/reporting-feature';
+import { NotificationsFeatureModule } from '@africahr/notifications-feature';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { ReportingFeatureModule } from '@africahr/reporting-feature';
     PerformanceFeatureModule,
     RecruitmentFeatureModule,
     ReportingFeatureModule,
+    NotificationsFeatureModule,
   ],
 })
 export class AppModule {}

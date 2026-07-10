@@ -159,4 +159,20 @@ describe('hasPermission', () => {
   it('grants employees no reporting permissions', () => {
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.REPORTING_READ)).toBe(false);
   });
+
+  it('grants HR managers and tenant admins full notifications management', () => {
+    expect(hasPermission(SystemRole.HR_MANAGER, Permission.NOTIFICATIONS_MANAGE)).toBe(true);
+    expect(hasPermission(SystemRole.HR_MANAGER, Permission.NOTIFICATIONS_READ)).toBe(true);
+    expect(hasPermission(SystemRole.TENANT_ADMIN, Permission.NOTIFICATIONS_MANAGE)).toBe(true);
+  });
+
+  it('grants payroll managers no notifications permissions', () => {
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.NOTIFICATIONS_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.NOTIFICATIONS_READ)).toBe(false);
+  });
+
+  it('grants employees no notifications-management permissions (self-service inbox is handled separately)', () => {
+    expect(hasPermission(SystemRole.EMPLOYEE, Permission.NOTIFICATIONS_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.EMPLOYEE, Permission.NOTIFICATIONS_READ)).toBe(false);
+  });
 });

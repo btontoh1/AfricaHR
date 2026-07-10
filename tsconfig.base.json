@@ -75,7 +75,16 @@
       "@africahr/reporting-data-access": [
         "./libs/reporting/data-access/src/index.ts"
       ],
-      "@africahr/reporting-feature": ["./libs/reporting/feature/src/index.ts"]
+      "@africahr/reporting-feature": ["./libs/reporting/feature/src/index.ts"],
+      "@africahr/notifications-domain": [
+        "./libs/notifications/domain/src/index.ts"
+      ],
+      "@africahr/notifications-data-access": [
+        "./libs/notifications/data-access/src/index.ts"
+      ],
+      "@africahr/notifications-feature": [
+        "./libs/notifications/feature/src/index.ts"
+      ]
     }
   },
   "exclude": ["node_modules", "tmp"]

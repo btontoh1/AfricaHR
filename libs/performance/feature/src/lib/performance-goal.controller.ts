@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
   assertTenantScope,
   CurrentUser,
@@ -11,6 +11,7 @@ import {
 } from '@africahr/platform-auth';
 import { PerformanceGoalStatus } from '@prisma/client';
 import { PerformanceGoalService } from './performance-goal.service';
+import { PerformanceGoalResponseDto } from './dto/performance-goal-response.dto';
 import { UpdatePerformanceGoalDto } from './dto/update-performance-goal.dto';
 
 @ApiTags('performance-goals')
@@ -22,6 +23,9 @@ export class PerformanceGoalController {
 
   @Get()
   @RequirePermissions(Permission.PERFORMANCE_READ)
+  @ApiOkResponse({ type: PerformanceGoalResponseDto, isArray: true })
+  @ApiQuery({ name: 'employeeId', required: false })
+  @ApiQuery({ name: 'status', required: false })
   list(
     @Param('tenantId') tenantId: string,
     @CurrentUser() actor: RequestUser,
@@ -34,6 +38,7 @@ export class PerformanceGoalController {
 
   @Get(':id')
   @RequirePermissions(Permission.PERFORMANCE_READ)
+  @ApiOkResponse({ type: PerformanceGoalResponseDto })
   findById(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -45,6 +50,7 @@ export class PerformanceGoalController {
 
   @Patch(':id')
   @RequirePermissions(Permission.PERFORMANCE_MANAGE)
+  @ApiOkResponse({ type: PerformanceGoalResponseDto })
   update(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,

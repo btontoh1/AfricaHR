@@ -2073,6 +2073,19 @@ export interface components {
             /** @description Defaults to today if omitted */
             effectiveDate?: string;
         };
+        PerformanceGoalResponseDto: {
+            id: string;
+            tenantId: string;
+            employeeId: string;
+            title: string;
+            description?: string | null;
+            targetDate?: string | null;
+            /** @enum {string} */
+            status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+            progressPercent: number;
+            createdAt: string;
+            updatedAt: string;
+        };
         CreatePerformanceGoalDto: {
             /** @example Ship the Q1 roadmap */
             title: string;
@@ -2093,12 +2106,40 @@ export interface components {
             startDate: string;
             endDate: string;
         };
+        ReviewCycleResponseDto: {
+            id: string;
+            tenantId: string;
+            name: string;
+            startDate: string;
+            endDate: string;
+            /** @enum {string} */
+            status: "UPCOMING" | "ACTIVE" | "CLOSED";
+            createdAt: string;
+            updatedAt: string;
+        };
         UpdateReviewCycleDto: {
             name?: string;
             startDate?: string;
             endDate?: string;
             /** @enum {string} */
             status?: "UPCOMING" | "ACTIVE" | "CLOSED";
+        };
+        PerformanceReviewResponseDto: {
+            id: string;
+            tenantId: string;
+            employeeId: string;
+            cycleId: string;
+            /** @enum {string} */
+            status: "DRAFT" | "SELF_SUBMITTED" | "COMPLETED";
+            selfRating?: number | null;
+            selfComments?: string | null;
+            selfSubmittedAt?: string | null;
+            managerRating?: number | null;
+            managerComments?: string | null;
+            managerUserId?: string | null;
+            managerReviewedAt?: string | null;
+            createdAt: string;
+            updatedAt: string;
         };
         StartReviewDto: {
             cycleId: string;
@@ -4231,7 +4272,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PerformanceGoalResponseDto"][];
+                };
             };
         };
     };
@@ -4250,11 +4293,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PerformanceGoalResponseDto"];
+                };
             };
         };
     };
@@ -4278,14 +4323,17 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PerformanceGoalResponseDto"];
+                };
             };
         };
     };
     PerformanceGoalController_list: {
         parameters: {
-            query: {
-                employeeId: string;
+            query?: {
+                employeeId?: string;
+                status?: unknown;
             };
             header?: never;
             path: {
@@ -4299,7 +4347,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PerformanceGoalResponseDto"][];
+                };
             };
         };
     };
@@ -4319,7 +4369,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PerformanceGoalResponseDto"];
+                };
             };
         };
     };
@@ -4343,13 +4395,17 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PerformanceGoalResponseDto"];
+                };
             };
         };
     };
     ReviewCycleController_list: {
         parameters: {
-            query?: never;
+            query?: {
+                status?: unknown;
+            };
             header?: never;
             path: {
                 tenantId: string;
@@ -4362,7 +4418,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ReviewCycleResponseDto"][];
+                };
             };
         };
     };
@@ -4381,11 +4439,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ReviewCycleResponseDto"];
+                };
             };
         };
     };
@@ -4409,7 +4469,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ReviewCycleResponseDto"];
+                };
             };
         };
     };
@@ -4428,7 +4490,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PerformanceReviewResponseDto"][];
+                };
             };
         };
     };
@@ -4447,11 +4511,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PerformanceReviewResponseDto"];
+                };
             };
         };
     };
@@ -4471,7 +4537,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PerformanceReviewResponseDto"];
+                };
             };
         };
     };
@@ -4491,11 +4559,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PerformanceReviewResponseDto"];
+                };
             };
         };
     };
@@ -4514,7 +4584,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PerformanceReviewResponseDto"][];
+                };
             };
         };
     };
@@ -4534,7 +4606,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PerformanceReviewResponseDto"];
+                };
             };
         };
     };
@@ -4554,19 +4628,22 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PerformanceReviewResponseDto"];
+                };
             };
         };
     };
     PerformanceReviewController_list: {
         parameters: {
-            query: {
-                employeeId: string;
-                cycleId: string;
+            query?: {
+                employeeId?: string;
+                cycleId?: string;
+                status?: unknown;
             };
             header?: never;
             path: {
@@ -4580,7 +4657,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PerformanceReviewResponseDto"][];
+                };
             };
         };
     };
@@ -4599,11 +4678,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PerformanceReviewResponseDto"];
+                };
             };
         };
     };
@@ -4623,7 +4704,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PerformanceReviewResponseDto"];
+                };
             };
         };
     };
@@ -4643,11 +4726,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PerformanceReviewResponseDto"];
+                };
             };
         };
     };

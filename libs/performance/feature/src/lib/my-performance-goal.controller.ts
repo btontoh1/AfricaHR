@@ -1,8 +1,9 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { assertTenantScope, CurrentUser, JwtAuthGuard, PermissionsGuard, RequestUser } from '@africahr/platform-auth';
 import { PerformanceGoalService } from './performance-goal.service';
 import { CreatePerformanceGoalDto } from './dto/create-performance-goal.dto';
+import { PerformanceGoalResponseDto } from './dto/performance-goal-response.dto';
 import { UpdatePerformanceGoalDto } from './dto/update-performance-goal.dto';
 
 /**
@@ -20,12 +21,14 @@ export class MyPerformanceGoalController {
   constructor(private readonly goals: PerformanceGoalService) {}
 
   @Get()
+  @ApiOkResponse({ type: PerformanceGoalResponseDto, isArray: true })
   list(@Param('tenantId') tenantId: string, @CurrentUser() actor: RequestUser) {
     assertTenantScope(actor, tenantId);
     return this.goals.listForSelf(tenantId, actor.sub);
   }
 
   @Post()
+  @ApiOkResponse({ type: PerformanceGoalResponseDto })
   create(
     @Param('tenantId') tenantId: string,
     @Body() dto: CreatePerformanceGoalDto,
@@ -36,6 +39,7 @@ export class MyPerformanceGoalController {
   }
 
   @Patch(':id')
+  @ApiOkResponse({ type: PerformanceGoalResponseDto })
   update(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,

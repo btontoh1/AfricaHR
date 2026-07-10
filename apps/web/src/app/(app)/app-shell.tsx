@@ -45,6 +45,9 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
   // BENEFITS_READ/MANAGE are wired the same way — PAYROLL_MANAGER excluded.
   const hasBenefitsAdminAccess =
     isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
+  // PERFORMANCE_READ/MANAGE are wired the same way — PAYROLL_MANAGER excluded.
+  const hasPerformanceAdminAccess =
+    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
   const navItems = [
     { label: 'Dashboard', href: '/dashboard' },
     ...(hasAdminAccess ? [{ label: 'Employees', href: '/employees' }] : []),
@@ -68,6 +71,20 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
     ...(hasBenefitsAdminAccess ? [{ label: 'Benefit Plans', href: '/benefits/plans' }] : []),
     ...(hasBenefitsAdminAccess
       ? [{ label: 'Benefit Enrollments', href: '/benefits/enrollments' }]
+      : []),
+    ...(isTenantMember ? [{ label: 'My Goals', href: '/performance/goals' }] : []),
+    ...(isTenantMember ? [{ label: 'My Reviews', href: '/performance/reviews' }] : []),
+    // Visible to every tenant member, not just admins: manager-ness is a
+    // dynamic per-employee relationship (Employee.managerId), not a role
+    // permission — anyone could be someone's direct manager. Empty for
+    // non-managers, same as self-service leave being empty with no
+    // requests yet.
+    ...(isTenantMember ? [{ label: 'Team Reviews', href: '/performance/reviews/team' }] : []),
+    ...(hasPerformanceAdminAccess
+      ? [{ label: 'Review Cycles', href: '/performance/cycles' }]
+      : []),
+    ...(hasPerformanceAdminAccess
+      ? [{ label: 'All Reviews', href: '/performance/reviews/all' }]
       : []),
   ];
 

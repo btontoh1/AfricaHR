@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
   assertTenantScope,
   CurrentUser,
@@ -12,6 +12,7 @@ import {
 import { PerformanceReviewCycleStatus } from '@prisma/client';
 import { ReviewCycleService } from './review-cycle.service';
 import { CreateReviewCycleDto } from './dto/create-review-cycle.dto';
+import { ReviewCycleResponseDto } from './dto/review-cycle-response.dto';
 import { UpdateReviewCycleDto } from './dto/update-review-cycle.dto';
 
 @ApiTags('review-cycles')
@@ -23,6 +24,7 @@ export class ReviewCycleController {
 
   @Post()
   @RequirePermissions(Permission.PERFORMANCE_MANAGE)
+  @ApiOkResponse({ type: ReviewCycleResponseDto })
   create(
     @Param('tenantId') tenantId: string,
     @Body() dto: CreateReviewCycleDto,
@@ -35,6 +37,8 @@ export class ReviewCycleController {
   // No permission requirement beyond authentication: every employee needs
   // to see available cycles in order to start their own review.
   @Get()
+  @ApiOkResponse({ type: ReviewCycleResponseDto, isArray: true })
+  @ApiQuery({ name: 'status', required: false })
   list(
     @Param('tenantId') tenantId: string,
     @CurrentUser() actor: RequestUser,
@@ -46,6 +50,7 @@ export class ReviewCycleController {
 
   @Patch(':id')
   @RequirePermissions(Permission.PERFORMANCE_MANAGE)
+  @ApiOkResponse({ type: ReviewCycleResponseDto })
   update(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,

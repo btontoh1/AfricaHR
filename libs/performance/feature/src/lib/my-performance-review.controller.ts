@@ -1,7 +1,8 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { assertTenantScope, CurrentUser, JwtAuthGuard, PermissionsGuard, RequestUser } from '@africahr/platform-auth';
 import { PerformanceReviewService } from './performance-review.service';
+import { PerformanceReviewResponseDto } from './dto/performance-review-response.dto';
 import { StartReviewDto } from './dto/start-review.dto';
 import { SubmitSelfAssessmentDto } from './dto/submit-self-assessment.dto';
 
@@ -20,12 +21,14 @@ export class MyPerformanceReviewController {
   constructor(private readonly reviews: PerformanceReviewService) {}
 
   @Get()
+  @ApiOkResponse({ type: PerformanceReviewResponseDto, isArray: true })
   list(@Param('tenantId') tenantId: string, @CurrentUser() actor: RequestUser) {
     assertTenantScope(actor, tenantId);
     return this.reviews.listForSelf(tenantId, actor.sub);
   }
 
   @Post()
+  @ApiOkResponse({ type: PerformanceReviewResponseDto })
   start(
     @Param('tenantId') tenantId: string,
     @Body() dto: StartReviewDto,
@@ -36,6 +39,7 @@ export class MyPerformanceReviewController {
   }
 
   @Get(':id')
+  @ApiOkResponse({ type: PerformanceReviewResponseDto })
   findById(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -46,6 +50,7 @@ export class MyPerformanceReviewController {
   }
 
   @Post(':id/self-assessment')
+  @ApiOkResponse({ type: PerformanceReviewResponseDto })
   submitSelfAssessment(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,

@@ -29,6 +29,8 @@ export const Permission = {
   ATTENDANCE_READ: 'attendance:read',
   BENEFITS_MANAGE: 'benefits:manage',
   BENEFITS_READ: 'benefits:read',
+  PERFORMANCE_MANAGE: 'performance:manage',
+  PERFORMANCE_READ: 'performance:read',
   // Platform-admin only: editing GRA/SSNIT statutory reference data is ops
   // work, not a tenant-level payroll permission (see RLS_CONVENTION.md and
   // project memory — a tenant does not get to set its own tax law).
@@ -54,6 +56,8 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.ATTENDANCE_READ,
     Permission.BENEFITS_MANAGE,
     Permission.BENEFITS_READ,
+    Permission.PERFORMANCE_MANAGE,
+    Permission.PERFORMANCE_READ,
   ],
   [SystemRole.TENANT_ADMIN]: [
     Permission.ORGANIZATION_MANAGE,
@@ -69,6 +73,8 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.ATTENDANCE_READ,
     Permission.BENEFITS_MANAGE,
     Permission.BENEFITS_READ,
+    Permission.PERFORMANCE_MANAGE,
+    Permission.PERFORMANCE_READ,
   ],
   [SystemRole.HR_MANAGER]: [
     Permission.USER_READ,
@@ -81,6 +87,8 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.ATTENDANCE_READ,
     Permission.BENEFITS_MANAGE,
     Permission.BENEFITS_READ,
+    Permission.PERFORMANCE_MANAGE,
+    Permission.PERFORMANCE_READ,
   ],
   [SystemRole.PAYROLL_MANAGER]: [
     Permission.EMPLOYEE_READ,

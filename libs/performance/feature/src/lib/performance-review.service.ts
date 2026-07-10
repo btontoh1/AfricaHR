@@ -1,0 +1,224 @@
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { PerformanceReview, PerformanceReviewStatus, Prisma } from '@prisma/client';
+import { AuditService } from '@africahr/platform-audit';
+import {
+  PerformanceEmployeeRepository,
+  PerformanceReviewCycleRepository,
+  PerformanceReviewRepository,
+} from '@africahr/performance-data-access';
+import { canTransitionReviewStatus } from '@africahr/performance-domain';
+import { SubmitManagerAssessmentDto } from './dto/submit-manager-assessment.dto';
+import { SubmitSelfAssessmentDto } from './dto/submit-self-assessment.dto';
+
+@Injectable()
+export class PerformanceReviewService {
+  constructor(
+    private readonly reviews: PerformanceReviewRepository,
+    private readonly cycles: PerformanceReviewCycleRepository,
+    private readonly employees: PerformanceEmployeeRepository,
+    private readonly audit: AuditService,
+  ) {}
+
+  async resolveOwnEmployeeId(tenantId: string, userId: string): Promise<string> {
+    const employee = await this.employees.findByUserId(tenantId, userId);
+    if (!employee) {
+      throw new ForbiddenException('No employee record is linked to this account');
+    }
+    return employee.id;
+  }
+
+  async startForSelf(tenantId: string, userId: string, cycleId: string): Promise<PerformanceReview> {
+    const employeeId = await this.resolveOwnEmployeeId(tenantId, userId);
+    return this.start(tenantId, employeeId, cycleId, userId);
+  }
+
+  async start(
+    tenantId: string,
+    employeeId: string,
+    cycleId: string,
+    actorId?: string,
+  ): Promise<PerformanceReview> {
+    const cycle = await this.cycles.findById(tenantId, cycleId);
+    if (!cycle) {
+      throw new NotFoundException(`Review cycle "${cycleId}" not found`);
+    }
+
+    const existing = await this.reviews.findByEmployeeAndCycle(tenantId, employeeId, cycleId);
+    if (existing) {
+      throw new ConflictException('A review already exists for this employee and cycle');
+    }
+
+    let review: PerformanceReview;
+    try {
+      review = await this.reviews.create(tenantId, { employeeId, cycleId, createdBy: actorId });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2003') {
+          throw new NotFoundException(`Employee "${employeeId}" not found`);
+        }
+        if (error.code === 'P2002') {
+          throw new ConflictException('A review already exists for this employee and cycle');
+        }
+      }
+      throw error;
+    }
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'performance.review.started',
+      resourceType: 'PerformanceReview',
+      resourceId: review.id,
+    });
+
+    return review;
+  }
+
+  async findById(tenantId: string, id: string): Promise<PerformanceReview> {
+    const review = await this.reviews.findById(tenantId, id);
+    if (!review) {
+      throw new NotFoundException(`Performance review "${id}" not found`);
+    }
+    return review;
+  }
+
+  async findByIdForSelf(tenantId: string, userId: string, id: string): Promise<PerformanceReview> {
+    const employeeId = await this.resolveOwnEmployeeId(tenantId, userId);
+    const review = await this.findById(tenantId, id);
+    if (review.employeeId !== employeeId) {
+      throw new NotFoundException(`Performance review "${id}" not found`);
+    }
+    return review;
+  }
+
+  async findByIdForManager(tenantId: string, userId: string, id: string): Promise<PerformanceReview> {
+    const review = await this.findById(tenantId, id);
+    await this.assertIsDirectManager(tenantId, userId, review.employeeId);
+    return review;
+  }
+
+  list(
+    tenantId: string,
+    params: { employeeId?: string; cycleId?: string; status?: PerformanceReviewStatus } = {},
+  ): Promise<PerformanceReview[]> {
+    return this.reviews.list(tenantId, params);
+  }
+
+  async listForSelf(tenantId: string, userId: string): Promise<PerformanceReview[]> {
+    const employeeId = await this.resolveOwnEmployeeId(tenantId, userId);
+    return this.reviews.list(tenantId, { employeeId });
+  }
+
+  /** Reviews for the caller's direct reports only (not skip-level). */
+  async listForDirectReports(tenantId: string, userId: string): Promise<PerformanceReview[]> {
+    const managerEmployeeId = await this.resolveOwnEmployeeId(tenantId, userId);
+    const reportIds = await this.employees.listDirectReportIds(tenantId, managerEmployeeId);
+    if (reportIds.length === 0) {
+      return [];
+    }
+    const perReport = await Promise.all(
+      reportIds.map((employeeId) => this.reviews.list(tenantId, { employeeId })),
+    );
+    return perReport.flat();
+  }
+
+  async submitSelfAssessmentForSelf(
+    tenantId: string,
+    userId: string,
+    id: string,
+    dto: SubmitSelfAssessmentDto,
+  ): Promise<PerformanceReview> {
+    const employeeId = await this.resolveOwnEmployeeId(tenantId, userId);
+    const review = await this.findById(tenantId, id);
+    if (review.employeeId !== employeeId) {
+      throw new NotFoundException(`Performance review "${id}" not found`);
+    }
+    return this.submitSelfAssessment(tenantId, id, dto, userId);
+  }
+
+  async submitSelfAssessment(
+    tenantId: string,
+    id: string,
+    dto: SubmitSelfAssessmentDto,
+    actorId?: string,
+  ): Promise<PerformanceReview> {
+    const review = await this.findById(tenantId, id);
+    if (!canTransitionReviewStatus(review.status, 'SELF_SUBMITTED')) {
+      throw new ConflictException(`Cannot submit a self-assessment for a review in status ${review.status}`);
+    }
+
+    const updated = await this.reviews.update(tenantId, id, {
+      status: 'SELF_SUBMITTED',
+      selfRating: dto.selfRating,
+      selfComments: dto.selfComments,
+      selfSubmittedAt: new Date(),
+      updatedBy: actorId,
+    });
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'performance.review.self_submitted',
+      resourceType: 'PerformanceReview',
+      resourceId: id,
+    });
+
+    return updated;
+  }
+
+  async submitManagerAssessmentAsManager(
+    tenantId: string,
+    userId: string,
+    id: string,
+    dto: SubmitManagerAssessmentDto,
+  ): Promise<PerformanceReview> {
+    const review = await this.findById(tenantId, id);
+    await this.assertIsDirectManager(tenantId, userId, review.employeeId);
+    return this.submitManagerAssessment(tenantId, id, dto, userId);
+  }
+
+  async submitManagerAssessment(
+    tenantId: string,
+    id: string,
+    dto: SubmitManagerAssessmentDto,
+    actorId?: string,
+  ): Promise<PerformanceReview> {
+    const review = await this.findById(tenantId, id);
+    if (!canTransitionReviewStatus(review.status, 'COMPLETED')) {
+      throw new ConflictException(
+        `Cannot submit a manager assessment for a review in status ${review.status}`,
+      );
+    }
+
+    const updated = await this.reviews.update(tenantId, id, {
+      status: 'COMPLETED',
+      managerRating: dto.managerRating,
+      managerComments: dto.managerComments,
+      managerUserId: actorId,
+      managerReviewedAt: new Date(),
+      updatedBy: actorId,
+    });
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'performance.review.completed',
+      resourceType: 'PerformanceReview',
+      resourceId: id,
+    });
+
+    return updated;
+  }
+
+  private async assertIsDirectManager(
+    tenantId: string,
+    userId: string,
+    targetEmployeeId: string,
+  ): Promise<void> {
+    const managerEmployeeId = await this.resolveOwnEmployeeId(tenantId, userId);
+    const targetEmployee = await this.employees.findById(tenantId, targetEmployeeId);
+    if (!targetEmployee || targetEmployee.managerId !== managerEmployeeId) {
+      throw new ForbiddenException('You are not the direct manager of this employee');
+    }
+  }
+}

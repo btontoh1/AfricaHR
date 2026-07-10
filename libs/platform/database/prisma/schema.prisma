@@ -259,6 +259,8 @@ model Employee {
   leaveRequests      LeaveRequest[]
   attendanceRecords  AttendanceRecord[]
   benefitEnrollments BenefitEnrollment[]
+  performanceGoals   PerformanceGoal[]
+  performanceReviews PerformanceReview[]
 
   @@unique([tenantId, employeeNumber])
   @@index([tenantId])
@@ -689,4 +691,116 @@ model BenefitEnrollment {
   @@index([employeeId])
   @@index([benefitPlanId])
   @@map("benefit_enrollments")
+}
+
+// ---------------------------------------------------------------------------
+// Performance (Module 8)
+// ---------------------------------------------------------------------------
+
+enum PerformanceGoalStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+/// An employee's own ongoing goal tracking. Standalone — not tied to a
+/// PerformanceReviewCycle in v1 (a deliberate scope cut, see project
+/// memory); goals and reviews aren't hard-linked.
+model PerformanceGoal {
+  id              String                @id @default(uuid())
+  tenantId        String                @map("tenant_id")
+  employeeId      String                @map("employee_id")
+  title           String
+  description     String?
+  targetDate      DateTime?             @map("target_date")
+  status          PerformanceGoalStatus @default(NOT_STARTED)
+  progressPercent Int                   @default(0) @map("progress_percent")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@index([tenantId])
+  @@index([employeeId])
+  @@map("performance_goals")
+}
+
+enum PerformanceReviewCycleStatus {
+  UPCOMING
+  ACTIVE
+  CLOSED
+}
+
+/// The tenant's own review-period catalog (e.g. "Q1 2026 Review").
+/// Tenant-owned business policy, TENANT_ADMIN/HR_MANAGER managed — same
+/// governance model as LeaveType.
+model PerformanceReviewCycle {
+  id        String                       @id @default(uuid())
+  tenantId  String                       @map("tenant_id")
+  name      String
+  startDate DateTime                     @map("start_date")
+  endDate   DateTime                     @map("end_date")
+  status    PerformanceReviewCycleStatus @default(UPCOMING)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  reviews PerformanceReview[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("performance_review_cycles")
+}
+
+enum PerformanceReviewStatus {
+  DRAFT
+  SELF_SUBMITTED
+  COMPLETED
+}
+
+/// One per employee per cycle, created on-demand (not bulk-generated when
+/// a cycle opens — a deliberate scope cut, see project memory). Three-tier
+/// authorization: self (submit self-assessment), the employee's direct
+/// manager via Employee.managerId (submit manager assessment), and
+/// PERFORMANCE_MANAGE/READ (HR, view/override any review) — the first
+/// module to use the manager relationship for authorization, not just a
+/// role permission (see project memory).
+model PerformanceReview {
+  id         String                  @id @default(uuid())
+  tenantId   String                  @map("tenant_id")
+  employeeId String                  @map("employee_id")
+  cycleId    String                  @map("cycle_id")
+  status     PerformanceReviewStatus @default(DRAFT)
+
+  selfRating      Int?      @map("self_rating")
+  selfComments    String?   @map("self_comments")
+  selfSubmittedAt DateTime? @map("self_submitted_at")
+
+  managerRating     Int?      @map("manager_rating")
+  managerComments   String?   @map("manager_comments")
+  managerUserId     String?   @map("manager_user_id")
+  managerReviewedAt DateTime? @map("manager_reviewed_at")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  employee Employee               @relation(fields: [employeeId], references: [id])
+  cycle    PerformanceReviewCycle @relation(fields: [cycleId], references: [id])
+
+  @@unique([tenantId, employeeId, cycleId])
+  @@index([tenantId])
+  @@index([employeeId])
+  @@index([cycleId])
+  @@map("performance_reviews")
 }

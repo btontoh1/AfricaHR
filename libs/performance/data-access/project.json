@@ -1,0 +1,19 @@
+{
+  "name": "performance-data-access",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/performance/data-access/src",
+  "projectType": "library",
+  "tags": ["scope:performance", "type:data-access"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/performance/data-access",
+        "main": "libs/performance/data-access/src/index.ts",
+        "tsConfig": "libs/performance/data-access/tsconfig.lib.json",
+        "assets": ["libs/performance/data-access/*.md"]
+      }
+    }
+  }
+}

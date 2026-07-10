@@ -1,0 +1,19 @@
+{
+  "name": "@africahr/performance-feature",
+  "version": "0.0.1",
+  "private": true,
+  "type": "commonjs",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "dependencies": {
+    "tslib": "^2.3.0",
+    "@nestjs/swagger": "^11.4.5",
+    "class-validator": "^0.15.1",
+    "@prisma/client": "^7.8.0",
+    "@nestjs/common": "^11.0.0",
+    "@africahr/platform-auth": "0.0.1",
+    "@africahr/platform-audit": "0.0.1",
+    "@africahr/performance-data-access": "0.0.1",
+    "@africahr/performance-domain": "0.0.1"
+  }
+}

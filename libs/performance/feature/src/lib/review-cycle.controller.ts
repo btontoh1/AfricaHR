@@ -1,0 +1,58 @@
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  assertTenantScope,
+  CurrentUser,
+  JwtAuthGuard,
+  Permission,
+  PermissionsGuard,
+  RequestUser,
+  RequirePermissions,
+} from '@africahr/platform-auth';
+import { PerformanceReviewCycleStatus } from '@prisma/client';
+import { ReviewCycleService } from './review-cycle.service';
+import { CreateReviewCycleDto } from './dto/create-review-cycle.dto';
+import { UpdateReviewCycleDto } from './dto/update-review-cycle.dto';
+
+@ApiTags('review-cycles')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@Controller('tenants/:tenantId/review-cycles')
+export class ReviewCycleController {
+  constructor(private readonly cycles: ReviewCycleService) {}
+
+  @Post()
+  @RequirePermissions(Permission.PERFORMANCE_MANAGE)
+  create(
+    @Param('tenantId') tenantId: string,
+    @Body() dto: CreateReviewCycleDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.cycles.create(tenantId, dto, actor.sub);
+  }
+
+  // No permission requirement beyond authentication: every employee needs
+  // to see available cycles in order to start their own review.
+  @Get()
+  list(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() actor: RequestUser,
+    @Query('status') status?: PerformanceReviewCycleStatus,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.cycles.list(tenantId, { status });
+  }
+
+  @Patch(':id')
+  @RequirePermissions(Permission.PERFORMANCE_MANAGE)
+  update(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateReviewCycleDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.cycles.update(tenantId, id, dto, actor.sub);
+  }
+}

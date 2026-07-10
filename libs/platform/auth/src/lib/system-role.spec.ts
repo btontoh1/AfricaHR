@@ -116,4 +116,20 @@ describe('hasPermission', () => {
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.BENEFITS_MANAGE)).toBe(false);
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.BENEFITS_READ)).toBe(false);
   });
+
+  it('grants HR managers and tenant admins full performance management', () => {
+    expect(hasPermission(SystemRole.HR_MANAGER, Permission.PERFORMANCE_MANAGE)).toBe(true);
+    expect(hasPermission(SystemRole.HR_MANAGER, Permission.PERFORMANCE_READ)).toBe(true);
+    expect(hasPermission(SystemRole.TENANT_ADMIN, Permission.PERFORMANCE_MANAGE)).toBe(true);
+  });
+
+  it('grants payroll managers no performance permissions', () => {
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.PERFORMANCE_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.PERFORMANCE_READ)).toBe(false);
+  });
+
+  it('grants employees no performance-management permissions (self and direct-manager access is handled separately)', () => {
+    expect(hasPermission(SystemRole.EMPLOYEE, Permission.PERFORMANCE_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.EMPLOYEE, Permission.PERFORMANCE_READ)).toBe(false);
+  });
 });

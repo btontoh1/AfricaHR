@@ -1,0 +1,19 @@
+{
+  "name": "performance-domain",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/performance/domain/src",
+  "projectType": "library",
+  "tags": ["scope:performance", "type:domain"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/performance/domain",
+        "main": "libs/performance/domain/src/index.ts",
+        "tsConfig": "libs/performance/domain/tsconfig.lib.json",
+        "assets": ["libs/performance/domain/*.md"]
+      }
+    }
+  }
+}

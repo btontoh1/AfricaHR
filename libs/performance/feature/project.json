@@ -1,0 +1,19 @@
+{
+  "name": "performance-feature",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/performance/feature/src",
+  "projectType": "library",
+  "tags": ["scope:performance", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/performance/feature",
+        "main": "libs/performance/feature/src/index.ts",
+        "tsConfig": "libs/performance/feature/tsconfig.lib.json",
+        "assets": ["libs/performance/feature/*.md"]
+      }
+    }
+  }
+}

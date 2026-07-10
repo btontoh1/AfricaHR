@@ -49,3 +49,7 @@ Thumbs.db
 .claude/settings.local.json
 
 .nx/polygraph
+
+# Next.js
+.next
+out

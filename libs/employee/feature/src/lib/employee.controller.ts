@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
   assertTenantScope,
   CurrentUser,
@@ -13,6 +13,7 @@ import { EmployeeService } from './employee.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { UpdateEmploymentStatusDto } from './dto/update-employment-status.dto';
+import { EmployeeResponseDto } from './dto/employee-response.dto';
 
 @ApiTags('employees')
 @ApiBearerAuth()
@@ -23,6 +24,7 @@ export class EmployeeController {
 
   @Post()
   @RequirePermissions(Permission.EMPLOYEE_MANAGE)
+  @ApiOkResponse({ type: EmployeeResponseDto })
   create(
     @Param('tenantId') tenantId: string,
     @Body() dto: CreateEmployeeDto,
@@ -34,6 +36,9 @@ export class EmployeeController {
 
   @Get()
   @RequirePermissions(Permission.EMPLOYEE_READ)
+  @ApiOkResponse({ type: EmployeeResponseDto, isArray: true })
+  @ApiQuery({ name: 'organizationId', required: false })
+  @ApiQuery({ name: 'organizationUnitId', required: false })
   list(
     @Param('tenantId') tenantId: string,
     @CurrentUser() actor: RequestUser,
@@ -46,6 +51,7 @@ export class EmployeeController {
 
   @Get(':id')
   @RequirePermissions(Permission.EMPLOYEE_READ)
+  @ApiOkResponse({ type: EmployeeResponseDto })
   findById(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -57,6 +63,7 @@ export class EmployeeController {
 
   @Patch(':id')
   @RequirePermissions(Permission.EMPLOYEE_MANAGE)
+  @ApiOkResponse({ type: EmployeeResponseDto })
   update(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -69,6 +76,7 @@ export class EmployeeController {
 
   @Patch(':id/status')
   @RequirePermissions(Permission.EMPLOYEE_MANAGE)
+  @ApiOkResponse({ type: EmployeeResponseDto })
   updateStatus(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,

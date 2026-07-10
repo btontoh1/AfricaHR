@@ -37,6 +37,11 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
   // (see system-role.ts) — narrower than hasAdminAccess on purpose.
   const hasLeaveAdminAccess =
     isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
+  // ATTENDANCE_READ/MANAGE are wired to the same roles as LEAVE_READ/MANAGE
+  // (PLATFORM_ADMIN/TENANT_ADMIN/HR_MANAGER) — PAYROLL_MANAGER is excluded
+  // here too, same reasoning as hasLeaveAdminAccess above.
+  const hasAttendanceAdminAccess =
+    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
   const navItems = [
     { label: 'Dashboard', href: '/dashboard' },
     ...(hasAdminAccess ? [{ label: 'Employees', href: '/employees' }] : []),
@@ -49,6 +54,13 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
     ...(isTenantMember ? [{ label: 'Leave', href: '/leave' }] : []),
     ...(hasLeaveAdminAccess ? [{ label: 'Leave Requests', href: '/leave/requests' }] : []),
     ...(hasLeaveAdminAccess ? [{ label: 'Leave Types', href: '/leave/types' }] : []),
+    ...(isTenantMember ? [{ label: 'Attendance', href: '/attendance' }] : []),
+    ...(hasAttendanceAdminAccess
+      ? [{ label: 'Attendance Records', href: '/attendance/records' }]
+      : []),
+    ...(hasAttendanceAdminAccess
+      ? [{ label: 'Attendance Policy', href: '/attendance/policy' }]
+      : []),
   ];
 
   return (

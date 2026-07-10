@@ -1,7 +1,8 @@
 import { Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { assertTenantScope, CurrentUser, JwtAuthGuard, PermissionsGuard, RequestUser } from '@africahr/platform-auth';
 import { AttendanceRecordService } from './attendance-record.service';
+import { AttendanceRecordResponseDto } from './dto/attendance-record-response.dto';
 
 /**
  * Self-service: no @RequirePermissions on this controller — any
@@ -20,6 +21,9 @@ export class MyAttendanceController {
   constructor(private readonly attendance: AttendanceRecordService) {}
 
   @Get()
+  @ApiOkResponse({ type: AttendanceRecordResponseDto, isArray: true })
+  @ApiQuery({ name: 'from', required: false })
+  @ApiQuery({ name: 'to', required: false })
   list(
     @Param('tenantId') tenantId: string,
     @CurrentUser() actor: RequestUser,
@@ -31,12 +35,14 @@ export class MyAttendanceController {
   }
 
   @Post('clock-in')
+  @ApiOkResponse({ type: AttendanceRecordResponseDto })
   clockIn(@Param('tenantId') tenantId: string, @CurrentUser() actor: RequestUser) {
     assertTenantScope(actor, tenantId);
     return this.attendance.clockInForSelf(tenantId, actor.sub);
   }
 
   @Post('clock-out')
+  @ApiOkResponse({ type: AttendanceRecordResponseDto })
   clockOut(@Param('tenantId') tenantId: string, @CurrentUser() actor: RequestUser) {
     assertTenantScope(actor, tenantId);
     return this.attendance.clockOutForSelf(tenantId, actor.sub);

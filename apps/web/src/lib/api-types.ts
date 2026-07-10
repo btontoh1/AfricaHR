@@ -1942,6 +1942,26 @@ export interface components {
              */
             standardDailyHours: number;
         };
+        AttendancePolicyResponseDto: {
+            id: string;
+            tenantId: string;
+            standardDailyHours: string;
+            createdAt: string;
+            updatedAt: string;
+        };
+        AttendanceRecordResponseDto: {
+            id: string;
+            tenantId: string;
+            employeeId: string;
+            date: string;
+            clockIn?: string | null;
+            clockOut?: string | null;
+            hoursWorked?: string | null;
+            overtimeHours?: string | null;
+            notes?: string | null;
+            createdAt: string;
+            updatedAt: string;
+        };
         CreateAttendanceRecordDto: {
             employeeId: string;
             /** @description Calendar day this record is for */
@@ -3662,7 +3682,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AttendancePolicyResponseDto"];
+                };
             };
         };
     };
@@ -3681,19 +3703,21 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AttendancePolicyResponseDto"];
+                };
             };
         };
     };
     MyAttendanceController_list: {
         parameters: {
-            query: {
-                from: string;
-                to: string;
+            query?: {
+                from?: string;
+                to?: string;
             };
             header?: never;
             path: {
@@ -3707,7 +3731,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AttendanceRecordResponseDto"][];
+                };
             };
         };
     };
@@ -3722,11 +3748,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AttendanceRecordResponseDto"];
+                };
             };
         };
     };
@@ -3741,20 +3769,22 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AttendanceRecordResponseDto"];
+                };
             };
         };
     };
     AttendanceController_list: {
         parameters: {
-            query: {
-                employeeId: string;
-                from: string;
-                to: string;
+            query?: {
+                employeeId?: string;
+                from?: string;
+                to?: string;
             };
             header?: never;
             path: {
@@ -3768,7 +3798,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AttendanceRecordResponseDto"][];
+                };
             };
         };
     };
@@ -3787,11 +3819,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AttendanceRecordResponseDto"];
+                };
             };
         };
     };
@@ -3811,7 +3845,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AttendanceRecordResponseDto"];
+                };
             };
         };
     };
@@ -3835,7 +3871,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AttendanceRecordResponseDto"];
+                };
             };
         };
     };

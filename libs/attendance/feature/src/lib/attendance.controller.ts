@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
   assertTenantScope,
   CurrentUser,
@@ -10,6 +10,7 @@ import {
   RequirePermissions,
 } from '@africahr/platform-auth';
 import { AttendanceRecordService } from './attendance-record.service';
+import { AttendanceRecordResponseDto } from './dto/attendance-record-response.dto';
 import { CreateAttendanceRecordDto } from './dto/create-attendance-record.dto';
 import { UpdateAttendanceRecordDto } from './dto/update-attendance-record.dto';
 
@@ -22,6 +23,10 @@ export class AttendanceController {
 
   @Get()
   @RequirePermissions(Permission.ATTENDANCE_READ)
+  @ApiOkResponse({ type: AttendanceRecordResponseDto, isArray: true })
+  @ApiQuery({ name: 'employeeId', required: false })
+  @ApiQuery({ name: 'from', required: false })
+  @ApiQuery({ name: 'to', required: false })
   list(
     @Param('tenantId') tenantId: string,
     @CurrentUser() actor: RequestUser,
@@ -35,6 +40,7 @@ export class AttendanceController {
 
   @Get(':id')
   @RequirePermissions(Permission.ATTENDANCE_READ)
+  @ApiOkResponse({ type: AttendanceRecordResponseDto })
   findById(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -46,6 +52,7 @@ export class AttendanceController {
 
   @Post()
   @RequirePermissions(Permission.ATTENDANCE_MANAGE)
+  @ApiOkResponse({ type: AttendanceRecordResponseDto })
   create(
     @Param('tenantId') tenantId: string,
     @Body() dto: CreateAttendanceRecordDto,
@@ -57,6 +64,7 @@ export class AttendanceController {
 
   @Patch(':id')
   @RequirePermissions(Permission.ATTENDANCE_MANAGE)
+  @ApiOkResponse({ type: AttendanceRecordResponseDto })
   update(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,

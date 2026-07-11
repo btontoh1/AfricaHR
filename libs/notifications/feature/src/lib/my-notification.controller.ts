@@ -1,6 +1,7 @@
 import { Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { assertTenantScope, CurrentUser, JwtAuthGuard, PermissionsGuard, RequestUser } from '@africahr/platform-auth';
+import { NotificationResponseDto } from './dto/notification-response.dto';
 import { NotificationService } from './notification.service';
 
 /**
@@ -20,12 +21,14 @@ export class MyNotificationController {
   constructor(private readonly notifications: NotificationService) {}
 
   @Get()
+  @ApiOkResponse({ type: NotificationResponseDto, isArray: true })
   list(@Param('tenantId') tenantId: string, @CurrentUser() actor: RequestUser) {
     assertTenantScope(actor, tenantId);
     return this.notifications.listForSelf(tenantId, actor.sub);
   }
 
   @Post(':id/read')
+  @ApiOkResponse({ type: NotificationResponseDto })
   markRead(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,

@@ -10,7 +10,11 @@ export class SendFromTemplateDto {
   @IsUUID()
   templateId!: string;
 
-  @ApiPropertyOptional({ example: { firstName: 'Ama', startDate: '2026-06-08' } })
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: { type: 'string' },
+    example: { firstName: 'Ama', startDate: '2026-06-08' },
+  })
   @IsOptional()
   @IsObject()
   variables?: Record<string, string>;

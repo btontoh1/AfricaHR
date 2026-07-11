@@ -51,6 +51,9 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
   // RECRUITMENT_READ/MANAGE are wired the same way — PAYROLL_MANAGER excluded.
   const hasRecruitmentAdminAccess =
     isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
+  // NOTIFICATIONS_READ/MANAGE are wired the same way — PAYROLL_MANAGER excluded.
+  const hasNotificationsAdminAccess =
+    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
   const navItems = [
     { label: 'Dashboard', href: '/dashboard' },
     ...(hasAdminAccess ? [{ label: 'Employees', href: '/employees' }] : []),
@@ -121,6 +124,16 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
     ...(hasAdminAccess ? [{ label: 'Attendance Report', href: '/reports/attendance' }] : []),
     ...(hasAdminAccess
       ? [{ label: 'Recruitment Pipeline Report', href: '/reports/recruitment-pipeline' }]
+      : []),
+    // A notification's recipient is a User, not an Employee — self-service
+    // is role-independent (every tenant member has a User account), same
+    // reasoning as every self-service module since Leave.
+    ...(isTenantMember ? [{ label: 'Notifications', href: '/notifications' }] : []),
+    ...(hasNotificationsAdminAccess
+      ? [{ label: 'Notification Templates', href: '/notifications/templates' }]
+      : []),
+    ...(hasNotificationsAdminAccess
+      ? [{ label: 'Send Notification', href: '/notifications/send' }]
       : []),
   ];
 

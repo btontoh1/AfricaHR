@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
   assertTenantScope,
   CurrentUser,
@@ -10,6 +10,7 @@ import {
   RequirePermissions,
 } from '@africahr/platform-auth';
 import { NotificationStatus } from '@prisma/client';
+import { NotificationResponseDto } from './dto/notification-response.dto';
 import { NotificationService } from './notification.service';
 import { SendFromTemplateDto } from './dto/send-from-template.dto';
 import { SendNotificationDto } from './dto/send-notification.dto';
@@ -23,6 +24,9 @@ export class NotificationController {
 
   @Get()
   @RequirePermissions(Permission.NOTIFICATIONS_READ)
+  @ApiOkResponse({ type: NotificationResponseDto, isArray: true })
+  @ApiQuery({ name: 'userId', required: false })
+  @ApiQuery({ name: 'status', required: false })
   list(
     @Param('tenantId') tenantId: string,
     @CurrentUser() actor: RequestUser,
@@ -35,6 +39,7 @@ export class NotificationController {
 
   @Get(':id')
   @RequirePermissions(Permission.NOTIFICATIONS_READ)
+  @ApiOkResponse({ type: NotificationResponseDto })
   findById(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -46,6 +51,7 @@ export class NotificationController {
 
   @Post()
   @RequirePermissions(Permission.NOTIFICATIONS_MANAGE)
+  @ApiOkResponse({ type: NotificationResponseDto })
   send(
     @Param('tenantId') tenantId: string,
     @Body() dto: SendNotificationDto,
@@ -57,6 +63,7 @@ export class NotificationController {
 
   @Post('from-template')
   @RequirePermissions(Permission.NOTIFICATIONS_MANAGE)
+  @ApiOkResponse({ type: NotificationResponseDto })
   sendFromTemplate(
     @Param('tenantId') tenantId: string,
     @Body() dto: SendFromTemplateDto,

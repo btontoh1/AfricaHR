@@ -1622,6 +1622,19 @@ export interface components {
             /** @enum {string} */
             role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "EMPLOYEE";
         };
+        UserResponseDto: {
+            id: string;
+            tenantId?: string | null;
+            email: string;
+            firstName: string;
+            lastName: string;
+            /** @enum {string} */
+            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "EMPLOYEE";
+            isActive: boolean;
+            lastLoginAt?: string | null;
+            createdAt: string;
+            updatedAt: string;
+        };
         UpdateUserRoleDto: {
             /** @enum {string} */
             role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "EMPLOYEE";
@@ -2337,6 +2350,19 @@ export interface components {
             applicationsByStage: components["schemas"]["ApplicationsByStageResponseDto"][];
             averageTimeToHireDays: number;
         };
+        NotificationTemplateResponseDto: {
+            id: string;
+            tenantId: string;
+            code: string;
+            name: string;
+            /** @enum {string} */
+            channel: "IN_APP" | "EMAIL";
+            subjectTemplate: string;
+            bodyTemplate: string;
+            isActive: boolean;
+            createdAt: string;
+            updatedAt: string;
+        };
         CreateNotificationTemplateDto: {
             /**
              * @description Unique within the tenant
@@ -2357,6 +2383,23 @@ export interface components {
             bodyTemplate?: string;
             isActive?: boolean;
         };
+        NotificationResponseDto: {
+            id: string;
+            tenantId: string;
+            userId: string;
+            /** @enum {string} */
+            channel: "IN_APP" | "EMAIL";
+            subject: string;
+            body: string;
+            /** @enum {string} */
+            status: "PENDING" | "SENT" | "FAILED";
+            isRead: boolean;
+            readAt?: string | null;
+            sentAt?: string | null;
+            failureReason?: string | null;
+            createdAt: string;
+            updatedAt: string;
+        };
         SendNotificationDto: {
             /** @description The User (not Employee) who will receive this notification */
             userId: string;
@@ -2375,7 +2418,9 @@ export interface components {
              *       "startDate": "2026-06-08"
              *     }
              */
-            variables?: Record<string, never>;
+            variables?: {
+                [key: string]: string;
+            };
         };
     };
     responses: never;
@@ -2820,7 +2865,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["UserResponseDto"][];
+                };
             };
         };
     };
@@ -2837,11 +2884,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["UserResponseDto"];
+                };
             };
         };
     };
@@ -2860,7 +2909,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["UserResponseDto"];
+                };
             };
         };
     };
@@ -2879,7 +2930,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["UserResponseDto"];
+                };
             };
         };
     };
@@ -2902,7 +2955,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["UserResponseDto"];
+                };
             };
         };
     };
@@ -2925,7 +2980,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["UserResponseDto"];
+                };
             };
         };
     };
@@ -5485,8 +5542,8 @@ export interface operations {
     };
     NotificationTemplateController_list: {
         parameters: {
-            query: {
-                activeOnly: string;
+            query?: {
+                activeOnly?: string;
             };
             header?: never;
             path: {
@@ -5500,7 +5557,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["NotificationTemplateResponseDto"][];
+                };
             };
         };
     };
@@ -5519,11 +5578,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["NotificationTemplateResponseDto"];
+                };
             };
         };
     };
@@ -5543,7 +5604,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["NotificationTemplateResponseDto"];
+                };
             };
         };
     };
@@ -5567,7 +5630,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["NotificationTemplateResponseDto"];
+                };
             };
         };
     };
@@ -5586,7 +5651,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["NotificationResponseDto"][];
+                };
             };
         };
     };
@@ -5602,18 +5669,21 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["NotificationResponseDto"];
+                };
             };
         };
     };
     NotificationController_list: {
         parameters: {
-            query: {
-                userId: string;
+            query?: {
+                userId?: string;
+                status?: unknown;
             };
             header?: never;
             path: {
@@ -5627,7 +5697,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["NotificationResponseDto"][];
+                };
             };
         };
     };
@@ -5646,11 +5718,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["NotificationResponseDto"];
+                };
             };
         };
     };
@@ -5670,7 +5744,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["NotificationResponseDto"];
+                };
             };
         };
     };
@@ -5689,11 +5765,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["NotificationResponseDto"];
+                };
             };
         };
     };

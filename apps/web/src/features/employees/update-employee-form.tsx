@@ -11,6 +11,7 @@ import {
 import { getApiErrorMessage } from '@/lib/api-error';
 import type { Employee } from './types';
 import { OrganizationUnitPicker } from '@/features/organizations/organization-unit-picker';
+import { UserPicker } from '@/features/iam/user-picker';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -27,6 +28,7 @@ export function UpdateEmployeeForm({ tenantId, employee }: { tenantId: string; e
     defaultValues: {
       organizationUnitId: employee.organizationUnitId ?? '',
       managerId: employee.managerId ?? '',
+      userId: employee.userId ?? '',
       jobTitle: employee.jobTitle,
       baseSalary: employee.baseSalary ?? '',
       payFrequency: employee.payFrequency ?? '',
@@ -38,6 +40,7 @@ export function UpdateEmployeeForm({ tenantId, employee }: { tenantId: string; e
       await updateEmployee.mutateAsync({
         organizationUnitId: toOptional(values.organizationUnitId) ?? null,
         managerId: toOptional(values.managerId) ?? null,
+        userId: toOptional(values.userId) ?? null,
         jobTitle: values.jobTitle,
         baseSalary: values.baseSalary ? Number(values.baseSalary) : null,
         payFrequency: toOptional(values.payFrequency) ?? null,
@@ -90,6 +93,19 @@ export function UpdateEmployeeForm({ tenantId, employee }: { tenantId: string; e
               <FormLabel>Reporting manager ID</FormLabel>
               <FormControl>
                 <Input placeholder="Employee UUID" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="userId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Portal access</FormLabel>
+              <FormControl>
+                <UserPicker value={field.value ?? ''} onChange={field.onChange} allowClear />
               </FormControl>
               <FormMessage />
             </FormItem>

@@ -54,6 +54,11 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
   // NOTIFICATIONS_READ/MANAGE are wired the same way — PAYROLL_MANAGER excluded.
   const hasNotificationsAdminAccess =
     isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
+  // USER_READ/MANAGE are narrower than every other admin permission in this
+  // app — HR_MANAGER only holds USER_READ (not MANAGE), so it gets a
+  // read-only view; PAYROLL_MANAGER holds neither.
+  const hasTeamMembersReadAccess =
+    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
   const navItems = [
     { label: 'Dashboard', href: '/dashboard' },
     ...(hasAdminAccess ? [{ label: 'Employees', href: '/employees' }] : []),
@@ -134,6 +139,9 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
       : []),
     ...(hasNotificationsAdminAccess
       ? [{ label: 'Send Notification', href: '/notifications/send' }]
+      : []),
+    ...(hasTeamMembersReadAccess
+      ? [{ label: 'Team Members', href: '/team-members' }]
       : []),
   ];
 

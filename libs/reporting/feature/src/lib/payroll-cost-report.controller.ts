@@ -1,5 +1,5 @@
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
   assertTenantScope,
   CurrentUser,
@@ -9,6 +9,7 @@ import {
   RequestUser,
   RequirePermissions,
 } from '@africahr/platform-auth';
+import { PayrollCostReportResponseDto } from './dto/payroll-cost-report-response.dto';
 import { PayrollCostReportService } from './payroll-cost-report.service';
 
 @ApiTags('reports')
@@ -20,6 +21,10 @@ export class PayrollCostReportController {
 
   @Get()
   @RequirePermissions(Permission.REPORTING_READ)
+  @ApiOkResponse({ type: PayrollCostReportResponseDto })
+  @ApiQuery({ name: 'from', required: false })
+  @ApiQuery({ name: 'to', required: false })
+  @ApiQuery({ name: 'organizationId', required: false })
   generate(
     @Param('tenantId') tenantId: string,
     @CurrentUser() actor: RequestUser,

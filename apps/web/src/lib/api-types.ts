@@ -2289,6 +2289,54 @@ export interface components {
             /** @description The Employee record HR created for this hire via the Employee module */
             employeeId: string;
         };
+        HeadcountByEmploymentTypeResponseDto: {
+            /** @enum {string} */
+            employmentType: "FULL_TIME" | "PART_TIME" | "CONTRACT" | "INTERN";
+            count: number;
+        };
+        HeadcountByOrganizationUnitResponseDto: {
+            organizationUnitId?: string | null;
+            count: number;
+        };
+        HeadcountReportResponseDto: {
+            activeCount: number;
+            byEmploymentType: components["schemas"]["HeadcountByEmploymentTypeResponseDto"][];
+            byOrganizationUnit: components["schemas"]["HeadcountByOrganizationUnitResponseDto"][];
+            /** @description Only present when both from and to are supplied */
+            hiresInPeriod?: number;
+            /** @description Only present when both from and to are supplied */
+            terminationsInPeriod?: number;
+        };
+        PayrollCostReportResponseDto: {
+            payslipCount: number;
+            totalGrossPay: number;
+            totalNetPay: number;
+            totalDeductions: number;
+            totalEmployerCost: number;
+        };
+        LeaveUtilizationReportEntryResponseDto: {
+            leaveTypeId: string;
+            leaveTypeName: string;
+            totalEntitledDays: number;
+            totalUsedDays: number;
+            utilizationPercent: number;
+        };
+        AttendanceReportResponseDto: {
+            recordCount: number;
+            employeeCount: number;
+            totalHoursWorked: number;
+            totalOvertimeHours: number;
+        };
+        ApplicationsByStageResponseDto: {
+            /** @enum {string} */
+            stage: "APPLIED" | "SCREENING" | "INTERVIEW" | "OFFER" | "HIRED" | "REJECTED" | "WITHDRAWN";
+            count: number;
+        };
+        RecruitmentPipelineReportResponseDto: {
+            openRequisitions: number;
+            applicationsByStage: components["schemas"]["ApplicationsByStageResponseDto"][];
+            averageTimeToHireDays: number;
+        };
         CreateNotificationTemplateDto: {
             /**
              * @description Unique within the tenant
@@ -5314,10 +5362,10 @@ export interface operations {
     };
     HeadcountReportController_generate: {
         parameters: {
-            query: {
-                organizationId: string;
-                from: string;
-                to: string;
+            query?: {
+                organizationId?: string;
+                from?: string;
+                to?: string;
             };
             header?: never;
             path: {
@@ -5331,16 +5379,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["HeadcountReportResponseDto"];
+                };
             };
         };
     };
     PayrollCostReportController_generate: {
         parameters: {
-            query: {
-                from: string;
-                to: string;
-                organizationId: string;
+            query?: {
+                from?: string;
+                to?: string;
+                organizationId?: string;
             };
             header?: never;
             path: {
@@ -5354,16 +5404,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PayrollCostReportResponseDto"];
+                };
             };
         };
     };
     LeaveUtilizationReportController_generate: {
         parameters: {
-            query: {
-                year: string;
-                organizationId: string;
-                leaveTypeId: string;
+            query?: {
+                year?: string;
+                organizationId?: string;
+                leaveTypeId?: string;
             };
             header?: never;
             path: {
@@ -5377,16 +5429,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["LeaveUtilizationReportEntryResponseDto"][];
+                };
             };
         };
     };
     AttendanceReportController_generate: {
         parameters: {
-            query: {
-                from: string;
-                to: string;
-                organizationId: string;
+            query?: {
+                from?: string;
+                to?: string;
+                organizationId?: string;
             };
             header?: never;
             path: {
@@ -5400,14 +5454,16 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AttendanceReportResponseDto"];
+                };
             };
         };
     };
     RecruitmentPipelineReportController_generate: {
         parameters: {
-            query: {
-                organizationId: string;
+            query?: {
+                organizationId?: string;
             };
             header?: never;
             path: {
@@ -5421,7 +5477,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RecruitmentPipelineReportResponseDto"];
+                };
             };
         };
     };

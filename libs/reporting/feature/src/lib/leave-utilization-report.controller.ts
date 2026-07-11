@@ -1,5 +1,5 @@
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
   assertTenantScope,
   CurrentUser,
@@ -9,6 +9,7 @@ import {
   RequestUser,
   RequirePermissions,
 } from '@africahr/platform-auth';
+import { LeaveUtilizationReportEntryResponseDto } from './dto/leave-utilization-report-entry-response.dto';
 import { LeaveUtilizationReportService } from './leave-utilization-report.service';
 
 @ApiTags('reports')
@@ -20,6 +21,10 @@ export class LeaveUtilizationReportController {
 
   @Get()
   @RequirePermissions(Permission.REPORTING_READ)
+  @ApiOkResponse({ type: LeaveUtilizationReportEntryResponseDto, isArray: true })
+  @ApiQuery({ name: 'year', required: false })
+  @ApiQuery({ name: 'organizationId', required: false })
+  @ApiQuery({ name: 'leaveTypeId', required: false })
   generate(
     @Param('tenantId') tenantId: string,
     @CurrentUser() actor: RequestUser,

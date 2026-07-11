@@ -1,5 +1,5 @@
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
   assertTenantScope,
   CurrentUser,
@@ -9,6 +9,7 @@ import {
   RequestUser,
   RequirePermissions,
 } from '@africahr/platform-auth';
+import { RecruitmentPipelineReportResponseDto } from './dto/recruitment-pipeline-report-response.dto';
 import { RecruitmentPipelineReportService } from './recruitment-pipeline-report.service';
 
 @ApiTags('reports')
@@ -20,6 +21,8 @@ export class RecruitmentPipelineReportController {
 
   @Get()
   @RequirePermissions(Permission.REPORTING_READ)
+  @ApiOkResponse({ type: RecruitmentPipelineReportResponseDto })
+  @ApiQuery({ name: 'organizationId', required: false })
   generate(
     @Param('tenantId') tenantId: string,
     @CurrentUser() actor: RequestUser,

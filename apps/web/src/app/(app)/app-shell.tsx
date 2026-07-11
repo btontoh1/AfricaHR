@@ -107,6 +107,21 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
     ...(isTenantMember
       ? [{ label: 'My Applications', href: '/recruitment/applications/mine' }]
       : []),
+    // REPORTING_READ is held by TENANT_ADMIN/HR_MANAGER/PAYROLL_MANAGER —
+    // hasAdminAccess (not EMPLOYEE) matches this module's real permission
+    // boundary exactly, same as Payroll's nav check, unlike the narrower
+    // TENANT_ADMIN/HR_MANAGER-only checks used everywhere else this
+    // session — PAYROLL_MANAGER holds REPORTING_READ for all five reports,
+    // not just payroll-cost (a single permission, no per-report split).
+    ...(hasAdminAccess ? [{ label: 'Headcount Report', href: '/reports/headcount' }] : []),
+    ...(hasAdminAccess ? [{ label: 'Payroll Cost Report', href: '/reports/payroll-cost' }] : []),
+    ...(hasAdminAccess
+      ? [{ label: 'Leave Utilization Report', href: '/reports/leave-utilization' }]
+      : []),
+    ...(hasAdminAccess ? [{ label: 'Attendance Report', href: '/reports/attendance' }] : []),
+    ...(hasAdminAccess
+      ? [{ label: 'Recruitment Pipeline Report', href: '/reports/recruitment-pipeline' }]
+      : []),
   ];
 
   return (

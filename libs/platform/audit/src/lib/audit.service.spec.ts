@@ -5,12 +5,18 @@ describe('AuditService', () => {
   let service: AuditService;
   let create: jest.Mock;
   let withTenantContext: jest.Mock;
-  let prisma: { auditLog: { create: jest.Mock }; withTenantContext: jest.Mock };
+  let withPlatformScope: jest.Mock;
+  let prisma: {
+    auditLog: { create: jest.Mock };
+    withTenantContext: jest.Mock;
+    withPlatformScope: jest.Mock;
+  };
 
   beforeEach(() => {
     create = jest.fn().mockResolvedValue(undefined);
     withTenantContext = jest.fn((_tenantId, fn) => fn({ auditLog: { create } }));
-    prisma = { auditLog: { create }, withTenantContext };
+    withPlatformScope = jest.fn((fn) => fn({ auditLog: { create } }));
+    prisma = { auditLog: { create }, withTenantContext, withPlatformScope };
 
     service = new AuditService(prisma as unknown as PrismaService);
   });
@@ -30,7 +36,7 @@ describe('AuditService', () => {
     });
   });
 
-  it('writes directly when tenantId is null (platform-admin action)', async () => {
+  it('writes under the platform scope when tenantId is null (platform-admin action)', async () => {
     await service.record({
       tenantId: null,
       actorUserId: null,
@@ -40,6 +46,7 @@ describe('AuditService', () => {
     });
 
     expect(withTenantContext).not.toHaveBeenCalled();
+    expect(withPlatformScope).toHaveBeenCalledWith(expect.any(Function));
     expect(create).toHaveBeenCalledWith({
       data: expect.objectContaining({ tenantId: null, action: 'tenant.created' }),
     });

@@ -71,20 +71,42 @@ Use this variant instead:
 CREATE POLICY tenant_isolation ON "users"
   USING (
     tenant_id = current_setting('app.current_tenant_id', true)
-    OR (tenant_id IS NULL AND current_setting('app.current_tenant_id', true) IS NULL)
+    OR (tenant_id IS NULL AND current_setting('app.current_tenant_id', true) = '__platform__')
   );
 ```
 
 A row is visible if its `tenant_id` matches the current tenant context, OR
-the row is platform-admin-owned AND no tenant context is set. This keeps
-both directions strict: a tenant-scoped query never sees platform-admin
-rows, and an unscoped (platform-admin) query never accidentally sees another
-tenant's rows.
+the row is platform-admin-owned AND the platform sentinel is set. This
+keeps both directions strict: a tenant-scoped query never sees
+platform-admin rows, and a platform-scoped query never accidentally sees
+another tenant's rows.
 
-Note this does **not** make tenant-scoped rows visible to an unscoped query
-— it only exempts platform-admin rows. A genuinely cross-tenant unscoped
-lookup (e.g. login resolving a user by email alone, before any tenant is
-known) needs the pattern in §5 instead.
+**Compare against an explicit sentinel string (`'__platform__'`, exported as
+`PLATFORM_SCOPE_SENTINEL` from `@africahr/platform-database`), never
+`current_setting(...) IS NULL`.** This was the original design and it is
+wrong — found the hard way (2026-07-11) as a real, reproducible
+`PrismaClientKnownRequestError P2025` on concurrent platform-admin logins.
+The mechanism: once a Postgres session has `SET` a custom GUC even a single
+time, `current_setting(name, true)` can **never return NULL for it again**
+for the life of that session — not via `RESET`, not via
+`set_config(name, NULL, is_local)`; both just revert it to an empty string
+or the session-level value, never back to true "never touched" NULL
+(verified directly against Postgres, not assumed). On a connection that's
+never touched the GUC, `IS NULL` happens to work — which is exactly why
+this shipped and passed every manual test for weeks: single, low-concurrency
+requests kept landing on fresh-enough pooled connections. Under real
+concurrent load, a platform-admin query landing on any connection that had
+*ever* previously served a tenant-scoped query would have its own row
+silently filtered out. Use `this.prisma.withPlatformScope(fn)` (mirrors
+`withTenantContext`, sets the sentinel instead of a tenant id) for every
+platform-admin-scoped query — never run one bare against `this.prisma`
+with no transaction, and never write a policy or a GUC-clearing call that
+relies on reaching true NULL.
+
+Note this does **not** make tenant-scoped rows visible to a platform-scoped
+query — it only exempts platform-admin rows. A genuinely cross-tenant
+unscoped lookup (e.g. login resolving a user by email alone, before any
+tenant is known) needs the pattern in §5 instead.
 
 ## 5. Genuinely cross-tenant lookups (`SECURITY DEFINER` functions)
 

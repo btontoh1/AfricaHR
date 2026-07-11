@@ -15,10 +15,49 @@ concurrency:
 jobs:
   main:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: africahr
+          POSTGRES_PASSWORD: africahr
+          POSTGRES_DB: africahr
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U africahr"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
+      # Migration/owner role — CI-only fixed credentials for an ephemeral,
+      # thrown-away-every-run database. Never used outside this job.
       DATABASE_URL: postgresql://africahr:africahr@localhost:5432/africahr
+      # Least-privilege runtime role (see docker/postgres-init/01-create-app-role.sh,
+      # provisioned by the "Provision least-privilege DB role" step below) —
+      # api-e2e needs this to be the real app connection so RLS is actually
+      # enforced, matching how the app connects outside CI.
+      APP_DATABASE_URL: postgresql://africahr_app:africahr_app@localhost:5432/africahr
+      APP_DB_PASSWORD: africahr_app
       REDIS_HOST: localhost
       REDIS_PORT: 6379
+      # Fixed test-only secrets: fine to check in since this database and
+      # process are destroyed at the end of every job.
+      JWT_ACCESS_SECRET: ci-only-access-secret-not-a-real-secret-00000000
+      JWT_REFRESH_SECRET: ci-only-refresh-secret-not-a-real-secret-00000
+      SEED_ADMIN_EMAIL: admin@africahr.local
+      SEED_ADMIN_PASSWORD: CiSeedAdminPass123
+      CORS_ORIGINS: http://localhost:4200
+      PORT: 3000
     steps:
       - uses: actions/checkout@v4
         with:
@@ -44,3 +83,23 @@ jobs:
 
       - name: Build affected
         run: npx nx affected -t build --parallel=3
+
+      - name: Provision least-privilege DB role
+        # Reuses the same script docker-compose mounts into
+        # docker-entrypoint-initdb.d for local dev, so there is exactly one
+        # place this role-creation SQL is written. PGHOST/PGPASSWORD replace
+        # the trust-auth Unix socket docker-entrypoint-initdb.d normally runs
+        # under with real network auth against the service container.
+        env:
+          PGHOST: localhost
+          PGPASSWORD: africahr
+        run: sh docker/postgres-init/01-create-app-role.sh
+
+      - name: Run migrations
+        run: npm run prisma:deploy
+
+      - name: Seed platform admin + statutory data
+        run: npm run prisma:seed
+
+      - name: E2E affected
+        run: npx nx affected -t e2e --parallel=1

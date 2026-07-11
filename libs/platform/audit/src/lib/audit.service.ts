@@ -43,7 +43,7 @@ export class AuditService {
           tx.auditLog.create({ data }),
         );
       } else {
-        await this.prisma.auditLog.create({ data });
+        await this.prisma.withPlatformScope((tx) => tx.auditLog.create({ data }));
       }
     } catch (error) {
       this.logger.error(

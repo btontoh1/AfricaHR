@@ -11,8 +11,14 @@ describe('UserRepository', () => {
     update: jest.Mock;
   };
   let withTenantContext: jest.Mock;
+  let withPlatformScope: jest.Mock;
   let queryRaw: jest.Mock;
-  let prisma: { user: typeof userDelegate; withTenantContext: jest.Mock; $queryRaw: jest.Mock };
+  let prisma: {
+    user: typeof userDelegate;
+    withTenantContext: jest.Mock;
+    withPlatformScope: jest.Mock;
+    $queryRaw: jest.Mock;
+  };
 
   beforeEach(() => {
     userDelegate = {
@@ -22,8 +28,9 @@ describe('UserRepository', () => {
       update: jest.fn(),
     };
     withTenantContext = jest.fn((_tenantId, fn) => fn({ user: userDelegate }));
+    withPlatformScope = jest.fn((fn) => fn({ user: userDelegate }));
     queryRaw = jest.fn().mockResolvedValue([]);
-    prisma = { user: userDelegate, withTenantContext, $queryRaw: queryRaw };
+    prisma = { user: userDelegate, withTenantContext, withPlatformScope, $queryRaw: queryRaw };
 
     repository = new UserRepository(prisma as unknown as PrismaService);
   });
@@ -45,6 +52,7 @@ describe('UserRepository', () => {
       const result = await repository.findByEmail('admin@africahr.com');
 
       expect(withTenantContext).not.toHaveBeenCalled();
+      expect(withPlatformScope).not.toHaveBeenCalled();
       expect(queryRaw).toHaveBeenCalled();
       expect(result).toEqual(row);
     });
@@ -59,7 +67,7 @@ describe('UserRepository', () => {
   });
 
   describe('create', () => {
-    it('creates a platform admin (tenantId null) without tenant scoping', async () => {
+    it('creates a platform admin (tenantId null) under the platform scope, not tenant scope', async () => {
       await repository.create({
         tenantId: null,
         email: 'admin@africahr.com',
@@ -70,6 +78,7 @@ describe('UserRepository', () => {
       });
 
       expect(withTenantContext).not.toHaveBeenCalled();
+      expect(withPlatformScope).toHaveBeenCalledWith(expect.any(Function));
       expect(userDelegate.create).toHaveBeenCalledWith({
         data: expect.objectContaining({ tenantId: null, role: SystemRole.PLATFORM_ADMIN }),
       });

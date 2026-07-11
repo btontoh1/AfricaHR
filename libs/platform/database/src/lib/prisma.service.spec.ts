@@ -32,4 +32,25 @@ describe('PrismaService', () => {
       expect(callback).toHaveBeenCalledWith(fakeTx);
     });
   });
+
+  describe('withPlatformScope', () => {
+    it('resets the tenant GUC and runs the callback inside its own transaction', async () => {
+      const executeRaw = jest.fn().mockResolvedValue(undefined);
+      const fakeTx = { $executeRaw: executeRaw };
+
+      jest
+        .spyOn(service, '$transaction')
+        .mockImplementation(async (fn: unknown) =>
+          (fn as (tx: typeof fakeTx) => Promise<unknown>)(fakeTx),
+        );
+
+      const callback = jest.fn().mockResolvedValue('result');
+
+      const result = await service.withPlatformScope(callback);
+
+      expect(result).toBe('result');
+      expect(executeRaw).toHaveBeenCalledTimes(1);
+      expect(callback).toHaveBeenCalledWith(fakeTx);
+    });
+  });
 });

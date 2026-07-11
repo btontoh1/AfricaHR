@@ -10,7 +10,12 @@ describe('RefreshTokenRepository', () => {
     updateMany: jest.Mock;
   };
   let withTenantContext: jest.Mock;
-  let prisma: { refreshToken: typeof tokenDelegate; withTenantContext: jest.Mock };
+  let withPlatformScope: jest.Mock;
+  let prisma: {
+    refreshToken: typeof tokenDelegate;
+    withTenantContext: jest.Mock;
+    withPlatformScope: jest.Mock;
+  };
 
   beforeEach(() => {
     tokenDelegate = {
@@ -20,7 +25,8 @@ describe('RefreshTokenRepository', () => {
       updateMany: jest.fn(),
     };
     withTenantContext = jest.fn((_tenantId, fn) => fn({ refreshToken: tokenDelegate }));
-    prisma = { refreshToken: tokenDelegate, withTenantContext };
+    withPlatformScope = jest.fn((fn) => fn({ refreshToken: tokenDelegate }));
+    prisma = { refreshToken: tokenDelegate, withTenantContext, withPlatformScope };
 
     repository = new RefreshTokenRepository(prisma as unknown as PrismaService);
   });
@@ -29,12 +35,13 @@ describe('RefreshTokenRepository', () => {
     await repository.findByTokenHash('hash-abc');
 
     expect(withTenantContext).not.toHaveBeenCalled();
+    expect(withPlatformScope).not.toHaveBeenCalled();
     expect(tokenDelegate.findFirst).toHaveBeenCalledWith({
       where: { tokenHash: 'hash-abc', revokedAt: null },
     });
   });
 
-  it('creates a token for a platform admin (tenantId null) without scoping', async () => {
+  it('creates a token for a platform admin (tenantId null) under the platform scope', async () => {
     await repository.create({
       tenantId: null,
       userId: 'user-1',
@@ -43,6 +50,7 @@ describe('RefreshTokenRepository', () => {
     });
 
     expect(withTenantContext).not.toHaveBeenCalled();
+    expect(withPlatformScope).toHaveBeenCalledWith(expect.any(Function));
   });
 
   it('creates a tenant user token within tenant scope', async () => {

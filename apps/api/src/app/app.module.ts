@@ -12,11 +12,13 @@ import { PerformanceFeatureModule } from '@africahr/performance-feature';
 import { RecruitmentFeatureModule } from '@africahr/recruitment-feature';
 import { ReportingFeatureModule } from '@africahr/reporting-feature';
 import { NotificationsFeatureModule } from '@africahr/notifications-feature';
+import { SetupModule } from './setup/setup.module';
 
 @Module({
   imports: [
     CoreModule,
     HealthModule,
+    SetupModule,
     IamFeatureModule,
     TenancyFeatureModule,
     EmployeeFeatureModule,

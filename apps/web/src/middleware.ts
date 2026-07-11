@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from '@/lib/auth-cookie-names';
 
-const PUBLIC_PATHS = ['/login'];
+const PUBLIC_PATHS = ['/login', '/setup'];
 
 // Fast, cookie-presence-only gate — not a full JWT verification (Edge
 // middleware has no easy access to the backend's signing secret, and

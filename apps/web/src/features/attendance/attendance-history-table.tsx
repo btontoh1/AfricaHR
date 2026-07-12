@@ -1,11 +1,15 @@
 'use client';
 
 import { useState } from 'react';
+import { History } from 'lucide-react';
 import { useMyAttendance } from './queries';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Skeleton } from '@/components/ui/skeleton';
+import { TableCard } from '@/components/table-card';
+import { EmptyState } from '@/components/empty-state';
+import { TableSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
 import {
   Table,
   TableBody,
@@ -40,48 +44,41 @@ export function AttendanceHistoryTable({ tenantId }: { tenantId: string }) {
         </div>
       </div>
 
-      {isLoading && (
-        <div className="space-y-2">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-      )}
+      {isLoading && <TableSkeleton />}
 
-      {isError && (
-        <p className="text-sm text-destructive">
-          {getApiErrorMessage(error, 'Failed to load attendance history')}
-        </p>
-      )}
+      {isError && <ErrorState message={getApiErrorMessage(error, 'Failed to load attendance history')} />}
 
       {records && records.length === 0 && (
-        <p className="text-sm text-muted-foreground">No attendance records yet.</p>
+        <EmptyState icon={History} title="No attendance records yet" />
       )}
 
       {records && records.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Clock in</TableHead>
-              <TableHead>Clock out</TableHead>
-              <TableHead>Hours worked</TableHead>
-              <TableHead>Overtime</TableHead>
-              <TableHead>Notes</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {records.map((record) => (
-              <TableRow key={record.id}>
-                <TableCell>{record.date.slice(0, 10)}</TableCell>
-                <TableCell>{formatTime(record.clockIn)}</TableCell>
-                <TableCell>{formatTime(record.clockOut)}</TableCell>
-                <TableCell>{record.hoursWorked ?? '—'}</TableCell>
-                <TableCell>{record.overtimeHours ?? '—'}</TableCell>
-                <TableCell>{record.notes ?? '—'}</TableCell>
+        <TableCard>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Clock in</TableHead>
+                <TableHead>Clock out</TableHead>
+                <TableHead>Hours worked</TableHead>
+                <TableHead>Overtime</TableHead>
+                <TableHead>Notes</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {records.map((record) => (
+                <TableRow key={record.id}>
+                  <TableCell>{record.date.slice(0, 10)}</TableCell>
+                  <TableCell>{formatTime(record.clockIn)}</TableCell>
+                  <TableCell>{formatTime(record.clockOut)}</TableCell>
+                  <TableCell>{record.hoursWorked ?? '—'}</TableCell>
+                  <TableCell>{record.overtimeHours ?? '—'}</TableCell>
+                  <TableCell className="text-muted-foreground">{record.notes ?? '—'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       )}
     </div>
   );

@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
+import { CardSkeleton } from '@/components/loading-state';
 
 function PolicyForm({
   tenantId,
@@ -85,7 +85,7 @@ export function AttendancePolicyForm({ tenantId }: { tenantId: string }) {
   const { data: policy, isLoading, isError } = useAttendancePolicy(tenantId);
 
   if (isLoading) {
-    return <Skeleton className="h-32 w-full" />;
+    return <CardSkeleton />;
   }
 
   return (

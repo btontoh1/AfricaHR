@@ -2,6 +2,7 @@
 
 import { useSession } from '../session-provider';
 import { MyNotificationsList } from '@/features/notifications/my-notifications-list';
+import { PageHeader } from '@/components/page-header';
 
 export default function NotificationsPage() {
   const session = useSession();
@@ -9,7 +10,7 @@ export default function NotificationsPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold">Notifications</h1>
+      <PageHeader title="Notifications" description="Your recent notifications." />
       <MyNotificationsList tenantId={tenantId} />
     </div>
   );

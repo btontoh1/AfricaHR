@@ -2,6 +2,7 @@
 
 import { useSession } from '../../session-provider';
 import { RequisitionsList } from '@/features/recruitment/requisitions-list';
+import { PageHeader } from '@/components/page-header';
 
 export default function RequisitionsPage() {
   const session = useSession();
@@ -9,7 +10,7 @@ export default function RequisitionsPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold">Job requisitions</h1>
+      <PageHeader title="Job requisitions" description="Review and approve open headcount requests." />
       <RequisitionsList tenantId={tenantId} />
     </div>
   );

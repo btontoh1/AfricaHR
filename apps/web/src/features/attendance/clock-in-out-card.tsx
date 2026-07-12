@@ -1,11 +1,12 @@
 'use client';
 
+import { Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useClockIn, useClockOut, useMyAttendance } from './queries';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { CardSkeleton } from '@/components/loading-state';
 
 export function ClockInOutCard({ tenantId }: { tenantId: string }) {
   const { data: records, isLoading } = useMyAttendance(tenantId);
@@ -33,13 +34,16 @@ export function ClockInOutCard({ tenantId }: { tenantId: string }) {
   }
 
   if (isLoading) {
-    return <Skeleton className="h-32 w-full" />;
+    return <CardSkeleton />;
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{openRecord ? 'Currently clocked in' : 'Not clocked in'}</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <Clock className="size-4 text-muted-foreground" />
+          {openRecord ? 'Currently clocked in' : 'Not clocked in'}
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {openRecord?.clockIn && (

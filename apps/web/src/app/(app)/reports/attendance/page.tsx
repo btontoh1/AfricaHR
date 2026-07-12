@@ -2,6 +2,7 @@
 
 import { useSession } from '../../session-provider';
 import { AttendanceReport } from '@/features/reporting/attendance-report';
+import { PageHeader } from '@/components/page-header';
 
 export default function AttendanceReportPage() {
   const session = useSession();
@@ -9,7 +10,7 @@ export default function AttendanceReportPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold">Attendance</h1>
+      <PageHeader title="Attendance" description="Attendance and overtime trends across your organization." />
       <AttendanceReport tenantId={tenantId} />
     </div>
   );

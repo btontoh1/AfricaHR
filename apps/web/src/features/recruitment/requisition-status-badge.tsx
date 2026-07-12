@@ -1,10 +1,13 @@
 import { Badge } from '@/components/ui/badge';
 import type { JobRequisitionStatus } from './types';
 
-const STATUS_VARIANT: Record<JobRequisitionStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+const STATUS_VARIANT: Record<
+  JobRequisitionStatus,
+  'secondary' | 'destructive' | 'outline' | 'success' | 'warning'
+> = {
   DRAFT: 'outline',
-  OPEN: 'default',
-  ON_HOLD: 'secondary',
+  OPEN: 'success',
+  ON_HOLD: 'warning',
   CLOSED: 'secondary',
   CANCELLED: 'destructive',
 };

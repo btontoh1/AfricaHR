@@ -2,13 +2,17 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { Briefcase, Plus } from 'lucide-react';
 import { useRequisitions } from './queries';
 import { RequisitionStatusBadge } from './requisition-status-badge';
 import { REQUISITION_STATUS_OPTIONS } from './recruitment-form-schema';
 import type { JobRequisitionStatus } from './types';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { TableCard } from '@/components/table-card';
+import { EmptyState } from '@/components/empty-state';
+import { TableSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
 import {
   Select,
   SelectContent,
@@ -50,59 +54,57 @@ export function RequisitionsList({ tenantId }: { tenantId: string }) {
           </SelectContent>
         </Select>
         <Button asChild>
-          <Link href="/recruitment/requisitions/new">New requisition</Link>
+          <Link href="/recruitment/requisitions/new">
+            <Plus className="size-4" />
+            New requisition
+          </Link>
         </Button>
       </div>
 
-      {isLoading && (
-        <div className="space-y-2">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-      )}
+      {isLoading && <TableSkeleton />}
 
-      {isError && (
-        <p className="text-sm text-destructive">
-          {getApiErrorMessage(error, 'Failed to load job requisitions')}
-        </p>
-      )}
+      {isError && <ErrorState message={getApiErrorMessage(error, 'Failed to load job requisitions')} />}
 
       {requisitions && requisitions.length === 0 && (
-        <p className="text-sm text-muted-foreground">No job requisitions match this filter.</p>
+        <EmptyState icon={Briefcase} title="No job requisitions match this filter" />
       )}
 
       {requisitions && requisitions.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Title</TableHead>
-              <TableHead>Employment type</TableHead>
-              <TableHead>Openings</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {requisitions.map((requisition) => (
-              <TableRow key={requisition.id}>
-                <TableCell>{requisition.title}</TableCell>
-                <TableCell>{requisition.employmentType.replace('_', ' ')}</TableCell>
-                <TableCell>{requisition.openings}</TableCell>
-                <TableCell>
-                  <RequisitionStatusBadge status={requisition.status} />
-                </TableCell>
-                <TableCell>
-                  <Link
-                    href={`/recruitment/requisitions/${requisition.id}`}
-                    className="text-sm underline"
-                  >
-                    View
-                  </Link>
-                </TableCell>
+        <TableCard>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Title</TableHead>
+                <TableHead>Employment type</TableHead>
+                <TableHead>Openings</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead />
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {requisitions.map((requisition) => (
+                <TableRow key={requisition.id}>
+                  <TableCell className="font-medium">{requisition.title}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {requisition.employmentType.replace('_', ' ')}
+                  </TableCell>
+                  <TableCell>{requisition.openings}</TableCell>
+                  <TableCell>
+                    <RequisitionStatusBadge status={requisition.status} />
+                  </TableCell>
+                  <TableCell>
+                    <Link
+                      href={`/recruitment/requisitions/${requisition.id}`}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      View
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       )}
     </div>
   );

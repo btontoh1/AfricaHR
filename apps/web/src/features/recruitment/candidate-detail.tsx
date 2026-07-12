@@ -13,7 +13,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
+import { CardSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
+import { PageHeader } from '@/components/page-header';
 
 export function CandidateDetail({ tenantId, candidateId }: { tenantId: string; candidateId: string }) {
   const { data: candidate, isLoading, isError, error } = useCandidate(tenantId, candidateId);
@@ -48,27 +50,16 @@ export function CandidateDetail({ tenantId, candidateId }: { tenantId: string; c
   }
 
   if (isLoading) {
-    return (
-      <div className="space-y-2">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-32 w-full" />
-      </div>
-    );
+    return <CardSkeleton />;
   }
 
   if (isError || !candidate) {
-    return (
-      <p className="text-sm text-destructive">
-        {getApiErrorMessage(error, 'Failed to load candidate')}
-      </p>
-    );
+    return <ErrorState message={getApiErrorMessage(error, 'Failed to load candidate')} />;
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">
-        {candidate.firstName} {candidate.lastName}
-      </h1>
+      <PageHeader title={`${candidate.firstName} ${candidate.lastName}`} />
 
       <Card>
         <CardHeader>

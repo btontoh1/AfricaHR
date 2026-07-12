@@ -1,11 +1,15 @@
 'use client';
 
+import { CalendarRange } from 'lucide-react';
 import { toast } from 'sonner';
 import { useReviewCycles, useUpdateReviewCycle } from './queries';
 import { ReviewCycleStatusBadge } from './review-cycle-status-badge';
 import { getApiErrorMessage } from '@/lib/api-error';
 import type { ReviewCycleStatus } from './types';
-import { Skeleton } from '@/components/ui/skeleton';
+import { TableCard } from '@/components/table-card';
+import { EmptyState } from '@/components/empty-state';
+import { TableSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
 import {
   Select,
   SelectContent,
@@ -56,51 +60,44 @@ export function ReviewCyclesList({ tenantId }: { tenantId: string }) {
   const { data: cycles, isLoading, isError, error } = useReviewCycles(tenantId);
 
   if (isLoading) {
-    return (
-      <div className="space-y-2">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-      </div>
-    );
+    return <TableSkeleton />;
   }
 
   if (isError) {
-    return (
-      <p className="text-sm text-destructive">
-        {getApiErrorMessage(error, 'Failed to load review cycles')}
-      </p>
-    );
+    return <ErrorState message={getApiErrorMessage(error, 'Failed to load review cycles')} />;
   }
 
   if (!cycles || cycles.length === 0) {
-    return <p className="text-sm text-muted-foreground">No review cycles yet.</p>;
+    return <EmptyState icon={CalendarRange} title="No review cycles yet" description="Add the first cycle above." />;
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>Start date</TableHead>
-          <TableHead>End date</TableHead>
-          <TableHead>Status</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {cycles.map((cycle) => (
-          <TableRow key={cycle.id}>
-            <TableCell>{cycle.name}</TableCell>
-            <TableCell>{cycle.startDate.slice(0, 10)}</TableCell>
-            <TableCell>{cycle.endDate.slice(0, 10)}</TableCell>
-            <TableCell>
-              <div className="flex items-center gap-2">
-                <ReviewCycleStatusBadge status={cycle.status} />
-                <StatusControl tenantId={tenantId} id={cycle.id} status={cycle.status} />
-              </div>
-            </TableCell>
+    <TableCard>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Start date</TableHead>
+            <TableHead>End date</TableHead>
+            <TableHead>Status</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {cycles.map((cycle) => (
+            <TableRow key={cycle.id}>
+              <TableCell className="font-medium">{cycle.name}</TableCell>
+              <TableCell className="text-muted-foreground">{cycle.startDate.slice(0, 10)}</TableCell>
+              <TableCell className="text-muted-foreground">{cycle.endDate.slice(0, 10)}</TableCell>
+              <TableCell>
+                <div className="flex items-center gap-2">
+                  <ReviewCycleStatusBadge status={cycle.status} />
+                  <StatusControl tenantId={tenantId} id={cycle.id} status={cycle.status} />
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableCard>
   );
 }

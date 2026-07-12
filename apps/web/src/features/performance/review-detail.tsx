@@ -6,7 +6,9 @@ import { SelfAssessmentForm } from './self-assessment-form';
 import { ManagerAssessmentForm } from './manager-assessment-form';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { CardSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
+import { PageHeader } from '@/components/page-header';
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -38,20 +40,11 @@ export function ReviewDetail({
     : '';
 
   if (isLoading) {
-    return (
-      <div className="space-y-2">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-32 w-full" />
-      </div>
-    );
+    return <CardSkeleton />;
   }
 
   if (isError || !review) {
-    return (
-      <p className="text-sm text-destructive">
-        {getApiErrorMessage(error, 'Failed to load review')}
-      </p>
-    );
+    return <ErrorState message={getApiErrorMessage(error, 'Failed to load review')} />;
   }
 
   const canSubmitSelf = tier === 'self' && review.status === 'DRAFT';
@@ -59,10 +52,7 @@ export function ReviewDetail({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{cycleName}</h1>
-        <ReviewStatusBadge status={review.status} />
-      </div>
+      <PageHeader title={cycleName} action={<ReviewStatusBadge status={review.status} />} />
 
       <Card>
         <CardHeader>

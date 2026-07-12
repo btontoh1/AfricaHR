@@ -1,10 +1,13 @@
 import { Badge } from '@/components/ui/badge';
 import type { PerformanceGoalStatus } from './types';
 
-const STATUS_VARIANT: Record<PerformanceGoalStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+const STATUS_VARIANT: Record<
+  PerformanceGoalStatus,
+  'default' | 'destructive' | 'outline' | 'success'
+> = {
   NOT_STARTED: 'outline',
   IN_PROGRESS: 'default',
-  COMPLETED: 'secondary',
+  COMPLETED: 'success',
   CANCELLED: 'destructive',
 };
 

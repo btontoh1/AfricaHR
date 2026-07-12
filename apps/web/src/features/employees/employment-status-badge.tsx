@@ -1,11 +1,14 @@
 import { Badge } from '@/components/ui/badge';
 import type { EmploymentStatus } from './types';
 
-const STATUS_VARIANT: Record<EmploymentStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+const STATUS_VARIANT: Record<
+  EmploymentStatus,
+  'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning'
+> = {
   PENDING_ONBOARDING: 'outline',
-  ACTIVE: 'default',
-  ON_LEAVE: 'secondary',
-  SUSPENDED: 'secondary',
+  ACTIVE: 'success',
+  ON_LEAVE: 'warning',
+  SUSPENDED: 'warning',
   TERMINATED: 'destructive',
 };
 

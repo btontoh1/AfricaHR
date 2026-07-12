@@ -1,11 +1,15 @@
 'use client';
 
+import { CalendarClock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCancelMyLeaveRequest, useLeaveTypes, useMyLeaveRequests } from './queries';
 import { LeaveRequestStatusBadge } from './leave-request-status-badge';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { TableCard } from '@/components/table-card';
+import { EmptyState } from '@/components/empty-state';
+import { TableSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
 import {
   Table,
   TableBody,
@@ -32,63 +36,56 @@ export function MyLeaveRequestsList({ tenantId }: { tenantId: string }) {
   }
 
   if (isLoading) {
-    return (
-      <div className="space-y-2">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-      </div>
-    );
+    return <TableSkeleton />;
   }
 
   if (isError) {
-    return (
-      <p className="text-sm text-destructive">
-        {getApiErrorMessage(error, 'Failed to load leave requests')}
-      </p>
-    );
+    return <ErrorState message={getApiErrorMessage(error, 'Failed to load leave requests')} />;
   }
 
   if (!requests || requests.length === 0) {
-    return <p className="text-sm text-muted-foreground">No leave requests yet.</p>;
+    return <EmptyState icon={CalendarClock} title="No leave requests yet" description="Requests you submit will appear here." />;
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Type</TableHead>
-          <TableHead>Dates</TableHead>
-          <TableHead>Days</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead />
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {requests.map((request) => (
-          <TableRow key={request.id}>
-            <TableCell>{leaveTypeName(request.leaveTypeId)}</TableCell>
-            <TableCell>
-              {request.startDate.slice(0, 10)} – {request.endDate.slice(0, 10)}
-            </TableCell>
-            <TableCell>{request.daysRequested}</TableCell>
-            <TableCell>
-              <LeaveRequestStatusBadge status={request.status} />
-            </TableCell>
-            <TableCell>
-              {(request.status === 'PENDING' || request.status === 'APPROVED') && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleCancel(request.id)}
-                  disabled={cancelRequest.isPending}
-                >
-                  Cancel
-                </Button>
-              )}
-            </TableCell>
+    <TableCard>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Type</TableHead>
+            <TableHead>Dates</TableHead>
+            <TableHead>Days</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead />
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {requests.map((request) => (
+            <TableRow key={request.id}>
+              <TableCell>{leaveTypeName(request.leaveTypeId)}</TableCell>
+              <TableCell className="text-muted-foreground">
+                {request.startDate.slice(0, 10)} – {request.endDate.slice(0, 10)}
+              </TableCell>
+              <TableCell>{request.daysRequested}</TableCell>
+              <TableCell>
+                <LeaveRequestStatusBadge status={request.status} />
+              </TableCell>
+              <TableCell>
+                {(request.status === 'PENDING' || request.status === 'APPROVED') && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleCancel(request.id)}
+                    disabled={cancelRequest.isPending}
+                  >
+                    Cancel
+                  </Button>
+                )}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableCard>
   );
 }

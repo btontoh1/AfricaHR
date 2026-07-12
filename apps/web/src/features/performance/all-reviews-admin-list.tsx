@@ -2,12 +2,16 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { FileText } from 'lucide-react';
 import { useAllReviews, useReviewCycles } from './queries';
 import { useEmployees } from '@/features/employees/queries';
 import { ReviewStatusBadge } from './review-status-badge';
 import type { PerformanceReviewStatus } from './types';
 import { getApiErrorMessage } from '@/lib/api-error';
-import { Skeleton } from '@/components/ui/skeleton';
+import { TableCard } from '@/components/table-card';
+import { EmptyState } from '@/components/empty-state';
+import { TableSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
 import {
   Select,
   SelectContent,
@@ -94,54 +98,47 @@ export function AllReviewsAdminList({ tenantId }: { tenantId: string }) {
         </Select>
       </div>
 
-      {isLoading && (
-        <div className="space-y-2">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-      )}
+      {isLoading && <TableSkeleton />}
 
-      {isError && (
-        <p className="text-sm text-destructive">
-          {getApiErrorMessage(error, 'Failed to load reviews')}
-        </p>
-      )}
+      {isError && <ErrorState message={getApiErrorMessage(error, 'Failed to load reviews')} />}
 
       {reviews && reviews.length === 0 && (
-        <p className="text-sm text-muted-foreground">No reviews match this filter.</p>
+        <EmptyState icon={FileText} title="No reviews match this filter" />
       )}
 
       {reviews && reviews.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Employee</TableHead>
-              <TableHead>Cycle</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Self rating</TableHead>
-              <TableHead>Manager rating</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {reviews.map((review) => (
-              <TableRow key={review.id}>
-                <TableCell>{employeeName(review.employeeId)}</TableCell>
-                <TableCell>{cycleName(review.cycleId)}</TableCell>
-                <TableCell>
-                  <ReviewStatusBadge status={review.status} />
-                </TableCell>
-                <TableCell>{review.selfRating ?? '—'}</TableCell>
-                <TableCell>{review.managerRating ?? '—'}</TableCell>
-                <TableCell>
-                  <Link href={`/performance/reviews/all/${review.id}`} className="text-sm underline">
-                    View
-                  </Link>
-                </TableCell>
+        <TableCard>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Employee</TableHead>
+                <TableHead>Cycle</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Self rating</TableHead>
+                <TableHead>Manager rating</TableHead>
+                <TableHead />
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {reviews.map((review) => (
+                <TableRow key={review.id}>
+                  <TableCell className="font-medium">{employeeName(review.employeeId)}</TableCell>
+                  <TableCell>{cycleName(review.cycleId)}</TableCell>
+                  <TableCell>
+                    <ReviewStatusBadge status={review.status} />
+                  </TableCell>
+                  <TableCell>{review.selfRating ?? '—'}</TableCell>
+                  <TableCell>{review.managerRating ?? '—'}</TableCell>
+                  <TableCell>
+                    <Link href={`/performance/reviews/all/${review.id}`} className="text-sm text-primary hover:underline">
+                      View
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       )}
     </div>
   );

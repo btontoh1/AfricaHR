@@ -2,6 +2,7 @@
 
 import { useSession } from '../../session-provider';
 import { AttendanceRecordsList } from '@/features/attendance/attendance-records-list';
+import { PageHeader } from '@/components/page-header';
 
 export default function AttendanceRecordsPage() {
   const session = useSession();
@@ -9,7 +10,7 @@ export default function AttendanceRecordsPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold">Attendance records</h1>
+      <PageHeader title="Attendance records" description="Browse and correct attendance records across your team." />
       <AttendanceRecordsList tenantId={tenantId} />
     </div>
   );

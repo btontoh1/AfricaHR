@@ -1,5 +1,6 @@
 'use client';
 
+import { Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSetUserActive, useUpdateUserRole, useUsers } from './queries';
 import { ASSIGNABLE_ROLE_OPTIONS } from './team-members-form-schema';
@@ -7,7 +8,10 @@ import type { SystemRole } from './types';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { TableCard } from '@/components/table-card';
+import { EmptyState } from '@/components/empty-state';
+import { TableSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
 import {
   Select,
   SelectContent,
@@ -83,64 +87,57 @@ export function TeamMembersList({ canManage }: { canManage: boolean }) {
   const { data: users, isLoading, isError, error } = useUsers();
 
   if (isLoading) {
-    return (
-      <div className="space-y-2">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-      </div>
-    );
+    return <TableSkeleton />;
   }
 
   if (isError) {
-    return (
-      <p className="text-sm text-destructive">
-        {getApiErrorMessage(error, 'Failed to load team members')}
-      </p>
-    );
+    return <ErrorState message={getApiErrorMessage(error, 'Failed to load team members')} />;
   }
 
   if (!users || users.length === 0) {
-    return <p className="text-sm text-muted-foreground">No team members yet.</p>;
+    return <EmptyState icon={Users} title="No team members yet" />;
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>Email</TableHead>
-          <TableHead>Role</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead />
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {users.map((user) => (
-          <TableRow key={user.id}>
-            <TableCell>
-              {user.firstName} {user.lastName}
-            </TableCell>
-            <TableCell>{user.email}</TableCell>
-            <TableCell>
-              {canManage ? (
-                <RoleControl id={user.id} role={user.role} />
-              ) : (
-                user.role.replace('_', ' ')
-              )}
-            </TableCell>
-            <TableCell>
-              <Badge variant={user.isActive ? 'default' : 'secondary'}>
-                {user.isActive ? 'Active' : 'Inactive'}
-              </Badge>
-            </TableCell>
-            <TableCell>
-              {canManage && user.role !== 'PLATFORM_ADMIN' && (
-                <ActiveControl id={user.id} isActive={user.isActive} />
-              )}
-            </TableCell>
+    <TableCard>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Role</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead />
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {users.map((user) => (
+            <TableRow key={user.id}>
+              <TableCell className="font-medium">
+                {user.firstName} {user.lastName}
+              </TableCell>
+              <TableCell className="text-muted-foreground">{user.email}</TableCell>
+              <TableCell>
+                {canManage ? (
+                  <RoleControl id={user.id} role={user.role} />
+                ) : (
+                  user.role.replace('_', ' ')
+                )}
+              </TableCell>
+              <TableCell>
+                <Badge variant={user.isActive ? 'success' : 'secondary'}>
+                  {user.isActive ? 'Active' : 'Inactive'}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                {canManage && user.role !== 'PLATFORM_ADMIN' && (
+                  <ActiveControl id={user.id} isActive={user.isActive} />
+                )}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableCard>
   );
 }

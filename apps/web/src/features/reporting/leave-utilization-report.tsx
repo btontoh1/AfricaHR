@@ -7,7 +7,11 @@ import { useLeaveTypes } from '@/features/leave/queries';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Skeleton } from '@/components/ui/skeleton';
+import { CardSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
+import { EmptyState } from '@/components/empty-state';
+import { TableCard } from '@/components/table-card';
+import { BarChart3 } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -67,39 +71,37 @@ export function LeaveUtilizationReport({ tenantId }: { tenantId: string }) {
         </div>
       </div>
 
-      {isLoading && <Skeleton className="h-32 w-full" />}
+      {isLoading && <CardSkeleton />}
 
-      {isError && (
-        <p className="text-sm text-destructive">
-          {getApiErrorMessage(error, 'Failed to load the leave utilization report')}
-        </p>
-      )}
+      {isError && <ErrorState message={getApiErrorMessage(error, 'Failed to load the leave utilization report')} />}
 
       {entries && entries.length === 0 && (
-        <p className="text-sm text-muted-foreground">No leave data for this filter.</p>
+        <EmptyState icon={BarChart3} title="No leave data for this filter" />
       )}
 
       {entries && entries.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Leave type</TableHead>
-              <TableHead>Entitled days</TableHead>
-              <TableHead>Used days</TableHead>
-              <TableHead>Utilization</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {entries.map((entry) => (
-              <TableRow key={entry.leaveTypeId}>
-                <TableCell>{entry.leaveTypeName}</TableCell>
-                <TableCell>{entry.totalEntitledDays}</TableCell>
-                <TableCell>{entry.totalUsedDays}</TableCell>
-                <TableCell>{entry.utilizationPercent}%</TableCell>
+        <TableCard>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Leave type</TableHead>
+                <TableHead>Entitled days</TableHead>
+                <TableHead>Used days</TableHead>
+                <TableHead>Utilization</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {entries.map((entry) => (
+                <TableRow key={entry.leaveTypeId}>
+                  <TableCell className="font-medium">{entry.leaveTypeName}</TableCell>
+                  <TableCell>{entry.totalEntitledDays}</TableCell>
+                  <TableCell>{entry.totalUsedDays}</TableCell>
+                  <TableCell>{entry.utilizationPercent}%</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       )}
     </div>
   );

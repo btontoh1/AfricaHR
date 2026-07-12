@@ -1,12 +1,15 @@
 import { Badge } from '@/components/ui/badge';
 import type { PayRunStatus } from './types';
 
-const STATUS_VARIANT: Record<PayRunStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+const STATUS_VARIANT: Record<
+  PayRunStatus,
+  'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning'
+> = {
   DRAFT: 'outline',
-  PROCESSING: 'secondary',
-  APPROVED: 'secondary',
-  PAID: 'default',
-  CLOSED: 'default',
+  PROCESSING: 'warning',
+  APPROVED: 'default',
+  PAID: 'success',
+  CLOSED: 'secondary',
   CANCELLED: 'destructive',
 };
 

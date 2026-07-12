@@ -20,58 +20,103 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 3px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --shadow-soft-sm: 0 1px 2px 0 rgb(15 23 42 / 0.04);
+  --shadow-soft: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 4px 12px -2px rgb(15 23 42 / 0.06);
+  --shadow-soft-lg: 0 2px 4px 0 rgb(15 23 42 / 0.04), 0 12px 24px -4px rgb(15 23 42 / 0.08);
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  /* 14px - within the 12-16px brief range */
+  --radius: 0.875rem;
+
+  --background: #f8fafc;
+  --foreground: #111827;
+  --card: #ffffff;
+  --card-foreground: #111827;
+  --popover: #ffffff;
+  --popover-foreground: #111827;
+
+  /* Deep Emerald - white text passes WCAG AA (5.47:1) */
+  --primary: #0f766e;
+  --primary-foreground: #ffffff;
+
+  /* Royal Gold - dark text required (white on gold is only 2.38:1) */
+  --secondary: #d4a017;
+  --secondary-foreground: #111827;
+
+  --muted: #f1f5f9;
+  --muted-foreground: #6b7280;
+
+  /* Sky Blue - dark text is fully AA-compliant at every size (4.82:1),
+     white text only clears the large-text/UI threshold (3.68:1) */
+  --accent: #3b82f6;
+  --accent-foreground: #111827;
+
+  /* white text passes AA (4.83:1) */
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  /* dark text required (white on this green is only 3.30:1) */
+  --success: #16a34a;
+  --success-foreground: #111827;
+
+  /* dark text required (white on amber is only 2.15:1) */
+  --warning: #f59e0b;
+  --warning-foreground: #111827;
+
+  --border: #e5e7eb;
+  --input: #e5e7eb;
+  --ring: #0f766e;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --background: #0b1220;
+  --foreground: #f1f5f9;
+  --card: #111827;
+  --card-foreground: #f1f5f9;
+  --popover: #111827;
+  --popover-foreground: #f1f5f9;
+
+  /* Brighter emerald for legibility against a dark background - all six
+     semantic colors below are re-verified for contrast in dark mode, not
+     just reused from light mode (dark text throughout: >6.7:1 in every
+     case, computed against the darkest background tone). */
+  --primary: #2dd4bf;
+  --primary-foreground: #0b1220;
+
+  --secondary: #f2c14e;
+  --secondary-foreground: #0b1220;
+
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+
+  --accent: #60a5fa;
+  --accent-foreground: #0b1220;
+
+  --destructive: #f87171;
+  --destructive-foreground: #0b1220;
+
+  --success: #4ade80;
+  --success-foreground: #0b1220;
+
+  --warning: #fbbf24;
+  --warning-foreground: #0b1220;
+
+  --border: rgb(255 255 255 / 10%);
+  --input: rgb(255 255 255 / 15%);
+  --ring: #2dd4bf;
 }
 
 body {

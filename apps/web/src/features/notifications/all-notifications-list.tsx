@@ -1,12 +1,16 @@
 'use client';
 
 import { useState } from 'react';
+import { Bell } from 'lucide-react';
 import { useAllNotifications } from './queries';
 import { useUsers } from '@/features/iam/queries';
 import { NotificationStatusBadge } from './notification-status-badge';
 import type { NotificationStatus } from './types';
 import { getApiErrorMessage } from '@/lib/api-error';
-import { Skeleton } from '@/components/ui/skeleton';
+import { TableCard } from '@/components/table-card';
+import { EmptyState } from '@/components/empty-state';
+import { TableSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
 import {
   Select,
   SelectContent,
@@ -77,48 +81,41 @@ export function AllNotificationsList({ tenantId }: { tenantId: string }) {
         </Select>
       </div>
 
-      {isLoading && (
-        <div className="space-y-2">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-      )}
+      {isLoading && <TableSkeleton />}
 
-      {isError && (
-        <p className="text-sm text-destructive">
-          {getApiErrorMessage(error, 'Failed to load notifications')}
-        </p>
-      )}
+      {isError && <ErrorState message={getApiErrorMessage(error, 'Failed to load notifications')} />}
 
       {notifications && notifications.length === 0 && (
-        <p className="text-sm text-muted-foreground">No notifications match this filter.</p>
+        <EmptyState icon={Bell} title="No notifications match this filter" />
       )}
 
       {notifications && notifications.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Recipient</TableHead>
-              <TableHead>Subject</TableHead>
-              <TableHead>Channel</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Failure reason</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {notifications.map((notification) => (
-              <TableRow key={notification.id}>
-                <TableCell>{userName(notification.userId)}</TableCell>
-                <TableCell>{notification.subject}</TableCell>
-                <TableCell>{notification.channel}</TableCell>
-                <TableCell>
-                  <NotificationStatusBadge status={notification.status} />
-                </TableCell>
-                <TableCell>{notification.failureReason ?? '—'}</TableCell>
+        <TableCard>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Recipient</TableHead>
+                <TableHead>Subject</TableHead>
+                <TableHead>Channel</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Failure reason</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {notifications.map((notification) => (
+                <TableRow key={notification.id}>
+                  <TableCell className="font-medium">{userName(notification.userId)}</TableCell>
+                  <TableCell>{notification.subject}</TableCell>
+                  <TableCell className="text-muted-foreground">{notification.channel}</TableCell>
+                  <TableCell>
+                    <NotificationStatusBadge status={notification.status} />
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{notification.failureReason ?? '—'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       )}
     </div>
   );

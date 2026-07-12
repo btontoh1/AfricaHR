@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { ClipboardList } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBenefitEnrollments, useBenefitPlans, useCancelBenefitEnrollment } from './queries';
 import { useEmployees } from '@/features/employees/queries';
@@ -9,7 +10,10 @@ import { ContributionCell } from './contribution-cell';
 import type { BenefitEnrollmentStatus } from './types';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { TableCard } from '@/components/table-card';
+import { EmptyState } from '@/components/empty-state';
+import { TableSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
 import {
   Select,
   SelectContent,
@@ -100,63 +104,56 @@ export function BenefitEnrollmentsAdminList({ tenantId }: { tenantId: string }) 
         </Select>
       </div>
 
-      {isLoading && (
-        <div className="space-y-2">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-      )}
+      {isLoading && <TableSkeleton />}
 
-      {isError && (
-        <p className="text-sm text-destructive">
-          {getApiErrorMessage(error, 'Failed to load benefit enrollments')}
-        </p>
-      )}
+      {isError && <ErrorState message={getApiErrorMessage(error, 'Failed to load benefit enrollments')} />}
 
       {enrollments && enrollments.length === 0 && (
-        <p className="text-sm text-muted-foreground">No enrollments match this filter.</p>
+        <EmptyState icon={ClipboardList} title="No enrollments match this filter" />
       )}
 
       {enrollments && enrollments.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Employee</TableHead>
-              <TableHead>Plan</TableHead>
-              <TableHead>Effective date</TableHead>
-              <TableHead>Contribution (employee / employer)</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {enrollments.map((enrollment) => (
-              <TableRow key={enrollment.id}>
-                <TableCell>{employeeName(enrollment.employeeId)}</TableCell>
-                <TableCell>{enrollment.benefitPlan.name}</TableCell>
-                <TableCell>{enrollment.effectiveDate.slice(0, 10)}</TableCell>
-                <TableCell>
-                  <ContributionCell tenantId={tenantId} enrollmentId={enrollment.id} />
-                </TableCell>
-                <TableCell>
-                  <BenefitEnrollmentStatusBadge status={enrollment.status} />
-                </TableCell>
-                <TableCell>
-                  {enrollment.status === 'ACTIVE' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleCancel(enrollment.id)}
-                      disabled={cancelEnrollment.isPending}
-                    >
-                      Cancel
-                    </Button>
-                  )}
-                </TableCell>
+        <TableCard>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Employee</TableHead>
+                <TableHead>Plan</TableHead>
+                <TableHead>Effective date</TableHead>
+                <TableHead>Contribution (employee / employer)</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead />
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {enrollments.map((enrollment) => (
+                <TableRow key={enrollment.id}>
+                  <TableCell className="font-medium">{employeeName(enrollment.employeeId)}</TableCell>
+                  <TableCell>{enrollment.benefitPlan.name}</TableCell>
+                  <TableCell className="text-muted-foreground">{enrollment.effectiveDate.slice(0, 10)}</TableCell>
+                  <TableCell>
+                    <ContributionCell tenantId={tenantId} enrollmentId={enrollment.id} />
+                  </TableCell>
+                  <TableCell>
+                    <BenefitEnrollmentStatusBadge status={enrollment.status} />
+                  </TableCell>
+                  <TableCell>
+                    {enrollment.status === 'ACTIVE' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCancel(enrollment.id)}
+                        disabled={cancelEnrollment.isPending}
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       )}
     </div>
   );

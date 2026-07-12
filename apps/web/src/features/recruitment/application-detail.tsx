@@ -13,7 +13,9 @@ import { RespondToOfferControl } from './respond-to-offer-control';
 import { LinkHiredEmployeeForm } from './link-hired-employee-form';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { CardSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
+import { PageHeader } from '@/components/page-header';
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -42,20 +44,11 @@ export function ApplicationDetail({
   const onAdvance = tier === 'hr' ? advanceHr.mutateAsync : advanceManager.mutateAsync;
 
   if (isLoading) {
-    return (
-      <div className="space-y-2">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-32 w-full" />
-      </div>
-    );
+    return <CardSkeleton />;
   }
 
   if (isError || !application) {
-    return (
-      <p className="text-sm text-destructive">
-        {getApiErrorMessage(error, 'Failed to load application')}
-      </p>
-    );
+    return <ErrorState message={getApiErrorMessage(error, 'Failed to load application')} />;
   }
 
   const canSendOffer = tier === 'hr' && application.stage === 'OFFER' && !application.offerSentAt;
@@ -65,12 +58,10 @@ export function ApplicationDetail({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">
-          {application.candidate.firstName} {application.candidate.lastName}
-        </h1>
-        <ApplicationStageBadge stage={application.stage} />
-      </div>
+      <PageHeader
+        title={`${application.candidate.firstName} ${application.candidate.lastName}`}
+        action={<ApplicationStageBadge stage={application.stage} />}
+      />
 
       <Card>
         <CardHeader>

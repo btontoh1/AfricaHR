@@ -1,10 +1,15 @@
 'use client';
 
+import { Building2 } from 'lucide-react';
 import { useOrganization, useOrganizationUnits } from './queries';
 import { CreateOrganizationUnitForm } from './create-organization-unit-form';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { CardSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
+import { EmptyState } from '@/components/empty-state';
+import { PageHeader } from '@/components/page-header';
+import { TableCard } from '@/components/table-card';
 import {
   Table,
   TableBody,
@@ -34,30 +39,19 @@ export function OrganizationDetail({
   const { data: units } = useOrganizationUnits(tenantId, organizationId);
 
   if (isLoading) {
-    return (
-      <div className="space-y-2">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-32 w-full" />
-      </div>
-    );
+    return <CardSkeleton />;
   }
 
   if (isError || !organization) {
-    return (
-      <p className="text-sm text-destructive">
-        {getApiErrorMessage(error, 'Failed to load organization')}
-      </p>
-    );
+    return <ErrorState message={getApiErrorMessage(error, 'Failed to load organization')} />;
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">{organization.legalName}</h1>
-        {organization.tradingName && (
-          <p className="text-sm text-muted-foreground">Trading as {organization.tradingName}</p>
-        )}
-      </div>
+      <PageHeader
+        title={organization.legalName}
+        description={organization.tradingName ? `Trading as ${organization.tradingName}` : undefined}
+      />
 
       <Card>
         <CardHeader>
@@ -76,29 +70,31 @@ export function OrganizationDetail({
         </CardHeader>
         <CardContent className="space-y-4">
           {units && units.length > 0 && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Code</TableHead>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Parent</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {units.map((unit) => (
-                  <TableRow key={unit.id}>
-                    <TableCell>{unit.name}</TableCell>
-                    <TableCell>{unit.code}</TableCell>
-                    <TableCell className="font-mono text-xs">{unit.id}</TableCell>
-                    <TableCell className="font-mono text-xs">{unit.parentId ?? '—'}</TableCell>
+            <TableCard>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Code</TableHead>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Parent</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {units.map((unit) => (
+                    <TableRow key={unit.id}>
+                      <TableCell>{unit.name}</TableCell>
+                      <TableCell>{unit.code}</TableCell>
+                      <TableCell className="font-mono text-xs">{unit.id}</TableCell>
+                      <TableCell className="font-mono text-xs">{unit.parentId ?? '—'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableCard>
           )}
           {units && units.length === 0 && (
-            <p className="text-sm text-muted-foreground">No units yet.</p>
+            <EmptyState icon={Building2} title="No units yet" description="Create the first organization unit below." />
           )}
           <CreateOrganizationUnitForm tenantId={tenantId} organizationId={organizationId} />
         </CardContent>

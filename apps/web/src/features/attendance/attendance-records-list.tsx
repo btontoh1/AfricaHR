@@ -2,13 +2,17 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { CalendarDays, Plus } from 'lucide-react';
 import { useAttendanceRecords } from './queries';
 import { useEmployees } from '@/features/employees/queries';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Skeleton } from '@/components/ui/skeleton';
+import { TableCard } from '@/components/table-card';
+import { EmptyState } from '@/components/empty-state';
+import { TableSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
 import {
   Select,
   SelectContent,
@@ -76,58 +80,54 @@ export function AttendanceRecordsList({ tenantId }: { tenantId: string }) {
           <Input id="records-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
         <Button asChild className="ml-auto">
-          <Link href="/attendance/records/new">Add record</Link>
+          <Link href="/attendance/records/new">
+            <Plus className="size-4" />
+            Add record
+          </Link>
         </Button>
       </div>
 
-      {isLoading && (
-        <div className="space-y-2">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-      )}
+      {isLoading && <TableSkeleton />}
 
-      {isError && (
-        <p className="text-sm text-destructive">
-          {getApiErrorMessage(error, 'Failed to load attendance records')}
-        </p>
-      )}
+      {isError && <ErrorState message={getApiErrorMessage(error, 'Failed to load attendance records')} />}
 
       {records && records.length === 0 && (
-        <p className="text-sm text-muted-foreground">No attendance records match this filter.</p>
+        <EmptyState icon={CalendarDays} title="No attendance records match this filter" />
       )}
 
       {records && records.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Employee</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Clock in</TableHead>
-              <TableHead>Clock out</TableHead>
-              <TableHead>Hours worked</TableHead>
-              <TableHead>Overtime</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {records.map((record) => (
-              <TableRow key={record.id}>
-                <TableCell>{employeeName(record.employeeId)}</TableCell>
-                <TableCell>{record.date.slice(0, 10)}</TableCell>
-                <TableCell>{formatTime(record.clockIn)}</TableCell>
-                <TableCell>{formatTime(record.clockOut)}</TableCell>
-                <TableCell>{record.hoursWorked ?? '—'}</TableCell>
-                <TableCell>{record.overtimeHours ?? '—'}</TableCell>
-                <TableCell>
-                  <Link href={`/attendance/records/${record.id}`} className="text-sm underline">
-                    View
-                  </Link>
-                </TableCell>
+        <TableCard>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Employee</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Clock in</TableHead>
+                <TableHead>Clock out</TableHead>
+                <TableHead>Hours worked</TableHead>
+                <TableHead>Overtime</TableHead>
+                <TableHead />
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {records.map((record) => (
+                <TableRow key={record.id}>
+                  <TableCell className="font-medium">{employeeName(record.employeeId)}</TableCell>
+                  <TableCell>{record.date.slice(0, 10)}</TableCell>
+                  <TableCell>{formatTime(record.clockIn)}</TableCell>
+                  <TableCell>{formatTime(record.clockOut)}</TableCell>
+                  <TableCell>{record.hoursWorked ?? '—'}</TableCell>
+                  <TableCell>{record.overtimeHours ?? '—'}</TableCell>
+                  <TableCell>
+                    <Link href={`/attendance/records/${record.id}`} className="text-sm text-primary hover:underline">
+                      View
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       )}
     </div>
   );

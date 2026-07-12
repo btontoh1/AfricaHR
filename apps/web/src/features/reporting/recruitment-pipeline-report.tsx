@@ -5,7 +5,9 @@ import { useRecruitmentPipelineReport } from './queries';
 import { OrganizationFilter, ALL_ORGANIZATIONS } from './organization-filter';
 import { StatCard } from './stat-card';
 import { getApiErrorMessage } from '@/lib/api-error';
-import { Skeleton } from '@/components/ui/skeleton';
+import { CardSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
+import { TableCard } from '@/components/table-card';
 import {
   Table,
   TableBody,
@@ -26,13 +28,9 @@ export function RecruitmentPipelineReport({ tenantId }: { tenantId: string }) {
     <div className="space-y-4">
       <OrganizationFilter tenantId={tenantId} value={organizationId} onChange={setOrganizationId} />
 
-      {isLoading && <Skeleton className="h-32 w-full" />}
+      {isLoading && <CardSkeleton />}
 
-      {isError && (
-        <p className="text-sm text-destructive">
-          {getApiErrorMessage(error, 'Failed to load the recruitment pipeline report')}
-        </p>
-      )}
+      {isError && <ErrorState message={getApiErrorMessage(error, 'Failed to load the recruitment pipeline report')} />}
 
       {report && (
         <div className="space-y-6">
@@ -43,22 +41,24 @@ export function RecruitmentPipelineReport({ tenantId }: { tenantId: string }) {
 
           <div>
             <h2 className="mb-2 text-sm font-medium text-muted-foreground">Applications by stage</h2>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Stage</TableHead>
-                  <TableHead>Count</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {report.applicationsByStage.map((row) => (
-                  <TableRow key={row.stage}>
-                    <TableCell>{row.stage}</TableCell>
-                    <TableCell>{row.count}</TableCell>
+            <TableCard>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Stage</TableHead>
+                    <TableHead>Count</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {report.applicationsByStage.map((row) => (
+                    <TableRow key={row.stage}>
+                      <TableCell>{row.stage}</TableCell>
+                      <TableCell>{row.count}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableCard>
           </div>
         </div>
       )}

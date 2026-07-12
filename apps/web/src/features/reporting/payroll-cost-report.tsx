@@ -8,7 +8,8 @@ import { StatCard } from './stat-card';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Skeleton } from '@/components/ui/skeleton';
+import { CardSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
 
 export function PayrollCostReport({ tenantId }: { tenantId: string }) {
   const [organizationId, setOrganizationId] = useState(ALL_ORGANIZATIONS);
@@ -44,13 +45,9 @@ export function PayrollCostReport({ tenantId }: { tenantId: string }) {
         </div>
       </div>
 
-      {isLoading && <Skeleton className="h-32 w-full" />}
+      {isLoading && <CardSkeleton />}
 
-      {isError && (
-        <p className="text-sm text-destructive">
-          {getApiErrorMessage(error, 'Failed to load the payroll cost report')}
-        </p>
-      )}
+      {isError && <ErrorState message={getApiErrorMessage(error, 'Failed to load the payroll cost report')} />}
 
       {report && (
         <div className="grid gap-4 sm:grid-cols-3">

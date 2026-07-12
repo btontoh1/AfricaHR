@@ -1,12 +1,17 @@
 'use client';
 
 import Link from 'next/link';
+import { Receipt } from 'lucide-react';
 import { usePayRun, usePayslipsByPayRun } from './queries';
 import { PayRunStatusBadge } from './pay-run-status-badge';
 import { PayRunLifecycleActions } from './pay-run-lifecycle-actions';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { CardSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
+import { EmptyState } from '@/components/empty-state';
+import { PageHeader } from '@/components/page-header';
+import { TableCard } from '@/components/table-card';
 import {
   Table,
   TableBody,
@@ -30,31 +35,20 @@ export function PayRunDetail({ tenantId, payRunId }: { tenantId: string; payRunI
   const { data: payslips } = usePayslipsByPayRun(tenantId, payRunId);
 
   if (isLoading) {
-    return (
-      <div className="space-y-2">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-32 w-full" />
-      </div>
-    );
+    return <CardSkeleton />;
   }
 
   if (isError || !payRun) {
-    return (
-      <p className="text-sm text-destructive">{getApiErrorMessage(error, 'Failed to load pay run')}</p>
-    );
+    return <ErrorState message={getApiErrorMessage(error, 'Failed to load pay run')} />;
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">
-            {payRun.periodStart.slice(0, 10)} – {payRun.periodEnd.slice(0, 10)}
-          </h1>
-          <p className="text-sm text-muted-foreground">Pay date {payRun.payDate.slice(0, 10)}</p>
-        </div>
-        <PayRunStatusBadge status={payRun.status} />
-      </div>
+      <PageHeader
+        title={`${payRun.periodStart.slice(0, 10)} – ${payRun.periodEnd.slice(0, 10)}`}
+        description={`Pay date ${payRun.payDate.slice(0, 10)}`}
+        action={<PayRunStatusBadge status={payRun.status} />}
+      />
 
       <PayRunLifecycleActions tenantId={tenantId} payRun={payRun} />
 
@@ -75,37 +69,41 @@ export function PayRunDetail({ tenantId, payRunId }: { tenantId: string; payRunI
         </CardHeader>
         <CardContent>
           {payslips && payslips.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              No payslips yet — process the pay run to generate them.
-            </p>
+            <EmptyState
+              icon={Receipt}
+              title="No payslips yet"
+              description="Process the pay run to generate them."
+            />
           )}
           {payslips && payslips.length > 0 && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Employee</TableHead>
-                  <TableHead>Gross pay</TableHead>
-                  <TableHead>Net pay</TableHead>
-                  <TableHead>Currency</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {payslips.map((payslip) => (
-                  <TableRow key={payslip.id}>
-                    <TableCell className="font-mono text-xs">{payslip.employeeId}</TableCell>
-                    <TableCell>{payslip.grossPay}</TableCell>
-                    <TableCell>{payslip.netPay}</TableCell>
-                    <TableCell>{payslip.currency}</TableCell>
-                    <TableCell>
-                      <Link href={`/payroll/payslips/${payslip.id}`} className="hover:underline">
-                        View
-                      </Link>
-                    </TableCell>
+            <TableCard>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Employee</TableHead>
+                    <TableHead>Gross pay</TableHead>
+                    <TableHead>Net pay</TableHead>
+                    <TableHead>Currency</TableHead>
+                    <TableHead />
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {payslips.map((payslip) => (
+                    <TableRow key={payslip.id}>
+                      <TableCell className="font-mono text-xs">{payslip.employeeId}</TableCell>
+                      <TableCell>{payslip.grossPay}</TableCell>
+                      <TableCell className="font-medium">{payslip.netPay}</TableCell>
+                      <TableCell className="text-muted-foreground">{payslip.currency}</TableCell>
+                      <TableCell>
+                        <Link href={`/payroll/payslips/${payslip.id}`} className="text-sm text-primary hover:underline">
+                          View
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableCard>
           )}
         </CardContent>
       </Card>

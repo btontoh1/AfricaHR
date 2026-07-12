@@ -2,6 +2,7 @@
 
 import { useSession } from '../../session-provider';
 import { PayrollCostReport } from '@/features/reporting/payroll-cost-report';
+import { PageHeader } from '@/components/page-header';
 
 export default function PayrollCostReportPage() {
   const session = useSession();
@@ -9,7 +10,7 @@ export default function PayrollCostReportPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold">Payroll cost</h1>
+      <PageHeader title="Payroll cost" description="Total payroll spend across completed pay runs." />
       <PayrollCostReport tenantId={tenantId} />
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useSession } from '../../../session-provider';
 import { MyApplicationsList } from '@/features/recruitment/my-applications-list';
+import { PageHeader } from '@/components/page-header';
 
 export default function MyApplicationsPage() {
   const session = useSession();
@@ -9,7 +10,7 @@ export default function MyApplicationsPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold">My applications</h1>
+      <PageHeader title="My applications" description="Applications for requisitions you manage." />
       <MyApplicationsList tenantId={tenantId} />
     </div>
   );

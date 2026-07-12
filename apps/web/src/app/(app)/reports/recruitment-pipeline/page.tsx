@@ -2,6 +2,7 @@
 
 import { useSession } from '../../session-provider';
 import { RecruitmentPipelineReport } from '@/features/reporting/recruitment-pipeline-report';
+import { PageHeader } from '@/components/page-header';
 
 export default function RecruitmentPipelineReportPage() {
   const session = useSession();
@@ -9,7 +10,7 @@ export default function RecruitmentPipelineReportPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold">Recruitment pipeline</h1>
+      <PageHeader title="Recruitment pipeline" description="Applications by stage across open requisitions." />
       <RecruitmentPipelineReport tenantId={tenantId} />
     </div>
   );

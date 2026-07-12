@@ -1,9 +1,9 @@
 import { Badge } from '@/components/ui/badge';
 import type { NotificationStatus } from './types';
 
-const STATUS_VARIANT: Record<NotificationStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  PENDING: 'outline',
-  SENT: 'default',
+const STATUS_VARIANT: Record<NotificationStatus, 'destructive' | 'outline' | 'success' | 'warning'> = {
+  PENDING: 'warning',
+  SENT: 'success',
   FAILED: 'destructive',
 };
 

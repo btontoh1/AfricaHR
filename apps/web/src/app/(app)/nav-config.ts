@@ -1,0 +1,219 @@
+import type { LucideIcon } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Users,
+  Building2,
+  UserCog,
+  CalendarDays,
+  ClipboardCheck,
+  ListTree,
+  Clock,
+  History,
+  Settings2,
+  Banknote,
+  HeartHandshake,
+  FileStack,
+  FileCheck2,
+  Target,
+  FileText,
+  Users2,
+  RefreshCw,
+  ClipboardList,
+  Briefcase,
+  UserSearch,
+  FileInput,
+  BarChart3,
+  Wallet,
+  CalendarRange,
+  TrendingUp,
+  Bell,
+  FileCode,
+  Send,
+} from 'lucide-react';
+import type { SessionUser } from '@/lib/session';
+
+export interface NavItem {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+}
+
+export interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
+/**
+ * Every condition below is copied verbatim from the pre-redesign app-shell
+ * (same booleans, same roles, same reasoning) - this file only changes how
+ * the data is organized (grouped, with icons) for presentation, not who
+ * sees what. See each comment for the permission-matrix nuance it encodes.
+ *
+ * Coarse, cheap client-side visibility checks only - the backend remains
+ * the real enforcement point.
+ */
+export function buildNavGroups(user: SessionUser): NavGroup[] {
+  const isTenantMember = Boolean(user.tenantId);
+  const hasAdminAccess = isTenantMember && user.role !== 'EMPLOYEE';
+  // PAYROLL_MANAGER is admin-ish but doesn't hold LEAVE_READ/LEAVE_MANAGE.
+  const hasLeaveAdminAccess =
+    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
+  const hasAttendanceAdminAccess =
+    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
+  const hasBenefitsAdminAccess =
+    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
+  const hasPerformanceAdminAccess =
+    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
+  const hasRecruitmentAdminAccess =
+    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
+  const hasNotificationsAdminAccess =
+    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
+  // HR_MANAGER only holds USER_READ (not MANAGE); PAYROLL_MANAGER holds neither.
+  const hasTeamMembersReadAccess =
+    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
+
+  const groups: NavGroup[] = [
+    {
+      label: 'Overview',
+      items: [{ label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard }],
+    },
+    {
+      label: 'People',
+      items: [
+        ...(hasAdminAccess ? [{ label: 'Employees', href: '/employees', icon: Users }] : []),
+        ...(hasAdminAccess
+          ? [{ label: 'Organizations', href: '/organizations', icon: Building2 }]
+          : []),
+        ...(hasTeamMembersReadAccess
+          ? [{ label: 'Team Members', href: '/team-members', icon: UserCog }]
+          : []),
+      ],
+    },
+    {
+      label: 'Time & Leave',
+      items: [
+        ...(isTenantMember ? [{ label: 'Leave', href: '/leave', icon: CalendarDays }] : []),
+        ...(hasLeaveAdminAccess
+          ? [{ label: 'Leave Requests', href: '/leave/requests', icon: ClipboardCheck }]
+          : []),
+        ...(hasLeaveAdminAccess
+          ? [{ label: 'Leave Types', href: '/leave/types', icon: ListTree }]
+          : []),
+        ...(isTenantMember ? [{ label: 'Attendance', href: '/attendance', icon: Clock }] : []),
+        ...(hasAttendanceAdminAccess
+          ? [{ label: 'Attendance Records', href: '/attendance/records', icon: History }]
+          : []),
+        ...(hasAttendanceAdminAccess
+          ? [{ label: 'Attendance Policy', href: '/attendance/policy', icon: Settings2 }]
+          : []),
+      ],
+    },
+    {
+      label: 'Payroll & Benefits',
+      items: [
+        ...(hasAdminAccess ? [{ label: 'Payroll', href: '/payroll', icon: Banknote }] : []),
+        ...(isTenantMember
+          ? [{ label: 'Benefits', href: '/benefits', icon: HeartHandshake }]
+          : []),
+        ...(hasBenefitsAdminAccess
+          ? [{ label: 'Benefit Plans', href: '/benefits/plans', icon: FileStack }]
+          : []),
+        ...(hasBenefitsAdminAccess
+          ? [{ label: 'Benefit Enrollments', href: '/benefits/enrollments', icon: FileCheck2 }]
+          : []),
+      ],
+    },
+    {
+      label: 'Performance',
+      items: [
+        ...(isTenantMember
+          ? [{ label: 'My Goals', href: '/performance/goals', icon: Target }]
+          : []),
+        ...(isTenantMember
+          ? [{ label: 'My Reviews', href: '/performance/reviews', icon: FileText }]
+          : []),
+        // Visible to every tenant member: manager-ness is a dynamic
+        // per-employee relationship, not a role permission.
+        ...(isTenantMember
+          ? [{ label: 'Team Reviews', href: '/performance/reviews/team', icon: Users2 }]
+          : []),
+        ...(hasPerformanceAdminAccess
+          ? [{ label: 'Review Cycles', href: '/performance/cycles', icon: RefreshCw }]
+          : []),
+        ...(hasPerformanceAdminAccess
+          ? [{ label: 'All Reviews', href: '/performance/reviews/all', icon: ClipboardList }]
+          : []),
+      ],
+    },
+    {
+      label: 'Recruitment',
+      items: [
+        ...(hasRecruitmentAdminAccess
+          ? [{ label: 'Requisitions', href: '/recruitment/requisitions', icon: Briefcase }]
+          : []),
+        ...(hasRecruitmentAdminAccess
+          ? [{ label: 'Candidates', href: '/recruitment/candidates', icon: UserSearch }]
+          : []),
+        ...(hasRecruitmentAdminAccess
+          ? [{ label: 'Applications', href: '/recruitment/applications', icon: FileInput }]
+          : []),
+        // Hiring-manager tier, visible to every tenant member same as Team
+        // Reviews - a dynamic JobRequisition.hiringManagerId relationship.
+        ...(isTenantMember
+          ? [
+              {
+                label: 'My Requisitions',
+                href: '/recruitment/requisitions/mine',
+                icon: Briefcase,
+              },
+            ]
+          : []),
+        ...(isTenantMember
+          ? [{ label: 'My Applications', href: '/recruitment/applications/mine', icon: FileInput }]
+          : []),
+      ],
+    },
+    {
+      label: 'Reports',
+      items: [
+        ...(hasAdminAccess
+          ? [{ label: 'Headcount', href: '/reports/headcount', icon: BarChart3 }]
+          : []),
+        ...(hasAdminAccess
+          ? [{ label: 'Payroll Cost', href: '/reports/payroll-cost', icon: Wallet }]
+          : []),
+        ...(hasAdminAccess
+          ? [{ label: 'Leave Utilization', href: '/reports/leave-utilization', icon: CalendarRange }]
+          : []),
+        ...(hasAdminAccess
+          ? [{ label: 'Attendance', href: '/reports/attendance', icon: Clock }]
+          : []),
+        ...(hasAdminAccess
+          ? [
+              {
+                label: 'Recruitment Pipeline',
+                href: '/reports/recruitment-pipeline',
+                icon: TrendingUp,
+              },
+            ]
+          : []),
+      ],
+    },
+    {
+      label: 'Notifications',
+      items: [
+        ...(isTenantMember
+          ? [{ label: 'Notifications', href: '/notifications', icon: Bell }]
+          : []),
+        ...(hasNotificationsAdminAccess
+          ? [{ label: 'Templates', href: '/notifications/templates', icon: FileCode }]
+          : []),
+        ...(hasNotificationsAdminAccess
+          ? [{ label: 'Send Notification', href: '/notifications/send', icon: Send }]
+          : []),
+      ],
+    },
+  ];
+
+  return groups.filter((group) => group.items.length > 0);
+}

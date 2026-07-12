@@ -1,11 +1,16 @@
 'use client';
 
 import Link from 'next/link';
+import { Building2, Plus } from 'lucide-react';
 import { useSession } from '../session-provider';
 import { useOrganizations } from '@/features/organizations/queries';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/page-header';
+import { TableCard } from '@/components/table-card';
+import { EmptyState } from '@/components/empty-state';
+import { TableSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
 import {
   Table,
   TableBody,
@@ -22,62 +27,70 @@ export default function OrganizationsPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Organizations</h1>
-          <p className="text-sm text-muted-foreground">
-            {organizations
-              ? `${organizations.length} organization${organizations.length === 1 ? '' : 's'}`
-              : ' '}
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/organizations/new">Add organization</Link>
-        </Button>
-      </div>
+      <PageHeader
+        title="Organizations"
+        description={
+          organizations
+            ? `${organizations.length} organization${organizations.length === 1 ? '' : 's'}`
+            : undefined
+        }
+        action={
+          <Button asChild>
+            <Link href="/organizations/new">
+              <Plus className="size-4" />
+              Add organization
+            </Link>
+          </Button>
+        }
+      />
 
-      {isLoading && (
-        <div className="space-y-2">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-      )}
+      {isLoading && <TableSkeleton />}
 
-      {isError && (
-        <p className="text-sm text-destructive">
-          {getApiErrorMessage(error, 'Failed to load organizations')}
-        </p>
-      )}
+      {isError && <ErrorState message={getApiErrorMessage(error, 'Failed to load organizations')} />}
 
       {organizations && organizations.length === 0 && (
-        <p className="text-sm text-muted-foreground">No organizations yet.</p>
+        <EmptyState
+          icon={Building2}
+          title="No organizations yet"
+          description="Add your first organization to get started."
+          action={
+            <Button asChild size="sm">
+              <Link href="/organizations/new">
+                <Plus className="size-4" />
+                Add organization
+              </Link>
+            </Button>
+          }
+        />
       )}
 
       {organizations && organizations.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Legal name</TableHead>
-              <TableHead>Trading name</TableHead>
-              <TableHead>Country</TableHead>
-              <TableHead>Registration #</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {organizations.map((organization) => (
-              <TableRow key={organization.id}>
-                <TableCell>
-                  <Link href={`/organizations/${organization.id}`} className="hover:underline">
-                    {organization.legalName}
-                  </Link>
-                </TableCell>
-                <TableCell>{organization.tradingName ?? '—'}</TableCell>
-                <TableCell>{organization.countryCode}</TableCell>
-                <TableCell>{organization.registrationNumber}</TableCell>
+        <TableCard>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Legal name</TableHead>
+                <TableHead>Trading name</TableHead>
+                <TableHead>Country</TableHead>
+                <TableHead>Registration #</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {organizations.map((organization) => (
+                <TableRow key={organization.id}>
+                  <TableCell>
+                    <Link href={`/organizations/${organization.id}`} className="font-medium hover:underline">
+                      {organization.legalName}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{organization.tradingName ?? '—'}</TableCell>
+                  <TableCell className="text-muted-foreground">{organization.countryCode}</TableCell>
+                  <TableCell className="text-muted-foreground">{organization.registrationNumber}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       )}
     </div>
   );

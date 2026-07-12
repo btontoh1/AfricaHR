@@ -14,7 +14,7 @@ export default async function SetupPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-muted/60 to-background p-4">
       <SetupWizardForm />
     </div>
   );

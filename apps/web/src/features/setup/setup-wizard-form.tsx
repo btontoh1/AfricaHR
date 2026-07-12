@@ -4,16 +4,30 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Building2, UserCog, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { setupFormSchema, type SetupFormValues } from './setup-form-schema';
+
+function SectionHeading({ icon: Icon, title }: { icon: typeof Building2; title: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="flex size-6 items-center justify-center rounded-md bg-primary/10 text-primary">
+        <Icon className="size-3.5" />
+      </span>
+      <h3 className="text-sm font-semibold">{title}</h3>
+    </div>
+  );
+}
 
 export function SetupWizardForm() {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<SetupFormValues>({
     resolver: zodResolver(setupFormSchema),
@@ -48,9 +62,12 @@ export function SetupWizardForm() {
   }
 
   return (
-    <Card className="w-full max-w-lg">
+    <Card className="w-full max-w-lg shadow-soft-lg">
       <CardHeader>
-        <CardTitle>Welcome to AfricaHR</CardTitle>
+        <div className="mb-1 flex size-11 items-center justify-center rounded-xl bg-primary text-lg font-bold text-primary-foreground">
+          A
+        </div>
+        <CardTitle className="text-xl">Welcome to AfricaHR</CardTitle>
         <CardDescription>
           Let&apos;s set up your company and create the first administrator account.
         </CardDescription>
@@ -59,7 +76,7 @@ export function SetupWizardForm() {
         <Form {...form}>
           <form method="post" onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-6">
             <div className="space-y-4">
-              <h3 className="text-sm font-medium text-muted-foreground">Company</h3>
+              <SectionHeading icon={Building2} title="Company" />
               <FormField
                 control={form.control}
                 name="companyName"
@@ -117,7 +134,7 @@ export function SetupWizardForm() {
             </div>
 
             <div className="space-y-4">
-              <h3 className="text-sm font-medium text-muted-foreground">Administrator account</h3>
+              <SectionHeading icon={UserCog} title="Administrator account" />
               <div className="grid grid-cols-2 gap-3">
                 <FormField
                   control={form.control}
@@ -166,7 +183,23 @@ export function SetupWizardForm() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" autoComplete="new-password" {...field} />
+                      <div className="relative">
+                        <Input
+                          type={showPassword ? 'text' : 'password'}
+                          autoComplete="new-password"
+                          className="pr-9"
+                          {...field}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((v) => !v)}
+                          className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                          aria-label={showPassword ? 'Hide password' : 'Show password'}
+                          tabIndex={-1}
+                        >
+                          {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                        </button>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -174,9 +207,14 @@ export function SetupWizardForm() {
               />
             </div>
 
-            {serverError && <p className="text-sm text-destructive">{serverError}</p>}
+            {serverError && (
+              <Alert variant="destructive">
+                <AlertCircle className="size-4" />
+                <AlertDescription>{serverError}</AlertDescription>
+              </Alert>
+            )}
             <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? 'Setting up...' : 'Create company and sign in'}
+              {form.formState.isSubmitting ? 'Setting up…' : 'Create company and sign in'}
             </Button>
           </form>
         </Form>

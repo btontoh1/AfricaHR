@@ -1,12 +1,17 @@
 'use client';
 
 import Link from 'next/link';
+import { UserPlus, Users } from 'lucide-react';
 import { useSession } from '../session-provider';
 import { useEmployees } from '@/features/employees/queries';
 import { EmploymentStatusBadge } from '@/features/employees/employment-status-badge';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/page-header';
+import { TableCard } from '@/components/table-card';
+import { EmptyState } from '@/components/empty-state';
+import { TableSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
 import {
   Table,
   TableBody,
@@ -23,67 +28,76 @@ export default function EmployeesPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Employees</h1>
-          <p className="text-sm text-muted-foreground">
-            {employees ? `${employees.length} employee${employees.length === 1 ? '' : 's'}` : ' '}
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/employees/new">Add employee</Link>
-        </Button>
-      </div>
+      <PageHeader
+        title="Employees"
+        description={employees ? `${employees.length} employee${employees.length === 1 ? '' : 's'}` : undefined}
+        action={
+          <Button asChild>
+            <Link href="/employees/new">
+              <UserPlus className="size-4" />
+              Add employee
+            </Link>
+          </Button>
+        }
+      />
 
-      {isLoading && (
-        <div className="space-y-2">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-      )}
+      {isLoading && <TableSkeleton />}
 
-      {isError && (
-        <p className="text-sm text-destructive">{getApiErrorMessage(error, 'Failed to load employees')}</p>
-      )}
+      {isError && <ErrorState message={getApiErrorMessage(error, 'Failed to load employees')} />}
 
       {employees && employees.length === 0 && (
-        <p className="text-sm text-muted-foreground">No employees yet.</p>
+        <EmptyState
+          icon={Users}
+          title="No employees yet"
+          description="Add your first employee to get started."
+          action={
+            <Button asChild size="sm">
+              <Link href="/employees/new">
+                <UserPlus className="size-4" />
+                Add employee
+              </Link>
+            </Button>
+          }
+        />
       )}
 
       {employees && employees.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Employee #</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Job title</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {employees.map((employee) => (
-              <TableRow key={employee.id} className="cursor-pointer">
-                <TableCell>
-                  <Link href={`/employees/${employee.id}`} className="hover:underline">
-                    {employee.employeeNumber}
-                  </Link>
-                </TableCell>
-                <TableCell>
-                  <Link href={`/employees/${employee.id}`} className="hover:underline">
-                    {employee.firstName} {employee.lastName}
-                  </Link>
-                </TableCell>
-                <TableCell>{employee.jobTitle}</TableCell>
-                <TableCell>{employee.employmentType}</TableCell>
-                <TableCell>
-                  <EmploymentStatusBadge status={employee.employmentStatus} />
-                </TableCell>
+        <TableCard>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Employee #</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Job title</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Status</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {employees.map((employee) => (
+                <TableRow key={employee.id} className="cursor-pointer">
+                  <TableCell>
+                    <Link href={`/employees/${employee.id}`} className="hover:underline">
+                      {employee.employeeNumber}
+                    </Link>
+                  </TableCell>
+                  <TableCell>
+                    <Link href={`/employees/${employee.id}`} className="font-medium hover:underline">
+                      {employee.firstName} {employee.lastName}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{employee.jobTitle}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {employee.employmentType.replace(/_/g, ' ')}
+                  </TableCell>
+                  <TableCell>
+                    <EmploymentStatusBadge status={employee.employmentStatus} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       )}
     </div>
   );

@@ -1,10 +1,14 @@
 'use client';
 
 import Link from 'next/link';
+import { FileStack } from 'lucide-react';
 import { useMyApplications } from './queries';
 import { ApplicationStageBadge } from './application-stage-badge';
 import { getApiErrorMessage } from '@/lib/api-error';
-import { Skeleton } from '@/components/ui/skeleton';
+import { TableCard } from '@/components/table-card';
+import { EmptyState } from '@/components/empty-state';
+import { TableSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
 import {
   Table,
   TableBody,
@@ -18,61 +22,50 @@ export function MyApplicationsList({ tenantId }: { tenantId: string }) {
   const { data: applications, isLoading, isError, error } = useMyApplications(tenantId);
 
   if (isLoading) {
-    return (
-      <div className="space-y-2">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-      </div>
-    );
+    return <TableSkeleton />;
   }
 
   if (isError) {
-    return (
-      <p className="text-sm text-destructive">
-        {getApiErrorMessage(error, 'Failed to load applications')}
-      </p>
-    );
+    return <ErrorState message={getApiErrorMessage(error, 'Failed to load applications')} />;
   }
 
   if (!applications || applications.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        No applications for requisitions you hire for yet.
-      </p>
-    );
+    return <EmptyState icon={FileStack} title="No applications for requisitions you hire for yet" />;
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Candidate</TableHead>
-          <TableHead>Requisition</TableHead>
-          <TableHead>Stage</TableHead>
-          <TableHead />
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {applications.map((application) => (
-          <TableRow key={application.id}>
-            <TableCell>
-              {application.candidate.firstName} {application.candidate.lastName}
-            </TableCell>
-            <TableCell>{application.requisition.title}</TableCell>
-            <TableCell>
-              <ApplicationStageBadge stage={application.stage} />
-            </TableCell>
-            <TableCell>
-              <Link
-                href={`/recruitment/applications/mine/${application.id}`}
-                className="text-sm underline"
-              >
-                View
-              </Link>
-            </TableCell>
+    <TableCard>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Candidate</TableHead>
+            <TableHead>Requisition</TableHead>
+            <TableHead>Stage</TableHead>
+            <TableHead />
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {applications.map((application) => (
+            <TableRow key={application.id}>
+              <TableCell className="font-medium">
+                {application.candidate.firstName} {application.candidate.lastName}
+              </TableCell>
+              <TableCell className="text-muted-foreground">{application.requisition.title}</TableCell>
+              <TableCell>
+                <ApplicationStageBadge stage={application.stage} />
+              </TableCell>
+              <TableCell>
+                <Link
+                  href={`/recruitment/applications/mine/${application.id}`}
+                  className="text-sm text-primary hover:underline"
+                >
+                  View
+                </Link>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableCard>
   );
 }

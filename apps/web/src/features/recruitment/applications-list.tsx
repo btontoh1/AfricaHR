@@ -2,12 +2,16 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { FileStack } from 'lucide-react';
 import { useApplications } from './queries';
 import { ApplicationStageBadge } from './application-stage-badge';
 import { APPLICATION_STAGE_OPTIONS } from './recruitment-form-schema';
 import type { ApplicationStage } from './types';
 import { getApiErrorMessage } from '@/lib/api-error';
-import { Skeleton } from '@/components/ui/skeleton';
+import { TableCard } from '@/components/table-card';
+import { EmptyState } from '@/components/empty-state';
+import { TableSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
 import {
   Select,
   SelectContent,
@@ -48,52 +52,45 @@ export function ApplicationsList({ tenantId }: { tenantId: string }) {
         </SelectContent>
       </Select>
 
-      {isLoading && (
-        <div className="space-y-2">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-      )}
+      {isLoading && <TableSkeleton />}
 
-      {isError && (
-        <p className="text-sm text-destructive">
-          {getApiErrorMessage(error, 'Failed to load applications')}
-        </p>
-      )}
+      {isError && <ErrorState message={getApiErrorMessage(error, 'Failed to load applications')} />}
 
       {applications && applications.length === 0 && (
-        <p className="text-sm text-muted-foreground">No applications match this filter.</p>
+        <EmptyState icon={FileStack} title="No applications match this filter" />
       )}
 
       {applications && applications.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Candidate</TableHead>
-              <TableHead>Requisition</TableHead>
-              <TableHead>Stage</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {applications.map((application) => (
-              <TableRow key={application.id}>
-                <TableCell>
-                  {application.candidate.firstName} {application.candidate.lastName}
-                </TableCell>
-                <TableCell>{application.requisition.title}</TableCell>
-                <TableCell>
-                  <ApplicationStageBadge stage={application.stage} />
-                </TableCell>
-                <TableCell>
-                  <Link href={`/recruitment/applications/${application.id}`} className="text-sm underline">
-                    View
-                  </Link>
-                </TableCell>
+        <TableCard>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Candidate</TableHead>
+                <TableHead>Requisition</TableHead>
+                <TableHead>Stage</TableHead>
+                <TableHead />
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {applications.map((application) => (
+                <TableRow key={application.id}>
+                  <TableCell className="font-medium">
+                    {application.candidate.firstName} {application.candidate.lastName}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{application.requisition.title}</TableCell>
+                  <TableCell>
+                    <ApplicationStageBadge stage={application.stage} />
+                  </TableCell>
+                  <TableCell>
+                    <Link href={`/recruitment/applications/${application.id}`} className="text-sm text-primary hover:underline">
+                      View
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       )}
     </div>
   );

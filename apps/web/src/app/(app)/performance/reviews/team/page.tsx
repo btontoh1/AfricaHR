@@ -2,14 +2,15 @@
 
 import { useSession } from '../../../session-provider';
 import { TeamReviewsList } from '@/features/performance/team-reviews-list';
+import { PageHeader } from '@/components/page-header';
 
 export default function TeamReviewsPage() {
   const session = useSession();
   const tenantId = session.tenantId as string;
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Team reviews</h1>
+    <div>
+      <PageHeader title="Team reviews" description="Complete manager assessments for your direct reports." />
       <TeamReviewsList tenantId={tenantId} />
     </div>
   );

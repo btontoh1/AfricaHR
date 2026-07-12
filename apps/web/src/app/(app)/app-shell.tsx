@@ -1,6 +1,8 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
+import { useState } from 'react';
+import { Menu, LogOut, ChevronDown } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,10 +13,82 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
+import { ThemeToggle } from '@/components/theme-toggle';
+import { cn } from '@/lib/utils';
 import type { SessionUser } from '@/lib/session';
+import { buildNavGroups, type NavGroup } from './nav-config';
+
+function NavLink({
+  href,
+  label,
+  Icon,
+  active,
+  onNavigate,
+}: {
+  href: string;
+  label: string;
+  Icon: NavGroup['items'][number]['icon'];
+  active: boolean;
+  onNavigate?: () => void;
+}) {
+  return (
+    <a
+      href={href}
+      onClick={onNavigate}
+      aria-current={active ? 'page' : undefined}
+      className={cn(
+        'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+        active
+          ? 'bg-primary/10 text-primary'
+          : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
+      )}
+    >
+      <Icon className="size-4 shrink-0" aria-hidden="true" />
+      <span className="truncate">{label}</span>
+    </a>
+  );
+}
+
+function NavGroups({ groups, pathname, onNavigate }: { groups: NavGroup[]; pathname: string; onNavigate?: () => void }) {
+  return (
+    <nav className="flex flex-col gap-5">
+      {groups.map((group) => (
+        <div key={group.label} className="flex flex-col gap-1">
+          <p className="px-3 text-xs font-semibold tracking-wide text-muted-foreground/70 uppercase">
+            {group.label}
+          </p>
+          {group.items.map((item) => (
+            <NavLink
+              key={item.href}
+              href={item.href}
+              label={item.label}
+              Icon={item.icon}
+              active={pathname === item.href || pathname.startsWith(`${item.href}/`)}
+              onNavigate={onNavigate}
+            />
+          ))}
+        </div>
+      ))}
+    </nav>
+  );
+}
+
+function BrandMark() {
+  return (
+    <div className="flex items-center gap-2 px-2">
+      <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
+        A
+      </div>
+      <span className="text-lg font-semibold tracking-tight">AfricaHR</span>
+    </div>
+  );
+}
 
 export function AppShell({ user, children }: { user: SessionUser; children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -23,166 +97,74 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
   }
 
   const initials = user.email.slice(0, 2).toUpperCase();
-
-  // Coarse, cheap client-side visibility checks only — the backend remains
-  // the real enforcement point (see project notes on Module 2 scope).
-  // PLATFORM_ADMIN has no tenant context (tenantId always null) and no
-  // linked Employee record, so it's excluded from every tenant-scoped
-  // item including self-service leave. EMPLOYEE holds no Employee/
-  // Organization permission at all, but self-service leave has no
-  // permission gate — it's for every tenant member, EMPLOYEE included.
-  const isTenantMember = Boolean(user.tenantId);
-  const hasAdminAccess = isTenantMember && user.role !== 'EMPLOYEE';
-  // PAYROLL_MANAGER is admin-ish but doesn't hold LEAVE_READ/LEAVE_MANAGE
-  // (see system-role.ts) — narrower than hasAdminAccess on purpose.
-  const hasLeaveAdminAccess =
-    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
-  // ATTENDANCE_READ/MANAGE are wired to the same roles as LEAVE_READ/MANAGE
-  // (PLATFORM_ADMIN/TENANT_ADMIN/HR_MANAGER) — PAYROLL_MANAGER is excluded
-  // here too, same reasoning as hasLeaveAdminAccess above.
-  const hasAttendanceAdminAccess =
-    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
-  // BENEFITS_READ/MANAGE are wired the same way — PAYROLL_MANAGER excluded.
-  const hasBenefitsAdminAccess =
-    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
-  // PERFORMANCE_READ/MANAGE are wired the same way — PAYROLL_MANAGER excluded.
-  const hasPerformanceAdminAccess =
-    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
-  // RECRUITMENT_READ/MANAGE are wired the same way — PAYROLL_MANAGER excluded.
-  const hasRecruitmentAdminAccess =
-    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
-  // NOTIFICATIONS_READ/MANAGE are wired the same way — PAYROLL_MANAGER excluded.
-  const hasNotificationsAdminAccess =
-    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
-  // USER_READ/MANAGE are narrower than every other admin permission in this
-  // app — HR_MANAGER only holds USER_READ (not MANAGE), so it gets a
-  // read-only view; PAYROLL_MANAGER holds neither.
-  const hasTeamMembersReadAccess =
-    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
-  const navItems = [
-    { label: 'Dashboard', href: '/dashboard' },
-    ...(hasAdminAccess ? [{ label: 'Employees', href: '/employees' }] : []),
-    ...(hasAdminAccess ? [{ label: 'Organizations', href: '/organizations' }] : []),
-    // TENANT_ADMIN, HR_MANAGER, and PAYROLL_MANAGER all hold PAYROLL_READ
-    // (HR_MANAGER read-only, the other two also MANAGE) — hasAdminAccess
-    // happens to match this module's real permission boundary exactly,
-    // unlike Leave's narrower check just above.
-    ...(hasAdminAccess ? [{ label: 'Payroll', href: '/payroll' }] : []),
-    ...(isTenantMember ? [{ label: 'Leave', href: '/leave' }] : []),
-    ...(hasLeaveAdminAccess ? [{ label: 'Leave Requests', href: '/leave/requests' }] : []),
-    ...(hasLeaveAdminAccess ? [{ label: 'Leave Types', href: '/leave/types' }] : []),
-    ...(isTenantMember ? [{ label: 'Attendance', href: '/attendance' }] : []),
-    ...(hasAttendanceAdminAccess
-      ? [{ label: 'Attendance Records', href: '/attendance/records' }]
-      : []),
-    ...(hasAttendanceAdminAccess
-      ? [{ label: 'Attendance Policy', href: '/attendance/policy' }]
-      : []),
-    ...(isTenantMember ? [{ label: 'Benefits', href: '/benefits' }] : []),
-    ...(hasBenefitsAdminAccess ? [{ label: 'Benefit Plans', href: '/benefits/plans' }] : []),
-    ...(hasBenefitsAdminAccess
-      ? [{ label: 'Benefit Enrollments', href: '/benefits/enrollments' }]
-      : []),
-    ...(isTenantMember ? [{ label: 'My Goals', href: '/performance/goals' }] : []),
-    ...(isTenantMember ? [{ label: 'My Reviews', href: '/performance/reviews' }] : []),
-    // Visible to every tenant member, not just admins: manager-ness is a
-    // dynamic per-employee relationship (Employee.managerId), not a role
-    // permission — anyone could be someone's direct manager. Empty for
-    // non-managers, same as self-service leave being empty with no
-    // requests yet.
-    ...(isTenantMember ? [{ label: 'Team Reviews', href: '/performance/reviews/team' }] : []),
-    ...(hasPerformanceAdminAccess
-      ? [{ label: 'Review Cycles', href: '/performance/cycles' }]
-      : []),
-    ...(hasPerformanceAdminAccess
-      ? [{ label: 'All Reviews', href: '/performance/reviews/all' }]
-      : []),
-    ...(hasRecruitmentAdminAccess
-      ? [{ label: 'Requisitions', href: '/recruitment/requisitions' }]
-      : []),
-    ...(hasRecruitmentAdminAccess
-      ? [{ label: 'Candidates', href: '/recruitment/candidates' }]
-      : []),
-    ...(hasRecruitmentAdminAccess
-      ? [{ label: 'Applications', href: '/recruitment/applications' }]
-      : []),
-    // Hiring-manager tier, visible to every tenant member same as Team
-    // Reviews — being a hiring manager is a dynamic JobRequisition.
-    // hiringManagerId relationship, not a role permission.
-    ...(isTenantMember
-      ? [{ label: 'My Requisitions', href: '/recruitment/requisitions/mine' }]
-      : []),
-    ...(isTenantMember
-      ? [{ label: 'My Applications', href: '/recruitment/applications/mine' }]
-      : []),
-    // REPORTING_READ is held by TENANT_ADMIN/HR_MANAGER/PAYROLL_MANAGER —
-    // hasAdminAccess (not EMPLOYEE) matches this module's real permission
-    // boundary exactly, same as Payroll's nav check, unlike the narrower
-    // TENANT_ADMIN/HR_MANAGER-only checks used everywhere else this
-    // session — PAYROLL_MANAGER holds REPORTING_READ for all five reports,
-    // not just payroll-cost (a single permission, no per-report split).
-    ...(hasAdminAccess ? [{ label: 'Headcount Report', href: '/reports/headcount' }] : []),
-    ...(hasAdminAccess ? [{ label: 'Payroll Cost Report', href: '/reports/payroll-cost' }] : []),
-    ...(hasAdminAccess
-      ? [{ label: 'Leave Utilization Report', href: '/reports/leave-utilization' }]
-      : []),
-    ...(hasAdminAccess ? [{ label: 'Attendance Report', href: '/reports/attendance' }] : []),
-    ...(hasAdminAccess
-      ? [{ label: 'Recruitment Pipeline Report', href: '/reports/recruitment-pipeline' }]
-      : []),
-    // A notification's recipient is a User, not an Employee — self-service
-    // is role-independent (every tenant member has a User account), same
-    // reasoning as every self-service module since Leave.
-    ...(isTenantMember ? [{ label: 'Notifications', href: '/notifications' }] : []),
-    ...(hasNotificationsAdminAccess
-      ? [{ label: 'Notification Templates', href: '/notifications/templates' }]
-      : []),
-    ...(hasNotificationsAdminAccess
-      ? [{ label: 'Send Notification', href: '/notifications/send' }]
-      : []),
-    ...(hasTeamMembersReadAccess
-      ? [{ label: 'Team Members', href: '/team-members' }]
-      : []),
-  ];
+  const navGroups = buildNavGroups(user);
 
   return (
-    <div className="flex min-h-screen">
-      <aside className="w-64 border-r bg-muted/20 p-4">
-        <div className="mb-6 text-lg font-semibold">AfricaHR</div>
-        <nav className="space-y-1">
-          {navItems.map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              className="block rounded-md px-3 py-2 text-sm hover:bg-accent"
-            >
-              {item.label}
-            </a>
-          ))}
-        </nav>
+    <div className="flex min-h-screen bg-background">
+      {/* Desktop sidebar */}
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card px-3 py-5 lg:flex">
+        <BrandMark />
+        <div className="mt-6 flex-1 overflow-y-auto">
+          <NavGroups groups={navGroups} pathname={pathname} />
+        </div>
       </aside>
-      <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b px-6 py-3">
-          <div className="text-sm text-muted-foreground">
-            {user.tenantId ? `Tenant: ${user.tenantId}` : 'Platform Admin'}
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-16 items-center justify-between border-b border-border bg-card/60 px-4 backdrop-blur-sm supports-backdrop-filter:bg-card/60 lg:px-6">
+          <div className="flex items-center gap-2">
+            {/* Mobile nav trigger */}
+            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open navigation">
+                  <Menu className="size-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-72 p-0">
+                <SheetTitle className="sr-only">Navigation</SheetTitle>
+                <div className="flex flex-col px-3 py-5">
+                  <BrandMark />
+                  <div className="mt-6">
+                    <NavGroups groups={navGroups} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
+            <span className="text-sm text-muted-foreground">
+              {user.tenantId ? `Tenant ${user.tenantId.slice(0, 8)}` : 'Platform Admin'}
+            </span>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center gap-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback>{initials}</AvatarFallback>
-                </Avatar>
-                <span className="text-sm">{user.email}</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>{user.role}</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center gap-2 px-2">
+                  <Avatar className="size-8">
+                    <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="hidden text-sm font-medium sm:inline">{user.email}</span>
+                  <ChevronDown className="size-4 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-sm font-medium">{user.email}</span>
+                    <span className="text-xs text-muted-foreground">{user.role.replace(/_/g, ' ')}</span>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} variant="destructive">
+                  <LogOut className="size-4" />
+                  Log out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </header>
-        <main className="flex-1 p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto p-4 lg:p-8">{children}</main>
       </div>
     </div>
   );

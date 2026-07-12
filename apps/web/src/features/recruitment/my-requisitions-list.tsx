@@ -1,10 +1,14 @@
 'use client';
 
 import Link from 'next/link';
+import { Briefcase } from 'lucide-react';
 import { useMyRequisitions } from './queries';
 import { RequisitionStatusBadge } from './requisition-status-badge';
 import { getApiErrorMessage } from '@/lib/api-error';
-import { Skeleton } from '@/components/ui/skeleton';
+import { TableCard } from '@/components/table-card';
+import { EmptyState } from '@/components/empty-state';
+import { TableSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
 import {
   Table,
   TableBody,
@@ -18,61 +22,54 @@ export function MyRequisitionsList({ tenantId }: { tenantId: string }) {
   const { data: requisitions, isLoading, isError, error } = useMyRequisitions(tenantId);
 
   if (isLoading) {
-    return (
-      <div className="space-y-2">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-      </div>
-    );
+    return <TableSkeleton />;
   }
 
   if (isError) {
-    return (
-      <p className="text-sm text-destructive">
-        {getApiErrorMessage(error, 'Failed to load your job requisitions')}
-      </p>
-    );
+    return <ErrorState message={getApiErrorMessage(error, 'Failed to load your job requisitions')} />;
   }
 
   if (!requisitions || requisitions.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
-        No job requisitions assigned to you as hiring manager yet.
-      </p>
+      <EmptyState icon={Briefcase} title="No job requisitions assigned to you as hiring manager yet" />
     );
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Title</TableHead>
-          <TableHead>Employment type</TableHead>
-          <TableHead>Openings</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead />
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {requisitions.map((requisition) => (
-          <TableRow key={requisition.id}>
-            <TableCell>{requisition.title}</TableCell>
-            <TableCell>{requisition.employmentType.replace('_', ' ')}</TableCell>
-            <TableCell>{requisition.openings}</TableCell>
-            <TableCell>
-              <RequisitionStatusBadge status={requisition.status} />
-            </TableCell>
-            <TableCell>
-              <Link
-                href={`/recruitment/requisitions/mine/${requisition.id}`}
-                className="text-sm underline"
-              >
-                View
-              </Link>
-            </TableCell>
+    <TableCard>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Title</TableHead>
+            <TableHead>Employment type</TableHead>
+            <TableHead>Openings</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead />
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {requisitions.map((requisition) => (
+            <TableRow key={requisition.id}>
+              <TableCell className="font-medium">{requisition.title}</TableCell>
+              <TableCell className="text-muted-foreground">
+                {requisition.employmentType.replace('_', ' ')}
+              </TableCell>
+              <TableCell>{requisition.openings}</TableCell>
+              <TableCell>
+                <RequisitionStatusBadge status={requisition.status} />
+              </TableCell>
+              <TableCell>
+                <Link
+                  href={`/recruitment/requisitions/mine/${requisition.id}`}
+                  className="text-sm text-primary hover:underline"
+                >
+                  View
+                </Link>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableCard>
   );
 }

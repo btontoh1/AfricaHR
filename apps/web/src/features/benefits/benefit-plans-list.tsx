@@ -1,11 +1,15 @@
 'use client';
 
+import { HeartHandshake } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBenefitPlans, useUpdateBenefitPlan } from './queries';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { TableCard } from '@/components/table-card';
+import { EmptyState } from '@/components/empty-state';
+import { TableSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
 import {
   Table,
   TableBody,
@@ -38,58 +42,51 @@ export function BenefitPlansList({ tenantId }: { tenantId: string }) {
   const { data: plans, isLoading, isError, error } = useBenefitPlans(tenantId);
 
   if (isLoading) {
-    return (
-      <div className="space-y-2">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-      </div>
-    );
+    return <TableSkeleton />;
   }
 
   if (isError) {
-    return (
-      <p className="text-sm text-destructive">
-        {getApiErrorMessage(error, 'Failed to load benefit plans')}
-      </p>
-    );
+    return <ErrorState message={getApiErrorMessage(error, 'Failed to load benefit plans')} />;
   }
 
   if (!plans || plans.length === 0) {
-    return <p className="text-sm text-muted-foreground">No benefit plans yet.</p>;
+    return <EmptyState icon={HeartHandshake} title="No benefit plans yet" description="Add the first plan above." />;
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>Code</TableHead>
-          <TableHead>Type</TableHead>
-          <TableHead>Employee rate</TableHead>
-          <TableHead>Employer rate</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead />
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {plans.map((plan) => (
-          <TableRow key={plan.id}>
-            <TableCell>{plan.name}</TableCell>
-            <TableCell>{plan.code}</TableCell>
-            <TableCell>{plan.contributionType}</TableCell>
-            <TableCell>{plan.employeeContribution}</TableCell>
-            <TableCell>{plan.employerContribution}</TableCell>
-            <TableCell>
-              <Badge variant={plan.isActive ? 'default' : 'secondary'}>
-                {plan.isActive ? 'Active' : 'Inactive'}
-              </Badge>
-            </TableCell>
-            <TableCell>
-              <ToggleActiveButton tenantId={tenantId} id={plan.id} isActive={plan.isActive} />
-            </TableCell>
+    <TableCard>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Code</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead>Employee rate</TableHead>
+            <TableHead>Employer rate</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead />
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {plans.map((plan) => (
+            <TableRow key={plan.id}>
+              <TableCell className="font-medium">{plan.name}</TableCell>
+              <TableCell className="text-muted-foreground">{plan.code}</TableCell>
+              <TableCell className="text-muted-foreground">{plan.contributionType}</TableCell>
+              <TableCell>{plan.employeeContribution}</TableCell>
+              <TableCell>{plan.employerContribution}</TableCell>
+              <TableCell>
+                <Badge variant={plan.isActive ? 'success' : 'secondary'}>
+                  {plan.isActive ? 'Active' : 'Inactive'}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                <ToggleActiveButton tenantId={tenantId} id={plan.id} isActive={plan.isActive} />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableCard>
   );
 }

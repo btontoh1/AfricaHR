@@ -6,7 +6,9 @@ import { StatusChangeControl } from './status-change-control';
 import { UpdateEmployeeForm } from './update-employee-form';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { CardSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
+import { PageHeader } from '@/components/page-header';
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -21,35 +23,20 @@ export function EmployeeDetail({ tenantId, employeeId }: { tenantId: string; emp
   const { data: employee, isLoading, isError, error } = useEmployee(tenantId, employeeId);
 
   if (isLoading) {
-    return (
-      <div className="space-y-2">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-32 w-full" />
-      </div>
-    );
+    return <CardSkeleton />;
   }
 
   if (isError || !employee) {
-    return (
-      <p className="text-sm text-destructive">
-        {getApiErrorMessage(error, 'Failed to load employee')}
-      </p>
-    );
+    return <ErrorState message={getApiErrorMessage(error, 'Failed to load employee')} />;
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">
-            {employee.firstName} {employee.lastName}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {employee.employeeNumber} · {employee.jobTitle}
-          </p>
-        </div>
-        <EmploymentStatusBadge status={employee.employmentStatus} />
-      </div>
+      <PageHeader
+        title={`${employee.firstName} ${employee.lastName}`}
+        description={`${employee.employeeNumber} · ${employee.jobTitle}`}
+        action={<EmploymentStatusBadge status={employee.employmentStatus} />}
+      />
 
       <Card>
         <CardHeader>

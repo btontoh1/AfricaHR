@@ -2,6 +2,7 @@
 
 import { useSession } from '../../session-provider';
 import { LeaveUtilizationReport } from '@/features/reporting/leave-utilization-report';
+import { PageHeader } from '@/components/page-header';
 
 export default function LeaveUtilizationReportPage() {
   const session = useSession();
@@ -9,7 +10,7 @@ export default function LeaveUtilizationReportPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold">Leave utilization</h1>
+      <PageHeader title="Leave utilization" description="Leave taken vs. entitlement by type." />
       <LeaveUtilizationReport tenantId={tenantId} />
     </div>
   );

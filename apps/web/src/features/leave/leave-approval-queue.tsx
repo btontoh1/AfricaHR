@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { ClipboardCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApproveLeaveRequest, useLeaveRequests, useLeaveTypes } from './queries';
 import { LeaveRequestStatusBadge } from './leave-request-status-badge';
@@ -8,7 +9,10 @@ import { RejectLeaveRequestDialog } from './reject-leave-request-dialog';
 import { getApiErrorMessage } from '@/lib/api-error';
 import type { LeaveRequestStatus } from './types';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { TableCard } from '@/components/table-card';
+import { EmptyState } from '@/components/empty-state';
+import { TableSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
 import {
   Select,
   SelectContent,
@@ -62,61 +66,54 @@ export function LeaveApprovalQueue({ tenantId }: { tenantId: string }) {
         </SelectContent>
       </Select>
 
-      {isLoading && (
-        <div className="space-y-2">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-      )}
+      {isLoading && <TableSkeleton />}
 
-      {isError && (
-        <p className="text-sm text-destructive">
-          {getApiErrorMessage(error, 'Failed to load leave requests')}
-        </p>
-      )}
+      {isError && <ErrorState message={getApiErrorMessage(error, 'Failed to load leave requests')} />}
 
       {requests && requests.length === 0 && (
-        <p className="text-sm text-muted-foreground">No leave requests match this filter.</p>
+        <EmptyState icon={ClipboardCheck} title="No leave requests match this filter" />
       )}
 
       {requests && requests.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Employee</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Dates</TableHead>
-              <TableHead>Days</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {requests.map((request) => (
-              <TableRow key={request.id}>
-                <TableCell className="font-mono text-xs">{request.employeeId}</TableCell>
-                <TableCell>{leaveTypeName(request.leaveTypeId)}</TableCell>
-                <TableCell>
-                  {request.startDate.slice(0, 10)} – {request.endDate.slice(0, 10)}
-                </TableCell>
-                <TableCell>{request.daysRequested}</TableCell>
-                <TableCell>
-                  <LeaveRequestStatusBadge status={request.status} />
-                </TableCell>
-                <TableCell>
-                  {request.status === 'PENDING' && (
-                    <div className="flex gap-2">
-                      <Button size="sm" onClick={() => handleApprove(request.id)} disabled={approveRequest.isPending}>
-                        Approve
-                      </Button>
-                      <RejectLeaveRequestDialog tenantId={tenantId} id={request.id} />
-                    </div>
-                  )}
-                </TableCell>
+        <TableCard>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Employee</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Dates</TableHead>
+                <TableHead>Days</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead />
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {requests.map((request) => (
+                <TableRow key={request.id}>
+                  <TableCell className="font-mono text-xs">{request.employeeId}</TableCell>
+                  <TableCell>{leaveTypeName(request.leaveTypeId)}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {request.startDate.slice(0, 10)} – {request.endDate.slice(0, 10)}
+                  </TableCell>
+                  <TableCell>{request.daysRequested}</TableCell>
+                  <TableCell>
+                    <LeaveRequestStatusBadge status={request.status} />
+                  </TableCell>
+                  <TableCell>
+                    {request.status === 'PENDING' && (
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => handleApprove(request.id)} disabled={approveRequest.isPending}>
+                          Approve
+                        </Button>
+                        <RejectLeaveRequestDialog tenantId={tenantId} id={request.id} />
+                      </div>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       )}
     </div>
   );

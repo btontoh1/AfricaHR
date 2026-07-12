@@ -1,10 +1,10 @@
 import { Badge } from '@/components/ui/badge';
 import type { PerformanceReviewStatus } from './types';
 
-const STATUS_VARIANT: Record<PerformanceReviewStatus, 'default' | 'secondary' | 'outline'> = {
+const STATUS_VARIANT: Record<PerformanceReviewStatus, 'outline' | 'warning' | 'success'> = {
   DRAFT: 'outline',
-  SELF_SUBMITTED: 'default',
-  COMPLETED: 'secondary',
+  SELF_SUBMITTED: 'warning',
+  COMPLETED: 'success',
 };
 
 export function ReviewStatusBadge({ status }: { status: PerformanceReviewStatus }) {

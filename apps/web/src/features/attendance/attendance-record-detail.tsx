@@ -5,7 +5,9 @@ import { useEmployee } from '@/features/employees/queries';
 import { UpdateAttendanceRecordForm } from './update-attendance-record-form';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { CardSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
+import { PageHeader } from '@/components/page-header';
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -27,30 +29,19 @@ export function AttendanceRecordDetail({
   const { data: employee } = useEmployee(tenantId, record?.employeeId ?? '');
 
   if (isLoading) {
-    return (
-      <div className="space-y-2">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-32 w-full" />
-      </div>
-    );
+    return <CardSkeleton />;
   }
 
   if (isError || !record) {
-    return (
-      <p className="text-sm text-destructive">
-        {getApiErrorMessage(error, 'Failed to load attendance record')}
-      </p>
-    );
+    return <ErrorState message={getApiErrorMessage(error, 'Failed to load attendance record')} />;
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">{record.date.slice(0, 10)}</h1>
-        <p className="text-sm text-muted-foreground">
-          {employee ? `${employee.firstName} ${employee.lastName}` : record.employeeId}
-        </p>
-      </div>
+      <PageHeader
+        title={record.date.slice(0, 10)}
+        description={employee ? `${employee.firstName} ${employee.lastName}` : record.employeeId}
+      />
 
       <Card>
         <CardHeader>

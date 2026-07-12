@@ -2,6 +2,7 @@
 
 import { useSession } from '../../session-provider';
 import { HeadcountReport } from '@/features/reporting/headcount-report';
+import { PageHeader } from '@/components/page-header';
 
 export default function HeadcountReportPage() {
   const session = useSession();
@@ -9,7 +10,7 @@ export default function HeadcountReportPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold">Headcount</h1>
+      <PageHeader title="Headcount" description="Employee counts by organization and status." />
       <HeadcountReport tenantId={tenantId} />
     </div>
   );

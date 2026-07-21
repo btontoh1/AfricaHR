@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { ShieldCheck, Users, Wallet } from 'lucide-react';
 import { getSession } from '@/lib/session';
 import { needsSetup } from '@/lib/setup-status';
+import { Logo } from '@/components/logo';
 import { LoginForm } from './login-form';
 
 const highlights = [
@@ -33,10 +34,8 @@ export default async function LoginPage() {
           aria-hidden="true"
         />
         <div className="relative flex items-center gap-2">
-          <div className="flex size-9 items-center justify-center rounded-lg bg-white/15 text-lg font-bold">
-            A
-          </div>
-          <span className="text-xl font-semibold tracking-tight">AfricaHR</span>
+          <Logo className="size-9 rounded-lg" />
+          <span className="text-xl font-semibold tracking-tight">ParrotHR</span>
         </div>
         <div className="relative space-y-8">
           <h2 className="text-3xl leading-tight font-semibold text-balance">
@@ -54,7 +53,7 @@ export default async function LoginPage() {
           </ul>
         </div>
         <p className="relative text-xs text-primary-foreground/70">
-          &copy; {new Date().getFullYear()} AfricaHR. All rights reserved.
+          &copy; {new Date().getFullYear()} ParrotHR. All rights reserved.
         </p>
       </div>
 

@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { Logo } from '@/components/logo';
 import { cn } from '@/lib/utils';
 import type { SessionUser } from '@/lib/session';
 import { buildNavGroups, type NavGroup } from './nav-config';
@@ -77,10 +78,8 @@ function NavGroups({ groups, pathname, onNavigate }: { groups: NavGroup[]; pathn
 function BrandMark() {
   return (
     <div className="flex items-center gap-2 px-2">
-      <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
-        A
-      </div>
-      <span className="text-lg font-semibold tracking-tight">AfricaHR</span>
+      <Logo className="size-8 rounded-lg" />
+      <span className="text-lg font-semibold tracking-tight">ParrotHR</span>
     </div>
   );
 }

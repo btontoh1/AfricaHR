@@ -93,6 +93,8 @@ jobs:
         env:
           PGHOST: localhost
           PGPASSWORD: africahr
+          POSTGRES_USER: africahr
+          POSTGRES_DB: africahr
         run: sh docker/postgres-init/01-create-app-role.sh
 
       - name: Run migrations

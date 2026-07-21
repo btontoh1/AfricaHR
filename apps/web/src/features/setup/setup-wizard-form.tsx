@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Logo } from '@/components/logo';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { setupFormSchema, type SetupFormValues } from './setup-form-schema';
 
@@ -64,10 +65,8 @@ export function SetupWizardForm() {
   return (
     <Card className="w-full max-w-lg shadow-soft-lg">
       <CardHeader>
-        <div className="mb-1 flex size-11 items-center justify-center rounded-xl bg-primary text-lg font-bold text-primary-foreground">
-          A
-        </div>
-        <CardTitle className="text-xl">Welcome to AfricaHR</CardTitle>
+        <Logo className="mb-1 size-11 rounded-xl" />
+        <CardTitle className="text-xl">Welcome to ParrotHR</CardTitle>
         <CardDescription>
           Let&apos;s set up your company and create the first administrator account.
         </CardDescription>
@@ -182,25 +181,25 @@ export function SetupWizardForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <div className="relative">
+                    <div className="relative">
+                      <FormControl>
                         <Input
                           type={showPassword ? 'text' : 'password'}
                           autoComplete="new-password"
                           className="pr-9"
                           {...field}
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword((v) => !v)}
-                          className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
-                          aria-label={showPassword ? 'Hide password' : 'Show password'}
-                          tabIndex={-1}
-                        >
-                          {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                        </button>
-                      </div>
-                    </FormControl>
+                      </FormControl>
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((v) => !v)}
+                        className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        tabIndex={-1}
+                      >
+                        {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      </button>
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}

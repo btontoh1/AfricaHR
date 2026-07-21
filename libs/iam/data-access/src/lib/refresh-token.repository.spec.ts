@@ -11,10 +11,12 @@ describe('RefreshTokenRepository', () => {
   };
   let withTenantContext: jest.Mock;
   let withPlatformScope: jest.Mock;
+  let queryRaw: jest.Mock;
   let prisma: {
     refreshToken: typeof tokenDelegate;
     withTenantContext: jest.Mock;
     withPlatformScope: jest.Mock;
+    $queryRaw: jest.Mock;
   };
 
   beforeEach(() => {
@@ -26,18 +28,36 @@ describe('RefreshTokenRepository', () => {
     };
     withTenantContext = jest.fn((_tenantId, fn) => fn({ refreshToken: tokenDelegate }));
     withPlatformScope = jest.fn((fn) => fn({ refreshToken: tokenDelegate }));
-    prisma = { refreshToken: tokenDelegate, withTenantContext, withPlatformScope };
+    queryRaw = jest.fn();
+    prisma = { refreshToken: tokenDelegate, withTenantContext, withPlatformScope, $queryRaw: queryRaw };
 
     repository = new RefreshTokenRepository(prisma as unknown as PrismaService);
   });
 
-  it('findByTokenHash bypasses tenant scoping', async () => {
-    await repository.findByTokenHash('hash-abc');
+  describe('findByTokenHash', () => {
+    it('looks up via the find_refresh_token_by_hash SECURITY DEFINER function, bypassing tenant scoping', async () => {
+      const row = {
+        id: 'token-1',
+        tenantId: 'tenant-1',
+        userId: 'user-1',
+        expiresAt: new Date(),
+      };
+      queryRaw.mockResolvedValue([row]);
 
-    expect(withTenantContext).not.toHaveBeenCalled();
-    expect(withPlatformScope).not.toHaveBeenCalled();
-    expect(tokenDelegate.findFirst).toHaveBeenCalledWith({
-      where: { tokenHash: 'hash-abc', revokedAt: null },
+      const result = await repository.findByTokenHash('hash-abc');
+
+      expect(withTenantContext).not.toHaveBeenCalled();
+      expect(withPlatformScope).not.toHaveBeenCalled();
+      expect(queryRaw).toHaveBeenCalled();
+      expect(result).toEqual(row);
+    });
+
+    it('returns null when no token matches the hash', async () => {
+      queryRaw.mockResolvedValue([]);
+
+      const result = await repository.findByTokenHash('missing-hash');
+
+      expect(result).toBeNull();
     });
   });
 

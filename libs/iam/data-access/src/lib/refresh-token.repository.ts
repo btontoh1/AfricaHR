@@ -12,6 +12,13 @@ export interface CreateRefreshTokenInput {
   ipAddress?: string;
 }
 
+export interface RefreshTokenForLookup {
+  id: string;
+  tenantId: string | null;
+  userId: string;
+  expiresAt: Date;
+}
+
 @Injectable()
 export class RefreshTokenRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -34,10 +41,18 @@ export class RefreshTokenRepository {
   /**
    * Deliberately bypasses tenant scoping, same reasoning as
    * UserRepository.findByEmail: refresh only has an opaque token, not yet a
-   * known tenant.
+   * known tenant. Goes through find_refresh_token_by_hash(), a narrow
+   * SECURITY DEFINER function, rather than a plain findFirst — under the
+   * least-privilege app role a bare query can't see tenant-scoped rows with
+   * no tenant context set (and can't safely fake one on a pooled
+   * connection either, see tenant-scoped.ts) — see the
+   * refresh-token-lookup-function migration.
    */
-  findByTokenHash(tokenHash: string): Promise<RefreshToken | null> {
-    return this.prisma.refreshToken.findFirst({ where: { tokenHash, revokedAt: null } });
+  async findByTokenHash(tokenHash: string): Promise<RefreshTokenForLookup | null> {
+    const rows = await this.prisma.$queryRaw<
+      RefreshTokenForLookup[]
+    >`SELECT * FROM find_refresh_token_by_hash(${tokenHash})`;
+    return rows[0] ?? null;
   }
 
   revoke(tenantId: string | null, id: string): Promise<RefreshToken> {

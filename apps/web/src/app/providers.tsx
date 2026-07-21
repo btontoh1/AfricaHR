@@ -6,6 +6,21 @@ import { ThemeProvider } from 'next-themes';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
+/**
+ * 4xx responses (permission denied, not found, validation) won't succeed on
+ * retry - only retry network/server failures. Without this, a query that
+ * fails with e.g. 403 gets retried anyway, and can end up stuck with
+ * fetchStatus "paused" instead of ever settling into "error", leaving the
+ * UI on its loading state indefinitely.
+ */
+function shouldRetry(failureCount: number, error: unknown): boolean {
+  const status = (error as { statusCode?: number } | null)?.statusCode;
+  if (typeof status === 'number' && status >= 400 && status < 500) {
+    return false;
+  }
+  return failureCount < 1;
+}
+
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>
@@ -13,7 +28,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         defaultOptions: {
           queries: {
             staleTime: 30_000,
-            retry: 1,
+            retry: shouldRetry,
           },
         },
       }),

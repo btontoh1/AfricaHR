@@ -137,6 +137,86 @@ export interface paths {
         patch: operations["TenantController_updateStatus"];
         trace?: never;
     };
+    "/api/organizations/verification-queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OrganizationVerificationController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organizations/verification-queue/{id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["OrganizationVerificationController_verify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organizations/verification-queue/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["OrganizationVerificationController_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organizations/verification-queue/{id}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OrganizationVerificationController_listDocuments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organizations/verification-queue/{id}/documents/{docId}/view-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OrganizationVerificationController_getDocumentViewUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/organizations": {
         parameters: {
             query?: never;
@@ -161,6 +241,70 @@ export interface paths {
             cookie?: never;
         };
         get: operations["OrganizationController_findById"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/organizations/{id}/submit-verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["OrganizationController_submitForVerification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/organizations/{id}/verification-documents/upload-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["OrganizationController_requestVerificationDocumentUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/organizations/{id}/verification-documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OrganizationController_listVerificationDocuments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/organizations/{id}/verification-documents/{docId}/view-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OrganizationController_getVerificationDocumentViewUrl"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1693,6 +1837,38 @@ export interface components {
             /** @enum {string} */
             status: "TRIAL" | "ACTIVE" | "SUSPENDED" | "CLOSED";
         };
+        OrganizationResponseDto: {
+            id: string;
+            legalName: string;
+            tradingName?: string;
+            countryCode: string;
+            registrationNumber: string;
+            taxIdentificationNumber?: string;
+            /** @enum {string} */
+            verificationStatus: "UNVERIFIED" | "PENDING_REVIEW" | "VERIFIED" | "REJECTED";
+            /** @description Reviewer note, set on rejection */
+            verificationNote?: string;
+            verifiedAt?: string;
+            createdAt: string;
+            updatedAt: string;
+        };
+        RejectOrganizationDto: {
+            /** @example Registration number does not match the uploaded certificate */
+            note: string;
+        };
+        OrganizationVerificationDocumentResponseDto: {
+            id: string;
+            organizationId: string;
+            /** @enum {string} */
+            documentType: "CERTIFICATE_OF_INCORPORATION" | "TAX_CLEARANCE_CERTIFICATE" | "OTHER";
+            fileName: string;
+            contentType: string;
+            createdAt: string;
+        };
+        DocumentViewUrlResponseDto: {
+            /** @description Short-lived signed URL to view/download the document directly from storage */
+            viewUrl: string;
+        };
         CreateOrganizationDto: {
             /** @example Acme Ghana Ltd */
             legalName: string;
@@ -1715,15 +1891,18 @@ export interface components {
              */
             metadata?: Record<string, never>;
         };
-        OrganizationResponseDto: {
-            id: string;
-            legalName: string;
-            tradingName?: string;
-            countryCode: string;
-            registrationNumber: string;
-            taxIdentificationNumber?: string;
-            createdAt: string;
-            updatedAt: string;
+        RequestVerificationDocumentUploadDto: {
+            /** @enum {string} */
+            documentType: "CERTIFICATE_OF_INCORPORATION" | "TAX_CLEARANCE_CERTIFICATE" | "OTHER";
+            /** @example certificate-of-incorporation.pdf */
+            fileName: string;
+            /** @enum {string} */
+            contentType: "application/pdf" | "image/png" | "image/jpeg";
+        };
+        RequestVerificationDocumentUploadResponseDto: {
+            /** @description Short-lived signed URL — PUT the file bytes here directly, not through this API */
+            uploadUrl: string;
+            documentId: string;
         };
         CreateOrganizationUnitDto: {
             organizationId: string;
@@ -2970,6 +3149,113 @@ export interface operations {
             };
         };
     };
+    OrganizationVerificationController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationResponseDto"][];
+                };
+            };
+        };
+    };
+    OrganizationVerificationController_verify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationResponseDto"];
+                };
+            };
+        };
+    };
+    OrganizationVerificationController_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectOrganizationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationResponseDto"];
+                };
+            };
+        };
+    };
+    OrganizationVerificationController_listDocuments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationVerificationDocumentResponseDto"][];
+                };
+            };
+        };
+    };
+    OrganizationVerificationController_getDocumentViewUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                docId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentViewUrlResponseDto"];
+                };
+            };
+        };
+    };
     OrganizationController_list: {
         parameters: {
             query?: never;
@@ -3034,6 +3320,98 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrganizationResponseDto"];
+                };
+            };
+        };
+    };
+    OrganizationController_submitForVerification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationResponseDto"];
+                };
+            };
+        };
+    };
+    OrganizationController_requestVerificationDocumentUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestVerificationDocumentUploadDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequestVerificationDocumentUploadResponseDto"];
+                };
+            };
+        };
+    };
+    OrganizationController_listVerificationDocuments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationVerificationDocumentResponseDto"][];
+                };
+            };
+        };
+    };
+    OrganizationController_getVerificationDocumentViewUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                docId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentViewUrlResponseDto"];
                 };
             };
         };

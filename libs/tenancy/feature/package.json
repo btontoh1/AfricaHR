@@ -15,6 +15,7 @@
     "@africahr/tenancy-data-access": "0.0.1",
     "@africahr/platform-auth": "0.0.1",
     "@africahr/platform-audit": "0.0.1",
-    "@africahr/platform-core": "0.0.1"
+    "@africahr/platform-core": "0.0.1",
+    "@africahr/platform-storage": "0.0.1"
   }
 }

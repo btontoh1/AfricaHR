@@ -84,7 +84,8 @@
       ],
       "@africahr/notifications-feature": [
         "./libs/notifications/feature/src/index.ts"
-      ]
+      ],
+      "@africahr/platform-storage": ["./libs/platform/storage/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

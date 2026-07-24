@@ -67,6 +67,12 @@ describe('permission matrix', () => {
     { area: 'team-members', path: `/api/users`, role: 'EMPLOYEE', expectStatus: 403 },
 
     { area: 'tenants (platform-only)', path: `/api/tenants`, role: 'TENANT_ADMIN', expectStatus: 403 },
+    {
+      area: 'organization-verification-queue (platform-only)',
+      path: `/api/organizations/verification-queue`,
+      role: 'TENANT_ADMIN',
+      expectStatus: 403,
+    },
   ];
 
   it.each(checks)('$area :: $role -> $expectStatus on $path', async ({ path, role, expectStatus }) => {

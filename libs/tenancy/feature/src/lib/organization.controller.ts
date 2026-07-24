@@ -10,15 +10,23 @@ import {
   RequirePermissions,
 } from '@africahr/platform-auth';
 import { OrganizationService } from './organization.service';
+import { OrganizationVerificationDocumentService } from './organization-verification-document.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { OrganizationResponseDto } from './dto/organization-response.dto';
+import { RequestVerificationDocumentUploadDto } from './dto/request-verification-document-upload.dto';
+import { RequestVerificationDocumentUploadResponseDto } from './dto/request-verification-document-upload-response.dto';
+import { OrganizationVerificationDocumentResponseDto } from './dto/organization-verification-document-response.dto';
+import { DocumentViewUrlResponseDto } from './dto/document-view-url-response.dto';
 
 @ApiTags('organizations')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('tenants/:tenantId/organizations')
 export class OrganizationController {
-  constructor(private readonly organizations: OrganizationService) {}
+  constructor(
+    private readonly organizations: OrganizationService,
+    private readonly verificationDocuments: OrganizationVerificationDocumentService,
+  ) {}
 
   @Post()
   @RequirePermissions(Permission.ORGANIZATION_MANAGE)
@@ -50,5 +58,55 @@ export class OrganizationController {
   ) {
     assertTenantScope(actor, tenantId);
     return this.organizations.findById(tenantId, id);
+  }
+
+  @Post(':id/submit-verification')
+  @RequirePermissions(Permission.ORGANIZATION_MANAGE)
+  @ApiOkResponse({ type: OrganizationResponseDto })
+  submitForVerification(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.organizations.submitForVerification(tenantId, id, actor.sub);
+  }
+
+  @Post(':id/verification-documents/upload-url')
+  @RequirePermissions(Permission.ORGANIZATION_MANAGE)
+  @ApiOkResponse({ type: RequestVerificationDocumentUploadResponseDto })
+  requestVerificationDocumentUpload(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: RequestVerificationDocumentUploadDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.verificationDocuments.requestUpload(tenantId, id, dto, actor.sub);
+  }
+
+  @Get(':id/verification-documents')
+  @RequirePermissions(Permission.ORGANIZATION_READ)
+  @ApiOkResponse({ type: OrganizationVerificationDocumentResponseDto, isArray: true })
+  listVerificationDocuments(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.verificationDocuments.listByOrganization(tenantId, id);
+  }
+
+  @Get(':id/verification-documents/:docId/view-url')
+  @RequirePermissions(Permission.ORGANIZATION_READ)
+  @ApiOkResponse({ type: DocumentViewUrlResponseDto })
+  async getVerificationDocumentViewUrl(
+    @Param('tenantId') tenantId: string,
+    @Param('docId') docId: string,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    const viewUrl = await this.verificationDocuments.getViewUrl(tenantId, docId);
+    return { viewUrl };
   }
 }

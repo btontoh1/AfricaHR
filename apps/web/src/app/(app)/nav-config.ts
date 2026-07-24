@@ -29,6 +29,7 @@ import {
   Bell,
   FileCode,
   Send,
+  ShieldCheck,
 } from 'lucide-react';
 import type { SessionUser } from '@/lib/session';
 
@@ -54,6 +55,7 @@ export interface NavGroup {
  */
 export function buildNavGroups(user: SessionUser): NavGroup[] {
   const isTenantMember = Boolean(user.tenantId);
+  const isPlatformAdmin = user.role === 'PLATFORM_ADMIN';
   const hasAdminAccess = isTenantMember && user.role !== 'EMPLOYEE';
   // PAYROLL_MANAGER is admin-ish but doesn't hold LEAVE_READ/LEAVE_MANAGE.
   const hasLeaveAdminAccess =
@@ -75,7 +77,12 @@ export function buildNavGroups(user: SessionUser): NavGroup[] {
   const groups: NavGroup[] = [
     {
       label: 'Overview',
-      items: [{ label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard }],
+      items: [
+        { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+        ...(isPlatformAdmin
+          ? [{ label: 'Verification Queue', href: '/organizations/verification-queue', icon: ShieldCheck }]
+          : []),
+      ],
     },
     {
       label: 'People',

@@ -34,6 +34,24 @@ export class AppConfigService {
     };
   }
 
+  get storage(): {
+    endpoint: string;
+    bucket: string;
+    accessKey: string;
+    secretKey: string;
+    region: string;
+    forcePathStyle: boolean;
+  } {
+    return {
+      endpoint: this.configService.get('STORAGE_ENDPOINT', { infer: true }),
+      bucket: this.configService.get('STORAGE_BUCKET', { infer: true }),
+      accessKey: this.configService.get('STORAGE_ACCESS_KEY', { infer: true }),
+      secretKey: this.configService.get('STORAGE_SECRET_KEY', { infer: true }),
+      region: this.configService.get('STORAGE_REGION', { infer: true }),
+      forcePathStyle: this.configService.get('STORAGE_FORCE_PATH_STYLE', { infer: true }),
+    };
+  }
+
   get logLevel(): EnvConfig['LOG_LEVEL'] {
     return this.configService.get('LOG_LEVEL', { infer: true });
   }

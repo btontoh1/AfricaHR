@@ -1,4 +1,4 @@
-// AfricaHR — shared-schema, multi-tenant PostgreSQL database.
+// ParrotHR — shared-schema, multi-tenant PostgreSQL database.
 //
 // Tenant isolation convention (see RLS_CONVENTION.md in this directory):
 // every tenant-scoped model gets a `tenantId` column, an index on it, and a
@@ -22,6 +22,19 @@ enum TenantStatus {
   ACTIVE
   SUSPENDED
   CLOSED
+}
+
+enum OrganizationVerificationStatus {
+  UNVERIFIED
+  PENDING_REVIEW
+  VERIFIED
+  REJECTED
+}
+
+enum VerificationDocumentType {
+  CERTIFICATE_OF_INCORPORATION
+  TAX_CLEARANCE_CERTIFICATE
+  OTHER
 }
 
 /// The SaaS account. Platform-root table — no tenantId, no RLS.
@@ -61,20 +74,59 @@ model Organization {
   /// column yet (e.g. Ghana SSNIT employer number).
   metadata                Json?
 
+  /// KYB-style review: a PLATFORM_ADMIN verifies the legal-entity fields
+  /// above (and any supporting documents) before the org is trusted.
+  /// Nothing else in the app currently gates on this status - see the
+  /// organization-verification-status domain module for the transition
+  /// rules (UNVERIFIED -> PENDING_REVIEW -> VERIFIED/REJECTED).
+  verificationStatus OrganizationVerificationStatus @default(UNVERIFIED) @map("verification_status")
+  /// Reviewer's reason, set on rejection.
+  verificationNote   String?                         @map("verification_note")
+  verifiedAt         DateTime?                       @map("verified_at")
+  /// Reviewing User's id - bare String like createdBy/updatedBy, no
+  /// @relation (same convention as every other audit-trail field here).
+  verifiedBy         String?                         @map("verified_by")
+
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
   createdBy String?   @map("created_by")
   updatedBy String?   @map("updated_by")
 
-  tenant          Tenant             @relation(fields: [tenantId], references: [id])
-  units           OrganizationUnit[]
-  employees       Employee[]
-  payRuns         PayRun[]
-  jobRequisitions JobRequisition[]
+  tenant                Tenant                             @relation(fields: [tenantId], references: [id])
+  units                 OrganizationUnit[]
+  employees             Employee[]
+  payRuns               PayRun[]
+  jobRequisitions       JobRequisition[]
+  verificationDocuments OrganizationVerificationDocument[]
 
   @@index([tenantId])
   @@map("organizations")
+}
+
+/// Supporting evidence (certificate of incorporation, tax clearance, etc.)
+/// uploaded against an Organization's verification review. The file itself
+/// lives in object storage (see libs/platform/storage); this row is just
+/// the metadata + ownership record - storageKey is never client-supplied,
+/// always generated server-side and namespaced per tenant/org.
+model OrganizationVerificationDocument {
+  id             String                   @id @default(uuid())
+  tenantId       String                   @map("tenant_id")
+  organizationId String                   @map("organization_id")
+  documentType   VerificationDocumentType @map("document_type")
+  storageKey     String                   @map("storage_key")
+  fileName       String                   @map("file_name")
+  contentType    String                   @map("content_type")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([tenantId])
+  @@index([organizationId])
+  @@map("organization_verification_documents")
 }
 
 /// Department/branch within an Organization. Self-referencing hierarchy.

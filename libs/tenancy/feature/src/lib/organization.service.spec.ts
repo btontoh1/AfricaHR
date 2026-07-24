@@ -1,8 +1,8 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Organization, Tenant } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import { OrganizationRepository, TenantRepository } from '@africahr/tenancy-data-access';
-import { TenantStatus } from '@africahr/tenancy-domain';
+import { OrganizationVerificationStatus, TenantStatus } from '@africahr/tenancy-domain';
 import { OrganizationService } from './organization.service';
 
 describe('OrganizationService', () => {
@@ -35,10 +35,14 @@ describe('OrganizationService', () => {
     registrationNumber: 'BN-12345',
     taxIdentificationNumber: null,
     metadata: null,
+    verificationStatus: OrganizationVerificationStatus.UNVERIFIED,
+    verificationNote: null,
+    verifiedAt: null,
+    verifiedBy: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
-    createdBy: null,
+    createdBy: 'creator-1',
     updatedBy: null,
   };
 
@@ -48,6 +52,11 @@ describe('OrganizationService', () => {
       findById: jest.fn(),
       listByTenant: jest.fn(),
       softDelete: jest.fn(),
+      submitForVerification: jest.fn(),
+      verify: jest.fn(),
+      reject: jest.fn(),
+      listPendingReview: jest.fn(),
+      findByIdAcrossTenants: jest.fn(),
     } as unknown as jest.Mocked<OrganizationRepository>;
 
     tenants = {
@@ -97,6 +106,116 @@ describe('OrganizationService', () => {
       organizations.findById.mockResolvedValue(null);
 
       await expect(service.findById('tenant-1', 'missing')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('submitForVerification', () => {
+    it('submits an UNVERIFIED organization for review', async () => {
+      organizations.findById.mockResolvedValue(organization);
+      const pending = { ...organization, verificationStatus: OrganizationVerificationStatus.PENDING_REVIEW };
+      organizations.submitForVerification.mockResolvedValue(pending);
+
+      const result = await service.submitForVerification('tenant-1', 'org-1', 'user-1');
+
+      expect(result).toEqual(pending);
+      expect(organizations.submitForVerification).toHaveBeenCalledWith('tenant-1', 'org-1', 'user-1');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'organization.verification_submitted' }),
+      );
+    });
+
+    it('rejects submitting an already-VERIFIED organization', async () => {
+      organizations.findById.mockResolvedValue({
+        ...organization,
+        verificationStatus: OrganizationVerificationStatus.VERIFIED,
+      });
+
+      await expect(service.submitForVerification('tenant-1', 'org-1', 'user-1')).rejects.toThrow(
+        ConflictException,
+      );
+      expect(organizations.submitForVerification).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('listPendingVerification', () => {
+    it('delegates to the cross-tenant repository method', async () => {
+      const pending = [{ ...organization, verificationStatus: OrganizationVerificationStatus.PENDING_REVIEW }];
+      organizations.listPendingReview.mockResolvedValue(pending);
+
+      await expect(service.listPendingVerification()).resolves.toEqual(pending);
+    });
+  });
+
+  describe('verify', () => {
+    it('verifies a PENDING_REVIEW organization', async () => {
+      const pending = { ...organization, verificationStatus: OrganizationVerificationStatus.PENDING_REVIEW };
+      organizations.findByIdAcrossTenants.mockResolvedValue(pending);
+      const verified = { ...pending, verificationStatus: OrganizationVerificationStatus.VERIFIED };
+      organizations.verify.mockResolvedValue(verified);
+
+      const result = await service.verify('org-1', 'reviewer-1');
+
+      expect(result).toEqual(verified);
+      expect(organizations.verify).toHaveBeenCalledWith('tenant-1', 'org-1', 'reviewer-1');
+      expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'organization.verified' }));
+    });
+
+    it('rejects verifying an UNVERIFIED organization (must be submitted first)', async () => {
+      organizations.findByIdAcrossTenants.mockResolvedValue(organization);
+
+      await expect(service.verify('org-1', 'reviewer-1')).rejects.toThrow(ConflictException);
+      expect(organizations.verify).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when the organization does not exist in any tenant', async () => {
+      organizations.findByIdAcrossTenants.mockResolvedValue(null);
+
+      await expect(service.verify('missing', 'reviewer-1')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('reject', () => {
+    it('rejects a PENDING_REVIEW organization with a note', async () => {
+      const pending = { ...organization, verificationStatus: OrganizationVerificationStatus.PENDING_REVIEW };
+      organizations.findByIdAcrossTenants.mockResolvedValue(pending);
+      const rejected = {
+        ...pending,
+        verificationStatus: OrganizationVerificationStatus.REJECTED,
+        verificationNote: 'Registration number mismatch',
+      };
+      organizations.reject.mockResolvedValue(rejected);
+
+      const result = await service.reject('org-1', 'Registration number mismatch', 'reviewer-1');
+
+      expect(result).toEqual(rejected);
+      expect(organizations.reject).toHaveBeenCalledWith(
+        'tenant-1',
+        'org-1',
+        'Registration number mismatch',
+        'reviewer-1',
+      );
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'organization.verification_rejected' }),
+      );
+    });
+
+    it('allows resubmission after rejection to move back to PENDING_REVIEW', async () => {
+      const rejected = { ...organization, verificationStatus: OrganizationVerificationStatus.REJECTED };
+      organizations.findById.mockResolvedValue(rejected);
+      const pending = { ...rejected, verificationStatus: OrganizationVerificationStatus.PENDING_REVIEW };
+      organizations.submitForVerification.mockResolvedValue(pending);
+
+      await expect(service.submitForVerification('tenant-1', 'org-1', 'user-1')).resolves.toEqual(pending);
+    });
+
+    it('rejects rejecting a VERIFIED organization (terminal state)', async () => {
+      organizations.findByIdAcrossTenants.mockResolvedValue({
+        ...organization,
+        verificationStatus: OrganizationVerificationStatus.VERIFIED,
+      });
+
+      await expect(service.reject('org-1', 'some note', 'reviewer-1')).rejects.toThrow(ConflictException);
+      expect(organizations.reject).not.toHaveBeenCalled();
     });
   });
 });

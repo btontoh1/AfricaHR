@@ -15,6 +15,17 @@ export const envSchema = z.object({
   REDIS_PORT: z.coerce.number().int().positive().default(6379),
   REDIS_PASSWORD: z.string().optional(),
 
+  // S3-compatible object storage (MinIO locally, real S3/Spaces/R2 in prod)
+  // for verification-document uploads — see libs/platform/storage.
+  STORAGE_ENDPOINT: z.string().url().default('http://localhost:9000'),
+  STORAGE_BUCKET: z.string().default('africahr-verification-docs'),
+  STORAGE_ACCESS_KEY: z.string().default('africahr'),
+  STORAGE_SECRET_KEY: z.string().default('africahr-storage-secret'),
+  STORAGE_REGION: z.string().default('us-east-1'),
+  // MinIO requires path-style URLs (http://host/bucket/key); real S3 uses
+  // virtual-hosted style (http://bucket.host/key) and should set this false.
+  STORAGE_FORCE_PATH_STYLE: z.coerce.boolean().default(true),
+
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 
   JWT_ACCESS_SECRET: z.string().min(32).optional(),

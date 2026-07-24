@@ -47,6 +47,10 @@ export const Permission = {
   // work, not a tenant-level payroll permission (see RLS_CONVENTION.md and
   // project memory — a tenant does not get to set its own tax law).
   PLATFORM_PAYROLL_CONFIG_MANAGE: 'platform:payroll-config:manage',
+  // Platform-admin only: a tenant cannot self-certify its own legal-entity
+  // verification, so this is deliberately not paired with a tenant-level
+  // permission the way ORGANIZATION_MANAGE is.
+  PLATFORM_ORGANIZATION_VERIFY: 'platform:organization:verify',
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
@@ -63,6 +67,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.PAYROLL_MANAGE,
     Permission.PAYROLL_READ,
     Permission.PLATFORM_PAYROLL_CONFIG_MANAGE,
+    Permission.PLATFORM_ORGANIZATION_VERIFY,
     Permission.LEAVE_MANAGE,
     Permission.LEAVE_READ,
     Permission.ATTENDANCE_MANAGE,

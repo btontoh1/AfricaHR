@@ -1,18 +1,37 @@
 import { Module } from '@nestjs/common';
 import { PlatformAuthModule } from '@africahr/platform-auth';
 import { AuditModule } from '@africahr/platform-audit';
+import { StorageModule } from '@africahr/platform-storage';
 import { TenancyDataAccessModule } from '@africahr/tenancy-data-access';
 import { TenantService } from './tenant.service';
 import { OrganizationService } from './organization.service';
 import { OrganizationUnitService } from './organization-unit.service';
+import { OrganizationVerificationDocumentService } from './organization-verification-document.service';
 import { TenantController } from './tenant.controller';
 import { OrganizationController } from './organization.controller';
 import { OrganizationUnitController } from './organization-unit.controller';
+import { OrganizationVerificationController } from './organization-verification.controller';
 
 @Module({
-  imports: [TenancyDataAccessModule, PlatformAuthModule, AuditModule],
-  controllers: [TenantController, OrganizationController, OrganizationUnitController],
-  providers: [TenantService, OrganizationService, OrganizationUnitService],
-  exports: [TenantService, OrganizationService, OrganizationUnitService],
+  imports: [TenancyDataAccessModule, PlatformAuthModule, AuditModule, StorageModule],
+  // OrganizationVerificationController (organizations/verification-queue)
+  // must be registered before OrganizationController
+  // (tenants/:tenantId/organizations) so Nest's router doesn't need either
+  // to disambiguate — they don't actually overlap (different first
+  // segment), but this keeps the "more specific/platform routes first"
+  // convention used elsewhere in this codebase (see recruitment-feature.module.ts).
+  controllers: [
+    TenantController,
+    OrganizationVerificationController,
+    OrganizationController,
+    OrganizationUnitController,
+  ],
+  providers: [
+    TenantService,
+    OrganizationService,
+    OrganizationUnitService,
+    OrganizationVerificationDocumentService,
+  ],
+  exports: [TenantService, OrganizationService, OrganizationUnitService, OrganizationVerificationDocumentService],
 })
 export class TenancyFeatureModule {}

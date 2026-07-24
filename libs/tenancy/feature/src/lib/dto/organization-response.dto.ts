@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { OrganizationVerificationStatus } from '@africahr/tenancy-domain';
 
 // Documents the response shape for Swagger/OpenAPI-client codegen only —
 // OrganizationService returns the Prisma entity directly. Audit fields
@@ -22,6 +23,15 @@ export class OrganizationResponseDto {
 
   @ApiPropertyOptional()
   taxIdentificationNumber?: string | null;
+
+  @ApiProperty({ enum: OrganizationVerificationStatus })
+  verificationStatus!: OrganizationVerificationStatus;
+
+  @ApiPropertyOptional({ description: 'Reviewer note, set on rejection' })
+  verificationNote?: string | null;
+
+  @ApiPropertyOptional()
+  verifiedAt?: string | null;
 
   @ApiProperty()
   createdAt!: string;

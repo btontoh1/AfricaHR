@@ -33,6 +33,46 @@ services:
       timeout: 5s
       retries: 10
 
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: africahr
+      MINIO_ROOT_PASSWORD: africahr-storage-secret
+      # Per-bucket CORS (mc cors set) is an AIStor/paid-only S3 API on this
+      # image (returns "NotImplemented" on the community edition — verified
+      # directly, not assumed); this cluster-wide env var is the open-source
+      # equivalent, and is enough since we only ever run one bucket. Update
+      # this if the web app's origin (CORS_ORIGINS) ever changes.
+      MINIO_API_CORS_ALLOW_ORIGIN: http://localhost:4200
+    command: server /data --console-address ":9001"
+    ports:
+      - '9000:9000' # S3 API — matches STORAGE_ENDPOINT in .env.example
+      - '9001:9001' # Web console, for local debugging only
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # One-shot: creates the verification-docs bucket (uploads go straight
+  # from the browser to MinIO via a signed URL, bypassing the API — see
+  # libs/platform/storage). Exits after running; not a long-lived service.
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: africahr
+      MINIO_ROOT_PASSWORD: africahr-storage-secret
+    volumes:
+      - ./docker/minio-init:/init:ro
+    entrypoint: ['/bin/sh', '/init/01-create-bucket.sh']
+
 volumes:
   postgres-data:
   redis-data:
+  minio-data:

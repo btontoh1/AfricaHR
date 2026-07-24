@@ -76,6 +76,15 @@ describe('hasPermission', () => {
     ).toBe(false);
   });
 
+  it('restricts organization verification to platform admins', () => {
+    expect(hasPermission(SystemRole.PLATFORM_ADMIN, Permission.PLATFORM_ORGANIZATION_VERIFY)).toBe(
+      true,
+    );
+    expect(hasPermission(SystemRole.TENANT_ADMIN, Permission.PLATFORM_ORGANIZATION_VERIFY)).toBe(
+      false,
+    );
+  });
+
   it('grants employees no payroll permissions', () => {
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.PAYROLL_READ)).toBe(false);
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.PAYROLL_MANAGE)).toBe(false);

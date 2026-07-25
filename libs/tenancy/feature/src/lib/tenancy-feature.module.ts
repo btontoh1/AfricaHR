@@ -9,12 +9,19 @@ import { OrganizationUnitService } from './organization-unit.service';
 import { OrganizationVerificationDocumentService } from './organization-verification-document.service';
 import { TenantController } from './tenant.controller';
 import { TenantPublicController } from './tenant-public.controller';
+import { TenantMeController } from './tenant-me.controller';
 import { OrganizationController } from './organization.controller';
 import { OrganizationUnitController } from './organization-unit.controller';
 import { OrganizationVerificationController } from './organization-verification.controller';
 
 @Module({
   imports: [TenancyDataAccessModule, PlatformAuthModule, AuditModule, StorageModule],
+  // TenantMeController (tenants/me) must be registered before
+  // TenantController (tenants/:id) so Nest's router matches the literal
+  // "/me" segment before it's swallowed as an ":id" param.
+  // TenantPublicController (tenants/public/:slug) doesn't collide with
+  // anything (three segments vs. two), but is grouped here too since it's
+  // the same kind of "more specific route" concern.
   // OrganizationVerificationController (organizations/verification-queue)
   // must be registered before OrganizationController
   // (tenants/:tenantId/organizations) so Nest's router doesn't need either
@@ -23,6 +30,7 @@ import { OrganizationVerificationController } from './organization-verification.
   // convention used elsewhere in this codebase (see recruitment-feature.module.ts).
   controllers: [
     TenantPublicController,
+    TenantMeController,
     TenantController,
     OrganizationVerificationController,
     OrganizationController,

@@ -14,6 +14,17 @@ export interface RequestContext {
   ipAddress?: string;
 }
 
+// Structurally satisfied by both UserForLogin (findByEmail) and the full
+// Prisma User (findByEmailInTenant) — authenticate() only needs these.
+interface AuthenticatableUser {
+  id: string;
+  tenantId: string | null;
+  email: string;
+  passwordHash: string;
+  role: SystemRole;
+  isActive: boolean;
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -25,12 +36,34 @@ export class AuthService {
 
   async login(dto: LoginDto, context: RequestContext = {}): Promise<AuthResponseDto> {
     const user = await this.users.findByEmail(dto.email);
+    return this.authenticate(user, dto.password, context);
+  }
 
+  /**
+   * Org-scoped login (see TenantAuthService in apps/api): the tenant is
+   * already resolved and trusted (from a slug the caller validated), so
+   * this looks the user up scoped to that tenant instead of the global,
+   * SECURITY DEFINER-backed findByEmail().
+   */
+  async loginForTenant(
+    tenantId: string,
+    dto: LoginDto,
+    context: RequestContext = {},
+  ): Promise<AuthResponseDto> {
+    const user = await this.users.findByEmailInTenant(tenantId, dto.email);
+    return this.authenticate(user, dto.password, context);
+  }
+
+  private async authenticate(
+    user: AuthenticatableUser | null,
+    password: string,
+    context: RequestContext,
+  ): Promise<AuthResponseDto> {
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const passwordValid = await argon2.verify(user.passwordHash, dto.password);
+    const passwordValid = await argon2.verify(user.passwordHash, password);
     if (!passwordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }

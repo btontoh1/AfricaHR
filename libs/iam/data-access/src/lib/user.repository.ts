@@ -50,6 +50,17 @@ export class UserRepository {
     );
   }
 
+  /**
+   * For tenant-scoped login (see TenantAuthService): unlike findByEmail(),
+   * the tenant is already known here, so this runs under real RLS via
+   * withScope() instead of the SECURITY DEFINER escape hatch.
+   */
+  findByEmailInTenant(tenantId: string, email: string): Promise<User | null> {
+    return withScope(this.prisma, tenantId, (client) =>
+      client.user.findFirst({ where: { tenantId, email, deletedAt: null } }),
+    );
+  }
+
   listByTenant(tenantId: string): Promise<User[]> {
     return withScope(this.prisma, tenantId, (client) =>
       client.user.findMany({

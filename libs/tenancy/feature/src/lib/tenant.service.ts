@@ -56,6 +56,23 @@ export class TenantService {
     return this.tenants.list(params);
   }
 
+  /**
+   * For org-scoped login: TRIAL and ACTIVE tenants can log in, SUSPENDED and
+   * CLOSED cannot. Uses the same not-found message for "no such slug" and
+   * "suspended/closed" so an unauthenticated caller can't distinguish them.
+   */
+  async findBySlugForLogin(slug: string): Promise<Tenant> {
+    const tenant = await this.tenants.findBySlug(slug);
+    if (
+      !tenant ||
+      tenant.status === TenantStatus.SUSPENDED ||
+      tenant.status === TenantStatus.CLOSED
+    ) {
+      throw new NotFoundException(`Tenant "${slug}" not found`);
+    }
+    return tenant;
+  }
+
   async updateStatus(id: string, status: TenantStatus, actorId?: string): Promise<Tenant> {
     const tenant = await this.findById(id);
 

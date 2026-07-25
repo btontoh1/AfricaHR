@@ -51,6 +51,28 @@ describe('LoginForm', () => {
     expect(refresh).toHaveBeenCalled();
   });
 
+  it('posts to the tenant-scoped endpoint and shows the tenant name when tenantSlug is set', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true, json: async () => ({}) });
+    const user = userEvent.setup();
+    render(<LoginForm tenantSlug="acme-co" tenantName="Acme Co" />);
+
+    expect(screen.getByText('Sign in to Acme Co')).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('Email'), 'hr@acme.com');
+    await user.type(screen.getByLabelText('Password'), 'ChangeMe123Now');
+    await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/tenants/acme-co/login',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ email: 'hr@acme.com', password: 'ChangeMe123Now' }),
+        }),
+      );
+    });
+  });
+
   it('shows the server error message and does not redirect on failure', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: false,

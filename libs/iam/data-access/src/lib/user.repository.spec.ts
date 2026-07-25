@@ -66,6 +66,39 @@ describe('UserRepository', () => {
     });
   });
 
+  describe('findByEmailInTenant', () => {
+    it('looks up within tenant scope, not via the SECURITY DEFINER function', async () => {
+      const row = {
+        id: 'user-1',
+        tenantId: 'tenant-1',
+        email: 'hr@acme.com',
+        passwordHash: 'hash',
+        firstName: 'Kofi',
+        lastName: 'Mensah',
+        role: SystemRole.HR_MANAGER,
+        isActive: true,
+      };
+      userDelegate.findFirst.mockResolvedValue(row);
+
+      const result = await repository.findByEmailInTenant('tenant-1', 'hr@acme.com');
+
+      expect(withTenantContext).toHaveBeenCalledWith('tenant-1', expect.any(Function));
+      expect(queryRaw).not.toHaveBeenCalled();
+      expect(userDelegate.findFirst).toHaveBeenCalledWith({
+        where: { tenantId: 'tenant-1', email: 'hr@acme.com', deletedAt: null },
+      });
+      expect(result).toEqual(row);
+    });
+
+    it('returns null when the email has no user in that tenant', async () => {
+      userDelegate.findFirst.mockResolvedValue(null);
+
+      const result = await repository.findByEmailInTenant('tenant-1', 'missing@acme.com');
+
+      expect(result).toBeNull();
+    });
+  });
+
   describe('create', () => {
     it('creates a platform admin (tenantId null) under the platform scope, not tenant scope', async () => {
       await repository.create({

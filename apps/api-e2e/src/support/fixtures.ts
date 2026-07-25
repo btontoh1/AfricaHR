@@ -13,6 +13,11 @@ export interface FixtureUser {
 
 export interface E2eFixtures {
   tenantId: string;
+  tenantSlug: string;
+  /** A second tenant with no users, for "real user, wrong tenant slug" login tests. */
+  otherTenantSlug: string;
+  /** A tenant walked TRIAL -> ACTIVE -> SUSPENDED, for org-scoped login rejection tests. */
+  suspendedTenantSlug: string;
   users: Record<FixtureRole, FixtureUser>;
 }
 
@@ -48,14 +53,37 @@ export async function bootstrapFixtures(): Promise<E2eFixtures> {
   });
 
   const stamp = Date.now();
+  const tenantSlug = `e2e-fixture-${stamp}`;
   const tenantRes = await client.post('/api/tenants', {
     name: `E2E Fixture Co ${stamp}`,
-    slug: `e2e-fixture-${stamp}`,
+    slug: tenantSlug,
     country: 'GH',
     currency: 'GHS',
     timezone: 'Africa/Accra',
   });
   const tenantId: string = tenantRes.data.id;
+
+  const otherTenantSlug = `e2e-fixture-other-${stamp}`;
+  await client.post('/api/tenants', {
+    name: `E2E Fixture Other Co ${stamp}`,
+    slug: otherTenantSlug,
+    country: 'GH',
+    currency: 'GHS',
+    timezone: 'Africa/Accra',
+  });
+
+  const suspendedTenantSlug = `e2e-fixture-suspended-${stamp}`;
+  const suspendedTenantRes = await client.post('/api/tenants', {
+    name: `E2E Fixture Suspended Co ${stamp}`,
+    slug: suspendedTenantSlug,
+    country: 'GH',
+    currency: 'GHS',
+    timezone: 'Africa/Accra',
+  });
+  // TRIAL -> SUSPENDED directly is not a legal transition; ACTIVE is the
+  // required stop in between (see canTransitionTenantStatus).
+  await client.patch(`/api/tenants/${suspendedTenantRes.data.id}/status`, { status: 'ACTIVE' });
+  await client.patch(`/api/tenants/${suspendedTenantRes.data.id}/status`, { status: 'SUSPENDED' });
 
   const roles: FixtureRole[] = ['TENANT_ADMIN', 'HR_MANAGER', 'PAYROLL_MANAGER', 'EMPLOYEE'];
   const users = {} as Record<FixtureRole, FixtureUser>;
@@ -73,5 +101,5 @@ export async function bootstrapFixtures(): Promise<E2eFixtures> {
     users[role] = { id: res.data.id, email, password: FIXTURE_PASSWORD };
   }
 
-  return { tenantId, users };
+  return { tenantId, tenantSlug, otherTenantSlug, suspendedTenantSlug, users };
 }

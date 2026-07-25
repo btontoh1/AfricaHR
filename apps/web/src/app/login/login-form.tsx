@@ -18,7 +18,13 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export function LoginForm() {
+export interface LoginFormProps {
+  /** When set, scopes login to this tenant's slug instead of the global lookup. */
+  tenantSlug?: string;
+  tenantName?: string;
+}
+
+export function LoginForm({ tenantSlug, tenantName }: LoginFormProps = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [serverError, setServerError] = useState<string | null>(null);
@@ -31,7 +37,10 @@ export function LoginForm() {
 
   async function onSubmit(values: LoginFormValues) {
     setServerError(null);
-    const response = await fetch('/api/auth/login', {
+    const endpoint = tenantSlug
+      ? `/api/tenants/${encodeURIComponent(tenantSlug)}/login`
+      : '/api/auth/login';
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(values),
@@ -52,7 +61,9 @@ export function LoginForm() {
   return (
     <div className="w-full max-w-sm">
       <div className="mb-8 space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {tenantName ? `Sign in to ${tenantName}` : 'Welcome back'}
+        </h1>
         <p className="text-sm text-muted-foreground">Sign in with your work email and password.</p>
       </div>
       <Form {...form}>

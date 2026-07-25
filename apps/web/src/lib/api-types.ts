@@ -89,6 +89,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/public/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Look up a tenant's public display info by slug, for org-scoped login */
+        get: operations["TenantPublicController_findBySlug"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants": {
         parameters: {
             query?: never;
@@ -458,6 +475,23 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["UserController_setActive"];
+        trace?: never;
+    };
+    "/api/tenants/{slug}/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Authenticate with email + password, scoped to a tenant by slug */
+        post: operations["TenantAuthController_login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/tenants/{tenantId}/employees": {
@@ -1809,6 +1843,12 @@ export interface components {
             accessToken: string;
             refreshToken: string;
         };
+        TenantPublicResponseDto: {
+            /** @example Acme Ghana Ltd */
+            name: string;
+            /** @example acme-ghana-ltd */
+            slug: string;
+        };
         CreateTenantDto: {
             /** @example Acme Ghana Ltd */
             name: string;
@@ -3069,6 +3109,27 @@ export interface operations {
             };
         };
     };
+    TenantPublicController_findBySlug: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantPublicResponseDto"];
+                };
+            };
+        };
+    };
     TenantController_list: {
         parameters: {
             query?: never;
@@ -3687,6 +3748,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserResponseDto"];
+                };
+            };
+        };
+    };
+    TenantAuthController_login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthResponseDto"];
                 };
             };
         };

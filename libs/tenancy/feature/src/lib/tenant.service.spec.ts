@@ -92,6 +92,37 @@ describe('TenantService', () => {
     });
   });
 
+  describe('findBySlugForLogin', () => {
+    it('throws NotFoundException when no tenant has that slug', async () => {
+      repo.findBySlug.mockResolvedValue(null);
+
+      await expect(service.findBySlugForLogin('missing')).rejects.toThrow(NotFoundException);
+    });
+
+    it.each([TenantStatus.TRIAL, TenantStatus.ACTIVE])(
+      'returns the tenant when status is %s',
+      async (status) => {
+        repo.findBySlug.mockResolvedValue({ ...baseTenant, status });
+
+        await expect(service.findBySlugForLogin('acme-ghana-ltd')).resolves.toEqual({
+          ...baseTenant,
+          status,
+        });
+      },
+    );
+
+    it.each([TenantStatus.SUSPENDED, TenantStatus.CLOSED])(
+      'throws NotFoundException when status is %s',
+      async (status) => {
+        repo.findBySlug.mockResolvedValue({ ...baseTenant, status });
+
+        await expect(service.findBySlugForLogin('acme-ghana-ltd')).rejects.toThrow(
+          NotFoundException,
+        );
+      },
+    );
+  });
+
   describe('updateStatus', () => {
     it('allows a legal transition', async () => {
       repo.findById.mockResolvedValue(baseTenant);

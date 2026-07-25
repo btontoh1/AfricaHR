@@ -8,6 +8,7 @@ import { OrganizationService } from './organization.service';
 import { OrganizationUnitService } from './organization-unit.service';
 import { OrganizationVerificationDocumentService } from './organization-verification-document.service';
 import { TenantController } from './tenant.controller';
+import { TenantPublicController } from './tenant-public.controller';
 import { OrganizationController } from './organization.controller';
 import { OrganizationUnitController } from './organization-unit.controller';
 import { OrganizationVerificationController } from './organization-verification.controller';
@@ -21,6 +22,7 @@ import { OrganizationVerificationController } from './organization-verification.
   // segment), but this keeps the "more specific/platform routes first"
   // convention used elsewhere in this codebase (see recruitment-feature.module.ts).
   controllers: [
+    TenantPublicController,
     TenantController,
     OrganizationVerificationController,
     OrganizationController,

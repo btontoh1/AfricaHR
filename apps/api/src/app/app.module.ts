@@ -13,12 +13,14 @@ import { RecruitmentFeatureModule } from '@africahr/recruitment-feature';
 import { ReportingFeatureModule } from '@africahr/reporting-feature';
 import { NotificationsFeatureModule } from '@africahr/notifications-feature';
 import { SetupModule } from './setup/setup.module';
+import { TenantAuthModule } from './tenant-auth/tenant-auth.module';
 
 @Module({
   imports: [
     CoreModule,
     HealthModule,
     SetupModule,
+    TenantAuthModule,
     IamFeatureModule,
     TenancyFeatureModule,
     EmployeeFeatureModule,

@@ -35,6 +35,7 @@ describe('AuthService', () => {
   beforeEach(() => {
     users = {
       findByEmail: jest.fn(),
+      findByEmailInTenant: jest.fn(),
       findById: jest.fn(),
       updateLastLogin: jest.fn(),
     } as unknown as jest.Mocked<UserRepository>;
@@ -88,6 +89,62 @@ describe('AuthService', () => {
       expect(result.accessToken).toBe('access-token');
       expect(result.refreshToken).toHaveLength(64); // 32 bytes hex-encoded
       expect(users.updateLastLogin).toHaveBeenCalledWith(user.tenantId, user.id);
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'auth.login', actorUserId: user.id }),
+      );
+    });
+  });
+
+  describe('loginForTenant', () => {
+    it('looks up the user scoped to the given tenant, not the global lookup', async () => {
+      users.findByEmailInTenant.mockResolvedValue(user);
+      (argon2.verify as jest.Mock).mockResolvedValue(true);
+      users.updateLastLogin.mockResolvedValue(user);
+      refreshTokens.create.mockResolvedValue({} as RefreshToken);
+
+      await service.loginForTenant('tenant-1', { email: user.email, password: 'correct' });
+
+      expect(users.findByEmailInTenant).toHaveBeenCalledWith('tenant-1', user.email);
+      expect(users.findByEmail).not.toHaveBeenCalled();
+    });
+
+    it('rejects when the user does not belong to that tenant', async () => {
+      users.findByEmailInTenant.mockResolvedValue(null);
+
+      await expect(
+        service.loginForTenant('tenant-2', { email: user.email, password: 'x' }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('rejects a deactivated user', async () => {
+      users.findByEmailInTenant.mockResolvedValue({ ...user, isActive: false });
+
+      await expect(
+        service.loginForTenant('tenant-1', { email: user.email, password: 'x' }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('rejects an incorrect password', async () => {
+      users.findByEmailInTenant.mockResolvedValue(user);
+      (argon2.verify as jest.Mock).mockResolvedValue(false);
+
+      await expect(
+        service.loginForTenant('tenant-1', { email: user.email, password: 'wrong' }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('issues a token pair and records login on success', async () => {
+      users.findByEmailInTenant.mockResolvedValue(user);
+      (argon2.verify as jest.Mock).mockResolvedValue(true);
+      users.updateLastLogin.mockResolvedValue(user);
+      refreshTokens.create.mockResolvedValue({} as RefreshToken);
+
+      const result = await service.loginForTenant('tenant-1', {
+        email: user.email,
+        password: 'correct',
+      });
+
+      expect(result.accessToken).toBe('access-token');
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'auth.login', actorUserId: user.id }),
       );

@@ -30,6 +30,7 @@ import {
   FileCode,
   Send,
   ShieldCheck,
+  Settings,
 } from 'lucide-react';
 import type { SessionUser } from '@/lib/session';
 
@@ -217,6 +218,14 @@ export function buildNavGroups(user: SessionUser): NavGroup[] {
           : []),
         ...(hasNotificationsAdminAccess
           ? [{ label: 'Send Notification', href: '/notifications/send', icon: Send }]
+          : []),
+      ],
+    },
+    {
+      label: 'Settings',
+      items: [
+        ...(user.role === 'TENANT_ADMIN'
+          ? [{ label: 'Settings', href: '/settings', icon: Settings }]
           : []),
       ],
     },

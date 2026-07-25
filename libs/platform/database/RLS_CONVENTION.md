@@ -1,6 +1,6 @@
 # Tenant isolation convention
 
-AfricaHR uses a shared database, shared schema. Every table belonging to a
+ParrotHR uses a shared database, shared schema. Every table belonging to a
 tenant-scoped domain (i.e. everything except platform-level tables like
 migrations metadata) must follow this pattern.
 

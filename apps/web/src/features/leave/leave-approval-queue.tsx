@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ClipboardCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApproveLeaveRequest, useLeaveRequests, useLeaveTypes } from './queries';
+import { useEmployees } from '@/features/employees/queries';
 import { LeaveRequestStatusBadge } from './leave-request-status-badge';
 import { RejectLeaveRequestDialog } from './reject-leave-request-dialog';
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -38,9 +39,14 @@ export function LeaveApprovalQueue({ tenantId }: { tenantId: string }) {
     statusFilter === 'ALL' ? undefined : statusFilter,
   );
   const { data: leaveTypes } = useLeaveTypes(tenantId);
+  const { data: employees } = useEmployees(tenantId);
   const approveRequest = useApproveLeaveRequest(tenantId);
 
   const leaveTypeName = (id: string) => leaveTypes?.find((type) => type.id === id)?.name ?? id;
+  const employeeName = (id: string) => {
+    const employee = employees?.find((e) => e.id === id);
+    return employee ? `${employee.firstName} ${employee.lastName}` : id;
+  };
 
   async function handleApprove(id: string) {
     try {
@@ -90,7 +96,7 @@ export function LeaveApprovalQueue({ tenantId }: { tenantId: string }) {
             <TableBody>
               {requests.map((request) => (
                 <TableRow key={request.id}>
-                  <TableCell className="font-mono text-xs">{request.employeeId}</TableCell>
+                  <TableCell>{employeeName(request.employeeId)}</TableCell>
                   <TableCell>{leaveTypeName(request.leaveTypeId)}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {request.startDate.slice(0, 10)} – {request.endDate.slice(0, 10)}

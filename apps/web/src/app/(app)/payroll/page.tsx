@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Banknote, Plus } from 'lucide-react';
 import { useSession } from '../session-provider';
 import { usePayRuns } from '@/features/payroll/queries';
+import { useOrganizations } from '@/features/organizations/queries';
 import { PayRunStatusBadge } from '@/features/payroll/pay-run-status-badge';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,8 @@ export default function PayrollPage() {
   const session = useSession();
   const tenantId = session.tenantId as string;
   const { data: payRuns, isLoading, isError, error } = usePayRuns(tenantId);
+  const { data: organizations } = useOrganizations(tenantId);
+  const organizationName = (id: string) => organizations?.find((org) => org.id === id)?.legalName ?? id;
 
   return (
     <div>
@@ -81,7 +84,7 @@ export default function PayrollPage() {
                     </Link>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{payRun.payDate.slice(0, 10)}</TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">{payRun.organizationId}</TableCell>
+                  <TableCell className="text-muted-foreground">{organizationName(payRun.organizationId)}</TableCell>
                   <TableCell>
                     <PayRunStatusBadge status={payRun.status} />
                   </TableCell>

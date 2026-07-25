@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Receipt } from 'lucide-react';
 import { usePayRun, usePayslipsByPayRun } from './queries';
+import { useOrganization } from '@/features/organizations/queries';
 import { PayRunStatusBadge } from './pay-run-status-badge';
 import { PayRunLifecycleActions } from './pay-run-lifecycle-actions';
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -33,6 +34,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 export function PayRunDetail({ tenantId, payRunId }: { tenantId: string; payRunId: string }) {
   const { data: payRun, isLoading, isError, error } = usePayRun(tenantId, payRunId);
   const { data: payslips } = usePayslipsByPayRun(tenantId, payRunId);
+  const { data: organization } = useOrganization(tenantId, payRun?.organizationId ?? '');
 
   if (isLoading) {
     return <CardSkeleton />;
@@ -57,7 +59,7 @@ export function PayRunDetail({ tenantId, payRunId }: { tenantId: string; payRunI
           <CardTitle>Details</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-3">
-          <Field label="Organization" value={payRun.organizationId} />
+          <Field label="Organization" value={organization?.legalName} />
           <Field label="Approved at" value={payRun.approvedAt?.slice(0, 19).replace('T', ' ')} />
           <Field label="Paid at" value={payRun.paidAt?.slice(0, 19).replace('T', ' ')} />
         </CardContent>

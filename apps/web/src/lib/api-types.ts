@@ -89,6 +89,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the current user's own tenant (name + slug only) */
+        get: operations["TenantMeController_findMine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants": {
         parameters: {
             query?: never;
@@ -1809,6 +1826,12 @@ export interface components {
             accessToken: string;
             refreshToken: string;
         };
+        TenantMeResponseDto: {
+            /** @example Acme Ghana Ltd */
+            name: string;
+            /** @example acme-ghana-ltd */
+            slug: string;
+        };
         CreateTenantDto: {
             /** @example Acme Ghana Ltd */
             name: string;
@@ -3065,6 +3088,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuthResponseDto"];
+                };
+            };
+        };
+    };
+    TenantMeController_findMine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantMeResponseDto"];
                 };
             };
         };

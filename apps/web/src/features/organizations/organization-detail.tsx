@@ -25,6 +25,18 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
+/** Shows a shortened id with the full value available on hover, rather than the full UUID inline. */
+function IdCell({ id }: { id?: string | null }) {
+  if (!id) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+  return (
+    <span title={id} className="cursor-help">
+      {id.slice(0, 8)}…
+    </span>
+  );
+}
+
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
@@ -169,8 +181,12 @@ export function OrganizationDetail({
                     <TableRow key={unit.id}>
                       <TableCell>{unit.name}</TableCell>
                       <TableCell>{unit.code}</TableCell>
-                      <TableCell className="font-mono text-xs">{unit.id}</TableCell>
-                      <TableCell className="font-mono text-xs">{unit.parentId ?? '—'}</TableCell>
+                      <TableCell className="font-mono text-xs">
+                        <IdCell id={unit.id} />
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        <IdCell id={unit.parentId} />
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

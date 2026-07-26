@@ -20,6 +20,14 @@ function payslipKey(tenantId: string, id: string) {
   return ['payslips', 'detail', tenantId, id] as const;
 }
 
+function myPayslipsKey(tenantId: string) {
+  return ['payslips', 'me', tenantId] as const;
+}
+
+function myPayslipKey(tenantId: string, id: string) {
+  return ['payslips', 'me', tenantId, id] as const;
+}
+
 // --- Pay runs ---
 
 export function usePayRuns(tenantId: string, organizationId?: string) {
@@ -133,6 +141,35 @@ export function useAddPayslipLineItem(tenantId: string, payslipId: string) {
       return data;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: payslipKey(tenantId, payslipId) }),
+  });
+}
+
+// --- Self-service ---
+
+export function useMyPayslips(tenantId: string) {
+  return useQuery({
+    queryKey: myPayslipsKey(tenantId),
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/payslips/me', {
+        params: { path: { tenantId } },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useMyPayslip(tenantId: string, id: string) {
+  return useQuery({
+    queryKey: myPayslipKey(tenantId, id),
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/payslips/me/{id}', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: Boolean(id),
   });
 }
 

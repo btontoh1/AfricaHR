@@ -11,6 +11,7 @@ import {
   History,
   Settings2,
   Banknote,
+  Receipt,
   HeartHandshake,
   FileStack,
   FileCheck2,
@@ -120,6 +121,7 @@ export function buildNavGroups(user: SessionUser): NavGroup[] {
       label: 'Payroll & Benefits',
       items: [
         ...(hasAdminAccess ? [{ label: 'Payroll', href: '/payroll', icon: Banknote }] : []),
+        ...(isTenantMember ? [{ label: 'My Payslips', href: '/payslips', icon: Receipt }] : []),
         ...(isTenantMember
           ? [{ label: 'Benefits', href: '/benefits', icon: HeartHandshake }]
           : []),

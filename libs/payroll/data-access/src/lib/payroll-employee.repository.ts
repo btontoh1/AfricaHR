@@ -9,6 +9,11 @@ export interface PayrollEligibleEmployee {
   countryCode: string;
 }
 
+export interface PayrollEmployeeIdentity {
+  id: string;
+  userId: string | null;
+}
+
 /**
  * Reads only the Employee fields payroll needs to compute a pay run.
  * scope:payroll cannot import employee-data-access's repository/service
@@ -38,6 +43,16 @@ export class PayrollEmployeeRepository {
       tx.employee.findFirst({
         where: { id, tenantId, deletedAt: null },
         select: { id: true, baseSalary: true, currency: true, countryCode: true },
+      }),
+    );
+  }
+
+  /** Resolves the caller's own employeeId for self-service payslip access. */
+  findByUserId(tenantId: string, userId: string): Promise<PayrollEmployeeIdentity | null> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.employee.findFirst({
+        where: { tenantId, userId, deletedAt: null },
+        select: { id: true, userId: true },
       }),
     );
   }

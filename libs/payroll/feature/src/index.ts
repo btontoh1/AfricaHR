@@ -5,3 +5,4 @@ export * from './lib/pay-run.service';
 export * from './lib/pay-run.controller';
 export * from './lib/payslip.service';
 export * from './lib/payslip.controller';
+export * from './lib/my-payslip.controller';

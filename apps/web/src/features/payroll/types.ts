@@ -6,3 +6,4 @@ export type PayslipLineItem = components['schemas']['PayslipLineItemResponseDto'
 export type CreatePayRunInput = components['schemas']['CreatePayRunDto'];
 export type CreatePayslipLineItemInput = components['schemas']['CreatePayslipLineItemDto'];
 export type PayRunStatus = PayRun['status'];
+export type PayslipStatus = Payslip['status'];

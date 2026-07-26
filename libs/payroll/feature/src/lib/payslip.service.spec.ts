@@ -1,4 +1,4 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PayRun, PayslipLineItem, Prisma } from '@prisma/client';
 import { PayslipWithLineItems } from '@africahr/payroll-data-access';
 import { AuditService } from '@africahr/platform-audit';
@@ -95,6 +95,7 @@ describe('PayslipService', () => {
         currency: 'GHS',
         countryCode: 'GH',
       }),
+      findByUserId: jest.fn(),
     } as unknown as jest.Mocked<PayrollEmployeeRepository>;
 
     taxBands = {
@@ -115,6 +116,50 @@ describe('PayslipService', () => {
       payslips.findById.mockResolvedValue(null);
 
       await expect(service.findById('tenant-1', 'missing')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('resolveOwnEmployeeId', () => {
+    it('throws ForbiddenException when the user has no linked employee', async () => {
+      employees.findByUserId.mockResolvedValue(null);
+
+      await expect(service.resolveOwnEmployeeId('tenant-1', 'user-1')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+  });
+
+  describe('listForSelf', () => {
+    it('resolves the caller\'s own employeeId and lists their payslips', async () => {
+      const payslip = makePayslip();
+      employees.findByUserId.mockResolvedValue({ id: 'emp-1', userId: 'user-1' });
+      payslips.listByEmployee.mockResolvedValue([payslip]);
+
+      const result = await service.listForSelf('tenant-1', 'user-1');
+
+      expect(employees.findByUserId).toHaveBeenCalledWith('tenant-1', 'user-1');
+      expect(payslips.listByEmployee).toHaveBeenCalledWith('tenant-1', 'emp-1');
+      expect(result).toEqual([payslip]);
+    });
+  });
+
+  describe('findByIdForSelf', () => {
+    it('returns the payslip when it belongs to the caller', async () => {
+      employees.findByUserId.mockResolvedValue({ id: 'emp-1', userId: 'user-1' });
+      payslips.findById.mockResolvedValue(makePayslip({ employeeId: 'emp-1' }));
+
+      const result = await service.findByIdForSelf('tenant-1', 'user-1', 'payslip-1');
+
+      expect(result.employeeId).toBe('emp-1');
+    });
+
+    it('throws NotFoundException (not Forbidden) when the payslip belongs to someone else', async () => {
+      employees.findByUserId.mockResolvedValue({ id: 'emp-1', userId: 'user-1' });
+      payslips.findById.mockResolvedValue(makePayslip({ employeeId: 'someone-else' }));
+
+      await expect(
+        service.findByIdForSelf('tenant-1', 'user-1', 'payslip-1'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

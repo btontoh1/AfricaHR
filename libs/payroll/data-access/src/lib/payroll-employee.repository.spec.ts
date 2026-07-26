@@ -29,4 +29,13 @@ describe('PayrollEmployeeRepository', () => {
       select: { id: true, baseSalary: true, currency: true, countryCode: true },
     });
   });
+
+  it('finds an employee by userId, scoped to the tenant', async () => {
+    await repository.findByUserId('tenant-1', 'user-1');
+
+    expect(tx.employee.findFirst).toHaveBeenCalledWith({
+      where: { tenantId: 'tenant-1', userId: 'user-1', deletedAt: null },
+      select: { id: true, userId: true },
+    });
+  });
 });

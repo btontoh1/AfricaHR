@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Payslip, PayslipLineItem } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import {
@@ -38,6 +38,29 @@ export class PayslipService {
 
   listByEmployee(tenantId: string, employeeId: string): Promise<Payslip[]> {
     return this.payslips.listByEmployee(tenantId, employeeId);
+  }
+
+  async resolveOwnEmployeeId(tenantId: string, userId: string): Promise<string> {
+    const employee = await this.employees.findByUserId(tenantId, userId);
+    if (!employee) {
+      throw new ForbiddenException('No employee record is linked to this account');
+    }
+    return employee.id;
+  }
+
+  async listForSelf(tenantId: string, userId: string): Promise<Payslip[]> {
+    const employeeId = await this.resolveOwnEmployeeId(tenantId, userId);
+    return this.listByEmployee(tenantId, employeeId);
+  }
+
+  async findByIdForSelf(tenantId: string, userId: string, id: string): Promise<Payslip> {
+    const employeeId = await this.resolveOwnEmployeeId(tenantId, userId);
+    const payslip = await this.findById(tenantId, id);
+    if (payslip.employeeId !== employeeId) {
+      // Don't reveal that a payslip belonging to someone else exists.
+      throw new NotFoundException(`Payslip "${id}" not found`);
+    }
+    return payslip;
   }
 
   async addLineItem(

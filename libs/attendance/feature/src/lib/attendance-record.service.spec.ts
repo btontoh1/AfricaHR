@@ -57,9 +57,8 @@ describe('AttendanceRecordService', () => {
     records = {
       create: jest.fn(),
       findById: jest.fn(),
-      findByEmployeeAndDate: jest.fn().mockResolvedValue(null),
       findOpenByEmployee: jest.fn().mockResolvedValue(null),
-      list: jest.fn(),
+      list: jest.fn().mockResolvedValue([]),
       update: jest.fn(),
     } as unknown as jest.Mocked<AttendanceRecordRepository>;
 
@@ -100,11 +99,19 @@ describe('AttendanceRecordService', () => {
       expect(records.create).not.toHaveBeenCalled();
     });
 
-    it('rejects clocking in twice on the same day even if the earlier record is already closed', async () => {
-      records.findByEmployeeAndDate.mockResolvedValue(makeRecord({ clockOut: new Date() }));
+    it('allows clocking in again on the same day once the earlier shift is closed', async () => {
+      // No open record (the earlier shift was already clocked out) - only
+      // findOpenByEmployee gates a new clock-in, not "is there already a
+      // record for today", so a second clock-in/out cycle is allowed.
+      records.findOpenByEmployee.mockResolvedValue(null);
+      records.create.mockResolvedValue(makeRecord({ id: 'rec-2', clockIn: now }));
 
-      await expect(service.clockIn('tenant-1', 'emp-1')).rejects.toThrow(ConflictException);
-      expect(records.create).not.toHaveBeenCalled();
+      await service.clockIn('tenant-1', 'emp-1');
+
+      expect(records.create).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ employeeId: 'emp-1', clockIn: now }),
+      );
     });
 
     it('creates a record with clockIn=now and audits', async () => {
@@ -156,6 +163,38 @@ describe('AttendanceRecordService', () => {
       );
     });
 
+    it('adds cumulative overtime on top of an already-closed same-day session', async () => {
+      // 8h policy. Earlier session today already closed: 5h worked (no overtime alone).
+      // This session: 13:30 -> 17:00 ("now") = 3.5h (no overtime alone either).
+      // Combined 8.5h crosses the 8h threshold, so this closing session should carry the 0.5h.
+      records.findOpenByEmployee.mockResolvedValue(
+        makeRecord({ id: 'rec-2', clockIn: new Date('2026-02-02T13:30:00Z') }),
+      );
+      records.list.mockResolvedValue([
+        makeRecord({
+          id: 'rec-1',
+          clockIn: new Date('2026-02-02T08:00:00Z'),
+          clockOut: new Date('2026-02-02T13:00:00Z'),
+          hoursWorked: new Prisma.Decimal(5),
+        }),
+        makeRecord({ id: 'rec-2', clockIn: new Date('2026-02-02T13:30:00Z'), clockOut: null, hoursWorked: null }),
+      ]);
+      records.update.mockResolvedValue(makeRecord({ id: 'rec-2', clockOut: now }));
+
+      await service.clockOut('tenant-1', 'emp-1', 'emp-1-user');
+
+      expect(records.list).toHaveBeenCalledWith('tenant-1', {
+        employeeId: 'emp-1',
+        from: new Date('2026-02-02'),
+        to: new Date('2026-02-02'),
+      });
+      expect(records.update).toHaveBeenCalledWith(
+        'tenant-1',
+        'rec-2',
+        expect.objectContaining({ clockOut: now, hoursWorked: 3.5, overtimeHours: 0.5 }),
+      );
+    });
+
     it('finds and closes a shift that started on a prior calendar day (overnight shift)', async () => {
       // shift started yesterday at 22:00, clock-out happens "now" (2026-02-02T17:00:00Z per fake timer) —
       // the point is this must be found via findOpenByEmployee, not a same-day lookup
@@ -189,19 +228,6 @@ describe('AttendanceRecordService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('translates a duplicate (employee, date) into ConflictException', async () => {
-      records.create.mockRejectedValue(
-        new Prisma.PrismaClientKnownRequestError('unique violation', {
-          code: 'P2002',
-          clientVersion: '7.8.0',
-        }),
-      );
-
-      await expect(
-        service.create('tenant-1', { employeeId: 'emp-1', date: '2026-02-02' }),
-      ).rejects.toThrow(ConflictException);
-    });
-
     it('computes hours when both clockIn and clockOut are provided', async () => {
       records.create.mockResolvedValue(makeRecord());
 
@@ -215,6 +241,25 @@ describe('AttendanceRecordService', () => {
       expect(records.create).toHaveBeenCalledWith(
         'tenant-1',
         expect.objectContaining({ hoursWorked: 9, overtimeHours: 1 }),
+      );
+    });
+
+    it('accounts for other same-day sessions when computing cumulative overtime', async () => {
+      // 6h already logged earlier today (no overtime by itself); this 3h session pushes
+      // the day to 9h total under an 8h policy, so it should carry the full 1h overtime.
+      records.list.mockResolvedValue([makeRecord({ id: 'rec-1', hoursWorked: new Prisma.Decimal(6) })]);
+      records.create.mockResolvedValue(makeRecord({ id: 'rec-2' }));
+
+      await service.create('tenant-1', {
+        employeeId: 'emp-1',
+        date: '2026-02-02',
+        clockIn: '2026-02-02T13:00:00Z',
+        clockOut: '2026-02-02T16:00:00Z',
+      });
+
+      expect(records.create).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ hoursWorked: 3, overtimeHours: 1 }),
       );
     });
 
@@ -243,6 +288,31 @@ describe('AttendanceRecordService', () => {
         clockIn: '2026-02-02T09:00:00Z',
         clockOut: '2026-02-02T17:00:00Z',
       });
+
+      expect(records.update).toHaveBeenCalledWith(
+        'tenant-1',
+        'rec-1',
+        expect.objectContaining({ hoursWorked: 8, overtimeHours: 0 }),
+      );
+    });
+
+    it('excludes the record itself from the same-day prior-hours sum when recomputing', async () => {
+      // list() would return this record's own (stale, pre-correction) stored hoursWorked
+      // alongside itself unless computeHours excludes it by id — that would double-count
+      // this session's hours and inflate the overtime calculation.
+      records.findById.mockResolvedValue(
+        makeRecord({
+          id: 'rec-1',
+          clockIn: new Date('2026-02-02T08:00:00Z'),
+          clockOut: new Date('2026-02-02T17:00:00Z'),
+          hoursWorked: new Prisma.Decimal(9),
+          overtimeHours: new Prisma.Decimal(1),
+        }),
+      );
+      records.list.mockResolvedValue([makeRecord({ id: 'rec-1', hoursWorked: new Prisma.Decimal(9) })]);
+      records.update.mockResolvedValue(makeRecord());
+
+      await service.update('tenant-1', 'rec-1', { clockOut: '2026-02-02T16:00:00Z' });
 
       expect(records.update).toHaveBeenCalledWith(
         'tenant-1',

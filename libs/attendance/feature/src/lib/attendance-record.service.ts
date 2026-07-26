@@ -6,7 +6,7 @@ import {
   AttendancePolicyRepository,
   AttendanceRecordRepository,
 } from '@africahr/attendance-data-access';
-import { computeHoursWorked, computeOvertimeHours, toCalendarDay } from '@africahr/attendance-domain';
+import { computeHoursWorked, computeOvertimeHours, roundHours, toCalendarDay } from '@africahr/attendance-domain';
 import { CreateAttendanceRecordDto } from './dto/create-attendance-record.dto';
 import { UpdateAttendanceRecordDto } from './dto/update-attendance-record.dto';
 
@@ -16,13 +16,8 @@ interface ComputedHours {
 }
 
 function translateReferenceError(error: unknown, employeeId: string): never {
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    if (error.code === 'P2003') {
-      throw new NotFoundException(`Employee "${employeeId}" not found`);
-    }
-    if (error.code === 'P2002') {
-      throw new ConflictException('An attendance record already exists for this employee and date');
-    }
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+    throw new NotFoundException(`Employee "${employeeId}" not found`);
   }
   throw error;
 }
@@ -57,10 +52,6 @@ export class AttendanceRecordService {
     if (openRecord) {
       throw new ConflictException('Already clocked in — clock out before starting a new shift');
     }
-    const todayRecord = await this.records.findByEmployeeAndDate(tenantId, employeeId, date);
-    if (todayRecord) {
-      throw new ConflictException('Attendance for today has already been recorded');
-    }
 
     let record: AttendanceRecord;
     try {
@@ -93,7 +84,14 @@ export class AttendanceRecordService {
       throw new ConflictException('Not currently clocked in');
     }
 
-    const { hoursWorked, overtimeHours } = await this.computeHours(tenantId, existing.clockIn, now);
+    const { hoursWorked, overtimeHours } = await this.computeHours(
+      tenantId,
+      employeeId,
+      existing.date,
+      existing.clockIn,
+      now,
+      existing.id,
+    );
 
     const updated = await this.records.update(tenantId, existing.id, {
       clockOut: now,
@@ -153,7 +151,9 @@ export class AttendanceRecordService {
     const clockOut = dto.clockOut ? new Date(dto.clockOut) : undefined;
 
     const { hoursWorked, overtimeHours } =
-      clockIn && clockOut ? await this.computeHours(tenantId, clockIn, clockOut) : {};
+      clockIn && clockOut
+        ? await this.computeHours(tenantId, dto.employeeId, date, clockIn, clockOut)
+        : {};
 
     let record: AttendanceRecord;
     try {
@@ -195,7 +195,7 @@ export class AttendanceRecordService {
 
     const { hoursWorked, overtimeHours } =
       clockIn && clockOut
-        ? await this.computeHours(tenantId, clockIn, clockOut)
+        ? await this.computeHours(tenantId, existing.employeeId, existing.date, clockIn, clockOut, existing.id)
         : {
             hoursWorked: existing.hoursWorked ? Number(existing.hoursWorked) : undefined,
             overtimeHours: existing.overtimeHours ? Number(existing.overtimeHours) : undefined,
@@ -221,7 +221,22 @@ export class AttendanceRecordService {
     return updated;
   }
 
-  private async computeHours(tenantId: string, clockIn: Date, clockOut: Date): Promise<ComputedHours> {
+  /**
+   * Overtime is cumulative across a day's multiple clock-in/out sessions: this
+   * session's overtime is the *incremental* overtime added on top of whatever
+   * hours the employee already logged that day (telescoping against the daily
+   * threshold), not overtime computed against this session alone. That keeps
+   * the sum of overtimeHours across a day's records equal to the true daily
+   * total without having to rewrite any already-closed sibling records.
+   */
+  private async computeHours(
+    tenantId: string,
+    employeeId: string,
+    date: Date,
+    clockIn: Date,
+    clockOut: Date,
+    excludeRecordId?: string,
+  ): Promise<ComputedHours> {
     const hoursWorked = computeHoursWorked(clockIn, clockOut);
     const policy = await this.policies.find(tenantId);
     if (!policy) {
@@ -229,7 +244,17 @@ export class AttendanceRecordService {
         'No attendance policy configured for this tenant — set one before clocking out',
       );
     }
-    const overtimeHours = computeOvertimeHours(hoursWorked, Number(policy.standardDailyHours));
+    const standardDailyHours = Number(policy.standardDailyHours);
+
+    const sameDayRecords = await this.records.list(tenantId, { employeeId, from: date, to: date });
+    const priorHoursWorked = sameDayRecords
+      .filter((r) => r.id !== excludeRecordId && r.hoursWorked != null)
+      .reduce((sum, r) => sum + Number(r.hoursWorked), 0);
+
+    const overtimeBefore = computeOvertimeHours(priorHoursWorked, standardDailyHours);
+    const overtimeAfter = computeOvertimeHours(priorHoursWorked + hoursWorked, standardDailyHours);
+    const overtimeHours = roundHours(overtimeAfter - overtimeBefore);
+
     return { hoursWorked, overtimeHours };
   }
 }

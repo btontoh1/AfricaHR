@@ -318,6 +318,7 @@ model Employee {
   performanceReviews PerformanceReview[]
   hiringRequisitions JobRequisition[]         @relation("JobRequisitionHiringManager")
   hiredApplications  Application[]            @relation("ApplicationHiredEmployee")
+  paymentMethod      EmployeePaymentMethod?
 
   @@unique([tenantId, employeeNumber])
   @@index([tenantId])
@@ -325,6 +326,43 @@ model Employee {
   @@index([organizationUnitId])
   @@index([managerId])
   @@map("employees")
+}
+
+enum PaymentMethodType {
+  BANK_ACCOUNT
+  MOBILE_MONEY
+}
+
+/// How an employee wants to be paid, self-managed by the employee (see
+/// MyPaymentMethodController) rather than HR-entered — one active record
+/// per employee, upserted in place rather than kept as history. Nothing
+/// in payroll consumes this yet: PayRun.markPaid only records a
+/// timestamp, there is no actual disbursement/payment-rail integration,
+/// so today this is just the data an employee can maintain ahead of one
+/// being built. Stored in plain text, same "trust the shared schema"
+/// posture as the rest of this codebase — revisit encryption-at-rest
+/// before wiring this to a real payment provider.
+model EmployeePaymentMethod {
+  id         String            @id @default(uuid())
+  tenantId   String            @map("tenant_id")
+  employeeId String            @unique @map("employee_id")
+  type       PaymentMethodType
+
+  bankName            String? @map("bank_name")
+  accountNumber       String? @map("account_number")
+  accountName         String? @map("account_name")
+  mobileMoneyProvider String? @map("mobile_money_provider")
+  mobileMoneyNumber   String? @map("mobile_money_number")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@index([tenantId])
+  @@map("employee_payment_methods")
 }
 
 /// Structured, queryable point-in-time history of employment changes (title,

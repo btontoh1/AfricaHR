@@ -59,6 +59,14 @@ describe('EmployeeRepository', () => {
     });
   });
 
+  it('finds an employee by userId, scoped to the tenant', async () => {
+    await repository.findByUserId('tenant-1', 'user-1');
+
+    expect(tx.employee.findFirst).toHaveBeenCalledWith({
+      where: { tenantId: 'tenant-1', userId: 'user-1', deletedAt: null },
+    });
+  });
+
   it('filters list by organizationUnitId when given', async () => {
     await repository.list('tenant-1', { organizationUnitId: 'unit-1' });
 

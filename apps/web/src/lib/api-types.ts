@@ -575,6 +575,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/employees/me/payment-method": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyPaymentMethodController_get"];
+        put: operations["MyPaymentMethodController_upsert"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/payroll/statutory/tax-bands": {
         parameters: {
             query?: never;
@@ -2144,6 +2160,31 @@ export interface components {
             status: "PENDING_ONBOARDING" | "ACTIVE" | "ON_LEAVE" | "SUSPENDED" | "TERMINATED";
             /** @description Required (defaults to now) when status is TERMINATED */
             terminationDate?: string;
+        };
+        PaymentMethodResponseDto: {
+            id: string;
+            /** @enum {string} */
+            type: "BANK_ACCOUNT" | "MOBILE_MONEY";
+            bankName?: string;
+            accountNumber?: string;
+            accountName?: string;
+            mobileMoneyProvider?: string;
+            mobileMoneyNumber?: string;
+            updatedAt: string;
+        };
+        UpsertPaymentMethodDto: {
+            /** @enum {string} */
+            type: "BANK_ACCOUNT" | "MOBILE_MONEY";
+            /** @example GCB Bank */
+            bankName?: string;
+            /** @example 1234567890 */
+            accountNumber?: string;
+            /** @example Frimpong Tontoh */
+            accountName?: string;
+            /** @example MTN Mobile Money */
+            mobileMoneyProvider?: string;
+            /** @example 0244000000 */
+            mobileMoneyNumber?: string;
         };
         CreateStatutoryTaxBandDto: {
             /**
@@ -3991,6 +4032,52 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    MyPaymentMethodController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentMethodResponseDto"];
+                };
+            };
+        };
+    };
+    MyPaymentMethodController_upsert: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertPaymentMethodDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentMethodResponseDto"];
+                };
             };
         };
     };

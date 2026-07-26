@@ -668,7 +668,9 @@ model AttendanceRecord {
 
   employee Employee @relation(fields: [employeeId], references: [id])
 
-  @@unique([tenantId, employeeId, date])
+  // Not unique: an employee can clock in/out multiple times in the same
+  // calendar day (e.g. a lunch-break split shift) - each cycle is its own row.
+  @@index([tenantId, employeeId, date])
   @@index([tenantId])
   @@index([employeeId])
   @@map("attendance_records")

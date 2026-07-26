@@ -57,16 +57,6 @@ export class AttendanceRecordRepository {
     );
   }
 
-  findByEmployeeAndDate(
-    tenantId: string,
-    employeeId: string,
-    date: Date,
-  ): Promise<AttendanceRecord | null> {
-    return this.prisma.withTenantContext(tenantId, (tx) =>
-      tx.attendanceRecord.findFirst({ where: { tenantId, employeeId, date, deletedAt: null } }),
-    );
-  }
-
   /**
    * The employee's currently open record (clockOut IS NULL), regardless of
    * which calendar day it started on — clock-in/out must find this, not

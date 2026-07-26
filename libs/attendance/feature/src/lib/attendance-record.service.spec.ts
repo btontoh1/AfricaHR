@@ -57,7 +57,6 @@ describe('AttendanceRecordService', () => {
     records = {
       create: jest.fn(),
       findById: jest.fn(),
-      findByEmployeeAndDate: jest.fn().mockResolvedValue(null),
       findOpenByEmployee: jest.fn().mockResolvedValue(null),
       list: jest.fn(),
       update: jest.fn(),
@@ -100,11 +99,19 @@ describe('AttendanceRecordService', () => {
       expect(records.create).not.toHaveBeenCalled();
     });
 
-    it('rejects clocking in twice on the same day even if the earlier record is already closed', async () => {
-      records.findByEmployeeAndDate.mockResolvedValue(makeRecord({ clockOut: new Date() }));
+    it('allows clocking in again on the same day once the earlier shift is closed', async () => {
+      // No open record (the earlier shift was already clocked out) - only
+      // findOpenByEmployee gates a new clock-in, not "is there already a
+      // record for today", so a second clock-in/out cycle is allowed.
+      records.findOpenByEmployee.mockResolvedValue(null);
+      records.create.mockResolvedValue(makeRecord({ id: 'rec-2', clockIn: now }));
 
-      await expect(service.clockIn('tenant-1', 'emp-1')).rejects.toThrow(ConflictException);
-      expect(records.create).not.toHaveBeenCalled();
+      await service.clockIn('tenant-1', 'emp-1');
+
+      expect(records.create).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ employeeId: 'emp-1', clockIn: now }),
+      );
     });
 
     it('creates a record with clockIn=now and audits', async () => {
@@ -187,19 +194,6 @@ describe('AttendanceRecordService', () => {
       await expect(
         service.create('tenant-1', { employeeId: 'missing', date: '2026-02-02' }),
       ).rejects.toThrow(NotFoundException);
-    });
-
-    it('translates a duplicate (employee, date) into ConflictException', async () => {
-      records.create.mockRejectedValue(
-        new Prisma.PrismaClientKnownRequestError('unique violation', {
-          code: 'P2002',
-          clientVersion: '7.8.0',
-        }),
-      );
-
-      await expect(
-        service.create('tenant-1', { employeeId: 'emp-1', date: '2026-02-02' }),
-      ).rejects.toThrow(ConflictException);
     });
 
     it('computes hours when both clockIn and clockOut are provided', async () => {

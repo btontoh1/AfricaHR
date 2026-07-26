@@ -42,16 +42,6 @@ describe('AttendanceRecordRepository', () => {
     });
   });
 
-  it('finds a record by employee and date', async () => {
-    const date = new Date('2026-02-02');
-
-    await repository.findByEmployeeAndDate('tenant-1', 'emp-1', date);
-
-    expect(tx.attendanceRecord.findFirst).toHaveBeenCalledWith({
-      where: { tenantId: 'tenant-1', employeeId: 'emp-1', date, deletedAt: null },
-    });
-  });
-
   it('finds the currently open record regardless of which day it started on', async () => {
     await repository.findOpenByEmployee('tenant-1', 'emp-1');
 

@@ -16,13 +16,8 @@ interface ComputedHours {
 }
 
 function translateReferenceError(error: unknown, employeeId: string): never {
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    if (error.code === 'P2003') {
-      throw new NotFoundException(`Employee "${employeeId}" not found`);
-    }
-    if (error.code === 'P2002') {
-      throw new ConflictException('An attendance record already exists for this employee and date');
-    }
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+    throw new NotFoundException(`Employee "${employeeId}" not found`);
   }
   throw error;
 }
@@ -56,10 +51,6 @@ export class AttendanceRecordService {
     const openRecord = await this.records.findOpenByEmployee(tenantId, employeeId);
     if (openRecord) {
       throw new ConflictException('Already clocked in — clock out before starting a new shift');
-    }
-    const todayRecord = await this.records.findByEmployeeAndDate(tenantId, employeeId, date);
-    if (todayRecord) {
-      throw new ConflictException('Attendance for today has already been recorded');
     }
 
     let record: AttendanceRecord;

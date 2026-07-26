@@ -85,6 +85,13 @@ export class EmployeeRepository {
     );
   }
 
+  /** Resolves the caller's own employee record for self-service endpoints. */
+  findByUserId(tenantId: string, userId: string): Promise<Employee | null> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.employee.findFirst({ where: { tenantId, userId, deletedAt: null } }),
+    );
+  }
+
   list(tenantId: string, params: ListEmployeesParams = {}): Promise<Employee[]> {
     return this.prisma.withTenantContext(tenantId, (tx) =>
       tx.employee.findMany({

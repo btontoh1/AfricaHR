@@ -6,3 +6,6 @@ export type UpdateEmployeeInput = components['schemas']['UpdateEmployeeDto'];
 export type UpdateEmploymentStatusInput = components['schemas']['UpdateEmploymentStatusDto'];
 export type EmploymentType = Employee['employmentType'];
 export type EmploymentStatus = Employee['employmentStatus'];
+export type PaymentMethod = components['schemas']['PaymentMethodResponseDto'];
+export type UpsertPaymentMethodInput = components['schemas']['UpsertPaymentMethodDto'];
+export type PaymentMethodType = PaymentMethod['type'];

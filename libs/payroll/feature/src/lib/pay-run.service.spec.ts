@@ -178,6 +178,21 @@ describe('PayRunService', () => {
       );
     });
 
+    it('derives the payslip currency from country when the employee has none set, instead of hardcoding GHS', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'DRAFT' }));
+      employees.listActiveByOrganization.mockResolvedValue([
+        { id: 'emp-1', baseSalary: new Prisma.Decimal(1000), currency: null, countryCode: 'NG' },
+      ]);
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PROCESSING' }));
+
+      await service.process('tenant-1', 'run-1');
+
+      expect(payslips.upsert).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ employeeId: 'emp-1', countryCode: 'NG', currency: 'NGN' }),
+      );
+    });
+
     it('does not re-transition status when reprocessing an already-PROCESSING run', async () => {
       payRuns.findById.mockResolvedValue(makePayRun({ status: 'PROCESSING' }));
       employees.listActiveByOrganization.mockResolvedValue([]);

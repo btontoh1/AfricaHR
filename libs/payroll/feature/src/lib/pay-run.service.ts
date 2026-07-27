@@ -8,7 +8,13 @@ import {
   StatutoryRateRepository,
   StatutoryTaxBandRepository,
 } from '@africahr/payroll-data-access';
-import { canTransitionPayRunStatus, computePayslip, isPayRunEditable, PayRunStatus } from '@africahr/payroll-domain';
+import {
+  canTransitionPayRunStatus,
+  computePayslip,
+  getDefaultCurrencyForCountry,
+  isPayRunEditable,
+  PayRunStatus,
+} from '@africahr/payroll-domain';
 import { CreatePayRunDto } from './dto/create-pay-run.dto';
 
 function translateReferenceError(error: unknown, organizationId: string): never {
@@ -97,7 +103,7 @@ export class PayRunService {
 
     for (const employee of eligibleEmployees) {
       const basicSalary = employee.baseSalary ? Number(employee.baseSalary) : 0;
-      const currency = employee.currency ?? 'GHS';
+      const currency = employee.currency ?? getDefaultCurrencyForCountry(employee.countryCode);
       const asOf = payRun.payDate;
 
       const bands = await this.taxBands.findEffective(employee.countryCode, asOf);

@@ -1,7 +1,11 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Employee, EmploymentType, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
-import { EmployeeRepository, EmploymentHistoryRepository } from '@africahr/employee-data-access';
+import {
+  EmployeeRepository,
+  EmploymentHistoryRepository,
+  UserAccessRepository,
+} from '@africahr/employee-data-access';
 import { EmploymentStatus } from '@africahr/employee-domain';
 import { EmployeeService } from './employee.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
@@ -10,6 +14,7 @@ describe('EmployeeService', () => {
   let service: EmployeeService;
   let employees: jest.Mocked<EmployeeRepository>;
   let history: jest.Mocked<EmploymentHistoryRepository>;
+  let userAccess: jest.Mocked<UserAccessRepository>;
   let audit: jest.Mocked<AuditService>;
 
   function makeEmployee(overrides: Partial<Employee> = {}): Employee {
@@ -76,9 +81,13 @@ describe('EmployeeService', () => {
       listByEmployee: jest.fn(),
     } as unknown as jest.Mocked<EmploymentHistoryRepository>;
 
+    userAccess = {
+      deactivate: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<UserAccessRepository>;
+
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
 
-    service = new EmployeeService(employees, history, audit);
+    service = new EmployeeService(employees, history, userAccess, audit);
   });
 
   describe('create', () => {
@@ -228,6 +237,52 @@ describe('EmployeeService', () => {
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'employee.status_changed' }),
       );
+    });
+
+    it('deactivates the linked portal account when transitioning to TERMINATED', async () => {
+      employees.findById.mockResolvedValue(
+        makeEmployee({ employmentStatus: EmploymentStatus.ACTIVE, userId: 'user-1' }),
+      );
+      employees.updateStatus.mockResolvedValue(
+        makeEmployee({ employmentStatus: EmploymentStatus.TERMINATED, userId: 'user-1' }),
+      );
+
+      await service.updateStatus('tenant-1', 'emp-1', EmploymentStatus.TERMINATED, undefined, 'hr-1');
+
+      expect(userAccess.deactivate).toHaveBeenCalledWith('tenant-1', 'user-1', 'hr-1');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'employee.portal_access_deactivated',
+          resourceType: 'User',
+          resourceId: 'user-1',
+        }),
+      );
+    });
+
+    it('does not attempt to deactivate anything when the terminated employee has no linked account', async () => {
+      employees.findById.mockResolvedValue(
+        makeEmployee({ employmentStatus: EmploymentStatus.ACTIVE, userId: null }),
+      );
+      employees.updateStatus.mockResolvedValue(
+        makeEmployee({ employmentStatus: EmploymentStatus.TERMINATED, userId: null }),
+      );
+
+      await service.updateStatus('tenant-1', 'emp-1', EmploymentStatus.TERMINATED);
+
+      expect(userAccess.deactivate).not.toHaveBeenCalled();
+    });
+
+    it('does not deactivate portal access for transitions other than TERMINATED', async () => {
+      employees.findById.mockResolvedValue(
+        makeEmployee({ employmentStatus: EmploymentStatus.ACTIVE, userId: 'user-1' }),
+      );
+      employees.updateStatus.mockResolvedValue(
+        makeEmployee({ employmentStatus: EmploymentStatus.SUSPENDED, userId: 'user-1' }),
+      );
+
+      await service.updateStatus('tenant-1', 'emp-1', EmploymentStatus.SUSPENDED);
+
+      expect(userAccess.deactivate).not.toHaveBeenCalled();
     });
   });
 

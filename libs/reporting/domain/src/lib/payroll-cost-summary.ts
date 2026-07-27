@@ -1,11 +1,13 @@
 export interface PayslipCostEntry {
+  currency: string;
   grossPay: number;
   netPay: number;
   totalDeductions: number;
   ssnitEmployer: number;
 }
 
-export interface PayrollCostSummary {
+export interface PayrollCostByCurrency {
+  currency: string;
   payslipCount: number;
   totalGrossPay: number;
   totalNetPay: number;
@@ -14,15 +16,36 @@ export interface PayrollCostSummary {
   totalEmployerCost: number;
 }
 
-export function summarizePayrollCosts(entries: PayslipCostEntry[]): PayrollCostSummary {
-  return entries.reduce<PayrollCostSummary>(
-    (summary, entry) => ({
-      payslipCount: summary.payslipCount + 1,
-      totalGrossPay: summary.totalGrossPay + entry.grossPay,
-      totalNetPay: summary.totalNetPay + entry.netPay,
-      totalDeductions: summary.totalDeductions + entry.totalDeductions,
-      totalEmployerCost: summary.totalEmployerCost + entry.grossPay + entry.ssnitEmployer,
-    }),
-    { payslipCount: 0, totalGrossPay: 0, totalNetPay: 0, totalDeductions: 0, totalEmployerCost: 0 },
-  );
+/**
+ * Grouped by currency rather than blended into one total - a tenant can
+ * have employees in more than one country (and therefore currency), and
+ * summing e.g. GHS and NGN figures together would silently produce a
+ * financially meaningless number. Currencies present are returned in
+ * alphabetical order; a period with no payslips returns an empty array
+ * rather than a zeroed single summary, since there's no currency to
+ * attach zero totals to.
+ */
+export function summarizePayrollCosts(entries: PayslipCostEntry[]): PayrollCostByCurrency[] {
+  const byCurrency = new Map<string, PayrollCostByCurrency>();
+
+  for (const entry of entries) {
+    const summary = byCurrency.get(entry.currency) ?? {
+      currency: entry.currency,
+      payslipCount: 0,
+      totalGrossPay: 0,
+      totalNetPay: 0,
+      totalDeductions: 0,
+      totalEmployerCost: 0,
+    };
+
+    summary.payslipCount += 1;
+    summary.totalGrossPay += entry.grossPay;
+    summary.totalNetPay += entry.netPay;
+    summary.totalDeductions += entry.totalDeductions;
+    summary.totalEmployerCost += entry.grossPay + entry.ssnitEmployer;
+
+    byCurrency.set(entry.currency, summary);
+  }
+
+  return Array.from(byCurrency.values()).sort((a, b) => a.currency.localeCompare(b.currency));
 }

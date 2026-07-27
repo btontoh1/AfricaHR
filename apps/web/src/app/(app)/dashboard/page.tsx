@@ -24,6 +24,7 @@ import { StatCard } from '@/features/reporting/stat-card';
 import { CardSkeleton } from '@/components/loading-state';
 import { ErrorState } from '@/components/error-state';
 import { getApiErrorMessage } from '@/lib/api-error';
+import { formatCurrency } from '@/lib/format-currency';
 import { Card, CardContent } from '@/components/ui/card';
 
 const quickLinks = [
@@ -63,6 +64,17 @@ function QuickLinks() {
   );
 }
 
+// Payroll costs are grouped by currency, never blended into one number
+// (see summarizePayrollCosts in reporting-domain) - a tenant with a single
+// currency shows it directly; one with several shows each rather than a
+// financially meaningless sum.
+function formatNetPay(byCurrency: { currency: string; totalNetPay: number }[] | undefined): string {
+  if (!byCurrency || byCurrency.length === 0) {
+    return '—';
+  }
+  return byCurrency.map((entry) => formatCurrency(entry.totalNetPay, entry.currency)).join(' + ');
+}
+
 function AdminOverview({ tenantId }: { tenantId: string }) {
   const { from, to } = getDefaultDateRange();
   const headcount = useHeadcountReport(tenantId);
@@ -92,11 +104,7 @@ function AdminOverview({ tenantId }: { tenantId: string }) {
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Active employees" value={headcount.data?.activeCount ?? '—'} icon={Users} />
-        <StatCard
-          label="Net pay (30d)"
-          value={payrollCost.data ? payrollCost.data.totalNetPay.toLocaleString() : '—'}
-          icon={Wallet}
-        />
+        <StatCard label="Net pay (30d)" value={formatNetPay(payrollCost.data)} icon={Wallet} />
         <StatCard
           label="Hours worked (30d)"
           value={attendance.data ? attendance.data.totalHoursWorked.toLocaleString() : '—'}

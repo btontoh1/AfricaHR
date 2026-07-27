@@ -9,7 +9,7 @@ import {
   RequestUser,
   RequirePermissions,
 } from '@africahr/platform-auth';
-import { PayrollCostReportResponseDto } from './dto/payroll-cost-report-response.dto';
+import { PayrollCostByCurrencyDto } from './dto/payroll-cost-report-response.dto';
 import { PayrollCostReportService } from './payroll-cost-report.service';
 
 @ApiTags('reports')
@@ -21,7 +21,7 @@ export class PayrollCostReportController {
 
   @Get()
   @RequirePermissions(Permission.REPORTING_READ)
-  @ApiOkResponse({ type: PayrollCostReportResponseDto })
+  @ApiOkResponse({ type: PayrollCostByCurrencyDto, isArray: true })
   @ApiQuery({ name: 'from', required: false })
   @ApiQuery({ name: 'to', required: false })
   @ApiQuery({ name: 'organizationId', required: false })

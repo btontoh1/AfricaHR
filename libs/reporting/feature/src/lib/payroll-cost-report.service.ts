@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PayrollCostReportRepository } from '@africahr/reporting-data-access';
-import { PayrollCostSummary, summarizePayrollCosts } from '@africahr/reporting-domain';
+import { PayrollCostByCurrency, summarizePayrollCosts } from '@africahr/reporting-domain';
 
 export interface PayrollCostReportParams {
   organizationId?: string;
@@ -12,7 +12,7 @@ export interface PayrollCostReportParams {
 export class PayrollCostReportService {
   constructor(private readonly payrollCost: PayrollCostReportRepository) {}
 
-  async generate(tenantId: string, params: PayrollCostReportParams): Promise<PayrollCostSummary> {
+  async generate(tenantId: string, params: PayrollCostReportParams): Promise<PayrollCostByCurrency[]> {
     if (!params.from || !params.to) {
       throw new BadRequestException('from and to query parameters are required');
     }

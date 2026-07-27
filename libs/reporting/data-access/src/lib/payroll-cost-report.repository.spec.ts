@@ -19,6 +19,7 @@ describe('PayrollCostReportRepository', () => {
   it('converts Decimal payslip fields to plain numbers', async () => {
     tx.payslip.findMany.mockResolvedValue([
       {
+        currency: 'GHS',
         grossPay: decimal(3000),
         netPay: decimal(2400),
         totalDeductions: decimal(600),
@@ -31,7 +32,9 @@ describe('PayrollCostReportRepository', () => {
       to: new Date('2026-01-31'),
     });
 
-    expect(result).toEqual([{ grossPay: 3000, netPay: 2400, totalDeductions: 600, ssnitEmployer: 390 }]);
+    expect(result).toEqual([
+      { currency: 'GHS', grossPay: 3000, netPay: 2400, totalDeductions: 600, ssnitEmployer: 390 },
+    ]);
   });
 
   it('filters by organization and pay-run period', async () => {
@@ -47,7 +50,13 @@ describe('PayrollCostReportRepository', () => {
         deletedAt: null,
         payRun: { organizationId: 'org-1', periodStart: { gte: from }, periodEnd: { lte: to } },
       },
-      select: { grossPay: true, netPay: true, totalDeductions: true, ssnitEmployer: true },
+      select: {
+        currency: true,
+        grossPay: true,
+        netPay: true,
+        totalDeductions: true,
+        ssnitEmployer: true,
+      },
     });
   });
 });

@@ -34,11 +34,18 @@ export class PayrollCostReportRepository {
             periodEnd: { lte: params.to },
           },
         },
-        select: { grossPay: true, netPay: true, totalDeductions: true, ssnitEmployer: true },
+        select: {
+          currency: true,
+          grossPay: true,
+          netPay: true,
+          totalDeductions: true,
+          ssnitEmployer: true,
+        },
       }),
     );
 
     return payslips.map((payslip) => ({
+      currency: payslip.currency,
       grossPay: payslip.grossPay.toNumber(),
       netPay: payslip.netPay.toNumber(),
       totalDeductions: payslip.totalDeductions.toNumber(),

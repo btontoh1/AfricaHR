@@ -2703,7 +2703,8 @@ export interface components {
             /** @description Only present when both from and to are supplied */
             terminationsInPeriod?: number;
         };
-        PayrollCostReportResponseDto: {
+        PayrollCostByCurrencyDto: {
+            currency: string;
             payslipCount: number;
             totalGrossPay: number;
             totalNetPay: number;
@@ -6240,7 +6241,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PayrollCostReportResponseDto"];
+                    "application/json": components["schemas"]["PayrollCostByCurrencyDto"][];
                 };
             };
         };

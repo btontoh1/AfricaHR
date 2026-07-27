@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Banknote } from 'lucide-react';
 import { usePayrollCostReport } from './queries';
 import { getDefaultDateRange } from './date-range';
 import { OrganizationFilter, ALL_ORGANIZATIONS } from './organization-filter';
@@ -11,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CardSkeleton } from '@/components/loading-state';
 import { ErrorState } from '@/components/error-state';
+import { EmptyState } from '@/components/empty-state';
 
 export function PayrollCostReport({ tenantId }: { tenantId: string }) {
   const [organizationId, setOrganizationId] = useState(ALL_ORGANIZATIONS);
@@ -50,13 +52,42 @@ export function PayrollCostReport({ tenantId }: { tenantId: string }) {
 
       {isError && <ErrorState message={getApiErrorMessage(error, 'Failed to load the payroll cost report')} />}
 
-      {report && (
-        <div className="grid gap-4 sm:grid-cols-3">
-          <StatCard label="Payslips" value={report.payslipCount} />
-          <StatCard label="Gross pay" value={formatCurrency(report.totalGrossPay, null)} />
-          <StatCard label="Net pay" value={formatCurrency(report.totalNetPay, null)} />
-          <StatCard label="Total deductions" value={formatCurrency(report.totalDeductions, null)} />
-          <StatCard label="Employer cost" value={formatCurrency(report.totalEmployerCost, null)} />
+      {report && report.length === 0 && (
+        <EmptyState icon={Banknote} title="No payroll costs for this filter" />
+      )}
+
+      {report && report.length > 0 && (
+        <div className="space-y-6">
+          {/*
+            One card group per currency, never blended into a single total -
+            a tenant can run payroll in more than one currency (e.g. GHS and
+            NGN employees), and summing them together would be financially
+            meaningless. See summarizePayrollCosts in reporting-domain.
+          */}
+          {report.map((byCurrency) => (
+            <div key={byCurrency.currency} className="space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground">{byCurrency.currency}</h3>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <StatCard label="Payslips" value={byCurrency.payslipCount} />
+                <StatCard
+                  label="Gross pay"
+                  value={formatCurrency(byCurrency.totalGrossPay, byCurrency.currency)}
+                />
+                <StatCard
+                  label="Net pay"
+                  value={formatCurrency(byCurrency.totalNetPay, byCurrency.currency)}
+                />
+                <StatCard
+                  label="Total deductions"
+                  value={formatCurrency(byCurrency.totalDeductions, byCurrency.currency)}
+                />
+                <StatCard
+                  label="Employer cost"
+                  value={formatCurrency(byCurrency.totalEmployerCost, byCurrency.currency)}
+                />
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

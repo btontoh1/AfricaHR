@@ -6,6 +6,7 @@ import { usePayslip, useRemovePayslipLineItem } from './queries';
 import { AddLineItemForm } from './add-line-item-form';
 import { useEmployee } from '@/features/employees/queries';
 import { getApiErrorMessage } from '@/lib/api-error';
+import { formatCurrency } from '@/lib/format-currency';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CardSkeleton } from '@/components/loading-state';
@@ -68,14 +69,26 @@ export function PayslipDetail({ tenantId, payslipId }: { tenantId: string; paysl
           <Field label="Employee" value={employeeName} />
           <Field label="Status" value={payslip.status} />
           <Field label="Country" value={payslip.countryCode} />
-          <Field label="Basic salary" value={payslip.basicSalary} />
-          <Field label="Gross pay" value={payslip.grossPay} />
-          <Field label="Taxable income" value={payslip.taxableIncome} />
-          <Field label="PAYE tax" value={payslip.payeTax} />
-          <Field label="SSNIT (employee)" value={payslip.ssnitEmployee} />
-          <Field label="SSNIT (employer)" value={payslip.ssnitEmployer} />
-          <Field label="Total deductions" value={payslip.totalDeductions} />
-          <Field label="Net pay" value={payslip.netPay} />
+          <Field label="Basic salary" value={formatCurrency(payslip.basicSalary, payslip.currency)} />
+          <Field label="Gross pay" value={formatCurrency(payslip.grossPay, payslip.currency)} />
+          <Field
+            label="Taxable income"
+            value={formatCurrency(payslip.taxableIncome, payslip.currency)}
+          />
+          <Field label="PAYE tax" value={formatCurrency(payslip.payeTax, payslip.currency)} />
+          <Field
+            label="SSNIT (employee)"
+            value={formatCurrency(payslip.ssnitEmployee, payslip.currency)}
+          />
+          <Field
+            label="SSNIT (employer)"
+            value={formatCurrency(payslip.ssnitEmployer, payslip.currency)}
+          />
+          <Field
+            label="Total deductions"
+            value={formatCurrency(payslip.totalDeductions, payslip.currency)}
+          />
+          <Field label="Net pay" value={formatCurrency(payslip.netPay, payslip.currency)} />
           <Field label="Currency" value={payslip.currency} />
         </CardContent>
       </Card>
@@ -106,7 +119,7 @@ export function PayslipDetail({ tenantId, payslipId }: { tenantId: string; paysl
                       <TableCell>{item.type}</TableCell>
                       <TableCell>{item.code}</TableCell>
                       <TableCell className="text-muted-foreground">{item.description ?? '—'}</TableCell>
-                      <TableCell>{item.amount}</TableCell>
+                      <TableCell>{formatCurrency(item.amount, payslip.currency)}</TableCell>
                       <TableCell>
                         {canEdit && (
                           <Button

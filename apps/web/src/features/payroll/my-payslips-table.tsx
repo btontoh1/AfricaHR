@@ -5,6 +5,7 @@ import { Receipt } from 'lucide-react';
 import { useMyPayslips } from './queries';
 import { PayslipStatusBadge } from './payslip-status-badge';
 import { getApiErrorMessage } from '@/lib/api-error';
+import { formatCurrency } from '@/lib/format-currency';
 import { TableCard } from '@/components/table-card';
 import { EmptyState } from '@/components/empty-state';
 import { TableSkeleton } from '@/components/loading-state';
@@ -53,10 +54,12 @@ export function MyPayslipsTable({ tenantId }: { tenantId: string }) {
               <TableCell>
                 <PayslipStatusBadge status={payslip.status} />
               </TableCell>
-              <TableCell>{payslip.grossPay}</TableCell>
-              <TableCell>{payslip.payeTax}</TableCell>
-              <TableCell>{payslip.ssnitEmployee}</TableCell>
-              <TableCell className="font-medium">{payslip.netPay}</TableCell>
+              <TableCell>{formatCurrency(payslip.grossPay, payslip.currency)}</TableCell>
+              <TableCell>{formatCurrency(payslip.payeTax, payslip.currency)}</TableCell>
+              <TableCell>{formatCurrency(payslip.ssnitEmployee, payslip.currency)}</TableCell>
+              <TableCell className="font-medium">
+                {formatCurrency(payslip.netPay, payslip.currency)}
+              </TableCell>
               <TableCell>{payslip.currency}</TableCell>
               <TableCell>
                 <Link href={`/payslips/${payslip.id}`} className="text-sm text-primary hover:underline">

@@ -8,6 +8,7 @@ import { useEmployees } from '@/features/employees/queries';
 import { PayRunStatusBadge } from './pay-run-status-badge';
 import { PayRunLifecycleActions } from './pay-run-lifecycle-actions';
 import { getApiErrorMessage } from '@/lib/api-error';
+import { formatCurrency } from '@/lib/format-currency';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CardSkeleton } from '@/components/loading-state';
 import { ErrorState } from '@/components/error-state';
@@ -100,8 +101,10 @@ export function PayRunDetail({ tenantId, payRunId }: { tenantId: string; payRunI
                   {payslips.map((payslip) => (
                     <TableRow key={payslip.id}>
                       <TableCell>{employeeName(payslip.employeeId)}</TableCell>
-                      <TableCell>{payslip.grossPay}</TableCell>
-                      <TableCell className="font-medium">{payslip.netPay}</TableCell>
+                      <TableCell>{formatCurrency(payslip.grossPay, payslip.currency)}</TableCell>
+                      <TableCell className="font-medium">
+                        {formatCurrency(payslip.netPay, payslip.currency)}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{payslip.currency}</TableCell>
                       <TableCell>
                         <Link href={`/payroll/payslips/${payslip.id}`} className="text-sm text-primary hover:underline">

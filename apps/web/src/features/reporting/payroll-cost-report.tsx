@@ -6,6 +6,7 @@ import { getDefaultDateRange } from './date-range';
 import { OrganizationFilter, ALL_ORGANIZATIONS } from './organization-filter';
 import { StatCard } from './stat-card';
 import { getApiErrorMessage } from '@/lib/api-error';
+import { formatCurrency } from '@/lib/format-currency';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CardSkeleton } from '@/components/loading-state';
@@ -52,10 +53,10 @@ export function PayrollCostReport({ tenantId }: { tenantId: string }) {
       {report && (
         <div className="grid gap-4 sm:grid-cols-3">
           <StatCard label="Payslips" value={report.payslipCount} />
-          <StatCard label="Gross pay" value={report.totalGrossPay} />
-          <StatCard label="Net pay" value={report.totalNetPay} />
-          <StatCard label="Total deductions" value={report.totalDeductions} />
-          <StatCard label="Employer cost" value={report.totalEmployerCost} />
+          <StatCard label="Gross pay" value={formatCurrency(report.totalGrossPay, null)} />
+          <StatCard label="Net pay" value={formatCurrency(report.totalNetPay, null)} />
+          <StatCard label="Total deductions" value={formatCurrency(report.totalDeductions, null)} />
+          <StatCard label="Employer cost" value={formatCurrency(report.totalEmployerCost, null)} />
         </div>
       )}
     </div>

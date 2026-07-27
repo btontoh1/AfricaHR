@@ -1,6 +1,7 @@
 'use client';
 
 import { useBenefitContribution, useMyBenefitContribution } from './queries';
+import { formatCurrency } from '@/lib/format-currency';
 
 export function ContributionCell({
   tenantId,
@@ -20,7 +21,7 @@ export function ContributionCell({
 
   return (
     <span>
-      {contribution.employee} / {contribution.employer}
+      {formatCurrency(contribution.employee, null)} / {formatCurrency(contribution.employer, null)}
     </span>
   );
 }

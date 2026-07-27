@@ -6,6 +6,7 @@ import { EmploymentStatusBadge } from './employment-status-badge';
 import { StatusChangeControl } from './status-change-control';
 import { UpdateEmployeeForm } from './update-employee-form';
 import { getApiErrorMessage } from '@/lib/api-error';
+import { formatCurrency } from '@/lib/format-currency';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CardSkeleton } from '@/components/loading-state';
 import { ErrorState } from '@/components/error-state';
@@ -55,10 +56,13 @@ export function EmployeeDetail({ tenantId, employeeId }: { tenantId: string; emp
           <Field label="Employment type" value={employee.employmentType} />
           <Field label="Hire date" value={employee.hireDate?.slice(0, 10)} />
           <Field label="Country" value={employee.countryCode} />
-          <Field label="Base salary" value={employee.baseSalary} />
+          <Field label="Base salary" value={formatCurrency(employee.baseSalary, employee.currency)} />
           <Field label="Pay frequency" value={employee.payFrequency} />
           <Field label="Currency" value={employee.currency} />
-          <Field label="Annual rent paid" value={employee.annualRentPaid} />
+          <Field
+            label="Annual rent paid"
+            value={formatCurrency(employee.annualRentPaid, employee.currency)}
+          />
           <Field label="Phone" value={employee.phone} />
           <Field label="Personal email" value={employee.personalEmail} />
           <Field label="Nationality" value={employee.nationality} />

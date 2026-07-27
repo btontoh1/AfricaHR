@@ -105,14 +105,8 @@ async function seedGhanaStatutoryData(prisma: PrismaClient): Promise<void> {
  * ₦300k/300k/500k/500k/1.6m @ 7/11/15/19/21%, remainder @ 24% — are divided
  * by 12 here rather than re-derived from scratch).
  *
- * Two known gaps, not fixed here:
- * 1. Nigeria's real PAYE first subtracts a Consolidated Relief Allowance
- *    (the higher of ₦200k/yr or 1% of gross income, plus 20% of gross
- *    income) before applying these bands. computePayslip has no such
- *    relief step — it only subtracts the pension contribution before
- *    banding — so PAYE computed here will overstate a Nigerian employee's
- *    real tax liability until CRA support is added to the calculator.
- * 2. StatutoryRateCode's SSNIT_EMPLOYEE/SSNIT_EMPLOYER codes are Ghana's
+ * One known gap, not fixed here:
+ * 1. StatutoryRateCode's SSNIT_EMPLOYEE/SSNIT_EMPLOYER codes are Ghana's
  *    scheme name (Social Security and National Insurance Trust) reused
  *    here for Nigeria's Pension Reform Act 2014 minimum contribution
  *    (8% employee / 10% employer of basic salary) rather than adding a

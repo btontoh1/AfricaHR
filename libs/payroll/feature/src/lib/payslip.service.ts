@@ -153,6 +153,7 @@ export class PayslipService {
     const currentLineItems = await this.lineItems.listByPayslip(tenantId, payslip.id);
 
     const computed = computePayslip({
+      countryCode: employee.countryCode,
       basicSalary: employee.baseSalary ? Number(employee.baseSalary) : 0,
       lineItems: currentLineItems.map((item) => ({ type: item.type, amount: Number(item.amount) })),
       taxBands: bands.map((band) => ({

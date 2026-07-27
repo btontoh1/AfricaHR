@@ -117,6 +117,7 @@ export class PayRunService {
       }));
 
       const computed = computePayslip({
+        countryCode: employee.countryCode,
         basicSalary,
         lineItems: lineItemInputs,
         taxBands: bands.map((band) => ({

@@ -1,6 +1,7 @@
 import { roundCurrency } from './money';
 import { calculatePayeTax, TaxBand } from './tax-band';
 import { calculateSsnit, SsnitRates } from './ssnit';
+import { calculateNigeriaConsolidatedReliefAllowance } from './nigeria-relief';
 import { PayslipLineItemType } from './payslip-line-item-type';
 
 export interface PayslipLineItemInput {
@@ -9,6 +10,7 @@ export interface PayslipLineItemInput {
 }
 
 export interface ComputePayslipInput {
+  countryCode: string;
   basicSalary: number;
   lineItems: readonly PayslipLineItemInput[];
   taxBands: readonly TaxBand[];
@@ -37,10 +39,13 @@ export function sumLineItems(
 }
 
 /**
- * Computes one employee's payslip for a pay run. SSNIT's employee
- * contribution is deducted from gross pay before PAYE is calculated —
- * that ordering is standard Ghanaian payroll mechanics (not a rate that
- * changes with policy), so it's encoded here rather than left as data.
+ * Computes one employee's payslip for a pay run. The employee's pension/
+ * SSNIT-equivalent contribution is always deducted from gross pay before
+ * PAYE is calculated — that ordering is standard mechanics, not a rate
+ * that changes with policy, so it's encoded here rather than left as data.
+ * Nigeria additionally deducts a Consolidated Relief Allowance before the
+ * PAYE bands apply (see nigeria-relief.ts) — every other country's
+ * taxable income is just gross pay less the pension deduction.
  */
 export function computePayslip(input: ComputePayslipInput): ComputedPayslip {
   const earnings = sumLineItems(input.lineItems, PayslipLineItemType.EARNING);
@@ -50,7 +55,9 @@ export function computePayslip(input: ComputePayslipInput): ComputedPayslip {
   const grossPay = roundCurrency(basicSalary + earnings);
 
   const ssnit = calculateSsnit(basicSalary, input.ssnitRates);
-  const taxableIncome = roundCurrency(Math.max(0, grossPay - ssnit.employee));
+  const relief =
+    input.countryCode === 'NG' ? calculateNigeriaConsolidatedReliefAllowance(grossPay) : 0;
+  const taxableIncome = roundCurrency(Math.max(0, grossPay - ssnit.employee - relief));
   const payeTax = calculatePayeTax(taxableIncome, input.taxBands);
 
   const totalDeductions = roundCurrency(ssnit.employee + payeTax + otherDeductions);

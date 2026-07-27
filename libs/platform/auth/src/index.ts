@@ -2,6 +2,7 @@ export * from './lib/platform-auth.module';
 export * from './lib/system-role';
 export * from './lib/jwt-payload.interface';
 export * from './lib/jwt-token.service';
+export * from './lib/token-revocation.service';
 export * from './lib/jwt-auth.guard';
 export * from './lib/permissions.guard';
 export * from './lib/require-permissions.decorator';

@@ -233,8 +233,9 @@ export class EmployeeService {
 
     // Termination is a dead end in the status state machine (no transition
     // back out of it), so this only ever needs to deactivate, never
-    // reactivate, portal access. Doesn't touch already-issued access
-    // tokens - those remain valid until they expire on their own.
+    // reactivate, portal access. UserAccessRepository.deactivate also
+    // revokes any already-issued access token for this user, so access is
+    // cut immediately rather than waiting out the token's remaining TTL.
     if (status === EmploymentStatus.TERMINATED && existing.userId) {
       await this.userAccess.deactivate(tenantId, existing.userId, actorId);
 

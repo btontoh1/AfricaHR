@@ -109,6 +109,14 @@ export class CreateEmployeeDto {
   @Matches(/^[A-Z]{3}$/, { message: 'currency must be a 3-letter ISO 4217 code' })
   currency?: string;
 
+  @ApiPropertyOptional({
+    description: 'Annual rent paid - used only for Nigeria Rent Relief Allowance eligibility',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  annualRentPaid?: number;
+
   @ApiProperty({ example: 'GH' })
   @Matches(/^[A-Z]{2}$/, { message: 'countryCode must be a 2-letter ISO 3166-1 alpha-2 code' })
   countryCode!: string;

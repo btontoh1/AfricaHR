@@ -39,15 +39,24 @@ async function seedPlatformAdmin(prisma: PrismaClient): Promise<void> {
   console.log(`Seed: created platform admin "${email}".`);
 }
 
+const d = (value: string) => new Prisma.Decimal(value);
+
 /**
- * PLACEHOLDER Ghana PAYE tax bands and SSNIT rates, so a fresh environment
- * has something to compute payroll against end-to-end. These figures are
- * deliberately round numbers, NOT the current GRA/SSNIT published tables —
- * see project memory: statutory tax data is never hardcoded into
- * application logic, and this seed must be replaced with GRA/SSNIT's
- * actual current figures (via the platform-admin-only
- * POST /payroll/statutory/{tax-bands,rates} endpoints) before any real
- * payroll run.
+ * Ghana PAYE tax bands and SSNIT rates, effective 1 January 2026 (the GRA's
+ * current published annual resident-individual schedule, divided by 12
+ * since this engine computes tax per pay run, not annually):
+ * 0-5,880 @0%, 5,880-7,200 @5%, 7,200-8,760 @10%, 8,760-46,760 @17.5%,
+ * 46,760-238,760 @25%, 238,760-605,000 @30%, 605,000+ @35%. Sourced from
+ * public GRA-rate summaries in July 2026 - confirm against the GRA's own
+ * gazette before relying on these for real payroll, and re-verify annually
+ * since GRA revises bands with the national budget.
+ *
+ * One known gap, not modeled here: SSNIT now publishes a maximum monthly
+ * insurable earnings ceiling (contributions stop accruing above it) -
+ * sources disagreed on the exact figure (GHS 61,000 vs 69,000/mo) at the
+ * time this was written, so it's deliberately left unimplemented rather
+ * than guessed. calculateSsnit has no cap logic - add one once the real
+ * ceiling is confirmed.
  */
 async function seedGhanaStatutoryData(prisma: PrismaClient): Promise<void> {
   const countryCode = 'GH';
@@ -59,16 +68,45 @@ async function seedGhanaStatutoryData(prisma: PrismaClient): Promise<void> {
   } else {
     await prisma.statutoryTaxBand.createMany({
       data: [
-        { countryCode, order: 1, lowerBound: 0, upperBound: 500, rate: 0, effectiveFrom },
-        { countryCode, order: 2, lowerBound: 500, upperBound: 1000, rate: 0.05, effectiveFrom },
-        { countryCode, order: 3, lowerBound: 1000, upperBound: 2000, rate: 0.1, effectiveFrom },
-        { countryCode, order: 4, lowerBound: 2000, upperBound: 3000, rate: 0.175, effectiveFrom },
-        { countryCode, order: 5, lowerBound: 3000, upperBound: 5000, rate: 0.25, effectiveFrom },
-        { countryCode, order: 6, lowerBound: 5000, upperBound: null, rate: 0.3, effectiveFrom },
+        { countryCode, order: 1, lowerBound: d('0'), upperBound: d('490'), rate: d('0'), effectiveFrom },
+        { countryCode, order: 2, lowerBound: d('490'), upperBound: d('600'), rate: d('0.05'), effectiveFrom },
+        { countryCode, order: 3, lowerBound: d('600'), upperBound: d('730'), rate: d('0.1'), effectiveFrom },
+        {
+          countryCode,
+          order: 4,
+          lowerBound: d('730'),
+          upperBound: d('3896.67'),
+          rate: d('0.175'),
+          effectiveFrom,
+        },
+        {
+          countryCode,
+          order: 5,
+          lowerBound: d('3896.67'),
+          upperBound: d('19896.67'),
+          rate: d('0.25'),
+          effectiveFrom,
+        },
+        {
+          countryCode,
+          order: 6,
+          lowerBound: d('19896.67'),
+          upperBound: d('50416.67'),
+          rate: d('0.3'),
+          effectiveFrom,
+        },
+        {
+          countryCode,
+          order: 7,
+          lowerBound: d('50416.67'),
+          upperBound: null,
+          rate: d('0.35'),
+          effectiveFrom,
+        },
       ],
     });
     console.log(
-      `Seed: created PLACEHOLDER PAYE tax bands for "${countryCode}" — confirm against GRA's current published table before real payroll runs.`,
+      `Seed: created 2026 GRA PAYE tax bands for "${countryCode}" — re-verify against the GRA's gazette annually.`,
     );
   }
 
@@ -93,23 +131,35 @@ async function seedGhanaStatutoryData(prisma: PrismaClient): Promise<void> {
       ],
     });
     console.log(
-      `Seed: created PLACEHOLDER SSNIT rates for "${countryCode}" — confirm against SSNIT's current published rates before real payroll runs.`,
+      `Seed: created SSNIT rates for "${countryCode}" (unchanged for 2026) — re-verify against SSNIT's current published rates before real payroll runs.`,
     );
   }
 }
 
 /**
- * Nigeria PAYE tax bands and pension contribution rates, converted to the
- * same monthly basis as Ghana's data above (this engine computes tax per
- * pay run, not annually, so the Sixth Schedule's real annual bands —
- * ₦300k/300k/500k/500k/1.6m @ 7/11/15/19/21%, remainder @ 24% — are divided
- * by 12 here rather than re-derived from scratch).
+ * Nigeria PAYE tax bands and pension contribution rates, effective
+ * 1 January 2026 under the Nigeria Tax Act 2025 (NTA) - a full rewrite of
+ * the prior Personal Income Tax Act bands, not an amendment. Real annual
+ * bands: 0-800k @0%, 800k-3m @15%, 3m-12m @18%, 12m-25m @21%, 25m-50m @23%,
+ * 50m+ @25% - divided by 12 here for the same reason as Ghana's (this
+ * engine computes tax per pay run, not annually). Sourced from public
+ * NTA-summary alerts (incl. PwC) in July 2026 - confirm against the FIRS's
+ * own gazette before relying on these for real payroll.
+ *
+ * The NTA also repeals the old Consolidated Relief Allowance outright and
+ * replaces it with a Rent Relief Allowance (20% of annual rent paid,
+ * capped at ₦500k/yr) - see nigeria-rent-relief.ts in payroll-domain and
+ * Employee.annualRentPaid, not statutory reference data, since relief
+ * eligibility is per-employee, not a published rate.
  *
  * One known gap, not fixed here:
  * 1. StatutoryRateCode's SSNIT_EMPLOYEE/SSNIT_EMPLOYER codes are Ghana's
  *    scheme name (Social Security and National Insurance Trust) reused
  *    here for Nigeria's Pension Reform Act 2014 minimum contribution
- *    (8% employee / 10% employer of basic salary) rather than adding a
+ *    (8% employee / 10% employer of basic salary, unchanged by the NTA and
+ *    still the current law as of July 2026, though a PenCom-proposed
+ *    increase to the employer share was under consultation at time of
+ *    writing - re-verify if that review concludes) rather than adding a
  *    generic PENSION_EMPLOYEE/PENSION_EMPLOYER code — a deliberate choice
  *    to avoid renaming the enum/field across the whole payroll module for
  *    a naming-only fix. countryCode already disambiguates which scheme a
@@ -123,19 +173,60 @@ async function seedNigeriaStatutoryData(prisma: PrismaClient): Promise<void> {
   if (existingBands) {
     console.log(`Seed: statutory tax bands for "${countryCode}" already exist, skipping.`);
   } else {
-    const d = (value: string) => new Prisma.Decimal(value);
     await prisma.statutoryTaxBand.createMany({
       data: [
-        { countryCode, order: 1, lowerBound: d('0'), upperBound: d('25000'), rate: d('0.07'), effectiveFrom },
-        { countryCode, order: 2, lowerBound: d('25000'), upperBound: d('50000'), rate: d('0.11'), effectiveFrom },
-        { countryCode, order: 3, lowerBound: d('50000'), upperBound: d('91666.67'), rate: d('0.15'), effectiveFrom },
-        { countryCode, order: 4, lowerBound: d('91666.67'), upperBound: d('133333.33'), rate: d('0.19'), effectiveFrom },
-        { countryCode, order: 5, lowerBound: d('133333.33'), upperBound: d('266666.67'), rate: d('0.21'), effectiveFrom },
-        { countryCode, order: 6, lowerBound: d('266666.67'), upperBound: null, rate: d('0.24'), effectiveFrom },
+        {
+          countryCode,
+          order: 1,
+          lowerBound: d('0'),
+          upperBound: d('66666.67'),
+          rate: d('0'),
+          effectiveFrom,
+        },
+        {
+          countryCode,
+          order: 2,
+          lowerBound: d('66666.67'),
+          upperBound: d('250000'),
+          rate: d('0.15'),
+          effectiveFrom,
+        },
+        {
+          countryCode,
+          order: 3,
+          lowerBound: d('250000'),
+          upperBound: d('1000000'),
+          rate: d('0.18'),
+          effectiveFrom,
+        },
+        {
+          countryCode,
+          order: 4,
+          lowerBound: d('1000000'),
+          upperBound: d('2083333.33'),
+          rate: d('0.21'),
+          effectiveFrom,
+        },
+        {
+          countryCode,
+          order: 5,
+          lowerBound: d('2083333.33'),
+          upperBound: d('4166666.67'),
+          rate: d('0.23'),
+          effectiveFrom,
+        },
+        {
+          countryCode,
+          order: 6,
+          lowerBound: d('4166666.67'),
+          upperBound: null,
+          rate: d('0.25'),
+          effectiveFrom,
+        },
       ],
     });
     console.log(
-      `Seed: created PLACEHOLDER PAYE tax bands for "${countryCode}" (monthly, no CRA relief applied) — confirm against FIRS's current published table before real payroll runs.`,
+      `Seed: created 2026 Nigeria Tax Act PAYE bands for "${countryCode}" — re-verify against the FIRS's gazette annually.`,
     );
   }
 

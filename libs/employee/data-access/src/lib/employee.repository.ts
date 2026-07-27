@@ -21,6 +21,7 @@ export interface CreateEmployeeInput {
   baseSalary?: Prisma.Decimal | number;
   payFrequency?: string;
   currency?: string;
+  annualRentPaid?: Prisma.Decimal | number;
   countryCode: string;
   metadata?: Prisma.InputJsonValue;
   createdBy?: string;
@@ -40,6 +41,7 @@ export interface UpdateEmployeeInput {
   jobTitle?: string;
   baseSalary?: Prisma.Decimal | number | null;
   payFrequency?: string | null;
+  annualRentPaid?: Prisma.Decimal | number | null;
   updatedBy?: string;
 }
 
@@ -70,6 +72,7 @@ export class EmployeeRepository {
           baseSalary: input.baseSalary,
           payFrequency: input.payFrequency,
           currency: input.currency,
+          annualRentPaid: input.annualRentPaid,
           countryCode: input.countryCode,
           metadata: input.metadata,
           createdBy: input.createdBy,
@@ -130,6 +133,7 @@ export class EmployeeRepository {
           jobTitle: input.jobTitle,
           baseSalary: input.baseSalary,
           payFrequency: input.payFrequency,
+          annualRentPaid: input.annualRentPaid,
           updatedBy: input.updatedBy,
         },
       }),

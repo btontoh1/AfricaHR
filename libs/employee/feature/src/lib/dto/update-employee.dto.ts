@@ -36,4 +36,13 @@ export class UpdateEmployeeDto {
   @IsOptional()
   @IsString()
   payFrequency?: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Annual rent paid - used only for Nigeria Rent Relief Allowance eligibility',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  annualRentPaid?: number | null;
 }

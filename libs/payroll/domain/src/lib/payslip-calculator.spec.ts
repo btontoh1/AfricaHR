@@ -8,15 +8,15 @@ const bands: TaxBand[] = [
 ];
 const ssnitRates = { employeeRate: 0.055, employerRate: 0.13 };
 
-// Mirrors the seeded Nigeria bands (see seed.ts) for the country-specific
-// CRA-relief tests below.
+// Mirrors the seeded 2026 Nigeria Tax Act bands (see seed.ts) for the
+// country-specific rent-relief tests below.
 const nigeriaBands: TaxBand[] = [
-  { order: 1, lowerBound: 0, upperBound: 25000, rate: 0.07 },
-  { order: 2, lowerBound: 25000, upperBound: 50000, rate: 0.11 },
-  { order: 3, lowerBound: 50000, upperBound: 91666.67, rate: 0.15 },
-  { order: 4, lowerBound: 91666.67, upperBound: 133333.33, rate: 0.19 },
-  { order: 5, lowerBound: 133333.33, upperBound: 266666.67, rate: 0.21 },
-  { order: 6, lowerBound: 266666.67, upperBound: null, rate: 0.24 },
+  { order: 1, lowerBound: 0, upperBound: 66666.67, rate: 0 },
+  { order: 2, lowerBound: 66666.67, upperBound: 250000, rate: 0.15 },
+  { order: 3, lowerBound: 250000, upperBound: 1000000, rate: 0.18 },
+  { order: 4, lowerBound: 1000000, upperBound: 2083333.33, rate: 0.21 },
+  { order: 5, lowerBound: 2083333.33, upperBound: 4166666.67, rate: 0.23 },
+  { order: 6, lowerBound: 4166666.67, upperBound: null, rate: 0.25 },
 ];
 const nigeriaRates = { employeeRate: 0.08, employerRate: 0.1 };
 
@@ -100,10 +100,11 @@ describe('computePayslip', () => {
     expect(result.netPay).toBe(0);
   });
 
-  it('deducts Nigeria\'s Consolidated Relief Allowance before applying PAYE bands', () => {
+  it('deducts Nigeria\'s Rent Relief Allowance before applying PAYE bands, when rent is on file', () => {
     const result = computePayslip({
       countryCode: 'NG',
       basicSalary: 100_000,
+      annualRentPaid: 1_200_000,
       lineItems: [],
       taxBands: nigeriaBands,
       ssnitRates: nigeriaRates,
@@ -113,15 +114,31 @@ describe('computePayslip', () => {
     expect(result.grossPay).toBe(100_000);
     // pension employee = 100,000 * 0.08 = 8,000
     expect(result.ssnitEmployee).toBe(8000);
-    // CRA = max(16,666.67, 1,000) + 20,000 = 36,666.67
-    // taxable = 100,000 - 8,000 - 36,666.67 = 55,333.33
-    expect(result.taxableIncome).toBe(55333.33);
-    // PAYE across the progressive bands: 25,000*0.07 + 25,000*0.11 +
-    // 5,333.33*0.15 = 1,750 + 2,750 + 799.9995 = 5,299.9995 -> rounds to
-    // 5,300.00
-    expect(result.payeTax).toBe(5300);
-    expect(result.totalDeductions).toBe(13300);
-    expect(result.netPay).toBe(86700);
+    // rent relief = min(20% of 1,200,000, 500,000)/12 = 240,000/12 = 20,000
+    // taxable = 100,000 - 8,000 - 20,000 = 72,000
+    expect(result.taxableIncome).toBe(72000);
+    // PAYE across the progressive bands: 0 (first band, 0%) +
+    // 5,333.33*0.15 = 799.9995 -> rounds to 800.00
+    expect(result.payeTax).toBe(800);
+    expect(result.totalDeductions).toBe(8800);
+    expect(result.netPay).toBe(91200);
+  });
+
+  it('applies zero Nigeria relief when no rent is on file, rather than guessing', () => {
+    const result = computePayslip({
+      countryCode: 'NG',
+      basicSalary: 100_000,
+      lineItems: [],
+      taxBands: nigeriaBands,
+      ssnitRates: nigeriaRates,
+    });
+
+    // taxable = 100,000 - 8,000 pension - 0 relief = 92,000
+    expect(result.taxableIncome).toBe(92000);
+    // PAYE: (92,000-66,666.67)*0.15 = 3,799.9995 -> rounds to 3,800.00
+    expect(result.payeTax).toBe(3800);
+    expect(result.totalDeductions).toBe(11800);
+    expect(result.netPay).toBe(88200);
   });
 
   it('never applies Nigeria\'s relief allowance to a non-Nigeria payslip', () => {

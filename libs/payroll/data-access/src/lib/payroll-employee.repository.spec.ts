@@ -17,7 +17,7 @@ describe('PayrollEmployeeRepository', () => {
 
     expect(tx.employee.findMany).toHaveBeenCalledWith({
       where: { tenantId: 'tenant-1', organizationId: 'org-1', employmentStatus: 'ACTIVE', deletedAt: null },
-      select: { id: true, baseSalary: true, currency: true, countryCode: true },
+      select: { id: true, baseSalary: true, currency: true, annualRentPaid: true, countryCode: true },
     });
   });
 
@@ -26,7 +26,7 @@ describe('PayrollEmployeeRepository', () => {
 
     expect(tx.employee.findFirst).toHaveBeenCalledWith({
       where: { id: 'emp-1', tenantId: 'tenant-1', deletedAt: null },
-      select: { id: true, baseSalary: true, currency: true, countryCode: true },
+      select: { id: true, baseSalary: true, currency: true, annualRentPaid: true, countryCode: true },
     });
   });
 

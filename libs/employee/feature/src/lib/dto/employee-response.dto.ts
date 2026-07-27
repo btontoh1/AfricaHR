@@ -70,6 +70,9 @@ export class EmployeeResponseDto {
   @ApiPropertyOptional()
   currency?: string | null;
 
+  @ApiPropertyOptional()
+  annualRentPaid?: string | null;
+
   @ApiProperty()
   countryCode!: string;
 

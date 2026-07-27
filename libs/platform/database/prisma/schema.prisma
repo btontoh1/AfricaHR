@@ -292,6 +292,13 @@ model Employee {
   payFrequency String?  @map("pay_frequency")
   currency     String?
 
+  /// Annual rent paid, used only for Nigeria's Rent Relief Allowance
+  /// (Nigeria Tax Act 2025 s.30(2)(a)(vi) - 20% of rent, capped at
+  /// NGN 500,000/yr). A dedicated column rather than metadata because it's
+  /// a first-class payroll input (updatable, type-safe money), not
+  /// auxiliary reference data like a Ghana Card number.
+  annualRentPaid Decimal? @map("annual_rent_paid")
+
   countryCode String @map("country_code")
   /// Country-specific fields without a dedicated column (e.g. Ghana Card
   /// number), same pattern as Organization.metadata.

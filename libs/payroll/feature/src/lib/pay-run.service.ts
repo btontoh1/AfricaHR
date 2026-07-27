@@ -125,6 +125,7 @@ export class PayRunService {
       const computed = computePayslip({
         countryCode: employee.countryCode,
         basicSalary,
+        annualRentPaid: employee.annualRentPaid ? Number(employee.annualRentPaid) : undefined,
         lineItems: lineItemInputs,
         taxBands: bands.map((band) => ({
           order: band.order,

@@ -6,6 +6,7 @@ export interface PayrollEligibleEmployee {
   id: string;
   baseSalary: Prisma.Decimal | null;
   currency: string | null;
+  annualRentPaid: Prisma.Decimal | null;
   countryCode: string;
 }
 
@@ -33,7 +34,7 @@ export class PayrollEmployeeRepository {
     return this.prisma.withTenantContext(tenantId, (tx) =>
       tx.employee.findMany({
         where: { tenantId, organizationId, employmentStatus: 'ACTIVE', deletedAt: null },
-        select: { id: true, baseSalary: true, currency: true, countryCode: true },
+        select: { id: true, baseSalary: true, currency: true, annualRentPaid: true, countryCode: true },
       }),
     );
   }
@@ -42,7 +43,7 @@ export class PayrollEmployeeRepository {
     return this.prisma.withTenantContext(tenantId, (tx) =>
       tx.employee.findFirst({
         where: { id, tenantId, deletedAt: null },
-        select: { id: true, baseSalary: true, currency: true, countryCode: true },
+        select: { id: true, baseSalary: true, currency: true, annualRentPaid: true, countryCode: true },
       }),
     );
   }

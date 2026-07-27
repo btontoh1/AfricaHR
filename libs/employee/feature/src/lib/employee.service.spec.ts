@@ -41,6 +41,7 @@ describe('EmployeeService', () => {
       baseSalary: null,
       payFrequency: null,
       currency: null,
+      annualRentPaid: null,
       countryCode: 'GH',
       metadata: null,
       createdAt: new Date(),

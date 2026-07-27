@@ -158,7 +158,13 @@ describe('PayRunService', () => {
     it('computes and upserts a payslip for each active employee, then transitions DRAFT to PROCESSING', async () => {
       payRuns.findById.mockResolvedValue(makePayRun({ status: 'DRAFT' }));
       employees.listActiveByOrganization.mockResolvedValue([
-        { id: 'emp-1', baseSalary: new Prisma.Decimal(1000), currency: 'GHS', countryCode: 'GH' },
+        {
+          id: 'emp-1',
+          baseSalary: new Prisma.Decimal(1000),
+          currency: 'GHS',
+          annualRentPaid: null,
+          countryCode: 'GH',
+        },
       ]);
       payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PROCESSING' }));
 
@@ -181,7 +187,13 @@ describe('PayRunService', () => {
     it('derives the payslip currency from country when the employee has none set, instead of hardcoding GHS', async () => {
       payRuns.findById.mockResolvedValue(makePayRun({ status: 'DRAFT' }));
       employees.listActiveByOrganization.mockResolvedValue([
-        { id: 'emp-1', baseSalary: new Prisma.Decimal(1000), currency: null, countryCode: 'NG' },
+        {
+          id: 'emp-1',
+          baseSalary: new Prisma.Decimal(1000),
+          currency: null,
+          annualRentPaid: null,
+          countryCode: 'NG',
+        },
       ]);
       payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PROCESSING' }));
 
@@ -190,6 +202,36 @@ describe('PayRunService', () => {
       expect(payslips.upsert).toHaveBeenCalledWith(
         'tenant-1',
         expect.objectContaining({ employeeId: 'emp-1', countryCode: 'NG', currency: 'NGN' }),
+      );
+    });
+
+    it('passes the employee\'s annual rent paid through so Nigeria rent relief reduces PAYE', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'DRAFT' }));
+      employees.listActiveByOrganization.mockResolvedValue([
+        {
+          id: 'emp-1',
+          baseSalary: new Prisma.Decimal(100_000),
+          currency: 'NGN',
+          annualRentPaid: new Prisma.Decimal(1_200_000),
+          countryCode: 'NG',
+        },
+      ]);
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PROCESSING' }));
+
+      await service.process('tenant-1', 'run-1');
+
+      // flat 10% mock band, 5.5% mock pension rate (see beforeEach):
+      // ssnit = 100,000 * 0.055 = 5,500
+      // rent relief = min(20% of 1,200,000, 500,000)/12 = 20,000
+      // taxable = 100,000 - 5,500 - 20,000 = 74,500; PAYE = 74,500 * 0.1 = 7,450
+      expect(payslips.upsert).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({
+          employeeId: 'emp-1',
+          taxableIncome: 74500,
+          payeTax: 7450,
+          netPay: 87050,
+        }),
       );
     });
 
@@ -205,7 +247,13 @@ describe('PayRunService', () => {
     it('throws ConflictException when no effective statutory configuration exists for a country', async () => {
       payRuns.findById.mockResolvedValue(makePayRun({ status: 'DRAFT' }));
       employees.listActiveByOrganization.mockResolvedValue([
-        { id: 'emp-1', baseSalary: new Prisma.Decimal(1000), currency: 'GHS', countryCode: 'NG' },
+        {
+          id: 'emp-1',
+          baseSalary: new Prisma.Decimal(1000),
+          currency: 'GHS',
+          annualRentPaid: null,
+          countryCode: 'NG',
+        },
       ]);
       taxBands.findEffective.mockResolvedValue([]);
 

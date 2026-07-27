@@ -87,6 +87,7 @@ export class EmployeeService {
         baseSalary: dto.baseSalary,
         payFrequency: dto.payFrequency,
         currency: dto.currency,
+        annualRentPaid: dto.annualRentPaid,
         countryCode: dto.countryCode,
         metadata: dto.metadata as Prisma.InputJsonValue | undefined,
         createdBy: actorId,
@@ -154,6 +155,7 @@ export class EmployeeService {
         jobTitle: dto.jobTitle,
         baseSalary: dto.baseSalary,
         payFrequency: dto.payFrequency,
+        annualRentPaid: dto.annualRentPaid,
         updatedBy: actorId,
       });
     } catch (error) {

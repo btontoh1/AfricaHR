@@ -2106,6 +2106,8 @@ export interface components {
             payFrequency?: string;
             /** @example GHS */
             currency?: string;
+            /** @description Annual rent paid - used only for Nigeria Rent Relief Allowance eligibility */
+            annualRentPaid?: number;
             /** @example GH */
             countryCode: string;
             /**
@@ -2139,6 +2141,7 @@ export interface components {
             baseSalary?: string;
             payFrequency?: string;
             currency?: string;
+            annualRentPaid?: string;
             countryCode: string;
             createdAt: string;
             updatedAt: string;
@@ -2154,6 +2157,8 @@ export interface components {
             baseSalary?: number | null;
             /** @example MONTHLY */
             payFrequency?: string | null;
+            /** @description Annual rent paid - used only for Nigeria Rent Relief Allowance eligibility */
+            annualRentPaid?: number | null;
         };
         UpdateEmploymentStatusDto: {
             /** @enum {string} */

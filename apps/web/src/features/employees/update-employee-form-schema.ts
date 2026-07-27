@@ -9,6 +9,7 @@ export const updateEmployeeFormSchema = z.object({
   jobTitle: z.string().min(1, 'Job title is required').max(200),
   baseSalary: z.string().optional().or(z.literal('')),
   payFrequency: z.string().optional().or(z.literal('')),
+  annualRentPaid: z.string().optional().or(z.literal('')),
 });
 
 export type UpdateEmployeeFormValues = z.infer<typeof updateEmployeeFormSchema>;

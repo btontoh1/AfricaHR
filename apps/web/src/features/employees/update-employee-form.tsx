@@ -32,6 +32,7 @@ export function UpdateEmployeeForm({ tenantId, employee }: { tenantId: string; e
       jobTitle: employee.jobTitle,
       baseSalary: employee.baseSalary ?? '',
       payFrequency: employee.payFrequency ?? '',
+      annualRentPaid: employee.annualRentPaid ?? '',
     },
   });
 
@@ -44,6 +45,7 @@ export function UpdateEmployeeForm({ tenantId, employee }: { tenantId: string; e
         jobTitle: values.jobTitle,
         baseSalary: values.baseSalary ? Number(values.baseSalary) : null,
         payFrequency: toOptional(values.payFrequency) ?? null,
+        annualRentPaid: values.annualRentPaid ? Number(values.annualRentPaid) : null,
       });
       toast.success('Employee updated');
     } catch (error) {
@@ -132,6 +134,19 @@ export function UpdateEmployeeForm({ tenantId, employee }: { tenantId: string; e
               <FormLabel>Pay frequency</FormLabel>
               <FormControl>
                 <Input placeholder="MONTHLY" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="annualRentPaid"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Annual rent paid (Nigeria only)</FormLabel>
+              <FormControl>
+                <Input type="number" min={0} step="0.01" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

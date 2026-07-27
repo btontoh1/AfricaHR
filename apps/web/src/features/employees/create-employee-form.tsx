@@ -52,6 +52,7 @@ export function CreateEmployeeForm() {
       baseSalary: '',
       payFrequency: '',
       currency: '',
+      annualRentPaid: '',
       countryCode: '',
     },
   });
@@ -76,6 +77,7 @@ export function CreateEmployeeForm() {
         baseSalary: values.baseSalary ? Number(values.baseSalary) : undefined,
         payFrequency: toOptional(values.payFrequency),
         currency: toOptional(values.currency),
+        annualRentPaid: values.annualRentPaid ? Number(values.annualRentPaid) : undefined,
         countryCode: values.countryCode,
       });
       toast.success('Employee created');
@@ -369,6 +371,19 @@ export function CreateEmployeeForm() {
                   <FormLabel>Currency</FormLabel>
                   <FormControl>
                     <Input placeholder="GHS" maxLength={3} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="annualRentPaid"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Annual rent paid (Nigeria only)</FormLabel>
+                  <FormControl>
+                    <Input type="number" min={0} step="0.01" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

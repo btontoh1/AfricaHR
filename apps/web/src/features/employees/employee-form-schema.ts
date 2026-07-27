@@ -29,6 +29,7 @@ export const employeeFormSchema = z.object({
     .regex(/^[A-Z]{3}$/, '3-letter code, e.g. GHS')
     .optional()
     .or(z.literal('')),
+  annualRentPaid: z.string().optional().or(z.literal('')),
   countryCode: z
     .string()
     .regex(/^[A-Z]{2}$/, '2-letter code, e.g. GH'),

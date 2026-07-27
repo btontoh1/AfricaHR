@@ -58,6 +58,7 @@ export function EmployeeDetail({ tenantId, employeeId }: { tenantId: string; emp
           <Field label="Base salary" value={employee.baseSalary} />
           <Field label="Pay frequency" value={employee.payFrequency} />
           <Field label="Currency" value={employee.currency} />
+          <Field label="Annual rent paid" value={employee.annualRentPaid} />
           <Field label="Phone" value={employee.phone} />
           <Field label="Personal email" value={employee.personalEmail} />
           <Field label="Nationality" value={employee.nationality} />

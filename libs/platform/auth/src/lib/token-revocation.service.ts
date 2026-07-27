@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { RedisService } from '@africahr/platform-redis';
 
 // Outlives the 15m access token TTL so a revocation always covers every
@@ -8,21 +8,37 @@ const REVOCATION_TTL_SECONDS = 20 * 60;
 
 @Injectable()
 export class TokenRevocationService {
+  private readonly logger = new Logger(TokenRevocationService.name);
+
   constructor(private readonly redis: RedisService) {}
 
+  // Fails open: a Redis outage should degrade to the pre-existing "wait
+  // out the token's natural expiry" behavior, not take down every
+  // authenticated request in the app. Missing a revocation only re-opens
+  // the narrow window this feature closes; treating a Redis hiccup as an
+  // app-wide outage would be strictly worse.
   async revokeAllForUser(userId: string): Promise<void> {
     const revokedAtSeconds = Math.floor(Date.now() / 1000);
-    await this.redis
-      .getClient()
-      .set(this.key(userId), revokedAtSeconds.toString(), 'EX', REVOCATION_TTL_SECONDS);
+    try {
+      await this.redis
+        .getClient()
+        .set(this.key(userId), revokedAtSeconds.toString(), 'EX', REVOCATION_TTL_SECONDS);
+    } catch (error) {
+      this.logger.warn(`Failed to record token revocation for user ${userId}: ${(error as Error).message}`);
+    }
   }
 
   async isRevoked(userId: string, issuedAt: number): Promise<boolean> {
-    const revokedAtSeconds = await this.redis.getClient().get(this.key(userId));
-    if (!revokedAtSeconds) {
+    try {
+      const revokedAtSeconds = await this.redis.getClient().get(this.key(userId));
+      if (!revokedAtSeconds) {
+        return false;
+      }
+      return issuedAt <= Number(revokedAtSeconds);
+    } catch (error) {
+      this.logger.warn(`Failed to check token revocation for user ${userId}: ${(error as Error).message}`);
       return false;
     }
-    return issuedAt <= Number(revokedAtSeconds);
   }
 
   private key(userId: string): string {

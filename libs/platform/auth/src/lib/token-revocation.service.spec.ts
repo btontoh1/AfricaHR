@@ -20,6 +20,12 @@ describe('TokenRevocationService', () => {
 
       expect(client.set).toHaveBeenCalledWith('auth:revoked-since:user-1', '1700000000', 'EX', 20 * 60);
     });
+
+    it('does not throw when Redis is unavailable', async () => {
+      client.set.mockRejectedValue(new Error('connection lost'));
+
+      await expect(service.revokeAllForUser('user-1')).resolves.toBeUndefined();
+    });
   });
 
   describe('isRevoked', () => {
@@ -40,6 +46,12 @@ describe('TokenRevocationService', () => {
       client.get.mockResolvedValue('1700000000');
 
       await expect(service.isRevoked('user-1', 1_700_000_001)).resolves.toBe(false);
+    });
+
+    it('fails open (treats as not revoked) when Redis is unavailable', async () => {
+      client.get.mockRejectedValue(new Error('connection lost'));
+
+      await expect(service.isRevoked('user-1', 1_700_000_000)).resolves.toBe(false);
     });
   });
 });

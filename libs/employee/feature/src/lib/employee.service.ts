@@ -2,7 +2,11 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { Employee, Prisma } from '@prisma/client';
 import { wouldCreateCycle } from '@africahr/platform-core';
 import { AuditService } from '@africahr/platform-audit';
-import { EmployeeRepository, EmploymentHistoryRepository } from '@africahr/employee-data-access';
+import {
+  EmployeeRepository,
+  EmploymentHistoryRepository,
+  UserAccessRepository,
+} from '@africahr/employee-data-access';
 import {
   canTransitionEmploymentStatus,
   EmploymentStatus,
@@ -52,6 +56,7 @@ export class EmployeeService {
   constructor(
     private readonly employees: EmployeeRepository,
     private readonly history: EmploymentHistoryRepository,
+    private readonly userAccess: UserAccessRepository,
     private readonly audit: AuditService,
   ) {}
 
@@ -225,6 +230,22 @@ export class EmployeeService {
       resourceId: id,
       metadata: { from: existing.employmentStatus, to: status },
     });
+
+    // Termination is a dead end in the status state machine (no transition
+    // back out of it), so this only ever needs to deactivate, never
+    // reactivate, portal access. Doesn't touch already-issued access
+    // tokens - those remain valid until they expire on their own.
+    if (status === EmploymentStatus.TERMINATED && existing.userId) {
+      await this.userAccess.deactivate(tenantId, existing.userId, actorId);
+
+      await this.audit.record({
+        tenantId,
+        actorUserId: actorId ?? null,
+        action: 'employee.portal_access_deactivated',
+        resourceType: 'User',
+        resourceId: existing.userId,
+      });
+    }
 
     return updated;
   }

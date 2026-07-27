@@ -2,6 +2,7 @@ import { roundCurrency } from './money';
 import { calculatePayeTax, TaxBand } from './tax-band';
 import { calculateSsnit, SsnitRates } from './ssnit';
 import { calculateNigeriaRentRelief } from './nigeria-rent-relief';
+import { applyGhanaInsurableEarningsCap } from './ghana-ssnit-cap';
 import { PayslipLineItemType } from './payslip-line-item-type';
 
 export interface PayslipLineItemInput {
@@ -47,7 +48,10 @@ export function sumLineItems(
  * that changes with policy, so it's encoded here rather than left as data.
  * Nigeria additionally deducts a Rent Relief Allowance before the PAYE
  * bands apply (see nigeria-rent-relief.ts) — every other country's taxable
- * income is just gross pay less the pension deduction.
+ * income is just gross pay less the pension deduction. Ghana additionally
+ * caps the salary SSNIT is computed on at the maximum insurable earnings
+ * ceiling (see ghana-ssnit-cap.ts) — earnings above it are still fully
+ * taxable, just no longer accrue SSNIT.
  */
 export function computePayslip(input: ComputePayslipInput): ComputedPayslip {
   const earnings = sumLineItems(input.lineItems, PayslipLineItemType.EARNING);
@@ -56,7 +60,9 @@ export function computePayslip(input: ComputePayslipInput): ComputedPayslip {
   const basicSalary = roundCurrency(input.basicSalary);
   const grossPay = roundCurrency(basicSalary + earnings);
 
-  const ssnit = calculateSsnit(basicSalary, input.ssnitRates);
+  const insurableSalary =
+    input.countryCode === 'GH' ? applyGhanaInsurableEarningsCap(basicSalary) : basicSalary;
+  const ssnit = calculateSsnit(insurableSalary, input.ssnitRates);
   const relief =
     input.countryCode === 'NG' ? calculateNigeriaRentRelief(input.annualRentPaid ?? 0) : 0;
   const taxableIncome = roundCurrency(Math.max(0, grossPay - ssnit.employee - relief));

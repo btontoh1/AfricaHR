@@ -51,12 +51,11 @@ const d = (value: string) => new Prisma.Decimal(value);
  * gazette before relying on these for real payroll, and re-verify annually
  * since GRA revises bands with the national budget.
  *
- * One known gap, not modeled here: SSNIT now publishes a maximum monthly
- * insurable earnings ceiling (contributions stop accruing above it) -
- * sources disagreed on the exact figure (GHS 61,000 vs 69,000/mo) at the
- * time this was written, so it's deliberately left unimplemented rather
- * than guessed. calculateSsnit has no cap logic - add one once the real
- * ceiling is confirmed.
+ * SSNIT's maximum monthly insurable earnings ceiling (GHS 69,000,
+ * confirmed via SSNIT's own public notice, raised from GHS 61,000 for
+ * 2026) is enforced in code, not here as data - see
+ * applyGhanaInsurableEarningsCap in payroll-domain, since it's a cap on
+ * the calculation, not a rate to seed.
  */
 async function seedGhanaStatutoryData(prisma: PrismaClient): Promise<void> {
   const countryCode = 'GH';

@@ -144,13 +144,46 @@ describe('computePayslip', () => {
   it('never applies Nigeria\'s relief allowance to a non-Nigeria payslip', () => {
     const result = computePayslip({
       countryCode: 'GH',
-      basicSalary: 100_000,
+      // Deliberately under the GHS 69,000 SSNIT cap, so this test only
+      // exercises the relief-country-gating, not the cap below.
+      basicSalary: 50_000,
       lineItems: [],
       taxBands: bands,
       ssnitRates,
     });
 
     // taxable = gross - SSNIT employee only, no relief subtracted
-    expect(result.taxableIncome).toBe(100_000 - 100_000 * 0.055);
+    expect(result.taxableIncome).toBe(50_000 - 50_000 * 0.055);
+  });
+
+  it("caps SSNIT to Ghana's maximum insurable earnings, but still taxes the full salary", () => {
+    const result = computePayslip({
+      countryCode: 'GH',
+      basicSalary: 80_000,
+      lineItems: [],
+      taxBands: bands,
+      ssnitRates,
+    });
+
+    // SSNIT computed on the capped GHS 69,000, not the full 80,000
+    expect(result.ssnitEmployee).toBe(69_000 * 0.055);
+    expect(result.ssnitEmployer).toBe(69_000 * 0.13);
+    // PAYE's taxable income still starts from the full 80,000 gross pay -
+    // the cap only affects SSNIT, not what's taxable.
+    expect(result.taxableIncome).toBe(80_000 - 69_000 * 0.055);
+  });
+
+  it("does not cap SSNIT for a non-Ghana payslip, even above Ghana's ceiling", () => {
+    const result = computePayslip({
+      countryCode: 'NG',
+      basicSalary: 80_000,
+      lineItems: [],
+      taxBands: nigeriaBands,
+      ssnitRates: nigeriaRates,
+    });
+
+    // pension computed on the full 80,000 - Ghana's cap never applies here
+    expect(result.ssnitEmployee).toBe(80_000 * 0.08);
+    expect(result.ssnitEmployer).toBe(80_000 * 0.1);
   });
 });

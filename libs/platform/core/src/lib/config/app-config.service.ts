@@ -67,4 +67,11 @@ export class AppConfigService {
   get jwtRefreshSecret(): string | undefined {
     return this.configService.get('JWT_REFRESH_SECRET', { infer: true });
   }
+
+  get sendgrid(): { apiKey?: string; fromEmail?: string } {
+    return {
+      apiKey: this.configService.get('SENDGRID_API_KEY', { infer: true }),
+      fromEmail: this.configService.get('SENDGRID_FROM_EMAIL', { infer: true }),
+    };
+  }
 }

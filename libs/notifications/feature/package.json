@@ -13,7 +13,9 @@
     "@nestjs/common": "^11.0.0",
     "@africahr/platform-auth": "0.0.1",
     "@africahr/platform-audit": "0.0.1",
+    "@africahr/platform-core": "0.0.1",
     "@africahr/notifications-data-access": "0.0.1",
-    "@africahr/notifications-domain": "0.0.1"
+    "@africahr/notifications-domain": "0.0.1",
+    "@sendgrid/mail": "^8.1.6"
   }
 }

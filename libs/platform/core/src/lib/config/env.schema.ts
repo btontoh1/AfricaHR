@@ -31,6 +31,13 @@ export const envSchema = z.object({
   JWT_ACCESS_SECRET: z.string().min(32).optional(),
   JWT_REFRESH_SECRET: z.string().min(32).optional(),
 
+  // Real email delivery for the EMAIL notification channel. Optional -
+  // when unset, NotificationsFeatureModule falls back to
+  // LogNotificationDispatcher (logs instead of sending) rather than
+  // failing to boot, so local/dev/CI environments never need a real key.
+  SENDGRID_API_KEY: z.string().optional(),
+  SENDGRID_FROM_EMAIL: z.string().email().optional(),
+
   CORS_ORIGINS: z
     .string()
     .default('')

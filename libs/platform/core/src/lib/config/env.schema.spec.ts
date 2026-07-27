@@ -56,4 +56,17 @@ describe('validateEnv', () => {
       validateEnv({ ...validEnv, JWT_ACCESS_SECRET: 'too-short' }),
     ).toThrow(/JWT_ACCESS_SECRET/);
   });
+
+  it('leaves SendGrid config undefined when unset', () => {
+    const result = validateEnv(validEnv);
+
+    expect(result.SENDGRID_API_KEY).toBeUndefined();
+    expect(result.SENDGRID_FROM_EMAIL).toBeUndefined();
+  });
+
+  it('rejects a non-email SENDGRID_FROM_EMAIL', () => {
+    expect(() =>
+      validateEnv({ ...validEnv, SENDGRID_FROM_EMAIL: 'not-an-email' }),
+    ).toThrow(/SENDGRID_FROM_EMAIL/);
+  });
 });

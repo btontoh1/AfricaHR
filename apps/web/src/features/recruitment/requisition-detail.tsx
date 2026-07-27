@@ -13,6 +13,8 @@ import {
 import { RequisitionStatusBadge } from './requisition-status-badge';
 import { ApplicationStageBadge } from './application-stage-badge';
 import { UpdateRequisitionForm } from './update-requisition-form';
+import { useOrganization } from '@/features/organizations/queries';
+import { useEmployee } from '@/features/employees/queries';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CardSkeleton } from '@/components/loading-state';
@@ -63,6 +65,9 @@ export function RequisitionDetail({
       : myApplications.data?.filter((application) => application.requisitionId === requisitionId);
   const applicationsBasePath = tier === 'hr' ? '/recruitment/applications' : '/recruitment/applications/mine';
 
+  const { data: organization } = useOrganization(tenantId, requisition?.organizationId ?? '');
+  const { data: hiringManager } = useEmployee(tenantId, requisition?.hiringManagerId ?? '');
+
   if (isLoading) {
     return <CardSkeleton />;
   }
@@ -80,6 +85,11 @@ export function RequisitionDetail({
           <CardTitle>Details</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-3">
+          <Field label="Organization" value={organization?.legalName} />
+          <Field
+            label="Hiring manager"
+            value={hiringManager ? `${hiringManager.firstName} ${hiringManager.lastName}` : undefined}
+          />
           <Field label="Employment type" value={requisition.employmentType.replace('_', ' ')} />
           <Field label="Openings" value={requisition.openings} />
           <Field

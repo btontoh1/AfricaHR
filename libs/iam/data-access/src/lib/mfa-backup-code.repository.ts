@@ -20,4 +20,24 @@ export class MfaBackupCodeRepository {
       client.mfaBackupCode.deleteMany({ where: { userId } }),
     );
   }
+
+  /** Only matches codes not already spent - each backup code works once. */
+  findUnused(tenantId: string | null, userId: string, codeHash: string): Promise<{ id: string } | null> {
+    return withScope(this.prisma, tenantId, (client) =>
+      client.mfaBackupCode.findFirst({
+        where: { userId, codeHash, usedAt: null },
+        select: { id: true },
+      }),
+    );
+  }
+
+  markUsed(tenantId: string | null, id: string): Promise<{ id: string }> {
+    return withScope(this.prisma, tenantId, (client) =>
+      client.mfaBackupCode.update({
+        where: { id },
+        data: { usedAt: new Date() },
+        select: { id: true },
+      }),
+    );
+  }
 }

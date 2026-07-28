@@ -6,6 +6,8 @@ import { AuditService } from '@africahr/platform-audit';
 import { RefreshTokenRepository, UserRepository } from '@africahr/iam-data-access';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
+import { MfaChallengeResponseDto } from './dto/mfa-challenge-response.dto';
+import { MfaService } from './mfa.service';
 
 const REFRESH_TOKEN_TTL_DAYS = 30;
 
@@ -23,6 +25,7 @@ interface AuthenticatableUser {
   passwordHash: string;
   role: SystemRole;
   isActive: boolean;
+  mfaEnabled: boolean;
 }
 
 @Injectable()
@@ -31,10 +34,14 @@ export class AuthService {
     private readonly users: UserRepository,
     private readonly refreshTokens: RefreshTokenRepository,
     private readonly tokens: JwtTokenService,
+    private readonly mfa: MfaService,
     private readonly audit: AuditService,
   ) {}
 
-  async login(dto: LoginDto, context: RequestContext = {}): Promise<AuthResponseDto> {
+  async login(
+    dto: LoginDto,
+    context: RequestContext = {},
+  ): Promise<AuthResponseDto | MfaChallengeResponseDto> {
     const user = await this.users.findByEmail(dto.email);
     return this.authenticate(user, dto.password, context);
   }
@@ -49,16 +56,55 @@ export class AuthService {
     tenantId: string,
     dto: LoginDto,
     context: RequestContext = {},
-  ): Promise<AuthResponseDto> {
+  ): Promise<AuthResponseDto | MfaChallengeResponseDto> {
     const user = await this.users.findByEmailInTenant(tenantId, dto.email);
     return this.authenticate(user, dto.password, context);
+  }
+
+  /**
+   * Exchanges an MFA challenge (issued by authenticate() below) plus a
+   * TOTP/backup code for the real token pair. lastLoginAt and the
+   * "auth.login" audit entry both happen here, not at challenge-issuance -
+   * a password-only step that's never completed with a valid second
+   * factor was never a real login.
+   */
+  async verifyMfa(challengeToken: string, code: string, context: RequestContext = {}): Promise<AuthResponseDto> {
+    const claims = this.tokens.verifyMfaChallengeToken(challengeToken);
+    const user = await this.users.findById(claims.tenantId, claims.sub);
+
+    if (!user || !user.isActive || !user.mfaEnabled || !user.mfaSecretEncrypted) {
+      throw new UnauthorizedException('Invalid or expired MFA challenge');
+    }
+
+    const valid = await this.mfa.verifyLoginCode(user.tenantId, user.id, user.mfaSecretEncrypted, code);
+    if (!valid) {
+      throw new UnauthorizedException('Invalid code');
+    }
+
+    await this.users.updateLastLogin(user.tenantId, user.id);
+
+    const response = await this.issueTokenPair(
+      { id: user.id, email: user.email, role: user.role, tenantId: user.tenantId },
+      context,
+    );
+
+    await this.audit.record({
+      tenantId: user.tenantId,
+      actorUserId: user.id,
+      action: 'auth.login',
+      resourceType: 'User',
+      resourceId: user.id,
+      metadata: { via: 'mfa' },
+    });
+
+    return response;
   }
 
   private async authenticate(
     user: AuthenticatableUser | null,
     password: string,
     context: RequestContext,
-  ): Promise<AuthResponseDto> {
+  ): Promise<AuthResponseDto | MfaChallengeResponseDto> {
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -66,6 +112,20 @@ export class AuthService {
     const passwordValid = await argon2.verify(user.passwordHash, password);
     if (!passwordValid) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (user.mfaEnabled) {
+      const challengeToken = this.tokens.signMfaChallengeToken({ sub: user.id, tenantId: user.tenantId });
+
+      await this.audit.record({
+        tenantId: user.tenantId,
+        actorUserId: user.id,
+        action: 'auth.mfa_challenge_issued',
+        resourceType: 'User',
+        resourceId: user.id,
+      });
+
+      return { mfaRequired: true, challengeToken };
     }
 
     await this.users.updateLastLogin(user.tenantId, user.id);

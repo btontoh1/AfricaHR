@@ -118,6 +118,32 @@ export class MfaService {
     });
   }
 
+  /**
+   * Verifies a login-time MFA code - TOTP first, falling back to an unused
+   * backup code - for an already-resolved user. Used by AuthService during
+   * the login flow, which needs this same encrypt/verify machinery without
+   * duplicating MFA_ENCRYPTION_KEY handling in a second place. Marks a
+   * matched backup code as used so it can't be replayed.
+   */
+  async verifyLoginCode(
+    tenantId: string | null,
+    userId: string,
+    encryptedSecret: string,
+    code: string,
+  ): Promise<boolean> {
+    const secret = decryptMfaSecret(encryptedSecret, this.encryptionKey);
+    if (verifyTotpCode(secret, code)) {
+      return true;
+    }
+
+    const match = await this.backupCodes.findUnused(tenantId, userId, hashBackupCode(code));
+    if (!match) {
+      return false;
+    }
+    await this.backupCodes.markUsed(tenantId, match.id);
+    return true;
+  }
+
   private async findActorUser(actor: RequestUser) {
     const user = await this.users.findById(actor.tenantId, actor.sub);
     if (!user) {

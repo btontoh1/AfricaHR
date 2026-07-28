@@ -68,6 +68,12 @@ export class SetupService {
       throw error;
     }
 
-    return this.auth.login({ email: dto.adminEmail, password: dto.adminPassword }, context);
+    const result = await this.auth.login({ email: dto.adminEmail, password: dto.adminPassword }, context);
+    if ('mfaRequired' in result) {
+      // Unreachable: the admin user was just created above with MFA disabled
+      // by default, so login() can't hit its MFA-challenge branch here.
+      throw new Error('Unexpected MFA challenge during setup bootstrap');
+    }
+    return result;
   }
 }

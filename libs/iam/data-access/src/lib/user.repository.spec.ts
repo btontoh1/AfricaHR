@@ -46,6 +46,7 @@ describe('UserRepository', () => {
         lastName: 'Owusu',
         role: SystemRole.HR_MANAGER,
         isActive: true,
+        mfaEnabled: false,
       };
       queryRaw.mockResolvedValue([row]);
 

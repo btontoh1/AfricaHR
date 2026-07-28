@@ -18,6 +18,12 @@ import { TokenRevocationService } from './token-revocation.service';
         if (!config.jwtAccessSecret) {
           throw new Error('JWT_ACCESS_SECRET must be set to use platform-auth');
         }
+        // Also required from here on: JwtTokenService signs MFA challenge
+        // tokens with this secret (see its own doc comment for why a
+        // distinct secret from the access token matters).
+        if (!config.jwtRefreshSecret) {
+          throw new Error('JWT_REFRESH_SECRET must be set to use platform-auth');
+        }
         return { secret: config.jwtAccessSecret };
       },
     }),

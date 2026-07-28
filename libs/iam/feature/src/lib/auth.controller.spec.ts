@@ -15,6 +15,7 @@ describe('AuthController', () => {
       login: jest.fn().mockResolvedValue({ accessToken: 'a', refreshToken: 'r' }),
       refresh: jest.fn().mockResolvedValue({ accessToken: 'a2', refreshToken: 'r2' }),
       logout: jest.fn().mockResolvedValue(undefined),
+      verifyMfa: jest.fn().mockResolvedValue({ accessToken: 'a3', refreshToken: 'r3' }),
     } as unknown as jest.Mocked<AuthService>;
 
     controller = new AuthController(auth);
@@ -43,5 +44,16 @@ describe('AuthController', () => {
     await controller.logout({ refreshToken: 'raw' });
 
     expect(auth.logout).toHaveBeenCalledWith('raw');
+  });
+
+  it('passes request context through to verifyMfa, delegating to AuthService', async () => {
+    const req = fakeRequest({ 'user-agent': 'jest' }, '127.0.0.1');
+
+    await controller.verifyMfa({ challengeToken: 'ct', code: '123456' }, req);
+
+    expect(auth.verifyMfa).toHaveBeenCalledWith('ct', '123456', {
+      userAgent: 'jest',
+      ipAddress: '127.0.0.1',
+    });
   });
 });

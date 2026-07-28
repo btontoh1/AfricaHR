@@ -7,7 +7,7 @@ import { RequestUser, SystemRole, TokenRevocationService } from '@africahr/platf
 import { AppConfigService } from '@africahr/platform-core';
 import { AuditService } from '@africahr/platform-audit';
 import { MfaBackupCodeRepository, RefreshTokenRepository, UserRepository } from '@africahr/iam-data-access';
-import { encryptMfaSecret, generateTotpSecret } from '@africahr/iam-domain';
+import { encryptMfaSecret, generateTotpSecret, hashBackupCode } from '@africahr/iam-domain';
 import { MfaService } from './mfa.service';
 
 jest.mock('argon2');
@@ -69,6 +69,8 @@ describe('MfaService', () => {
     backupCodes = {
       createMany: jest.fn(),
       deleteAllForUser: jest.fn(),
+      findUnused: jest.fn(),
+      markUsed: jest.fn(),
     } as unknown as jest.Mocked<MfaBackupCodeRepository>;
 
     refreshTokens = {
@@ -185,6 +187,56 @@ describe('MfaService', () => {
       users.findById.mockResolvedValue(makeUser({ mfaEnabled: false }));
 
       await expect(service.disable(actor, 'any-password')).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('verifyLoginCode', () => {
+    const encryptedSecretFor = (secret: string) =>
+      encryptMfaSecret(secret, Buffer.from(validEncryptionKey, 'hex'));
+
+    it('accepts a valid TOTP code', async () => {
+      const secret = generateTotpSecret();
+
+      const result = await service.verifyLoginCode(
+        'tenant-1',
+        'user-1',
+        encryptedSecretFor(secret),
+        codeFor(secret),
+      );
+
+      expect(result).toBe(true);
+      expect(backupCodes.findUnused).not.toHaveBeenCalled();
+    });
+
+    it('falls back to an unused backup code when the TOTP code is wrong', async () => {
+      const secret = generateTotpSecret();
+      backupCodes.findUnused.mockResolvedValue({ id: 'code-1' });
+
+      const result = await service.verifyLoginCode(
+        'tenant-1',
+        'user-1',
+        encryptedSecretFor(secret),
+        'ABCDE-12345',
+      );
+
+      expect(result).toBe(true);
+      expect(backupCodes.findUnused).toHaveBeenCalledWith('tenant-1', 'user-1', hashBackupCode('ABCDE-12345'));
+      expect(backupCodes.markUsed).toHaveBeenCalledWith('tenant-1', 'code-1');
+    });
+
+    it('rejects when neither the TOTP code nor any backup code matches', async () => {
+      const secret = generateTotpSecret();
+      backupCodes.findUnused.mockResolvedValue(null);
+
+      const result = await service.verifyLoginCode(
+        'tenant-1',
+        'user-1',
+        encryptedSecretFor(secret),
+        'WRONG-CODE1',
+      );
+
+      expect(result).toBe(false);
+      expect(backupCodes.markUsed).not.toHaveBeenCalled();
     });
   });
 });

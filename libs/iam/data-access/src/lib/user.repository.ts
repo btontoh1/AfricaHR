@@ -22,6 +22,7 @@ export interface UserForLogin {
   lastName: string;
   role: SystemRole;
   isActive: boolean;
+  mfaEnabled: boolean;
 }
 
 @Injectable()

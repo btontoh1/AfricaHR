@@ -5,6 +5,7 @@ import { JwtTokenService, SystemRole } from '@africahr/platform-auth';
 import { AuditService } from '@africahr/platform-audit';
 import { RefreshTokenRepository, UserRepository } from '@africahr/iam-data-access';
 import { AuthService } from './auth.service';
+import { MfaService } from './mfa.service';
 
 jest.mock('argon2');
 
@@ -13,6 +14,7 @@ describe('AuthService', () => {
   let users: jest.Mocked<UserRepository>;
   let refreshTokens: jest.Mocked<RefreshTokenRepository>;
   let tokens: jest.Mocked<JwtTokenService>;
+  let mfa: jest.Mocked<MfaService>;
   let audit: jest.Mocked<AuditService>;
 
   const user: User = {
@@ -49,10 +51,17 @@ describe('AuthService', () => {
       revoke: jest.fn(),
     } as unknown as jest.Mocked<RefreshTokenRepository>;
 
-    tokens = { signAccessToken: jest.fn().mockReturnValue('access-token') } as unknown as jest.Mocked<JwtTokenService>;
+    tokens = {
+      signAccessToken: jest.fn().mockReturnValue('access-token'),
+      signMfaChallengeToken: jest.fn().mockReturnValue('challenge-token'),
+      verifyMfaChallengeToken: jest.fn(),
+    } as unknown as jest.Mocked<JwtTokenService>;
+
+    mfa = { verifyLoginCode: jest.fn() } as unknown as jest.Mocked<MfaService>;
+
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
 
-    service = new AuthService(users, refreshTokens, tokens, audit);
+    service = new AuthService(users, refreshTokens, tokens, mfa, audit);
   });
 
   describe('login', () => {
@@ -88,12 +97,30 @@ describe('AuthService', () => {
       refreshTokens.create.mockResolvedValue({} as RefreshToken);
 
       const result = await service.login({ email: user.email, password: 'correct' });
+      if ('mfaRequired' in result) {
+        throw new Error('expected a token pair, got an MFA challenge');
+      }
 
       expect(result.accessToken).toBe('access-token');
       expect(result.refreshToken).toHaveLength(64); // 32 bytes hex-encoded
       expect(users.updateLastLogin).toHaveBeenCalledWith(user.tenantId, user.id);
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'auth.login', actorUserId: user.id }),
+      );
+    });
+
+    it('issues an MFA challenge instead of tokens when MFA is enabled, without touching lastLoginAt', async () => {
+      users.findByEmail.mockResolvedValue({ ...user, mfaEnabled: true });
+      (argon2.verify as jest.Mock).mockResolvedValue(true);
+
+      const result = await service.login({ email: user.email, password: 'correct' });
+
+      expect(result).toEqual({ mfaRequired: true, challengeToken: 'challenge-token' });
+      expect(tokens.signMfaChallengeToken).toHaveBeenCalledWith({ sub: user.id, tenantId: user.tenantId });
+      expect(users.updateLastLogin).not.toHaveBeenCalled();
+      expect(refreshTokens.create).not.toHaveBeenCalled();
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'auth.mfa_challenge_issued', actorUserId: user.id }),
       );
     });
   });
@@ -146,10 +173,61 @@ describe('AuthService', () => {
         email: user.email,
         password: 'correct',
       });
+      if ('mfaRequired' in result) {
+        throw new Error('expected a token pair, got an MFA challenge');
+      }
 
       expect(result.accessToken).toBe('access-token');
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'auth.login', actorUserId: user.id }),
+      );
+    });
+  });
+
+  describe('verifyMfa', () => {
+    const mfaUser: User = { ...user, mfaEnabled: true, mfaSecretEncrypted: 'encrypted-secret' };
+
+    it('rejects an invalid or expired challenge token', async () => {
+      tokens.verifyMfaChallengeToken.mockImplementation(() => {
+        throw new UnauthorizedException('Invalid or expired MFA challenge');
+      });
+
+      await expect(service.verifyMfa('bad-token', '123456')).rejects.toThrow(UnauthorizedException);
+      expect(users.findById).not.toHaveBeenCalled();
+    });
+
+    it('rejects when the user no longer has MFA enabled', async () => {
+      tokens.verifyMfaChallengeToken.mockReturnValue({ sub: 'user-1', tenantId: 'tenant-1', iat: 1, exp: 2 });
+      users.findById.mockResolvedValue({ ...user, mfaEnabled: false });
+
+      await expect(service.verifyMfa('challenge-token', '123456')).rejects.toThrow(UnauthorizedException);
+      expect(mfa.verifyLoginCode).not.toHaveBeenCalled();
+    });
+
+    it('rejects an incorrect code without issuing tokens', async () => {
+      tokens.verifyMfaChallengeToken.mockReturnValue({ sub: 'user-1', tenantId: 'tenant-1', iat: 1, exp: 2 });
+      users.findById.mockResolvedValue(mfaUser);
+      mfa.verifyLoginCode.mockResolvedValue(false);
+
+      await expect(service.verifyMfa('challenge-token', '000000')).rejects.toThrow(UnauthorizedException);
+      expect(refreshTokens.create).not.toHaveBeenCalled();
+      expect(users.updateLastLogin).not.toHaveBeenCalled();
+    });
+
+    it('issues a token pair, updates lastLoginAt, and records login on a correct code', async () => {
+      tokens.verifyMfaChallengeToken.mockReturnValue({ sub: 'user-1', tenantId: 'tenant-1', iat: 1, exp: 2 });
+      users.findById.mockResolvedValue(mfaUser);
+      mfa.verifyLoginCode.mockResolvedValue(true);
+      users.updateLastLogin.mockResolvedValue(mfaUser);
+      refreshTokens.create.mockResolvedValue({} as RefreshToken);
+
+      const result = await service.verifyMfa('challenge-token', '123456');
+
+      expect(mfa.verifyLoginCode).toHaveBeenCalledWith('tenant-1', 'user-1', 'encrypted-secret', '123456');
+      expect(result.accessToken).toBe('access-token');
+      expect(users.updateLastLogin).toHaveBeenCalledWith('tenant-1', 'user-1');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'auth.login', actorUserId: 'user-1', metadata: { via: 'mfa' } }),
       );
     });
   });

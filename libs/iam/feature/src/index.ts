@@ -9,3 +9,5 @@ export * from './lib/dto/auth-response.dto';
 export * from './lib/dto/create-user.dto';
 export * from './lib/dto/update-user-role.dto';
 export * from './lib/dto/update-user-active.dto';
+export * from './lib/dto/mfa-challenge-response.dto';
+export * from './lib/dto/verify-mfa.dto';

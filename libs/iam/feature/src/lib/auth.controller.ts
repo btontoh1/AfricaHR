@@ -1,13 +1,16 @@
 import { Body, Controller, HttpCode, HttpStatus, Post, Req } from '@nestjs/common';
-import { ApiNoContentResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiExtraModels, ApiNoContentResponse, ApiOkResponse, ApiOperation, ApiTags, getSchemaPath } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { AuthService, RequestContext } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
+import { MfaChallengeResponseDto } from './dto/mfa-challenge-response.dto';
+import { VerifyMfaDto } from './dto/verify-mfa.dto';
 
 @ApiTags('auth')
+@ApiExtraModels(AuthResponseDto, MfaChallengeResponseDto)
 @Controller('auth')
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
@@ -16,9 +19,20 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOperation({ summary: 'Authenticate with email + password' })
-  @ApiOkResponse({ type: AuthResponseDto })
-  login(@Body() dto: LoginDto, @Req() req: Request): Promise<AuthResponseDto> {
+  @ApiOkResponse({
+    schema: { oneOf: [{ $ref: getSchemaPath(AuthResponseDto) }, { $ref: getSchemaPath(MfaChallengeResponseDto) }] },
+  })
+  login(@Body() dto: LoginDto, @Req() req: Request): Promise<AuthResponseDto | MfaChallengeResponseDto> {
     return this.auth.login(dto, this.requestContext(req));
+  }
+
+  @Post('mfa/verify')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Complete login by presenting a challengeToken plus a TOTP or backup code' })
+  @ApiOkResponse({ type: AuthResponseDto })
+  verifyMfa(@Body() dto: VerifyMfaDto, @Req() req: Request): Promise<AuthResponseDto> {
+    return this.auth.verifyMfa(dto.challengeToken, dto.code, this.requestContext(req));
   }
 
   @Post('refresh')

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { AuthResponseDto, AuthService, LoginDto, RequestContext } from '@africahr/iam-feature';
+import { AuthResponseDto, AuthService, LoginDto, MfaChallengeResponseDto, RequestContext } from '@africahr/iam-feature';
 import { TenantService } from '@africahr/tenancy-feature';
 
 /**
@@ -16,7 +16,11 @@ export class TenantAuthService {
     private readonly auth: AuthService,
   ) {}
 
-  async login(slug: string, dto: LoginDto, context: RequestContext = {}): Promise<AuthResponseDto> {
+  async login(
+    slug: string,
+    dto: LoginDto,
+    context: RequestContext = {},
+  ): Promise<AuthResponseDto | MfaChallengeResponseDto> {
     const tenant = await this.tenants.findBySlugForLogin(slug);
     return this.auth.loginForTenant(tenant.id, dto, context);
   }

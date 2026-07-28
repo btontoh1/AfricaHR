@@ -10,6 +10,7 @@ import { employeeFormSchema, EMPLOYMENT_TYPE_OPTIONS, type EmployeeFormValues } 
 import { getApiErrorMessage } from '@/lib/api-error';
 import { OrganizationPicker } from '@/features/organizations/organization-picker';
 import { OrganizationUnitPicker } from '@/features/organizations/organization-unit-picker';
+import { EmployeePicker } from './employee-picker';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -138,9 +139,14 @@ export function CreateEmployeeForm() {
               name="managerId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Reporting manager ID (optional)</FormLabel>
+                  <FormLabel>Reporting manager (optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="Employee UUID" {...field} />
+                    <EmployeePicker
+                      tenantId={tenantId}
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
+                      allowClear
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

@@ -11,6 +11,7 @@ import {
 import { getApiErrorMessage } from '@/lib/api-error';
 import type { Employee } from './types';
 import { OrganizationUnitPicker } from '@/features/organizations/organization-unit-picker';
+import { EmployeePicker } from './employee-picker';
 import { UserPicker } from '@/features/iam/user-picker';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -92,9 +93,15 @@ export function UpdateEmployeeForm({ tenantId, employee }: { tenantId: string; e
           name="managerId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Reporting manager ID</FormLabel>
+              <FormLabel>Reporting manager</FormLabel>
               <FormControl>
-                <Input placeholder="Employee UUID" {...field} />
+                <EmployeePicker
+                  tenantId={tenantId}
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                  allowClear
+                  excludeEmployeeId={employee.id}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

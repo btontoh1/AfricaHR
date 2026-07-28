@@ -186,19 +186,46 @@ model User {
   isActive     Boolean    @default(true) @map("is_active")
   lastLoginAt  DateTime?  @map("last_login_at")
 
+  /// mfaSecretEncrypted is set as soon as setup() generates a secret (before
+  /// the user has proven they scanned it), but mfaEnabled only flips to true
+  /// once confirm() verifies a real code from it - see MfaService.
+  mfaEnabled         Boolean   @default(false) @map("mfa_enabled")
+  mfaSecretEncrypted String?   @map("mfa_secret_encrypted")
+  mfaEnabledAt       DateTime? @map("mfa_enabled_at")
+
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
   createdBy String?   @map("created_by")
   updatedBy String?   @map("updated_by")
 
-  tenant        Tenant?        @relation(fields: [tenantId], references: [id])
-  refreshTokens RefreshToken[]
-  employee      Employee?
-  notifications Notification[]
+  tenant         Tenant?         @relation(fields: [tenantId], references: [id])
+  refreshTokens  RefreshToken[]
+  employee       Employee?
+  notifications  Notification[]
+  mfaBackupCodes MfaBackupCode[]
 
   @@index([tenantId])
   @@map("users")
+}
+
+/// One-time-use codes issued alongside TOTP enrollment, for account
+/// recovery when the authenticator device is lost. tenantId is nullable to
+/// mirror User's own nullability (a platform admin's codes have no tenant)
+/// - see RLS_CONVENTION.md §4 for the policy variant this needs.
+model MfaBackupCode {
+  id        String    @id @default(uuid())
+  tenantId  String?   @map("tenant_id")
+  userId    String    @map("user_id")
+  codeHash  String    @map("code_hash")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([userId])
+  @@map("mfa_backup_codes")
 }
 
 /// Opaque, hashed, stateful — unlike the (stateless, JWT) access token, so

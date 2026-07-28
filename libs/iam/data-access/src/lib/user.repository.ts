@@ -120,4 +120,34 @@ export class UserRepository {
       client.user.update({ where: { id }, data: { deletedAt: new Date(), updatedBy } }),
     );
   }
+
+  /**
+   * Stores a newly-generated TOTP secret without enabling MFA yet -
+   * mfaEnabled only flips to true once MfaService.confirm() verifies a real
+   * code from it, so a setup() call that's never confirmed leaves the
+   * account exactly as protected (or not) as before.
+   */
+  setPendingMfaSecret(tenantId: string | null, id: string, encryptedSecret: string): Promise<User> {
+    return withScope(this.prisma, tenantId, (client) =>
+      client.user.update({ where: { id }, data: { mfaSecretEncrypted: encryptedSecret } }),
+    );
+  }
+
+  enableMfa(tenantId: string | null, id: string): Promise<User> {
+    return withScope(this.prisma, tenantId, (client) =>
+      client.user.update({
+        where: { id },
+        data: { mfaEnabled: true, mfaEnabledAt: new Date() },
+      }),
+    );
+  }
+
+  clearMfa(tenantId: string | null, id: string): Promise<User> {
+    return withScope(this.prisma, tenantId, (client) =>
+      client.user.update({
+        where: { id },
+        data: { mfaEnabled: false, mfaSecretEncrypted: null, mfaEnabledAt: null },
+      }),
+    );
+  }
 }

@@ -1,0 +1,190 @@
+import { randomBytes } from 'node:crypto';
+import { TOTP, Secret } from 'otpauth';
+import { BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
+import * as argon2 from 'argon2';
+import { User } from '@prisma/client';
+import { RequestUser, SystemRole, TokenRevocationService } from '@africahr/platform-auth';
+import { AppConfigService } from '@africahr/platform-core';
+import { AuditService } from '@africahr/platform-audit';
+import { MfaBackupCodeRepository, RefreshTokenRepository, UserRepository } from '@africahr/iam-data-access';
+import { encryptMfaSecret, generateTotpSecret } from '@africahr/iam-domain';
+import { MfaService } from './mfa.service';
+
+jest.mock('argon2');
+
+const validEncryptionKey = randomBytes(32).toString('hex');
+
+function codeFor(secretBase32: string): string {
+  return new TOTP({ secret: Secret.fromBase32(secretBase32) }).generate();
+}
+
+describe('MfaService', () => {
+  let service: MfaService;
+  let users: jest.Mocked<UserRepository>;
+  let backupCodes: jest.Mocked<MfaBackupCodeRepository>;
+  let refreshTokens: jest.Mocked<RefreshTokenRepository>;
+  let revocation: jest.Mocked<TokenRevocationService>;
+  let audit: jest.Mocked<AuditService>;
+
+  const actor: RequestUser = {
+    sub: 'user-1',
+    email: 'ama@acme.com',
+    role: SystemRole.EMPLOYEE,
+    tenantId: 'tenant-1',
+    iat: 1,
+    exp: 2,
+  };
+
+  function makeUser(overrides: Partial<User> = {}): User {
+    return {
+      id: 'user-1',
+      tenantId: 'tenant-1',
+      email: 'ama@acme.com',
+      passwordHash: 'hashed-password',
+      firstName: 'Ama',
+      lastName: 'Owusu',
+      role: SystemRole.EMPLOYEE,
+      isActive: true,
+      lastLoginAt: null,
+      mfaEnabled: false,
+      mfaSecretEncrypted: null,
+      mfaEnabledAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+      createdBy: null,
+      updatedBy: null,
+      ...overrides,
+    } as User;
+  }
+
+  beforeEach(() => {
+    users = {
+      findById: jest.fn(),
+      setPendingMfaSecret: jest.fn(),
+      enableMfa: jest.fn(),
+      clearMfa: jest.fn(),
+    } as unknown as jest.Mocked<UserRepository>;
+
+    backupCodes = {
+      createMany: jest.fn(),
+      deleteAllForUser: jest.fn(),
+    } as unknown as jest.Mocked<MfaBackupCodeRepository>;
+
+    refreshTokens = {
+      revokeAllForUser: jest.fn(),
+    } as unknown as jest.Mocked<RefreshTokenRepository>;
+
+    revocation = {
+      revokeAllForUser: jest.fn(),
+    } as unknown as jest.Mocked<TokenRevocationService>;
+
+    audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
+
+    const config = { mfaEncryptionKey: validEncryptionKey } as unknown as AppConfigService;
+
+    service = new MfaService(users, backupCodes, refreshTokens, revocation, audit, config);
+
+    jest.mocked(argon2.verify).mockReset();
+  });
+
+  describe('constructor', () => {
+    it('throws if MFA_ENCRYPTION_KEY is unset, failing the app boot rather than the first request', () => {
+      const badConfig = { mfaEncryptionKey: undefined } as unknown as AppConfigService;
+
+      expect(
+        () => new MfaService(users, backupCodes, refreshTokens, revocation, audit, badConfig),
+      ).toThrow(/MFA_ENCRYPTION_KEY must be set/);
+    });
+  });
+
+  describe('setup', () => {
+    it('generates and stores a pending secret, returning it plus an otpauth URI', async () => {
+      users.findById.mockResolvedValue(makeUser());
+
+      const result = await service.setup(actor);
+
+      expect(result.secret).toMatch(/^[A-Z2-7]+$/);
+      expect(result.otpauthUri).toContain('otpauth://totp/');
+      expect(users.setPendingMfaSecret).toHaveBeenCalledWith('tenant-1', 'user-1', expect.any(String));
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'mfa.setup_initiated' }),
+      );
+    });
+
+    it('rejects setup when MFA is already enabled', async () => {
+      users.findById.mockResolvedValue(makeUser({ mfaEnabled: true }));
+
+      await expect(service.setup(actor)).rejects.toThrow(ConflictException);
+      expect(users.setPendingMfaSecret).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('confirm', () => {
+    it('enables MFA and returns backup codes when the code is correct', async () => {
+      const secret = generateTotpSecret();
+      const encrypted = encryptMfaSecret(secret, Buffer.from(validEncryptionKey, 'hex'));
+      users.findById.mockResolvedValue(makeUser({ mfaSecretEncrypted: encrypted }));
+
+      const result = await service.confirm(actor, codeFor(secret));
+
+      expect(result.backupCodes).toHaveLength(10);
+      expect(new Set(result.backupCodes).size).toBe(10);
+      expect(backupCodes.createMany).toHaveBeenCalledWith('tenant-1', 'user-1', expect.any(Array));
+      expect(users.enableMfa).toHaveBeenCalledWith('tenant-1', 'user-1');
+      expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'mfa.enabled' }));
+    });
+
+    it('rejects an incorrect code without enabling MFA', async () => {
+      const secret = generateTotpSecret();
+      const encrypted = encryptMfaSecret(secret, Buffer.from(validEncryptionKey, 'hex'));
+      users.findById.mockResolvedValue(makeUser({ mfaSecretEncrypted: encrypted }));
+
+      await expect(service.confirm(actor, '000000')).rejects.toThrow(UnauthorizedException);
+      expect(users.enableMfa).not.toHaveBeenCalled();
+      expect(backupCodes.createMany).not.toHaveBeenCalled();
+    });
+
+    it('rejects confirm when setup was never called', async () => {
+      users.findById.mockResolvedValue(makeUser({ mfaSecretEncrypted: null }));
+
+      await expect(service.confirm(actor, '123456')).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects confirm when MFA is already enabled', async () => {
+      users.findById.mockResolvedValue(makeUser({ mfaEnabled: true }));
+
+      await expect(service.confirm(actor, '123456')).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('disable', () => {
+    it('clears MFA, deletes backup codes, and revokes every session on a correct password', async () => {
+      users.findById.mockResolvedValue(makeUser({ mfaEnabled: true }));
+      jest.mocked(argon2.verify).mockResolvedValue(true);
+
+      await service.disable(actor, 'correct-password');
+
+      expect(users.clearMfa).toHaveBeenCalledWith('tenant-1', 'user-1');
+      expect(backupCodes.deleteAllForUser).toHaveBeenCalledWith('tenant-1', 'user-1');
+      expect(refreshTokens.revokeAllForUser).toHaveBeenCalledWith('tenant-1', 'user-1');
+      expect(revocation.revokeAllForUser).toHaveBeenCalledWith('user-1');
+      expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'mfa.disabled' }));
+    });
+
+    it('rejects an incorrect password without touching MFA state', async () => {
+      users.findById.mockResolvedValue(makeUser({ mfaEnabled: true }));
+      jest.mocked(argon2.verify).mockResolvedValue(false);
+
+      await expect(service.disable(actor, 'wrong-password')).rejects.toThrow(UnauthorizedException);
+      expect(users.clearMfa).not.toHaveBeenCalled();
+      expect(refreshTokens.revokeAllForUser).not.toHaveBeenCalled();
+    });
+
+    it('rejects disable when MFA is not enabled', async () => {
+      users.findById.mockResolvedValue(makeUser({ mfaEnabled: false }));
+
+      await expect(service.disable(actor, 'any-password')).rejects.toThrow(BadRequestException);
+    });
+  });
+});

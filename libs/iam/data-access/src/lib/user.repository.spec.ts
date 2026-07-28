@@ -145,4 +145,40 @@ describe('UserRepository', () => {
       });
     });
   });
+
+  describe('MFA state transitions', () => {
+    it('setPendingMfaSecret stores the encrypted secret without enabling MFA', async () => {
+      await repository.setPendingMfaSecret('tenant-1', 'user-1', 'encrypted-blob');
+
+      expect(userDelegate.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { mfaSecretEncrypted: 'encrypted-blob' },
+      });
+    });
+
+    it('enableMfa flips mfaEnabled and stamps mfaEnabledAt', async () => {
+      await repository.enableMfa('tenant-1', 'user-1');
+
+      expect(userDelegate.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { mfaEnabled: true, mfaEnabledAt: expect.any(Date) },
+      });
+    });
+
+    it('clearMfa resets all three MFA fields', async () => {
+      await repository.clearMfa('tenant-1', 'user-1');
+
+      expect(userDelegate.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { mfaEnabled: false, mfaSecretEncrypted: null, mfaEnabledAt: null },
+      });
+    });
+
+    it('operates under the platform scope for a platform-admin user (tenantId null)', async () => {
+      await repository.enableMfa(null, 'user-1');
+
+      expect(withTenantContext).not.toHaveBeenCalled();
+      expect(withPlatformScope).toHaveBeenCalledWith(expect.any(Function));
+    });
+  });
 });

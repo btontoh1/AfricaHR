@@ -74,4 +74,8 @@ export class AppConfigService {
       fromEmail: this.configService.get('SENDGRID_FROM_EMAIL', { infer: true }),
     };
   }
+
+  get mfaEncryptionKey(): string | undefined {
+    return this.configService.get('MFA_ENCRYPTION_KEY', { infer: true });
+  }
 }

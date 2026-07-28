@@ -38,6 +38,14 @@ export const envSchema = z.object({
   SENDGRID_API_KEY: z.string().optional(),
   SENDGRID_FROM_EMAIL: z.string().email().optional(),
 
+  // AES-256 key (64-char hex = 32 bytes) for encrypting TOTP secrets at
+  // rest. Optional at the env-schema level only so the Zod validator's
+  // error message isn't the one doing the enforcement - MfaService derives
+  // this at construction time (Nest instantiates providers eagerly), so a
+  // missing/malformed key fails the whole app's boot with a clear error,
+  // same posture as JWT_ACCESS_SECRET.
+  MFA_ENCRYPTION_KEY: z.string().optional(),
+
   CORS_ORIGINS: z
     .string()
     .default('')

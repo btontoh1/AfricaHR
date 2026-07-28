@@ -16,6 +16,24 @@ export type BenefitPlanFormValues = z.infer<typeof benefitPlanFormSchema>;
 
 export const CONTRIBUTION_TYPE_OPTIONS = CONTRIBUTION_TYPES;
 
+/**
+ * The API stores PERCENTAGE contributions as a fraction of base salary
+ * (e.g. 0.02 for 2%, see CreateBenefitPlanDto), but admins naturally think
+ * in whole percentage points, so the form collects "2" and this converts
+ * it before submission. FIXED contributions are already a flat currency
+ * amount — no conversion.
+ *
+ * Regression coverage: a missing /100 here once shipped and silently
+ * inflated every PERCENTAGE plan's contribution by 100x (e.g. a 2%/5%
+ * plan on a 4,500 salary enrolled at 9,000/22,500 instead of 90/225).
+ */
+export function toContributionRate(
+  value: string,
+  contributionType: BenefitPlanFormValues['contributionType'],
+): number {
+  return contributionType === 'PERCENTAGE' ? Number(value) / 100 : Number(value);
+}
+
 // Mirrors EnrollEmployeeDto — HR enrolling an arbitrary employee.
 export const enrollEmployeeFormSchema = z.object({
   employeeId: z.string().uuid('Select an employee'),

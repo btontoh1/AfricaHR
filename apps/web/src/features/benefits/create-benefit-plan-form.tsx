@@ -7,6 +7,7 @@ import { useCreateBenefitPlan } from './queries';
 import {
   benefitPlanFormSchema,
   CONTRIBUTION_TYPE_OPTIONS,
+  toContributionRate,
   type BenefitPlanFormValues,
 } from './benefits-form-schema';
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -40,21 +41,14 @@ export function CreateBenefitPlanForm({ tenantId }: { tenantId: string }) {
   const isPercentage = contributionType === 'PERCENTAGE';
 
   async function onSubmit(values: BenefitPlanFormValues) {
-    // The API stores PERCENTAGE contributions as a fraction of base salary
-    // (e.g. 0.02 for 2%), but admins naturally think in whole percentage
-    // points, so the form collects "2" and converts it here. FIXED
-    // contributions are already a flat currency amount — no conversion.
-    const toRate = (value: string) =>
-      values.contributionType === 'PERCENTAGE' ? Number(value) / 100 : Number(value);
-
     try {
       await createPlan.mutateAsync({
         name: values.name,
         code: values.code,
         description: values.description ? values.description : undefined,
         contributionType: values.contributionType,
-        employeeContribution: toRate(values.employeeContribution),
-        employerContribution: toRate(values.employerContribution),
+        employeeContribution: toContributionRate(values.employeeContribution, values.contributionType),
+        employerContribution: toContributionRate(values.employerContribution, values.contributionType),
       });
       toast.success('Benefit plan created');
       form.reset({

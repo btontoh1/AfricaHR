@@ -2,6 +2,7 @@ import {
   benefitPlanFormSchema,
   enrollEmployeeFormSchema,
   selfEnrollFormSchema,
+  toContributionRate,
 } from './benefits-form-schema';
 
 describe('benefitPlanFormSchema', () => {
@@ -60,5 +61,28 @@ describe('selfEnrollFormSchema', () => {
 
   it('rejects a missing plan selection', () => {
     expect(selfEnrollFormSchema.safeParse({ benefitPlanId: '' }).success).toBe(false);
+  });
+});
+
+describe('toContributionRate', () => {
+  // Regression test: this conversion was once missing entirely, so a form
+  // input of "2" (meant as 2%) was sent to the API as a raw 2 instead of
+  // 0.02 — a 100x-too-high contribution on every PERCENTAGE plan.
+  it('divides a PERCENTAGE input by 100', () => {
+    expect(toContributionRate('2', 'PERCENTAGE')).toBe(0.02);
+    expect(toContributionRate('5', 'PERCENTAGE')).toBe(0.05);
+  });
+
+  it('leaves a FIXED input unconverted', () => {
+    expect(toContributionRate('50', 'FIXED')).toBe(50);
+  });
+
+  it('handles fractional percentage points', () => {
+    expect(toContributionRate('2.5', 'PERCENTAGE')).toBeCloseTo(0.025);
+  });
+
+  it('handles zero', () => {
+    expect(toContributionRate('0', 'PERCENTAGE')).toBe(0);
+    expect(toContributionRate('0', 'FIXED')).toBe(0);
   });
 });

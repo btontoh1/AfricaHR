@@ -53,3 +53,12 @@ export function useMfaDisable() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: mfaStatusKey() }),
   });
 }
+
+export function useForgetAllDevices() {
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await apiClient.DELETE('/api/users/me/mfa/trusted-devices');
+      if (error) throw error;
+    },
+  });
+}

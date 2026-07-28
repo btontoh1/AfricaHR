@@ -81,11 +81,11 @@ model Organization {
   /// rules (UNVERIFIED -> PENDING_REVIEW -> VERIFIED/REJECTED).
   verificationStatus OrganizationVerificationStatus @default(UNVERIFIED) @map("verification_status")
   /// Reviewer's reason, set on rejection.
-  verificationNote   String?                         @map("verification_note")
-  verifiedAt         DateTime?                       @map("verified_at")
+  verificationNote   String?                        @map("verification_note")
+  verifiedAt         DateTime?                      @map("verified_at")
   /// Reviewing User's id - bare String like createdBy/updatedBy, no
   /// @relation (same convention as every other audit-trail field here).
-  verifiedBy         String?                         @map("verified_by")
+  verifiedBy         String?                        @map("verified_by")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -199,11 +199,12 @@ model User {
   createdBy String?   @map("created_by")
   updatedBy String?   @map("updated_by")
 
-  tenant         Tenant?         @relation(fields: [tenantId], references: [id])
-  refreshTokens  RefreshToken[]
-  employee       Employee?
-  notifications  Notification[]
-  mfaBackupCodes MfaBackupCode[]
+  tenant            Tenant?            @relation(fields: [tenantId], references: [id])
+  refreshTokens     RefreshToken[]
+  employee          Employee?
+  notifications     Notification[]
+  mfaBackupCodes    MfaBackupCode[]
+  mfaTrustedDevices MfaTrustedDevice[]
 
   @@index([tenantId])
   @@map("users")
@@ -226,6 +227,26 @@ model MfaBackupCode {
   @@index([tenantId])
   @@index([userId])
   @@map("mfa_backup_codes")
+}
+
+/// Long-lived opaque device-trust token, separate from RefreshToken - lets a
+/// user skip the MFA challenge on a specific device for a while without
+/// granting any access itself: it only ever changes whether authenticate()
+/// issues a challenge, and is never accepted anywhere else. Same
+/// nullable-tenant shape as MfaBackupCode - see RLS_CONVENTION.md §4.
+model MfaTrustedDevice {
+  id        String   @id @default(uuid())
+  tenantId  String?  @map("tenant_id")
+  userId    String   @map("user_id")
+  tokenHash String   @unique @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([userId])
+  @@map("mfa_trusted_devices")
 }
 
 /// Opaque, hashed, stateful — unlike the (stateless, JWT) access token, so
@@ -1115,17 +1136,17 @@ model NotificationTemplate {
 /// system-initiated, never an implicit side effect of another module's
 /// business event.
 model Notification {
-  id      String              @id @default(uuid())
-  tenantId String             @map("tenant_id")
-  userId  String              @map("user_id")
-  channel NotificationChannel
-  subject String
-  body    String
-  status  NotificationStatus  @default(PENDING)
-  isRead  Boolean             @default(false) @map("is_read")
-  readAt  DateTime?           @map("read_at")
-  sentAt  DateTime?           @map("sent_at")
-  failureReason String?       @map("failure_reason")
+  id            String              @id @default(uuid())
+  tenantId      String              @map("tenant_id")
+  userId        String              @map("user_id")
+  channel       NotificationChannel
+  subject       String
+  body          String
+  status        NotificationStatus  @default(PENDING)
+  isRead        Boolean             @default(false) @map("is_read")
+  readAt        DateTime?           @map("read_at")
+  sentAt        DateTime?           @map("sent_at")
+  failureReason String?             @map("failure_reason")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")

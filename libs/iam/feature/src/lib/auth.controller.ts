@@ -1,5 +1,5 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, Req } from '@nestjs/common';
-import { ApiExtraModels, ApiNoContentResponse, ApiOkResponse, ApiOperation, ApiTags, getSchemaPath } from '@nestjs/swagger';
+import { Body, Controller, Headers, HttpCode, HttpStatus, Post, Req } from '@nestjs/common';
+import { ApiExtraModels, ApiHeader, ApiNoContentResponse, ApiOkResponse, ApiOperation, ApiTags, getSchemaPath } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { AuthService, RequestContext } from './auth.service';
@@ -8,6 +8,11 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { MfaChallengeResponseDto } from './dto/mfa-challenge-response.dto';
 import { VerifyMfaDto } from './dto/verify-mfa.dto';
+
+// Never accepted anywhere else, and only ever changes whether login()
+// issues an MFA challenge - a valid header value alone grants nothing
+// without a correct password too. See MfaService.isDeviceTrusted().
+export const DEVICE_TOKEN_HEADER = 'x-device-token';
 
 @ApiTags('auth')
 @ApiExtraModels(AuthResponseDto, MfaChallengeResponseDto)
@@ -19,11 +24,16 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOperation({ summary: 'Authenticate with email + password' })
+  @ApiHeader({ name: DEVICE_TOKEN_HEADER, required: false, description: 'A remembered device token, if this device was previously trusted' })
   @ApiOkResponse({
     schema: { oneOf: [{ $ref: getSchemaPath(AuthResponseDto) }, { $ref: getSchemaPath(MfaChallengeResponseDto) }] },
   })
-  login(@Body() dto: LoginDto, @Req() req: Request): Promise<AuthResponseDto | MfaChallengeResponseDto> {
-    return this.auth.login(dto, this.requestContext(req));
+  login(
+    @Body() dto: LoginDto,
+    @Req() req: Request,
+    @Headers(DEVICE_TOKEN_HEADER) deviceToken?: string,
+  ): Promise<AuthResponseDto | MfaChallengeResponseDto> {
+    return this.auth.login(dto, this.requestContext(req), deviceToken);
   }
 
   @Post('mfa/verify')
@@ -32,7 +42,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Complete login by presenting a challengeToken plus a TOTP or backup code' })
   @ApiOkResponse({ type: AuthResponseDto })
   verifyMfa(@Body() dto: VerifyMfaDto, @Req() req: Request): Promise<AuthResponseDto> {
-    return this.auth.verifyMfa(dto.challengeToken, dto.code, this.requestContext(req));
+    return this.auth.verifyMfa(dto.challengeToken, dto.code, this.requestContext(req), dto.rememberDevice);
   }
 
   @Post('refresh')

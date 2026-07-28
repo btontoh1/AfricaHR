@@ -2,14 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createBackendClient } from '@/lib/backend-client';
 import { setAuthCookies } from '@/lib/auth-cookies';
 import { decodeAccessToken } from '@/lib/session';
+import { DEVICE_TOKEN_COOKIE } from '@/lib/auth-cookie-names';
+
+// Must match AuthController's DEVICE_TOKEN_HEADER on the backend.
+const DEVICE_TOKEN_HEADER = 'x-device-token';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const body = await request.json();
+  const deviceToken = request.cookies.get(DEVICE_TOKEN_COOKIE)?.value;
   const client = createBackendClient();
   const { data, error, response } = await client.POST('/api/tenants/{slug}/login', {
     params: { path: { slug } },
     body,
+    headers: deviceToken ? { [DEVICE_TOKEN_HEADER]: deviceToken } : undefined,
   });
 
   if (error || !data) {

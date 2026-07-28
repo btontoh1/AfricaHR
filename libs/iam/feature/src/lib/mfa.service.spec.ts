@@ -6,8 +6,13 @@ import { User } from '@prisma/client';
 import { RequestUser, SystemRole, TokenRevocationService } from '@africahr/platform-auth';
 import { AppConfigService } from '@africahr/platform-core';
 import { AuditService } from '@africahr/platform-audit';
-import { MfaBackupCodeRepository, RefreshTokenRepository, UserRepository } from '@africahr/iam-data-access';
-import { encryptMfaSecret, generateTotpSecret, hashBackupCode } from '@africahr/iam-domain';
+import {
+  MfaBackupCodeRepository,
+  MfaTrustedDeviceRepository,
+  RefreshTokenRepository,
+  UserRepository,
+} from '@africahr/iam-data-access';
+import { encryptMfaSecret, generateTotpSecret, hashBackupCode, hashDeviceToken } from '@africahr/iam-domain';
 import { MfaService } from './mfa.service';
 
 jest.mock('argon2');
@@ -22,6 +27,7 @@ describe('MfaService', () => {
   let service: MfaService;
   let users: jest.Mocked<UserRepository>;
   let backupCodes: jest.Mocked<MfaBackupCodeRepository>;
+  let trustedDevices: jest.Mocked<MfaTrustedDeviceRepository>;
   let refreshTokens: jest.Mocked<RefreshTokenRepository>;
   let revocation: jest.Mocked<TokenRevocationService>;
   let audit: jest.Mocked<AuditService>;
@@ -73,6 +79,12 @@ describe('MfaService', () => {
       markUsed: jest.fn(),
     } as unknown as jest.Mocked<MfaBackupCodeRepository>;
 
+    trustedDevices = {
+      create: jest.fn(),
+      findValid: jest.fn(),
+      deleteAllForUser: jest.fn(),
+    } as unknown as jest.Mocked<MfaTrustedDeviceRepository>;
+
     refreshTokens = {
       revokeAllForUser: jest.fn(),
     } as unknown as jest.Mocked<RefreshTokenRepository>;
@@ -85,7 +97,7 @@ describe('MfaService', () => {
 
     const config = { mfaEncryptionKey: validEncryptionKey } as unknown as AppConfigService;
 
-    service = new MfaService(users, backupCodes, refreshTokens, revocation, audit, config);
+    service = new MfaService(users, backupCodes, trustedDevices, refreshTokens, revocation, audit, config);
 
     jest.mocked(argon2.verify).mockReset();
   });
@@ -95,7 +107,7 @@ describe('MfaService', () => {
       const badConfig = { mfaEncryptionKey: undefined } as unknown as AppConfigService;
 
       expect(
-        () => new MfaService(users, backupCodes, refreshTokens, revocation, audit, badConfig),
+        () => new MfaService(users, backupCodes, trustedDevices, refreshTokens, revocation, audit, badConfig),
       ).toThrow(/MFA_ENCRYPTION_KEY must be set/);
     });
   });
@@ -183,6 +195,7 @@ describe('MfaService', () => {
 
       expect(users.clearMfa).toHaveBeenCalledWith('tenant-1', 'user-1');
       expect(backupCodes.deleteAllForUser).toHaveBeenCalledWith('tenant-1', 'user-1');
+      expect(trustedDevices.deleteAllForUser).toHaveBeenCalledWith('tenant-1', 'user-1');
       expect(refreshTokens.revokeAllForUser).toHaveBeenCalledWith('tenant-1', 'user-1');
       expect(revocation.revokeAllForUser).toHaveBeenCalledWith('user-1');
       expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'mfa.disabled' }));
@@ -251,6 +264,56 @@ describe('MfaService', () => {
 
       expect(result).toBe(false);
       expect(backupCodes.markUsed).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('rememberDevice', () => {
+    it('stores a hashed token with a 30-day expiry and returns the raw token', async () => {
+      const token = await service.rememberDevice('tenant-1', 'user-1');
+
+      expect(token).toMatch(/^[0-9a-f]{64}$/);
+      expect(trustedDevices.create).toHaveBeenCalledWith(
+        'tenant-1',
+        'user-1',
+        hashDeviceToken(token),
+        expect.any(Date),
+      );
+
+      const [, , , expiresAt] = trustedDevices.create.mock.calls[0];
+      const daysUntilExpiry = (expiresAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000);
+      expect(daysUntilExpiry).toBeGreaterThan(29);
+      expect(daysUntilExpiry).toBeLessThanOrEqual(30);
+    });
+  });
+
+  describe('isDeviceTrusted', () => {
+    it('returns true when a valid record matches the hashed token', async () => {
+      trustedDevices.findValid.mockResolvedValue({ id: 'device-1' });
+
+      const result = await service.isDeviceTrusted('tenant-1', 'user-1', 'raw-token');
+
+      expect(result).toBe(true);
+      expect(trustedDevices.findValid).toHaveBeenCalledWith('tenant-1', 'user-1', hashDeviceToken('raw-token'));
+    });
+
+    it('returns false when no valid record matches', async () => {
+      trustedDevices.findValid.mockResolvedValue(null);
+
+      const result = await service.isDeviceTrusted('tenant-1', 'user-1', 'raw-token');
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('forgetAllDevices', () => {
+    it('deletes every trusted device without touching MFA state, and records an audit entry', async () => {
+      await service.forgetAllDevices(actor);
+
+      expect(trustedDevices.deleteAllForUser).toHaveBeenCalledWith('tenant-1', 'user-1');
+      expect(users.clearMfa).not.toHaveBeenCalled();
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'mfa.trusted_devices_forgotten' }),
+      );
     });
   });
 });

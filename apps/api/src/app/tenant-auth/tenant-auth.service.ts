@@ -20,8 +20,9 @@ export class TenantAuthService {
     slug: string,
     dto: LoginDto,
     context: RequestContext = {},
+    deviceToken?: string,
   ): Promise<AuthResponseDto | MfaChallengeResponseDto> {
     const tenant = await this.tenants.findBySlugForLogin(slug);
-    return this.auth.loginForTenant(tenant.id, dto, context);
+    return this.auth.loginForTenant(tenant.id, dto, context, deviceToken);
   }
 }

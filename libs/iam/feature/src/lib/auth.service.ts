@@ -41,9 +41,10 @@ export class AuthService {
   async login(
     dto: LoginDto,
     context: RequestContext = {},
+    deviceToken?: string,
   ): Promise<AuthResponseDto | MfaChallengeResponseDto> {
     const user = await this.users.findByEmail(dto.email);
-    return this.authenticate(user, dto.password, context);
+    return this.authenticate(user, dto.password, context, deviceToken);
   }
 
   /**
@@ -56,9 +57,10 @@ export class AuthService {
     tenantId: string,
     dto: LoginDto,
     context: RequestContext = {},
+    deviceToken?: string,
   ): Promise<AuthResponseDto | MfaChallengeResponseDto> {
     const user = await this.users.findByEmailInTenant(tenantId, dto.email);
-    return this.authenticate(user, dto.password, context);
+    return this.authenticate(user, dto.password, context, deviceToken);
   }
 
   /**
@@ -66,9 +68,16 @@ export class AuthService {
    * TOTP/backup code for the real token pair. lastLoginAt and the
    * "auth.login" audit entry both happen here, not at challenge-issuance -
    * a password-only step that's never completed with a valid second
-   * factor was never a real login.
+   * factor was never a real login. When rememberDevice is set, also mints
+   * a device-trust token so future logins on this device can skip the
+   * challenge entirely (see authenticate()'s trusted-device branch).
    */
-  async verifyMfa(challengeToken: string, code: string, context: RequestContext = {}): Promise<AuthResponseDto> {
+  async verifyMfa(
+    challengeToken: string,
+    code: string,
+    context: RequestContext = {},
+    rememberDevice?: boolean,
+  ): Promise<AuthResponseDto> {
     const claims = this.tokens.verifyMfaChallengeToken(challengeToken);
     const user = await this.users.findById(claims.tenantId, claims.sub);
 
@@ -88,6 +97,10 @@ export class AuthService {
       context,
     );
 
+    if (rememberDevice) {
+      response.deviceToken = await this.mfa.rememberDevice(user.tenantId, user.id);
+    }
+
     await this.audit.record({
       tenantId: user.tenantId,
       actorUserId: user.id,
@@ -104,6 +117,7 @@ export class AuthService {
     user: AuthenticatableUser | null,
     password: string,
     context: RequestContext,
+    deviceToken?: string,
   ): Promise<AuthResponseDto | MfaChallengeResponseDto> {
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Invalid credentials');
@@ -115,17 +129,21 @@ export class AuthService {
     }
 
     if (user.mfaEnabled) {
-      const challengeToken = this.tokens.signMfaChallengeToken({ sub: user.id, tenantId: user.tenantId });
+      const trusted = deviceToken ? await this.mfa.isDeviceTrusted(user.tenantId, user.id, deviceToken) : false;
 
-      await this.audit.record({
-        tenantId: user.tenantId,
-        actorUserId: user.id,
-        action: 'auth.mfa_challenge_issued',
-        resourceType: 'User',
-        resourceId: user.id,
-      });
+      if (!trusted) {
+        const challengeToken = this.tokens.signMfaChallengeToken({ sub: user.id, tenantId: user.tenantId });
 
-      return { mfaRequired: true, challengeToken };
+        await this.audit.record({
+          tenantId: user.tenantId,
+          actorUserId: user.id,
+          action: 'auth.mfa_challenge_issued',
+          resourceType: 'User',
+          resourceId: user.id,
+        });
+
+        return { mfaRequired: true, challengeToken };
+      }
     }
 
     await this.users.updateLastLogin(user.tenantId, user.id);
@@ -141,6 +159,7 @@ export class AuthService {
       action: 'auth.login',
       resourceType: 'User',
       resourceId: user.id,
+      ...(user.mfaEnabled ? { metadata: { via: 'trusted_device' } } : {}),
     });
 
     return response;

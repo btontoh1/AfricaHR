@@ -4,6 +4,7 @@ import { ShieldCheck } from 'lucide-react';
 import { useMfaStatus } from './queries';
 import { MfaEnrollment } from './mfa-enrollment';
 import { MfaDisableDialog } from './mfa-disable-dialog';
+import { ForgetDevicesButton } from './forget-devices-button';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,7 +40,16 @@ export function MfaSecurityCard() {
             : 'Not enabled on your account yet.'}
         </CardDescription>
       </CardHeader>
-      <CardContent>{status.enabled ? <MfaDisableDialog /> : <MfaEnrollment />}</CardContent>
+      <CardContent>
+        {status.enabled ? (
+          <div className="flex flex-wrap gap-2">
+            <MfaDisableDialog />
+            <ForgetDevicesButton />
+          </div>
+        ) : (
+          <MfaEnrollment />
+        )}
+      </CardContent>
     </Card>
   );
 }

@@ -21,6 +21,7 @@ describe('MyMfaController', () => {
       setup: jest.fn(),
       confirm: jest.fn(),
       disable: jest.fn(),
+      forgetAllDevices: jest.fn(),
     } as unknown as jest.Mocked<MfaService>;
 
     controller = new MyMfaController(service);
@@ -48,5 +49,11 @@ describe('MyMfaController', () => {
     await controller.disable({ password: 'secret' }, actor);
 
     expect(service.disable).toHaveBeenCalledWith(actor, 'secret');
+  });
+
+  it('delegates forgetAllDevices to the caller\'s own actor', async () => {
+    await controller.forgetAllDevices(actor);
+
+    expect(service.forgetAllDevices).toHaveBeenCalledWith(actor);
   });
 });

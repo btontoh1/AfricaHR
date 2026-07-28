@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createBackendClient } from '@/lib/backend-client';
-import { setAuthCookies } from '@/lib/auth-cookies';
+import { setAuthCookies, setDeviceTokenCookie } from '@/lib/auth-cookies';
 import { decodeAccessToken } from '@/lib/session';
 
 // Tenant-agnostic: the challenge token already carries its tenantId (set by
@@ -19,5 +19,8 @@ export async function POST(request: NextRequest) {
   const user = decodeAccessToken(data.accessToken);
   const res = NextResponse.json({ user });
   setAuthCookies(res, data.accessToken, data.refreshToken);
+  if (data.deviceToken) {
+    setDeviceTokenCookie(res, data.deviceToken);
+  }
   return res;
 }

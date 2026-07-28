@@ -121,11 +121,40 @@ describe('LoginForm', () => {
         '/api/auth/mfa/verify',
         expect.objectContaining({
           method: 'POST',
-          body: JSON.stringify({ challengeToken: 'challenge-abc', code: '123456' }),
+          body: JSON.stringify({ challengeToken: 'challenge-abc', code: '123456', rememberDevice: false }),
         }),
       );
     });
     await waitFor(() => expect(push).toHaveBeenCalledWith('/dashboard'));
+  });
+
+  it('sends rememberDevice: true when the checkbox is checked', async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ mfaRequired: true, challengeToken: 'challenge-abc' }),
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) });
+    const user = userEvent.setup();
+    render(<LoginForm />);
+
+    await user.type(screen.getByLabelText('Email'), 'admin@africahr.local');
+    await user.type(screen.getByLabelText('Password'), 'ChangeMe123Now');
+    await user.click(screen.getByRole('button', SIGN_IN_BUTTON));
+
+    await user.type(await screen.findByLabelText('Code'), '123456');
+    await user.click(screen.getByRole('checkbox', { name: /remember this device/i }));
+    await user.click(screen.getByRole('button', { name: /verify/i }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/auth/mfa/verify',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ challengeToken: 'challenge-abc', code: '123456', rememberDevice: true }),
+        }),
+      );
+    });
   });
 
   it('shows an error and stays on the code prompt when the code is wrong', async () => {

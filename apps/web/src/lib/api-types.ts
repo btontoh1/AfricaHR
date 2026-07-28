@@ -511,6 +511,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/users/me/mfa/trusted-devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["MyMfaController_forgetAllDevices"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/users": {
         parameters: {
             query?: never;
@@ -1988,6 +2004,8 @@ export interface components {
         AuthResponseDto: {
             accessToken: string;
             refreshToken: string;
+            /** @description Present only when the client asked to remember this device - store it for the X-Device-Token header on future logins */
+            deviceToken?: string;
         };
         TenantPublicResponseDto: {
             /** @example Acme Ghana Ltd */
@@ -2137,6 +2155,8 @@ export interface components {
              * @example 123456
              */
             code: string;
+            /** @description Skip the MFA challenge on this device for 30 days - a deviceToken is returned when true */
+            rememberDevice?: boolean;
         };
         RefreshTokenDto: {
             refreshToken: string;
@@ -3796,7 +3816,10 @@ export interface operations {
     AuthController_login: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description A remembered device token, if this device was previously trusted */
+                "x-device-token"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3965,6 +3988,23 @@ export interface operations {
             };
         };
     };
+    MyMfaController_forgetAllDevices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     UserController_list: {
         parameters: {
             query?: never;
@@ -4102,7 +4142,10 @@ export interface operations {
     TenantAuthController_login: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description A remembered device token, if this device was previously trusted */
+                "x-device-token"?: string;
+            };
             path: {
                 slug: string;
             };

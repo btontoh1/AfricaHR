@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -21,6 +22,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 const mfaSchema = z.object({
   code: z.string().min(1, 'Enter a code'),
+  rememberDevice: z.boolean(),
 });
 
 type MfaFormValues = z.infer<typeof mfaSchema>;
@@ -45,7 +47,7 @@ export function LoginForm({ tenantSlug, tenantName }: LoginFormProps = {}) {
 
   const mfaForm = useForm<MfaFormValues>({
     resolver: zodResolver(mfaSchema),
-    defaultValues: { code: '' },
+    defaultValues: { code: '', rememberDevice: false },
   });
 
   function redirectAfterLogin() {
@@ -86,7 +88,7 @@ export function LoginForm({ tenantSlug, tenantName }: LoginFormProps = {}) {
     const response = await fetch('/api/auth/mfa/verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ challengeToken, code: values.code }),
+      body: JSON.stringify({ challengeToken, code: values.code, rememberDevice: values.rememberDevice }),
     });
 
     if (!response.ok) {
@@ -210,6 +212,18 @@ export function LoginForm({ tenantSlug, tenantName }: LoginFormProps = {}) {
                     <Input autoComplete="one-time-code" placeholder="123456" {...field} />
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={mfaForm.control}
+              name="rememberDevice"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center gap-2">
+                  <FormControl>
+                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                  <FormLabel className="!mt-0 font-normal">Remember this device for 30 days</FormLabel>
                 </FormItem>
               )}
             />

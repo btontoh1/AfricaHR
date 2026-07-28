@@ -29,6 +29,19 @@ describe('AuthController', () => {
     expect(auth.login).toHaveBeenCalledWith(
       { email: 'a@b.com', password: 'x' },
       { userAgent: 'jest', ipAddress: '127.0.0.1' },
+      undefined,
+    );
+  });
+
+  it('passes the X-Device-Token header through to login', async () => {
+    const req = fakeRequest({ 'user-agent': 'jest' }, '127.0.0.1');
+
+    await controller.login({ email: 'a@b.com', password: 'x' }, req, 'device-token-abc');
+
+    expect(auth.login).toHaveBeenCalledWith(
+      { email: 'a@b.com', password: 'x' },
+      { userAgent: 'jest', ipAddress: '127.0.0.1' },
+      'device-token-abc',
     );
   });
 
@@ -51,9 +64,19 @@ describe('AuthController', () => {
 
     await controller.verifyMfa({ challengeToken: 'ct', code: '123456' }, req);
 
-    expect(auth.verifyMfa).toHaveBeenCalledWith('ct', '123456', {
-      userAgent: 'jest',
-      ipAddress: '127.0.0.1',
-    });
+    expect(auth.verifyMfa).toHaveBeenCalledWith(
+      'ct',
+      '123456',
+      { userAgent: 'jest', ipAddress: '127.0.0.1' },
+      undefined,
+    );
+  });
+
+  it('passes rememberDevice through to verifyMfa', async () => {
+    const req = fakeRequest({}, '127.0.0.1');
+
+    await controller.verifyMfa({ challengeToken: 'ct', code: '123456', rememberDevice: true }, req);
+
+    expect(auth.verifyMfa).toHaveBeenCalledWith('ct', '123456', expect.any(Object), true);
   });
 });

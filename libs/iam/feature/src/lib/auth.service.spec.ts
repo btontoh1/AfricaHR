@@ -57,7 +57,11 @@ describe('AuthService', () => {
       verifyMfaChallengeToken: jest.fn(),
     } as unknown as jest.Mocked<JwtTokenService>;
 
-    mfa = { verifyLoginCode: jest.fn() } as unknown as jest.Mocked<MfaService>;
+    mfa = {
+      verifyLoginCode: jest.fn(),
+      isDeviceTrusted: jest.fn().mockResolvedValue(false),
+      rememberDevice: jest.fn(),
+    } as unknown as jest.Mocked<MfaService>;
 
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
 
@@ -122,6 +126,37 @@ describe('AuthService', () => {
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'auth.mfa_challenge_issued', actorUserId: user.id }),
       );
+    });
+
+    it('skips the MFA challenge and issues real tokens when a valid trusted-device token is presented', async () => {
+      users.findByEmail.mockResolvedValue({ ...user, mfaEnabled: true });
+      (argon2.verify as jest.Mock).mockResolvedValue(true);
+      mfa.isDeviceTrusted.mockResolvedValue(true);
+      users.updateLastLogin.mockResolvedValue(user);
+      refreshTokens.create.mockResolvedValue({} as RefreshToken);
+
+      const result = await service.login({ email: user.email, password: 'correct' }, {}, 'device-token');
+      if ('mfaRequired' in result) {
+        throw new Error('expected a token pair, got an MFA challenge');
+      }
+
+      expect(mfa.isDeviceTrusted).toHaveBeenCalledWith(user.tenantId, user.id, 'device-token');
+      expect(result.accessToken).toBe('access-token');
+      expect(tokens.signMfaChallengeToken).not.toHaveBeenCalled();
+      expect(users.updateLastLogin).toHaveBeenCalledWith(user.tenantId, user.id);
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'auth.login', actorUserId: user.id, metadata: { via: 'trusted_device' } }),
+      );
+    });
+
+    it('still issues a challenge when the presented device token is invalid or untrusted', async () => {
+      users.findByEmail.mockResolvedValue({ ...user, mfaEnabled: true });
+      (argon2.verify as jest.Mock).mockResolvedValue(true);
+      mfa.isDeviceTrusted.mockResolvedValue(false);
+
+      const result = await service.login({ email: user.email, password: 'correct' }, {}, 'bad-device-token');
+
+      expect(result).toEqual({ mfaRequired: true, challengeToken: 'challenge-token' });
     });
   });
 
@@ -229,6 +264,31 @@ describe('AuthService', () => {
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'auth.login', actorUserId: 'user-1', metadata: { via: 'mfa' } }),
       );
+    });
+
+    it('does not mint a device token when rememberDevice is not set', async () => {
+      tokens.verifyMfaChallengeToken.mockReturnValue({ sub: 'user-1', tenantId: 'tenant-1', iat: 1, exp: 2 });
+      users.findById.mockResolvedValue(mfaUser);
+      mfa.verifyLoginCode.mockResolvedValue(true);
+      refreshTokens.create.mockResolvedValue({} as RefreshToken);
+
+      const result = await service.verifyMfa('challenge-token', '123456');
+
+      expect(mfa.rememberDevice).not.toHaveBeenCalled();
+      expect(result.deviceToken).toBeUndefined();
+    });
+
+    it('mints and returns a device token when rememberDevice is true', async () => {
+      tokens.verifyMfaChallengeToken.mockReturnValue({ sub: 'user-1', tenantId: 'tenant-1', iat: 1, exp: 2 });
+      users.findById.mockResolvedValue(mfaUser);
+      mfa.verifyLoginCode.mockResolvedValue(true);
+      mfa.rememberDevice.mockResolvedValue('raw-device-token');
+      refreshTokens.create.mockResolvedValue({} as RefreshToken);
+
+      const result = await service.verifyMfa('challenge-token', '123456', {}, true);
+
+      expect(mfa.rememberDevice).toHaveBeenCalledWith('tenant-1', 'user-1');
+      expect(result.deviceToken).toBe('raw-device-token');
     });
   });
 

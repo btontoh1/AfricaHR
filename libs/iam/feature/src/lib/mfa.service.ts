@@ -3,17 +3,26 @@ import * as argon2 from 'argon2';
 import { RequestUser, TokenRevocationService } from '@africahr/platform-auth';
 import { AppConfigService } from '@africahr/platform-core';
 import { AuditService } from '@africahr/platform-audit';
-import { MfaBackupCodeRepository, RefreshTokenRepository, UserRepository } from '@africahr/iam-data-access';
+import {
+  MfaBackupCodeRepository,
+  MfaTrustedDeviceRepository,
+  RefreshTokenRepository,
+  UserRepository,
+} from '@africahr/iam-data-access';
 import {
   buildTotpUri,
   decryptMfaSecret,
   deriveMfaEncryptionKey,
   encryptMfaSecret,
   generateBackupCodes,
+  generateDeviceToken,
   generateTotpSecret,
   hashBackupCode,
+  hashDeviceToken,
   verifyTotpCode,
 } from '@africahr/iam-domain';
+
+const TRUSTED_DEVICE_TTL_DAYS = 30;
 
 @Injectable()
 export class MfaService {
@@ -22,6 +31,7 @@ export class MfaService {
   constructor(
     private readonly users: UserRepository,
     private readonly backupCodes: MfaBackupCodeRepository,
+    private readonly trustedDevices: MfaTrustedDeviceRepository,
     private readonly refreshTokens: RefreshTokenRepository,
     private readonly revocation: TokenRevocationService,
     private readonly audit: AuditService,
@@ -105,6 +115,7 @@ export class MfaService {
 
     await this.users.clearMfa(actor.tenantId, actor.sub);
     await this.backupCodes.deleteAllForUser(actor.tenantId, actor.sub);
+    await this.trustedDevices.deleteAllForUser(actor.tenantId, actor.sub);
 
     // Force re-login everywhere: a hijacked session shouldn't be able to
     // quietly turn MFA off and keep using the account. Revokes both
@@ -118,6 +129,25 @@ export class MfaService {
       tenantId: actor.tenantId,
       actorUserId: actor.sub,
       action: 'mfa.disabled',
+      resourceType: 'User',
+      resourceId: actor.sub,
+    });
+  }
+
+  /**
+   * Forgets every device previously marked "remember this device" for the
+   * actor - a pure hardening action (it only ever makes future logins
+   * *more* likely to re-challenge, never less), so unlike disable() it
+   * doesn't require a password confirmation or touch mfaEnabled/backup
+   * codes/sessions at all.
+   */
+  async forgetAllDevices(actor: RequestUser): Promise<void> {
+    await this.trustedDevices.deleteAllForUser(actor.tenantId, actor.sub);
+
+    await this.audit.record({
+      tenantId: actor.tenantId,
+      actorUserId: actor.sub,
+      action: 'mfa.trusted_devices_forgotten',
       resourceType: 'User',
       resourceId: actor.sub,
     });
@@ -147,6 +177,30 @@ export class MfaService {
     }
     await this.backupCodes.markUsed(tenantId, match.id);
     return true;
+  }
+
+  /**
+   * Issues a new device-trust token after a completed MFA verification -
+   * the raw token is returned once here for the caller (AuthService) to
+   * hand back to the client; only its hash is ever stored, same convention
+   * as refresh tokens and backup codes.
+   */
+  async rememberDevice(tenantId: string | null, userId: string): Promise<string> {
+    const token = generateDeviceToken();
+    const expiresAt = new Date(Date.now() + TRUSTED_DEVICE_TTL_DAYS * 24 * 60 * 60 * 1000);
+    await this.trustedDevices.create(tenantId, userId, hashDeviceToken(token), expiresAt);
+    return token;
+  }
+
+  /**
+   * Checked by AuthService.authenticate() before deciding whether to issue
+   * an MFA challenge - a raw device token proves nothing on its own; it
+   * only ever changes whether a challenge is required for an already
+   * password-verified user, never grants access by itself.
+   */
+  async isDeviceTrusted(tenantId: string | null, userId: string, rawToken: string): Promise<boolean> {
+    const match = await this.trustedDevices.findValid(tenantId, userId, hashDeviceToken(rawToken));
+    return match !== null;
   }
 
   private async findActorUser(actor: RequestUser) {

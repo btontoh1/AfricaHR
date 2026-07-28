@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiNoContentResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser, JwtAuthGuard, RequestUser } from '@africahr/platform-auth';
 import { MfaService } from './mfa.service';
@@ -44,5 +44,17 @@ export class MyMfaController {
   @ApiNoContentResponse()
   async disable(@Body() dto: DisableMfaDto, @CurrentUser() actor: RequestUser): Promise<void> {
     await this.mfa.disable(actor, dto.password);
+  }
+
+  /**
+   * No password required, unlike disable() - forgetting devices only ever
+   * makes future logins require the challenge again, never removes it, so
+   * there's nothing here to gate behind re-authentication.
+   */
+  @Delete('trusted-devices')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiNoContentResponse()
+  async forgetAllDevices(@CurrentUser() actor: RequestUser): Promise<void> {
+    await this.mfa.forgetAllDevices(actor);
   }
 }

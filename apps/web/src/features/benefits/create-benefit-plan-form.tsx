@@ -36,15 +36,25 @@ export function CreateBenefitPlanForm({ tenantId }: { tenantId: string }) {
     },
   });
 
+  const contributionType = form.watch('contributionType');
+  const isPercentage = contributionType === 'PERCENTAGE';
+
   async function onSubmit(values: BenefitPlanFormValues) {
+    // The API stores PERCENTAGE contributions as a fraction of base salary
+    // (e.g. 0.02 for 2%), but admins naturally think in whole percentage
+    // points, so the form collects "2" and converts it here. FIXED
+    // contributions are already a flat currency amount — no conversion.
+    const toRate = (value: string) =>
+      values.contributionType === 'PERCENTAGE' ? Number(value) / 100 : Number(value);
+
     try {
       await createPlan.mutateAsync({
         name: values.name,
         code: values.code,
         description: values.description ? values.description : undefined,
         contributionType: values.contributionType,
-        employeeContribution: Number(values.employeeContribution),
-        employerContribution: Number(values.employerContribution),
+        employeeContribution: toRate(values.employeeContribution),
+        employerContribution: toRate(values.employerContribution),
       });
       toast.success('Benefit plan created');
       form.reset({
@@ -118,9 +128,16 @@ export function CreateBenefitPlanForm({ tenantId }: { tenantId: string }) {
           name="employeeContribution"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Employee rate</FormLabel>
+              <FormLabel>Employee rate {isPercentage ? '(%)' : '(flat amount)'}</FormLabel>
               <FormControl>
-                <Input type="number" min={0} step="0.001" className="w-28" {...field} />
+                <Input
+                  type="number"
+                  min={0}
+                  step={isPercentage ? '0.1' : '0.01'}
+                  placeholder={isPercentage ? 'e.g. 2 for 2%' : 'e.g. 50'}
+                  className="w-28"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -131,9 +148,16 @@ export function CreateBenefitPlanForm({ tenantId }: { tenantId: string }) {
           name="employerContribution"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Employer rate</FormLabel>
+              <FormLabel>Employer rate {isPercentage ? '(%)' : '(flat amount)'}</FormLabel>
               <FormControl>
-                <Input type="number" min={0} step="0.001" className="w-28" {...field} />
+                <Input
+                  type="number"
+                  min={0}
+                  step={isPercentage ? '0.1' : '0.01'}
+                  placeholder={isPercentage ? 'e.g. 5 for 5%' : 'e.g. 100'}
+                  className="w-28"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

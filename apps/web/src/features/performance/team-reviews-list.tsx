@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Users } from 'lucide-react';
 import { useReviewCycles, useTeamReviews } from './queries';
+import { useEmployees } from '@/features/employees/queries';
 import { ReviewStatusBadge } from './review-status-badge';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { TableCard } from '@/components/table-card';
@@ -21,8 +22,13 @@ import {
 export function TeamReviewsList({ tenantId }: { tenantId: string }) {
   const { data: reviews, isLoading, isError, error } = useTeamReviews(tenantId);
   const { data: cycles } = useReviewCycles(tenantId);
+  const { data: employees } = useEmployees(tenantId);
 
   const cycleName = (id: string) => cycles?.find((cycle) => cycle.id === id)?.name ?? id;
+  const employeeName = (id: string) => {
+    const employee = employees?.find((emp) => emp.id === id);
+    return employee ? `${employee.firstName} ${employee.lastName}` : id;
+  };
 
   if (isLoading) {
     return <TableSkeleton />;
@@ -57,7 +63,7 @@ export function TeamReviewsList({ tenantId }: { tenantId: string }) {
         <TableBody>
           {reviews.map((review) => (
             <TableRow key={review.id}>
-              <TableCell className="font-mono text-xs">{review.employeeId}</TableCell>
+              <TableCell>{employeeName(review.employeeId)}</TableCell>
               <TableCell>{cycleName(review.cycleId)}</TableCell>
               <TableCell>
                 <ReviewStatusBadge status={review.status} />

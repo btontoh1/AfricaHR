@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
 import type {
   CreateOrganizationInput,
@@ -68,8 +68,12 @@ export function useCreateOrganization(tenantId: string) {
   });
 }
 
-export function useOrganizationUnits(tenantId: string, organizationId: string) {
-  return useQuery({
+// The `/organization-units` endpoint requires a single organizationId (no
+// tenant-wide "all units" query) — this factory is shared by the
+// single-organization hook below and by useAllOrganizationUnits, which fans
+// out one query per organization to resolve unit names tenant-wide.
+function organizationUnitsQueryOptions(tenantId: string, organizationId: string) {
+  return {
     queryKey: organizationUnitsKey(tenantId, organizationId),
     queryFn: async () => {
       const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/organization-units', {
@@ -79,6 +83,23 @@ export function useOrganizationUnits(tenantId: string, organizationId: string) {
       return data;
     },
     enabled: Boolean(organizationId),
+  };
+}
+
+export function useOrganizationUnits(tenantId: string, organizationId: string) {
+  return useQuery(organizationUnitsQueryOptions(tenantId, organizationId));
+}
+
+/** Resolves organization unit names across every organization in the tenant — for reports that aren't scoped to a single organization. */
+export function useAllOrganizationUnits(tenantId: string, organizationIds: string[]) {
+  return useQueries({
+    queries: organizationIds.map((organizationId) =>
+      organizationUnitsQueryOptions(tenantId, organizationId),
+    ),
+    combine: (results) => ({
+      data: results.flatMap((result) => result.data ?? []),
+      isLoading: results.some((result) => result.isLoading),
+    }),
   });
 }
 

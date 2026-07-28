@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useHeadcountReport } from './queries';
 import { OrganizationFilter, ALL_ORGANIZATIONS } from './organization-filter';
+import { useAllOrganizationUnits, useOrganizations } from '@/features/organizations/queries';
 import { StatCard } from './stat-card';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Input } from '@/components/ui/input';
@@ -29,6 +30,15 @@ export function HeadcountReport({ tenantId }: { tenantId: string }) {
     from: from || undefined,
     to: to || undefined,
   });
+
+  // The report groups by raw organizationUnitId - resolve those to names
+  // here rather than showing UUIDs in the table.
+  const { data: organizations } = useOrganizations(tenantId);
+  const { data: organizationUnits } = useAllOrganizationUnits(
+    tenantId,
+    organizations?.map((org) => org.id) ?? [],
+  );
+  const unitName = (id: string) => organizationUnits?.find((unit) => unit.id === id)?.name ?? id;
 
   return (
     <div className="space-y-4">
@@ -95,7 +105,9 @@ export function HeadcountReport({ tenantId }: { tenantId: string }) {
                 <TableBody>
                   {report.byOrganizationUnit.map((row) => (
                     <TableRow key={row.organizationUnitId ?? 'none'}>
-                      <TableCell>{row.organizationUnitId ?? 'No unit'}</TableCell>
+                      <TableCell>
+                        {row.organizationUnitId ? unitName(row.organizationUnitId) : 'No unit'}
+                      </TableCell>
                       <TableCell>{row.count}</TableCell>
                     </TableRow>
                   ))}

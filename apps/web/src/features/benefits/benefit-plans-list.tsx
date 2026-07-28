@@ -38,6 +38,14 @@ function ToggleActiveButton({ tenantId, id, isActive }: { tenantId: string; id: 
   );
 }
 
+// Percentage plans store contribution as a fraction of base salary (e.g.
+// 0.02); fixed plans store a flat currency amount — only the former needs
+// the *100 + "%" conversion for display.
+function formatRate(contributionType: string, value: number | string) {
+  const numeric = Number(value);
+  return contributionType === 'PERCENTAGE' ? `${(numeric * 100).toFixed(2)}%` : numeric;
+}
+
 export function BenefitPlansList({ tenantId }: { tenantId: string }) {
   const { data: plans, isLoading, isError, error } = useBenefitPlans(tenantId);
 
@@ -73,8 +81,8 @@ export function BenefitPlansList({ tenantId }: { tenantId: string }) {
               <TableCell className="font-medium">{plan.name}</TableCell>
               <TableCell className="text-muted-foreground">{plan.code}</TableCell>
               <TableCell className="text-muted-foreground">{plan.contributionType}</TableCell>
-              <TableCell>{plan.employeeContribution}</TableCell>
-              <TableCell>{plan.employerContribution}</TableCell>
+              <TableCell>{formatRate(plan.contributionType, plan.employeeContribution)}</TableCell>
+              <TableCell>{formatRate(plan.contributionType, plan.employerContribution)}</TableCell>
               <TableCell>
                 <Badge variant={plan.isActive ? 'success' : 'secondary'}>
                   {plan.isActive ? 'Active' : 'Inactive'}

@@ -1,9 +1,10 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiNoContentResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser, JwtAuthGuard, RequestUser } from '@africahr/platform-auth';
 import { MfaService } from './mfa.service';
 import { ConfirmMfaDto } from './dto/confirm-mfa.dto';
 import { DisableMfaDto } from './dto/disable-mfa.dto';
+import { MfaStatusResponseDto } from './dto/mfa-status-response.dto';
 import { MfaSetupResponseDto } from './dto/mfa-setup-response.dto';
 import { MfaConfirmResponseDto } from './dto/mfa-confirm-response.dto';
 
@@ -19,6 +20,12 @@ import { MfaConfirmResponseDto } from './dto/mfa-confirm-response.dto';
 @Controller('users/me/mfa')
 export class MyMfaController {
   constructor(private readonly mfa: MfaService) {}
+
+  @Get('status')
+  @ApiOkResponse({ type: MfaStatusResponseDto })
+  status(@CurrentUser() actor: RequestUser) {
+    return this.mfa.getStatus(actor);
+  }
 
   @Post('setup')
   @ApiOkResponse({ type: MfaSetupResponseDto })

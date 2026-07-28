@@ -33,6 +33,11 @@ export class MfaService {
     this.encryptionKey = deriveMfaEncryptionKey(config.mfaEncryptionKey);
   }
 
+  async getStatus(actor: RequestUser): Promise<{ enabled: boolean }> {
+    const user = await this.findActorUser(actor);
+    return { enabled: user.mfaEnabled };
+  }
+
   async setup(actor: RequestUser): Promise<{ secret: string; otpauthUri: string }> {
     const user = await this.findActorUser(actor);
     if (user.mfaEnabled) {

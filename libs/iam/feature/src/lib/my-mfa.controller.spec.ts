@@ -17,12 +17,19 @@ describe('MyMfaController', () => {
 
   beforeEach(() => {
     service = {
+      getStatus: jest.fn(),
       setup: jest.fn(),
       confirm: jest.fn(),
       disable: jest.fn(),
     } as unknown as jest.Mocked<MfaService>;
 
     controller = new MyMfaController(service);
+  });
+
+  it('delegates status to the caller\'s own actor', () => {
+    controller.status(actor);
+
+    expect(service.getStatus).toHaveBeenCalledWith(actor);
   });
 
   it('delegates setup to the caller\'s own actor', () => {

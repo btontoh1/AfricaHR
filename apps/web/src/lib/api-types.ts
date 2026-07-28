@@ -396,6 +396,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/mfa/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete login by presenting a challengeToken plus a TOTP or backup code */
+        post: operations["AuthController_verifyMfa"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/refresh": {
         parameters: {
             query?: never;
@@ -424,6 +441,70 @@ export interface paths {
         put?: never;
         /** Revoke a refresh token */
         post: operations["AuthController_logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/me/mfa/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyMfaController_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/me/mfa/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MyMfaController_setup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/me/mfa/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MyMfaController_confirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/me/mfa/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MyMfaController_disable"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2037,13 +2118,53 @@ export interface components {
             /** @description New parent unit id. Omit/null to make it a root unit. */
             parentId?: string | null;
         };
+        MfaChallengeResponseDto: {
+            /** @enum {boolean} */
+            mfaRequired: true;
+            /** @description Short-lived (5 min) - present this plus a code to /auth/mfa/verify */
+            challengeToken: string;
+        };
         LoginDto: {
             /** @example admin@africahr.com */
             email: string;
             password: string;
         };
+        VerifyMfaDto: {
+            /** @description The challengeToken returned from login when MFA is required */
+            challengeToken: string;
+            /**
+             * @description A current 6-digit TOTP code, or a backup code (XXXXX-XXXXX)
+             * @example 123456
+             */
+            code: string;
+        };
         RefreshTokenDto: {
             refreshToken: string;
+        };
+        MfaStatusResponseDto: {
+            /** @description Whether MFA is currently enabled on this account */
+            enabled: boolean;
+        };
+        MfaSetupResponseDto: {
+            /** @description Base32 secret, for manual entry if the QR code can't be scanned */
+            secret: string;
+            /** @description otpauth:// URI - render as a QR code for the authenticator app to scan */
+            otpauthUri: string;
+        };
+        ConfirmMfaDto: {
+            /**
+             * @description The current 6-digit code from the authenticator app
+             * @example 123456
+             */
+            code: string;
+        };
+        MfaConfirmResponseDto: {
+            /** @description One-time recovery codes, shown only once - store them somewhere safe */
+            backupCodes: string[];
+        };
+        DisableMfaDto: {
+            /** @description The account's current password, required to disable MFA */
+            password: string;
         };
         CreateUserDto: {
             /** @description Required when the actor is a platform admin (which tenant to create the user in). Ignored for tenant-admin actors, who can only create users in their own tenant. */
@@ -3690,6 +3811,29 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/json": components["schemas"]["AuthResponseDto"] | components["schemas"]["MfaChallengeResponseDto"];
+                };
+            };
+        };
+    };
+    AuthController_verifyMfa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyMfaDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["AuthResponseDto"];
                 };
             };
@@ -3728,6 +3872,88 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["RefreshTokenDto"];
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    MyMfaController_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MfaStatusResponseDto"];
+                };
+            };
+        };
+    };
+    MyMfaController_setup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MfaSetupResponseDto"];
+                };
+            };
+        };
+    };
+    MyMfaController_confirm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmMfaDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MfaConfirmResponseDto"];
+                };
+            };
+        };
+    };
+    MyMfaController_disable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DisableMfaDto"];
             };
         };
         responses: {
@@ -3893,7 +4119,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AuthResponseDto"];
+                    "application/json": components["schemas"]["AuthResponseDto"] | components["schemas"]["MfaChallengeResponseDto"];
                 };
             };
         };

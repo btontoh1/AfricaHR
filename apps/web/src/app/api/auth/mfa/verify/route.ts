@@ -3,23 +3,17 @@ import { createBackendClient } from '@/lib/backend-client';
 import { setAuthCookies } from '@/lib/auth-cookies';
 import { decodeAccessToken } from '@/lib/session';
 
+// Tenant-agnostic: the challenge token already carries its tenantId (set by
+// AuthService.authenticate() at login), so this one route handler serves
+// both the global and tenant-slug login forms.
 export async function POST(request: NextRequest) {
   const body = await request.json();
   const client = createBackendClient();
-  const { data, error, response } = await client.POST('/api/auth/login', { body });
+  const { data, error, response } = await client.POST('/api/auth/mfa/verify', { body });
 
   if (error || !data) {
-    // The backend doesn't document error responses in its OpenAPI spec
-    // (only the 200 case), so openapi-fetch can't type `response` in this
-    // branch — but it's still a real Response object at runtime.
     const status = (response as Response).status;
-    return NextResponse.json(error ?? { message: 'Login failed' }, { status });
-  }
-
-  if ('mfaRequired' in data) {
-    // No cookies yet — the caller still has to prove the second factor via
-    // /api/auth/mfa/verify before a session exists.
-    return NextResponse.json(data);
+    return NextResponse.json(error ?? { message: 'Verification failed' }, { status });
   }
 
   const user = decodeAccessToken(data.accessToken);

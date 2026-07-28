@@ -100,6 +100,20 @@ describe('MfaService', () => {
     });
   });
 
+  describe('getStatus', () => {
+    it('reports disabled for an account with no MFA', async () => {
+      users.findById.mockResolvedValue(makeUser({ mfaEnabled: false }));
+
+      await expect(service.getStatus(actor)).resolves.toEqual({ enabled: false });
+    });
+
+    it('reports enabled for an account with MFA on', async () => {
+      users.findById.mockResolvedValue(makeUser({ mfaEnabled: true }));
+
+      await expect(service.getStatus(actor)).resolves.toEqual({ enabled: true });
+    });
+  });
+
   describe('setup', () => {
     it('generates and stores a pending secret, returning it plus an otpauth URI', async () => {
       users.findById.mockResolvedValue(makeUser());

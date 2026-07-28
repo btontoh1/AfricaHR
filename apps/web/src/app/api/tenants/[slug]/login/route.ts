@@ -20,6 +20,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json(error ?? { message: 'Login failed' }, { status });
   }
 
+  if ('mfaRequired' in data) {
+    // No cookies yet — the caller still has to prove the second factor via
+    // /api/auth/mfa/verify before a session exists.
+    return NextResponse.json(data);
+  }
+
   const user = decodeAccessToken(data.accessToken);
   const res = NextResponse.json({ user });
   setAuthCookies(res, data.accessToken, data.refreshToken);

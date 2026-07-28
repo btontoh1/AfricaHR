@@ -203,7 +203,11 @@ export function LoginForm({ tenantSlug, tenantName }: LoginFormProps = {}) {
                 <FormItem>
                   <FormLabel>Code</FormLabel>
                   <FormControl>
-                    <Input inputMode="numeric" autoComplete="one-time-code" placeholder="123456" {...field} />
+                    {/* No inputMode="numeric" here (unlike the enrollment
+                        confirm step): this field also accepts backup codes
+                        (XXXXX-XXXXX), and a numeric-only mobile keyboard
+                        would make those impossible to type. */}
+                    <Input autoComplete="one-time-code" placeholder="123456" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

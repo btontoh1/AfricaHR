@@ -122,3 +122,26 @@
 body {
   @apply bg-background text-foreground antialiased;
 }
+
+/* Printing a payslip (or any other page) should never depend on the
+   viewer's light/dark theme or on background colors most printers won't
+   render anyway — force plain high-contrast colors regardless of which
+   theme is active. Placed after .dark so it wins at equal specificity
+   even when the dark class is present. App chrome (sidebar/topbar) is
+   hidden per-element with Tailwind's print:hidden instead of here, so it
+   stays next to the markup it affects. */
+@media print {
+  :root {
+    --background: #ffffff;
+    --foreground: #000000;
+    --card: #ffffff;
+    --card-foreground: #000000;
+    --muted-foreground: #374151;
+    --border: #d1d5db;
+  }
+
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

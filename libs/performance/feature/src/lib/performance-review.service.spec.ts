@@ -75,6 +75,7 @@ describe('PerformanceReviewService', () => {
       findByUserId: jest.fn(),
       findById: jest.fn(),
       listDirectReportIds: jest.fn().mockResolvedValue([]),
+      findManyByIds: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<PerformanceEmployeeRepository>;
 
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
@@ -180,9 +181,10 @@ describe('PerformanceReviewService', () => {
       expect(reviews.list).not.toHaveBeenCalled();
     });
 
-    it('aggregates reviews across all direct reports', async () => {
+    it('aggregates reviews across all direct reports, enriched with each report name', async () => {
       employees.findByUserId.mockResolvedValue({ id: 'mgr-emp-1', userId: 'mgr-user-1', managerId: null });
       employees.listDirectReportIds.mockResolvedValue(['emp-1', 'emp-2']);
+      employees.findManyByIds.mockResolvedValue([{ id: 'emp-1', firstName: 'Ricky', lastName: 'Report' }]);
       reviews.list
         .mockResolvedValueOnce([makeReview({ id: 'rev-1', employeeId: 'emp-1' })])
         .mockResolvedValueOnce([makeReview({ id: 'rev-2', employeeId: 'emp-2' })]);
@@ -192,6 +194,10 @@ describe('PerformanceReviewService', () => {
       expect(result).toHaveLength(2);
       expect(reviews.list).toHaveBeenCalledWith('tenant-1', { employeeId: 'emp-1' });
       expect(reviews.list).toHaveBeenCalledWith('tenant-1', { employeeId: 'emp-2' });
+      expect(employees.findManyByIds).toHaveBeenCalledWith('tenant-1', ['emp-1', 'emp-2']);
+      expect(result[0]).toMatchObject({ id: 'rev-1', employeeName: 'Ricky Report' });
+      // Falls back to the raw id rather than a blank/undefined name if a report has no matching employee row.
+      expect(result[1]).toMatchObject({ id: 'rev-2', employeeName: 'emp-2' });
     });
   });
 

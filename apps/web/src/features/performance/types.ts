@@ -3,6 +3,7 @@ import type { components } from '@/lib/api-types';
 export type PerformanceGoal = components['schemas']['PerformanceGoalResponseDto'];
 export type ReviewCycle = components['schemas']['ReviewCycleResponseDto'];
 export type PerformanceReview = components['schemas']['PerformanceReviewResponseDto'];
+export type TeamPerformanceReview = components['schemas']['TeamPerformanceReviewResponseDto'];
 export type CreatePerformanceGoalInput = components['schemas']['CreatePerformanceGoalDto'];
 export type UpdatePerformanceGoalInput = components['schemas']['UpdatePerformanceGoalDto'];
 export type CreateReviewCycleInput = components['schemas']['CreateReviewCycleDto'];

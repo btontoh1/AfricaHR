@@ -7,6 +7,12 @@ export interface PerformanceEligibleEmployee {
   managerId: string | null;
 }
 
+export interface PerformanceEmployeeName {
+  id: string;
+  firstName: string;
+  lastName: string;
+}
+
 /**
  * Reads only the Employee fields performance needs. scope:performance
  * cannot import employee-data-access's repository/service classes (Nx
@@ -47,5 +53,14 @@ export class PerformanceEmployeeRepository {
       }),
     );
     return reports.map((report) => report.id);
+  }
+
+  findManyByIds(tenantId: string, ids: string[]): Promise<PerformanceEmployeeName[]> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.employee.findMany({
+        where: { tenantId, id: { in: ids }, deletedAt: null },
+        select: { id: true, firstName: true, lastName: true },
+      }),
+    );
   }
 }

@@ -2691,6 +2691,24 @@ export interface components {
             selfRating: number;
             selfComments?: string;
         };
+        TeamPerformanceReviewResponseDto: {
+            id: string;
+            tenantId: string;
+            employeeId: string;
+            cycleId: string;
+            /** @enum {string} */
+            status: "DRAFT" | "SELF_SUBMITTED" | "COMPLETED";
+            selfRating?: number | null;
+            selfComments?: string | null;
+            selfSubmittedAt?: string | null;
+            managerRating?: number | null;
+            managerComments?: string | null;
+            managerUserId?: string | null;
+            managerReviewedAt?: string | null;
+            createdAt: string;
+            updatedAt: string;
+            employeeName: string;
+        };
         SubmitManagerAssessmentDto: {
             managerRating: number;
             managerComments?: string;
@@ -5812,7 +5830,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PerformanceReviewResponseDto"][];
+                    "application/json": components["schemas"]["TeamPerformanceReviewResponseDto"][];
                 };
             };
         };

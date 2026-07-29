@@ -41,4 +41,16 @@ describe('PerformanceEmployeeRepository', () => {
     });
     expect(result).toEqual(['emp-2', 'emp-3']);
   });
+
+  it('finds employee names by id, scoped to the tenant', async () => {
+    tx.employee.findMany.mockResolvedValue([{ id: 'emp-1', firstName: 'Ricky', lastName: 'Report' }]);
+
+    const result = await repository.findManyByIds('tenant-1', ['emp-1', 'emp-2']);
+
+    expect(tx.employee.findMany).toHaveBeenCalledWith({
+      where: { tenantId: 'tenant-1', id: { in: ['emp-1', 'emp-2'] }, deletedAt: null },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    expect(result).toEqual([{ id: 'emp-1', firstName: 'Ricky', lastName: 'Report' }]);
+  });
 });

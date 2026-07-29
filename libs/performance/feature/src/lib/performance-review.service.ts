@@ -10,6 +10,8 @@ import { canTransitionReviewStatus } from '@africahr/performance-domain';
 import { SubmitManagerAssessmentDto } from './dto/submit-manager-assessment.dto';
 import { SubmitSelfAssessmentDto } from './dto/submit-self-assessment.dto';
 
+export type PerformanceReviewWithEmployeeName = PerformanceReview & { employeeName: string };
+
 @Injectable()
 export class PerformanceReviewService {
   constructor(
@@ -109,17 +111,27 @@ export class PerformanceReviewService {
     return this.reviews.list(tenantId, { employeeId });
   }
 
-  /** Reviews for the caller's direct reports only (not skip-level). */
-  async listForDirectReports(tenantId: string, userId: string): Promise<PerformanceReview[]> {
+  /**
+   * Reviews for the caller's direct reports only (not skip-level).
+   * Enriched with each report's name: the caller is a plain EMPLOYEE
+   * (manager-of-X, not an HR permission holder), so unlike the HR-facing
+   * list they cannot resolve names themselves via EMPLOYEE_READ.
+   */
+  async listForDirectReports(tenantId: string, userId: string): Promise<PerformanceReviewWithEmployeeName[]> {
     const managerEmployeeId = await this.resolveOwnEmployeeId(tenantId, userId);
     const reportIds = await this.employees.listDirectReportIds(tenantId, managerEmployeeId);
     if (reportIds.length === 0) {
       return [];
     }
-    const perReport = await Promise.all(
-      reportIds.map((employeeId) => this.reviews.list(tenantId, { employeeId })),
-    );
-    return perReport.flat();
+    const [perReport, names] = await Promise.all([
+      Promise.all(reportIds.map((employeeId) => this.reviews.list(tenantId, { employeeId }))),
+      this.employees.findManyByIds(tenantId, reportIds),
+    ]);
+    const nameById = new Map(names.map((employee) => [employee.id, `${employee.firstName} ${employee.lastName}`]));
+    return perReport.flat().map((review) => ({
+      ...review,
+      employeeName: nameById.get(review.employeeId) ?? review.employeeId,
+    }));
   }
 
   async submitSelfAssessmentForSelf(

@@ -1,5 +1,5 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { Payslip, PayslipLineItem } from '@prisma/client';
+import { PayRun, Payslip, PayslipLineItem } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import {
   PayRunRepository,
@@ -11,6 +11,22 @@ import {
 } from '@africahr/payroll-data-access';
 import { computePayslip, isPayRunEditable, PayRunStatus } from '@africahr/payroll-domain';
 import { CreatePayslipLineItemDto } from './dto/create-payslip-line-item.dto';
+
+/** A payslip only carries payRunId - callers displaying a payslip (rather than mutating it) also need the pay run's dates, so this is what the read-facing methods below return. */
+export type PayslipWithPeriod = Payslip & {
+  periodStart: Date;
+  periodEnd: Date;
+  payDate: Date;
+};
+
+function mergePeriod(payslip: Payslip, payRun: PayRun): PayslipWithPeriod {
+  return {
+    ...payslip,
+    periodStart: payRun.periodStart,
+    periodEnd: payRun.periodEnd,
+    payDate: payRun.payDate,
+  };
+}
 
 @Injectable()
 export class PayslipService {
@@ -32,12 +48,24 @@ export class PayslipService {
     return payslip;
   }
 
-  listByPayRun(tenantId: string, payRunId: string): Promise<Payslip[]> {
-    return this.payslips.listByPayRun(tenantId, payRunId);
+  /** Same lookup as findById, but for display rather than mutation - includes the pay run's period. */
+  async findByIdWithPeriod(tenantId: string, id: string): Promise<PayslipWithPeriod> {
+    const payslip = await this.findById(tenantId, id);
+    const payRun = await this.payRuns.findById(tenantId, payslip.payRunId);
+    if (!payRun) {
+      throw new NotFoundException(`Pay run "${payslip.payRunId}" not found`);
+    }
+    return mergePeriod(payslip, payRun);
   }
 
-  listByEmployee(tenantId: string, employeeId: string): Promise<Payslip[]> {
-    return this.payslips.listByEmployee(tenantId, employeeId);
+  async listByPayRun(tenantId: string, payRunId: string): Promise<PayslipWithPeriod[]> {
+    const payslips = await this.payslips.listByPayRun(tenantId, payRunId);
+    return this.withPeriods(tenantId, payslips);
+  }
+
+  async listByEmployee(tenantId: string, employeeId: string): Promise<PayslipWithPeriod[]> {
+    const payslips = await this.payslips.listByEmployee(tenantId, employeeId);
+    return this.withPeriods(tenantId, payslips);
   }
 
   async resolveOwnEmployeeId(tenantId: string, userId: string): Promise<string> {
@@ -48,19 +76,37 @@ export class PayslipService {
     return employee.id;
   }
 
-  async listForSelf(tenantId: string, userId: string): Promise<Payslip[]> {
+  async listForSelf(tenantId: string, userId: string): Promise<PayslipWithPeriod[]> {
     const employeeId = await this.resolveOwnEmployeeId(tenantId, userId);
     return this.listByEmployee(tenantId, employeeId);
   }
 
-  async findByIdForSelf(tenantId: string, userId: string, id: string): Promise<Payslip> {
+  async findByIdForSelf(tenantId: string, userId: string, id: string): Promise<PayslipWithPeriod> {
     const employeeId = await this.resolveOwnEmployeeId(tenantId, userId);
+    // Ownership check first, against the plain (unenriched) lookup, so a
+    // payslip belonging to someone else 404s before we bother fetching its
+    // pay run.
     const payslip = await this.findById(tenantId, id);
     if (payslip.employeeId !== employeeId) {
       // Don't reveal that a payslip belonging to someone else exists.
       throw new NotFoundException(`Payslip "${id}" not found`);
     }
-    return payslip;
+    return this.findByIdWithPeriod(tenantId, id);
+  }
+
+  /** Batches one query for every distinct pay run behind a list of payslips, rather than one query per payslip. */
+  private async withPeriods(tenantId: string, payslips: Payslip[]): Promise<PayslipWithPeriod[]> {
+    const payRunIds = [...new Set(payslips.map((payslip) => payslip.payRunId))];
+    const payRuns = await this.payRuns.findManyByIds(tenantId, payRunIds);
+    const payRunById = new Map(payRuns.map((payRun) => [payRun.id, payRun]));
+
+    return payslips.map((payslip) => {
+      const payRun = payRunById.get(payslip.payRunId);
+      if (!payRun) {
+        throw new NotFoundException(`Pay run "${payslip.payRunId}" not found`);
+      }
+      return mergePeriod(payslip, payRun);
+    });
   }
 
   async addLineItem(

@@ -38,6 +38,14 @@ describe('PayRunRepository', () => {
     });
   });
 
+  it('finds many pay runs by id, scoped to the tenant', async () => {
+    await repository.findManyByIds('tenant-1', ['run-1', 'run-2']);
+
+    expect(tx.payRun.findMany).toHaveBeenCalledWith({
+      where: { tenantId: 'tenant-1', id: { in: ['run-1', 'run-2'] }, deletedAt: null },
+    });
+  });
+
   it('lists pay runs scoped to the tenant, most recent period first', async () => {
     await repository.list('tenant-1', { organizationId: 'org-1' });
 

@@ -9,6 +9,15 @@ export class PayslipResponseDto {
   @ApiProperty()
   payRunId!: string;
 
+  @ApiProperty({ description: "The pay run's period start date (YYYY-MM-DD)" })
+  periodStart!: string;
+
+  @ApiProperty({ description: "The pay run's period end date (YYYY-MM-DD)" })
+  periodEnd!: string;
+
+  @ApiProperty({ description: "The pay run's pay date (YYYY-MM-DD)" })
+  payDate!: string;
+
   @ApiProperty()
   employeeId!: string;
 

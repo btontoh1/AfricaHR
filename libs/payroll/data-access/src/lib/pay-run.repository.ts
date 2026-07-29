@@ -48,6 +48,13 @@ export class PayRunRepository {
     );
   }
 
+  /** Batched lookup for enriching a list of payslips with their pay run's period - avoids one query per payslip. */
+  findManyByIds(tenantId: string, ids: string[]): Promise<PayRun[]> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.payRun.findMany({ where: { tenantId, id: { in: ids }, deletedAt: null } }),
+    );
+  }
+
   list(tenantId: string, params: ListPayRunsParams = {}): Promise<PayRun[]> {
     return this.prisma.withTenantContext(tenantId, (tx) =>
       tx.payRun.findMany({

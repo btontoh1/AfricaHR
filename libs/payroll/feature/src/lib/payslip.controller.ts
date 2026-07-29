@@ -63,7 +63,7 @@ export class PayslipController {
     @CurrentUser() actor: RequestUser,
   ) {
     assertTenantScope(actor, tenantId);
-    return this.payslips.findById(tenantId, id);
+    return this.payslips.findByIdWithPeriod(tenantId, id);
   }
 
   @Post(':id/line-items')

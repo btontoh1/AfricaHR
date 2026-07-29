@@ -2406,6 +2406,12 @@ export interface components {
         PayslipResponseDto: {
             id: string;
             payRunId: string;
+            /** @description The pay run's period start date (YYYY-MM-DD) */
+            periodStart: string;
+            /** @description The pay run's period end date (YYYY-MM-DD) */
+            periodEnd: string;
+            /** @description The pay run's pay date (YYYY-MM-DD) */
+            payDate: string;
             employeeId: string;
             /** @enum {string} */
             status: "DRAFT" | "APPROVED" | "PAID";

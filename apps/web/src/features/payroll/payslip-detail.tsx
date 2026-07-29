@@ -68,6 +68,11 @@ export function PayslipDetail({ tenantId, payslipId }: { tenantId: string; paysl
         <CardContent className="grid gap-4 sm:grid-cols-3">
           <Field label="Employee" value={employeeName} />
           <Field label="Status" value={payslip.status} />
+          <Field
+            label="Pay period"
+            value={`${payslip.periodStart.slice(0, 10)} – ${payslip.periodEnd.slice(0, 10)}`}
+          />
+          <Field label="Pay date" value={payslip.payDate.slice(0, 10)} />
           <Field label="Country" value={payslip.countryCode} />
           <Field label="Basic salary" value={formatCurrency(payslip.basicSalary, payslip.currency)} />
           <Field label="Gross pay" value={formatCurrency(payslip.grossPay, payslip.currency)} />

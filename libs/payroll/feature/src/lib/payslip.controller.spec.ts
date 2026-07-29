@@ -19,6 +19,7 @@ describe('PayslipController', () => {
   beforeEach(() => {
     service = {
       findById: jest.fn(),
+      findByIdWithPeriod: jest.fn(),
       listByPayRun: jest.fn(),
       listByEmployee: jest.fn(),
       addLineItem: jest.fn(),
@@ -51,6 +52,12 @@ describe('PayslipController', () => {
     expect(() => controller.findById('tenant-2', 'payslip-1', payrollManager)).toThrow(
       ForbiddenException,
     );
+  });
+
+  it('finds a payslip with its pay period included', () => {
+    controller.findById('tenant-1', 'payslip-1', payrollManager);
+
+    expect(service.findByIdWithPeriod).toHaveBeenCalledWith('tenant-1', 'payslip-1');
   });
 
   it('delegates addLineItem and removeLineItem with tenant, id, and actor', () => {

@@ -85,7 +85,10 @@ describe('PayslipService', () => {
       delete: jest.fn(),
     } as unknown as jest.Mocked<PayslipLineItemRepository>;
 
-    payRuns = { findById: jest.fn() } as unknown as jest.Mocked<PayRunRepository>;
+    payRuns = {
+      findById: jest.fn(),
+      findManyByIds: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<PayRunRepository>;
 
     employees = {
       listActiveByOrganization: jest.fn(),
@@ -119,6 +122,46 @@ describe('PayslipService', () => {
     });
   });
 
+  describe('findByIdWithPeriod', () => {
+    it('merges the pay run\'s period dates onto the payslip', async () => {
+      payslips.findById.mockResolvedValue(makePayslip());
+      payRuns.findById.mockResolvedValue(makePayRun());
+
+      const result = await service.findByIdWithPeriod('tenant-1', 'payslip-1');
+
+      expect(result.periodStart).toEqual(new Date('2026-01-01'));
+      expect(result.periodEnd).toEqual(new Date('2026-01-31'));
+      expect(result.payDate).toEqual(new Date('2026-02-01'));
+    });
+
+    it('throws NotFoundException when the pay run behind the payslip is gone', async () => {
+      payslips.findById.mockResolvedValue(makePayslip());
+      payRuns.findById.mockResolvedValue(null);
+
+      await expect(service.findByIdWithPeriod('tenant-1', 'payslip-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('listByEmployee', () => {
+    it('batches a single pay-run lookup across payslips from different pay runs', async () => {
+      const payslipA = makePayslip({ id: 'payslip-a', payRunId: 'run-1' });
+      const payslipB = makePayslip({ id: 'payslip-b', payRunId: 'run-2' });
+      payslips.listByEmployee.mockResolvedValue([payslipA, payslipB]);
+      payRuns.findManyByIds.mockResolvedValue([
+        makePayRun({ id: 'run-1' }),
+        makePayRun({ id: 'run-2', periodStart: new Date('2026-02-01'), periodEnd: new Date('2026-02-28'), payDate: new Date('2026-03-01') }),
+      ]);
+
+      const result = await service.listByEmployee('tenant-1', 'emp-1');
+
+      expect(payRuns.findManyByIds).toHaveBeenCalledWith('tenant-1', ['run-1', 'run-2']);
+      expect(result[0].periodStart).toEqual(new Date('2026-01-01'));
+      expect(result[1].periodStart).toEqual(new Date('2026-02-01'));
+    });
+  });
+
   describe('resolveOwnEmployeeId', () => {
     it('throws ForbiddenException when the user has no linked employee', async () => {
       employees.findByUserId.mockResolvedValue(null);
@@ -134,23 +177,26 @@ describe('PayslipService', () => {
       const payslip = makePayslip();
       employees.findByUserId.mockResolvedValue({ id: 'emp-1', userId: 'user-1' });
       payslips.listByEmployee.mockResolvedValue([payslip]);
+      payRuns.findManyByIds.mockResolvedValue([makePayRun()]);
 
       const result = await service.listForSelf('tenant-1', 'user-1');
 
       expect(employees.findByUserId).toHaveBeenCalledWith('tenant-1', 'user-1');
       expect(payslips.listByEmployee).toHaveBeenCalledWith('tenant-1', 'emp-1');
-      expect(result).toEqual([payslip]);
+      expect(result).toEqual([{ ...payslip, periodStart: expect.any(Date), periodEnd: expect.any(Date), payDate: expect.any(Date) }]);
     });
   });
 
   describe('findByIdForSelf', () => {
-    it('returns the payslip when it belongs to the caller', async () => {
+    it('returns the payslip (with its pay period) when it belongs to the caller', async () => {
       employees.findByUserId.mockResolvedValue({ id: 'emp-1', userId: 'user-1' });
       payslips.findById.mockResolvedValue(makePayslip({ employeeId: 'emp-1' }));
+      payRuns.findById.mockResolvedValue(makePayRun());
 
       const result = await service.findByIdForSelf('tenant-1', 'user-1', 'payslip-1');
 
       expect(result.employeeId).toBe('emp-1');
+      expect(result.periodStart).toEqual(new Date('2026-01-01'));
     });
 
     it('throws NotFoundException (not Forbidden) when the payslip belongs to someone else', async () => {

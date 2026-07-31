@@ -21,6 +21,8 @@ import {
 } from '@/features/reporting/queries';
 import { getDefaultDateRange } from '@/features/reporting/date-range';
 import { StatCard } from '@/features/reporting/stat-card';
+import { PendingLeaveRequestsCard } from '@/features/leave/pending-leave-requests-card';
+import { TeamPendingLeaveRequestsCard } from '@/features/leave/team-pending-leave-requests-card';
 import { CardSkeleton } from '@/components/loading-state';
 import { ErrorState } from '@/components/error-state';
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -125,10 +127,24 @@ export default function DashboardPage() {
   const session = useSession();
   const isTenantMember = Boolean(session.tenantId);
   const hasAdminAccess = isTenantMember && session.role !== 'EMPLOYEE';
+  // Same gate as the leave-approval queue itself (nav-config.ts's
+  // hasLeaveAdminAccess) — PAYROLL_MANAGER has hasAdminAccess but can't act
+  // on leave requests, so it shouldn't see a card pointing at a page it
+  // can't use.
+  const hasLeaveAdminAccess =
+    isTenantMember && (session.role === 'TENANT_ADMIN' || session.role === 'HR_MANAGER');
 
   return (
     <div className="space-y-8">
       <Greeting email={session.email} />
+      {hasLeaveAdminAccess && session.tenantId && (
+        <PendingLeaveRequestsCard tenantId={session.tenantId} />
+      )}
+      {/* Direct-manager tier — visible to anyone with direct reports,
+          regardless of role; renders nothing if there are none. */}
+      {isTenantMember && session.tenantId && (
+        <TeamPendingLeaveRequestsCard tenantId={session.tenantId} />
+      )}
       {hasAdminAccess && session.tenantId && <AdminOverview tenantId={session.tenantId} />}
       {/* Every quick link below is a self-service page gated on tenant
           membership - a PLATFORM_ADMIN (no tenant) has nothing to self-serve

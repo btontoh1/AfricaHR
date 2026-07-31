@@ -21,6 +21,10 @@ function leaveRequestsKey(tenantId: string) {
   return ['leave-requests', 'all', tenantId] as const;
 }
 
+function teamLeaveRequestsKey(tenantId: string) {
+  return ['leave-requests', 'team', tenantId] as const;
+}
+
 // --- Leave types (shared catalog, open read to any authenticated tenant member) ---
 
 export function useLeaveTypes(tenantId: string) {
@@ -153,5 +157,52 @@ export function useRejectLeaveRequest(tenantId: string) {
       return data;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: leaveRequestsKey(tenantId) }),
+  });
+}
+
+// --- Direct-manager approval queue (dynamic Employee.managerId relationship,
+// not a role permission — visible/usable by any tenant member who has
+// direct reports, mirroring performance's Team Reviews) ---
+
+export function useTeamLeaveRequests(tenantId: string) {
+  return useQuery({
+    queryKey: teamLeaveRequestsKey(tenantId),
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/leave-requests/team', {
+        params: { path: { tenantId } },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useApproveTeamLeaveRequest(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await apiClient.POST(
+        '/api/tenants/{tenantId}/leave-requests/team/{id}/approve',
+        { params: { path: { tenantId, id } } },
+      );
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: teamLeaveRequestsKey(tenantId) }),
+  });
+}
+
+export function useRejectTeamLeaveRequest(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, rejectionReason }: { id: string; rejectionReason: string }) => {
+      const { data, error } = await apiClient.POST(
+        '/api/tenants/{tenantId}/leave-requests/team/{id}/reject',
+        { params: { path: { tenantId, id } }, body: { rejectionReason } },
+      );
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: teamLeaveRequestsKey(tenantId) }),
   });
 }

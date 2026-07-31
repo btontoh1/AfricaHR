@@ -16,6 +16,7 @@ import {
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Logo } from '@/components/logo';
+import { NewNotificationWatcher } from '@/features/notifications/new-notification-watcher';
 import { cn } from '@/lib/utils';
 import type { SessionUser } from '@/lib/session';
 import { buildNavGroups, type NavGroup } from './nav-config';
@@ -100,6 +101,8 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
 
   return (
     <div className="flex min-h-screen bg-background">
+      {user.tenantId && <NewNotificationWatcher tenantId={user.tenantId} />}
+
       {/* Desktop sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card px-3 py-5 lg:flex print:hidden">
         <BrandMark />

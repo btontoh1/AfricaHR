@@ -41,6 +41,7 @@ Thumbs.db
 # environment
 .env
 .env.local
+.env.production
 
 .nx/cache
 .nx/workspace-data

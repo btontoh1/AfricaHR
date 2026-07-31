@@ -1,0 +1,14 @@
+# Caddy reads APP_DOMAIN from its own environment — pass it through via
+# docker-compose.prod.yml (Caddy needs it directly, not just the api/web
+# services), e.g.:
+#   caddy:
+#     environment:
+#       APP_DOMAIN: ${APP_DOMAIN}
+#
+# Caddy requests and renews the TLS certificate automatically the first time
+# it starts, as long as DNS for this domain already points at this machine
+# and ports 80/443 are reachable from the internet.
+
+{$APP_DOMAIN} {
+	reverse_proxy web:3000
+}

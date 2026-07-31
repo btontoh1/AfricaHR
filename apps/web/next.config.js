@@ -4,6 +4,9 @@
 const nextConfig = {
   // Next.js options go here
   // See: https://nextjs.org/docs/app/api-reference/config/next-config-js
+  // Self-contained server bundle (.next/standalone) for a lean production
+  // Docker image — see apps/web/Dockerfile.
+  output: 'standalone',
   async headers() {
     return [
       {

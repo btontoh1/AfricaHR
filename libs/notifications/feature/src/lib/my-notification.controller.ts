@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { assertTenantScope, CurrentUser, JwtAuthGuard, PermissionsGuard, RequestUser } from '@africahr/platform-auth';
 import { NotificationResponseDto } from './dto/notification-response.dto';
@@ -36,5 +36,16 @@ export class MyNotificationController {
   ) {
     assertTenantScope(actor, tenantId);
     return this.notifications.markReadForSelf(tenantId, actor.sub, id);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  delete(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.notifications.deleteForSelf(tenantId, actor.sub, id);
   }
 }

@@ -20,6 +20,7 @@ describe('MyNotificationController', () => {
     service = {
       listForSelf: jest.fn(),
       markReadForSelf: jest.fn(),
+      deleteForSelf: jest.fn(),
     } as unknown as jest.Mocked<NotificationService>;
 
     controller = new MyNotificationController(service);
@@ -39,5 +40,11 @@ describe('MyNotificationController', () => {
 
   it('rejects an actor acting on a different tenant', () => {
     expect(() => controller.list('tenant-2', employee)).toThrow(ForbiddenException);
+  });
+
+  it('deletes a notification, delegating the ownership check to the service', () => {
+    controller.delete('tenant-1', 'notif-1', employee);
+
+    expect(service.deleteForSelf).toHaveBeenCalledWith('tenant-1', 'user-1', 'notif-1');
   });
 });

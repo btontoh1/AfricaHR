@@ -83,4 +83,10 @@ export class NotificationRepository {
       }),
     );
   }
+
+  softDelete(tenantId: string, id: string, updatedBy?: string): Promise<Notification> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.notification.update({ where: { id }, data: { deletedAt: new Date(), updatedBy } }),
+    );
+  }
 }

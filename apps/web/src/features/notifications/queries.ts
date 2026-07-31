@@ -99,6 +99,19 @@ export function useMarkNotificationRead(tenantId: string) {
   });
 }
 
+export function useDeleteNotification(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await apiClient.DELETE('/api/tenants/{tenantId}/notifications/me/{id}', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: myNotificationsKey(tenantId) }),
+  });
+}
+
 // --- HR admin ---
 
 export function useAllNotifications(

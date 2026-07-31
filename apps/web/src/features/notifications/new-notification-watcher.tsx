@@ -23,9 +23,10 @@ const POLL_INTERVAL_MS = 30_000;
  *
  * Toasts stay open indefinitely (duration: Infinity) rather than
  * auto-dismissing — closed only by the recipient acting on it (the toast's
- * own "Mark read" button) or by it having been read some other way (e.g.
- * from the /notifications page in another tab), which the next poll
- * detects and dismisses automatically via openToastIds.
+ * own "Mark read" button), or by the next poll noticing it was resolved
+ * some other way: marked read elsewhere (e.g. the /notifications page in
+ * another tab) or deleted outright, in which case it simply stops
+ * appearing in the list at all (soft-deleted rows are filtered server-side).
  */
 export function NewNotificationWatcher({ tenantId }: { tenantId: string }) {
   const router = useRouter();
@@ -53,6 +54,18 @@ export function NewNotificationWatcher({ tenantId }: { tenantId: string }) {
         openToastIds.current.delete(id);
       } catch (error) {
         toast.error(getApiErrorMessage(error, 'Failed to mark notification as read'));
+      }
+    }
+
+    const currentIds = new Set(notifications.map((n) => n.id));
+
+    // Closes any toast for a notification that's no longer in the list at
+    // all — i.e. it was deleted, since a merely-read notification still
+    // shows up (handled below) but a deleted one is filtered out entirely.
+    for (const [notificationId, toastId] of openToastIds.current) {
+      if (!currentIds.has(notificationId)) {
+        toast.dismiss(toastId);
+        openToastIds.current.delete(notificationId);
       }
     }
 
@@ -85,7 +98,7 @@ export function NewNotificationWatcher({ tenantId }: { tenantId: string }) {
       }
     }
 
-    seenIds.current = new Set(notifications.map((n) => n.id));
+    seenIds.current = currentIds;
   }, [notifications, router, markRead]);
 
   return null;

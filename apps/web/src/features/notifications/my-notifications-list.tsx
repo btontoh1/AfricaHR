@@ -2,7 +2,7 @@
 
 import { Bell } from 'lucide-react';
 import { toast } from 'sonner';
-import { useMarkNotificationRead, useMyNotifications } from './queries';
+import { useDeleteNotification, useMarkNotificationRead, useMyNotifications } from './queries';
 import { NotificationStatusBadge } from './notification-status-badge';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ import {
 export function MyNotificationsList({ tenantId }: { tenantId: string }) {
   const { data: notifications, isLoading, isError, error } = useMyNotifications(tenantId);
   const markRead = useMarkNotificationRead(tenantId);
+  const deleteNotification = useDeleteNotification(tenantId);
 
   async function handleMarkRead(id: string) {
     try {
@@ -29,6 +30,15 @@ export function MyNotificationsList({ tenantId }: { tenantId: string }) {
       toast.success('Marked as read');
     } catch (markError) {
       toast.error(getApiErrorMessage(markError, 'Failed to mark notification as read'));
+    }
+  }
+
+  async function handleDelete(id: string) {
+    try {
+      await deleteNotification.mutateAsync(id);
+      toast.success('Notification deleted');
+    } catch (deleteError) {
+      toast.error(getApiErrorMessage(deleteError, 'Failed to delete notification'));
     }
   }
 
@@ -69,16 +79,26 @@ export function MyNotificationsList({ tenantId }: { tenantId: string }) {
               </TableCell>
               <TableCell>{notification.isRead ? 'Yes' : 'No'}</TableCell>
               <TableCell>
-                {notification.status === 'SENT' && !notification.isRead && (
+                <div className="flex gap-2">
+                  {notification.status === 'SENT' && !notification.isRead && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleMarkRead(notification.id)}
+                      disabled={markRead.isPending}
+                    >
+                      Mark read
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleMarkRead(notification.id)}
-                    disabled={markRead.isPending}
+                    onClick={() => handleDelete(notification.id)}
+                    disabled={deleteNotification.isPending}
                   >
-                    Mark read
+                    Delete
                   </Button>
-                )}
+                </div>
               </TableCell>
             </TableRow>
           ))}

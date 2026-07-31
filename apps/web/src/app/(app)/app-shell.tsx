@@ -17,6 +17,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/s
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Logo } from '@/components/logo';
 import { NewNotificationWatcher } from '@/features/notifications/new-notification-watcher';
+import { NotificationBell } from '@/features/notifications/notification-bell';
 import { cn } from '@/lib/utils';
 import type { SessionUser } from '@/lib/session';
 import { buildNavGroups, type NavGroup } from './nav-config';
@@ -137,6 +138,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
           </div>
 
           <div className="flex items-center gap-1">
+            {user.tenantId && <NotificationBell tenantId={user.tenantId} />}
             <ThemeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

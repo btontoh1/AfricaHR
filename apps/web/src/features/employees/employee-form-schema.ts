@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
 const EMPLOYMENT_TYPES = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERN'] as const;
+const GENDERS = ['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY'] as const;
+const PAY_FREQUENCIES = ['MONTHLY', 'BIWEEKLY', 'WEEKLY', 'ANNUALLY'] as const;
 
 // Mirrors CreateEmployeeDto's validation rules (libs/employee/feature/src/lib/dto/create-employee.dto.ts).
 export const employeeFormSchema = z.object({
@@ -38,3 +40,5 @@ export const employeeFormSchema = z.object({
 export type EmployeeFormValues = z.infer<typeof employeeFormSchema>;
 
 export const EMPLOYMENT_TYPE_OPTIONS = EMPLOYMENT_TYPES;
+export const GENDER_OPTIONS = GENDERS;
+export const PAY_FREQUENCY_OPTIONS = PAY_FREQUENCIES;

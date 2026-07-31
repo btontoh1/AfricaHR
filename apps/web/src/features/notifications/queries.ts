@@ -70,7 +70,7 @@ export function useUpdateNotificationTemplate(tenantId: string, id: string) {
 
 // --- Self-service inbox ---
 
-export function useMyNotifications(tenantId: string) {
+export function useMyNotifications(tenantId: string, options: { refetchInterval?: number } = {}) {
   return useQuery({
     queryKey: myNotificationsKey(tenantId),
     queryFn: async () => {
@@ -80,6 +80,7 @@ export function useMyNotifications(tenantId: string) {
       if (error) throw error;
       return data;
     },
+    refetchInterval: options.refetchInterval,
   });
 }
 

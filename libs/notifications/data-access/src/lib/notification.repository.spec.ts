@@ -55,4 +55,13 @@ describe('NotificationRepository', () => {
       data: expect.objectContaining({ isRead: true, readAt }),
     });
   });
+
+  it('soft-deletes by setting deletedAt', async () => {
+    await repository.softDelete('tenant-1', 'notif-1', 'user-1');
+
+    expect(tx.notification.update).toHaveBeenCalledWith({
+      where: { id: 'notif-1' },
+      data: expect.objectContaining({ deletedAt: expect.any(Date), updatedBy: 'user-1' }),
+    });
+  });
 });

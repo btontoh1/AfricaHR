@@ -64,6 +64,7 @@ describe('NotificationService', () => {
       findById: jest.fn(),
       list: jest.fn().mockResolvedValue([]),
       update: jest.fn(),
+      softDelete: jest.fn(),
     } as unknown as jest.Mocked<NotificationRepository>;
 
     templates = {
@@ -221,6 +222,29 @@ describe('NotificationService', () => {
         'tenant-1',
         'notif-1',
         expect.objectContaining({ isRead: true }),
+      );
+    });
+  });
+
+  describe('deleteForSelf', () => {
+    it('does not reveal a notification belonging to a different user', async () => {
+      notifications.findById.mockResolvedValue(makeNotification({ userId: 'someone-else' }));
+
+      await expect(service.deleteForSelf('tenant-1', 'user-1', 'notif-1')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(notifications.softDelete).not.toHaveBeenCalled();
+    });
+
+    it('soft-deletes and audits for the owner', async () => {
+      notifications.findById.mockResolvedValue(makeNotification({ userId: 'user-1' }));
+      notifications.softDelete.mockResolvedValue(makeNotification({ userId: 'user-1', deletedAt: new Date() }));
+
+      await service.deleteForSelf('tenant-1', 'user-1', 'notif-1');
+
+      expect(notifications.softDelete).toHaveBeenCalledWith('tenant-1', 'notif-1', 'user-1');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'notifications.notification.deleted', resourceId: 'notif-1' }),
       );
     });
   });

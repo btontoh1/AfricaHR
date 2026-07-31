@@ -83,6 +83,30 @@ export class NotificationService {
     return this.notifications.update(tenantId, id, { isRead: true, readAt: new Date() });
   }
 
+  /**
+   * Soft delete — deletedAt, not a row removal, matching every other
+   * deletable record in this schema (see User.deletedAt). Keeps the
+   * underlying notification around for audit/history purposes even though
+   * it drops out of the recipient's own list() results (which already
+   * filter on deletedAt: null).
+   */
+  async deleteForSelf(tenantId: string, userId: string, id: string): Promise<void> {
+    const notification = await this.findById(tenantId, id);
+    if (notification.userId !== userId) {
+      throw new NotFoundException(`Notification "${id}" not found`);
+    }
+
+    await this.notifications.softDelete(tenantId, id, userId);
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: userId,
+      action: 'notifications.notification.deleted',
+      resourceType: 'Notification',
+      resourceId: id,
+    });
+  }
+
   private async dispatch(
     tenantId: string,
     userId: string,

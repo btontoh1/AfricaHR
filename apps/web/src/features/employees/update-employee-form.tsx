@@ -8,6 +8,7 @@ import {
   updateEmployeeFormSchema,
   type UpdateEmployeeFormValues,
 } from './update-employee-form-schema';
+import { PAY_FREQUENCY_OPTIONS } from './employee-form-schema';
 import { getApiErrorMessage } from '@/lib/api-error';
 import type { Employee } from './types';
 import { OrganizationUnitPicker } from '@/features/organizations/organization-unit-picker';
@@ -16,6 +17,13 @@ import { UserPicker } from '@/features/iam/user-picker';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 function toOptional(value: string | undefined): string | undefined {
   return value ? value : undefined;
@@ -139,9 +147,20 @@ export function UpdateEmployeeForm({ tenantId, employee }: { tenantId: string; e
           render={({ field }) => (
             <FormItem>
               <FormLabel>Pay frequency</FormLabel>
-              <FormControl>
-                <Input placeholder="MONTHLY" {...field} />
-              </FormControl>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select frequency" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {PAY_FREQUENCY_OPTIONS.map((frequency) => (
+                    <SelectItem key={frequency} value={frequency}>
+                      {frequency.replace(/_/g, ' ')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}

@@ -6,8 +6,15 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { useSession } from '@/app/(app)/session-provider';
 import { useCreateEmployee } from './queries';
-import { employeeFormSchema, EMPLOYMENT_TYPE_OPTIONS, type EmployeeFormValues } from './employee-form-schema';
+import {
+  employeeFormSchema,
+  EMPLOYMENT_TYPE_OPTIONS,
+  GENDER_OPTIONS,
+  PAY_FREQUENCY_OPTIONS,
+  type EmployeeFormValues,
+} from './employee-form-schema';
 import { getApiErrorMessage } from '@/lib/api-error';
+import { AFRICAN_COUNTRIES, AFRICAN_CURRENCIES } from '@/lib/african-countries';
 import { OrganizationPicker } from '@/features/organizations/organization-picker';
 import { OrganizationUnitPicker } from '@/features/organizations/organization-unit-picker';
 import { EmployeePicker } from './employee-picker';
@@ -218,9 +225,20 @@ export function CreateEmployeeForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Gender (optional)</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {GENDER_OPTIONS.map((gender) => (
+                        <SelectItem key={gender} value={gender}>
+                          {gender.replace(/_/g, ' ')}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -231,9 +249,20 @@ export function CreateEmployeeForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Nationality (optional)</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select nationality" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {AFRICAN_COUNTRIES.map((country) => (
+                        <SelectItem key={country.code} value={country.nationality}>
+                          {country.nationality} ({country.name})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -328,9 +357,20 @@ export function CreateEmployeeForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Country code</FormLabel>
-                  <FormControl>
-                    <Input placeholder="GH" maxLength={2} {...field} />
-                  </FormControl>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select country" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {AFRICAN_COUNTRIES.map((country) => (
+                        <SelectItem key={country.code} value={country.code}>
+                          {country.name} ({country.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -362,9 +402,20 @@ export function CreateEmployeeForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Pay frequency</FormLabel>
-                  <FormControl>
-                    <Input placeholder="MONTHLY" {...field} />
-                  </FormControl>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select frequency" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {PAY_FREQUENCY_OPTIONS.map((frequency) => (
+                        <SelectItem key={frequency} value={frequency}>
+                          {frequency.replace(/_/g, ' ')}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -375,9 +426,20 @@ export function CreateEmployeeForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Currency</FormLabel>
-                  <FormControl>
-                    <Input placeholder="GHS" maxLength={3} {...field} />
-                  </FormControl>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select currency" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {AFRICAN_CURRENCIES.map((currency) => (
+                        <SelectItem key={currency.code} value={currency.code}>
+                          {currency.name} ({currency.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

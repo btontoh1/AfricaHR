@@ -196,4 +196,12 @@ describe('hasPermission', () => {
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.NOTIFICATIONS_MANAGE)).toBe(false);
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.NOTIFICATIONS_READ)).toBe(false);
   });
+
+  it('grants only tenant admins tenant branding management', () => {
+    expect(hasPermission(SystemRole.TENANT_ADMIN, Permission.TENANT_BRANDING_MANAGE)).toBe(true);
+    expect(hasPermission(SystemRole.PLATFORM_ADMIN, Permission.TENANT_BRANDING_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.HR_MANAGER, Permission.TENANT_BRANDING_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.TENANT_BRANDING_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.EMPLOYEE, Permission.TENANT_BRANDING_MANAGE)).toBe(false);
+  });
 });

@@ -1,15 +1,23 @@
+import { randomUUID } from 'node:crypto';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Tenant } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
+import { StorageService } from '@africahr/platform-storage';
 import { TenantRepository } from '@africahr/tenancy-data-access';
 import { canTransitionTenantStatus, isValidSlug, slugify, TenantStatus } from '@africahr/tenancy-domain';
 import { CreateTenantDto } from './dto/create-tenant.dto';
+import { RequestTenantLogoUploadDto } from './dto/request-tenant-logo-upload.dto';
+
+export interface RequestLogoUploadResult {
+  uploadUrl: string;
+}
 
 @Injectable()
 export class TenantService {
   constructor(
     private readonly tenants: TenantRepository,
     private readonly audit: AuditService,
+    private readonly storage: StorageService,
   ) {}
 
   async create(dto: CreateTenantDto, actorId?: string): Promise<Tenant> {
@@ -107,5 +115,57 @@ export class TenantService {
     });
 
     return deleted;
+  }
+
+  async requestLogoUpload(
+    tenantId: string,
+    dto: RequestTenantLogoUploadDto,
+    actorId?: string,
+  ): Promise<RequestLogoUploadResult> {
+    await this.findById(tenantId);
+
+    const storageKey = `tenant-logos/${tenantId}/${randomUUID()}-${dto.fileName}`;
+    const uploadUrl = await this.storage.getUploadUrl(storageKey, dto.contentType);
+
+    await this.tenants.updateLogo(tenantId, storageKey, actorId);
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'tenant.logo_updated',
+      resourceType: 'Tenant',
+      resourceId: tenantId,
+    });
+
+    return { uploadUrl };
+  }
+
+  async removeLogo(tenantId: string, actorId?: string): Promise<void> {
+    const tenant = await this.findById(tenantId);
+    if (!tenant.logoStorageKey) {
+      return;
+    }
+
+    await this.storage.deleteObject(tenant.logoStorageKey);
+    await this.tenants.updateLogo(tenantId, null, actorId);
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'tenant.logo_removed',
+      resourceType: 'Tenant',
+      resourceId: tenantId,
+    });
+  }
+
+  // 1 hour rather than the storage service's 15-minute default: this URL
+  // backs the logo shown in the app shell on every page, not a one-off
+  // document view, so it needs to comfortably outlive a normal browsing
+  // session between React Query refetches.
+  async getLogoUrl(tenant: Tenant): Promise<string | null> {
+    if (!tenant.logoStorageKey) {
+      return null;
+    }
+    return this.storage.getViewUrl(tenant.logoStorageKey, 60 * 60);
   }
 }

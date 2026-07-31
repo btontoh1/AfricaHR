@@ -113,11 +113,45 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get the current user's own tenant (name + slug only) */
+        /** Get the current user's own tenant (name, slug, logo) */
         get: operations["TenantMeController_findMine"];
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/me/logo/upload-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request a signed URL to upload the tenant's business logo */
+        post: operations["TenantMeController_requestLogoUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/me/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove the tenant's business logo */
+        delete: operations["TenantMeController_removeLogo"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2082,6 +2116,18 @@ export interface components {
             name: string;
             /** @example acme-ghana-ltd */
             slug: string;
+            /** @description Signed view URL for the uploaded business logo, or null if none set */
+            logoUrl?: string | null;
+        };
+        RequestTenantLogoUploadDto: {
+            /** @example logo.png */
+            fileName: string;
+            /** @enum {string} */
+            contentType: "image/png" | "image/jpeg" | "image/webp" | "image/svg+xml";
+        };
+        RequestTenantLogoUploadResponseDto: {
+            /** @description Short-lived signed URL — PUT the file bytes here directly, not through this API */
+            uploadUrl: string;
         };
         CreateTenantDto: {
             /** @example Acme Ghana Ltd */
@@ -3494,6 +3540,46 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["TenantMeResponseDto"];
                 };
+            };
+        };
+    };
+    TenantMeController_requestLogoUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestTenantLogoUploadDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequestTenantLogoUploadResponseDto"];
+                };
+            };
+        };
+    };
+    TenantMeController_removeLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -66,6 +66,18 @@ services:
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY}
       CORS_ORIGINS: https://${APP_DOMAIN}
+      # S3-compatible object storage for uploads (organization verification
+      # documents, tenant logo) - see libs/platform/storage. Uploads/downloads
+      # go straight from the browser to this endpoint via a signed URL, so it
+      # must be a real, publicly-reachable S3-compatible provider (e.g.
+      # DigitalOcean Spaces, Cloudflare R2, AWS S3) - not a container-only
+      # hostname the browser can't resolve. See .env.production.example.
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT}
+      STORAGE_BUCKET: ${STORAGE_BUCKET}
+      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY}
+      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY}
+      STORAGE_REGION: ${STORAGE_REGION}
+      STORAGE_FORCE_PATH_STYLE: ${STORAGE_FORCE_PATH_STYLE}
 
   web:
     build:

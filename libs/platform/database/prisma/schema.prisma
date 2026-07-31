@@ -47,6 +47,12 @@ model Tenant {
   currency String
   timezone String
 
+  // Object-storage key for the tenant's uploaded branding logo (shown in the
+  // app shell for every employee) - not a URL, since it's served via a
+  // short-lived signed view URL minted on read, same pattern as
+  // OrganizationVerificationDocument.storageKey.
+  logoStorageKey String? @map("logo_storage_key")
+
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")

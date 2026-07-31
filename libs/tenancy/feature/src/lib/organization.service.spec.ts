@@ -19,6 +19,7 @@ describe('OrganizationService', () => {
     country: 'GH',
     currency: 'GHS',
     timezone: 'Africa/Accra',
+    logoStorageKey: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,

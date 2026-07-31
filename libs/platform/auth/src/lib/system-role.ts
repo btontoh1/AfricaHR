@@ -51,6 +51,10 @@ export const Permission = {
   // verification, so this is deliberately not paired with a tenant-level
   // permission the way ORGANIZATION_MANAGE is.
   PLATFORM_ORGANIZATION_VERIFY: 'platform:organization:verify',
+  // Tenant-scoped (not platform-scoped): the account owner customizing
+  // their own branding, unlike PLATFORM_TENANT_MANAGE's ops-only lifecycle
+  // actions (status changes, etc).
+  TENANT_BRANDING_MANAGE: 'tenant:branding:manage',
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
@@ -83,6 +87,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.NOTIFICATIONS_READ,
   ],
   [SystemRole.TENANT_ADMIN]: [
+    Permission.TENANT_BRANDING_MANAGE,
     Permission.ORGANIZATION_MANAGE,
     Permission.ORGANIZATION_READ,
     Permission.USER_MANAGE,

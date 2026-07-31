@@ -18,6 +18,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { Logo } from '@/components/logo';
 import { NewNotificationWatcher } from '@/features/notifications/new-notification-watcher';
 import { NotificationBell } from '@/features/notifications/notification-bell';
+import { useMyTenant } from '@/features/settings/queries';
 import { cn } from '@/lib/utils';
 import type { SessionUser } from '@/lib/session';
 import { buildNavGroups, type NavGroup } from './nav-config';
@@ -77,10 +78,12 @@ function NavGroups({ groups, pathname, onNavigate }: { groups: NavGroup[]; pathn
   );
 }
 
-function BrandMark() {
+// Falls back to the default ParrotHR mark when a tenant hasn't uploaded
+// their own business logo (or for PLATFORM_ADMIN, which has no tenant).
+function BrandMark({ logoUrl }: { logoUrl?: string | null }) {
   return (
     <div className="flex items-center gap-2 px-2">
-      <Logo className="size-8 rounded-lg" />
+      <Logo className="size-8 rounded-lg" src={logoUrl} />
       <span className="text-lg font-semibold tracking-tight">ParrotHR</span>
     </div>
   );
@@ -90,6 +93,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
   const router = useRouter();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { data: tenant } = useMyTenant({ enabled: Boolean(user.tenantId) });
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -106,7 +110,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
 
       {/* Desktop sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card px-3 py-5 lg:flex print:hidden">
-        <BrandMark />
+        <BrandMark logoUrl={tenant?.logoUrl} />
         <div className="mt-6 flex-1 overflow-y-auto">
           <NavGroups groups={navGroups} pathname={pathname} />
         </div>
@@ -125,7 +129,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
               <SheetContent side="left" className="w-72 p-0">
                 <SheetTitle className="sr-only">Navigation</SheetTitle>
                 <div className="flex flex-col px-3 py-5">
-                  <BrandMark />
+                  <BrandMark logoUrl={tenant?.logoUrl} />
                   <div className="mt-6">
                     <NavGroups groups={navGroups} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
                   </div>

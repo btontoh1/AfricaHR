@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Check, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMyTenant } from './queries';
+import { LogoSettingsCard } from './logo-settings-card';
 import { MfaSecurityCard } from '@/features/security/mfa-security-card';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
@@ -59,6 +60,8 @@ export function TenantSettings() {
           </div>
         </CardContent>
       </Card>
+
+      <LogoSettingsCard tenant={tenant} />
 
       <MfaSecurityCard />
     </div>

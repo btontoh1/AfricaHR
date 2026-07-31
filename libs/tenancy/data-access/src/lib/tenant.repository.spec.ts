@@ -78,4 +78,22 @@ describe('TenantRepository', () => {
     expect(call.data.deletedAt).toBeInstanceOf(Date);
     expect(call.data.updatedBy).toBe('ops-user-1');
   });
+
+  it('updates the logo storage key', async () => {
+    await repository.updateLogo('tenant-1', 'tenant-logos/tenant-1/uuid-logo.png', 'user-1');
+
+    expect(prisma.tenant.update).toHaveBeenCalledWith({
+      where: { id: 'tenant-1' },
+      data: { logoStorageKey: 'tenant-logos/tenant-1/uuid-logo.png', updatedBy: 'user-1' },
+    });
+  });
+
+  it('clears the logo storage key when removing a logo', async () => {
+    await repository.updateLogo('tenant-1', null, 'user-1');
+
+    expect(prisma.tenant.update).toHaveBeenCalledWith({
+      where: { id: 'tenant-1' },
+      data: { logoStorageKey: null, updatedBy: 'user-1' },
+    });
+  });
 });

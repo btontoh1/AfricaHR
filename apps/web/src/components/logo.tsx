@@ -1,3 +1,3 @@
-export function Logo({ className }: { className?: string }) {
-  return <img src="/logo.png" alt="ParrotHR" className={`object-contain ${className ?? ''}`} />;
+export function Logo({ className, src }: { className?: string; src?: string | null }) {
+  return <img src={src ?? '/logo.png'} alt="Logo" className={`object-contain ${className ?? ''}`} />;
 }

@@ -24,6 +24,7 @@ describe('SetupService', () => {
     currency: 'GHS',
     timezone: 'Africa/Accra',
     status: 'ACTIVE',
+    logoStorageKey: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,

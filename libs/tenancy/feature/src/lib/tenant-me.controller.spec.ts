@@ -35,6 +35,7 @@ describe('TenantMeController', () => {
     country: 'GH',
     currency: 'GHS',
     timezone: 'Africa/Accra',
+    logoStorageKey: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
@@ -43,16 +44,23 @@ describe('TenantMeController', () => {
   };
 
   beforeEach(() => {
-    tenants = { findById: jest.fn() } as unknown as jest.Mocked<TenantService>;
+    tenants = {
+      findById: jest.fn(),
+      getLogoUrl: jest.fn().mockResolvedValue(null),
+      requestLogoUpload: jest.fn(),
+      removeLogo: jest.fn(),
+    } as unknown as jest.Mocked<TenantService>;
     controller = new TenantMeController(tenants);
   });
 
-  it("returns the caller's own tenant name and slug", async () => {
+  it("returns the caller's own tenant name, slug, and logo", async () => {
     tenants.findById.mockResolvedValue(tenant);
+    tenants.getLogoUrl.mockResolvedValue('https://storage.example/view?sig=xyz');
 
     await expect(controller.findMine(tenantUser)).resolves.toEqual({
       name: 'Acme Ghana Ltd',
       slug: 'acme-ghana-ltd',
+      logoUrl: 'https://storage.example/view?sig=xyz',
     });
     expect(tenants.findById).toHaveBeenCalledWith('tenant-1');
   });
@@ -60,5 +68,39 @@ describe('TenantMeController', () => {
   it('rejects a platform admin with no tenant', async () => {
     await expect(controller.findMine(platformAdmin)).rejects.toThrow(NotFoundException);
     expect(tenants.findById).not.toHaveBeenCalled();
+  });
+
+  describe('requestLogoUpload', () => {
+    it("delegates to the service with the caller's tenant", async () => {
+      tenants.requestLogoUpload.mockResolvedValue({ uploadUrl: 'https://storage.example/upload?sig=abc' });
+
+      await expect(
+        controller.requestLogoUpload(tenantUser, { fileName: 'logo.png', contentType: 'image/png' }),
+      ).resolves.toEqual({ uploadUrl: 'https://storage.example/upload?sig=abc' });
+      expect(tenants.requestLogoUpload).toHaveBeenCalledWith(
+        'tenant-1',
+        { fileName: 'logo.png', contentType: 'image/png' },
+        'user-1',
+      );
+    });
+
+    it('rejects a platform admin with no tenant', async () => {
+      await expect(
+        controller.requestLogoUpload(platformAdmin, { fileName: 'logo.png', contentType: 'image/png' }),
+      ).rejects.toThrow(NotFoundException);
+      expect(tenants.requestLogoUpload).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('removeLogo', () => {
+    it("delegates to the service with the caller's tenant", async () => {
+      await controller.removeLogo(tenantUser);
+      expect(tenants.removeLogo).toHaveBeenCalledWith('tenant-1', 'user-1');
+    });
+
+    it('rejects a platform admin with no tenant', async () => {
+      await expect(controller.removeLogo(platformAdmin)).rejects.toThrow(NotFoundException);
+      expect(tenants.removeLogo).not.toHaveBeenCalled();
+    });
   });
 });

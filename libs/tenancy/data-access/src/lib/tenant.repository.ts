@@ -59,4 +59,11 @@ export class TenantRepository {
       data: { deletedAt: new Date(), updatedBy } satisfies Prisma.TenantUpdateInput,
     });
   }
+
+  updateLogo(id: string, logoStorageKey: string | null, updatedBy?: string): Promise<Tenant> {
+    return this.prisma.tenant.update({
+      where: { id },
+      data: { logoStorageKey, updatedBy },
+    });
+  }
 }

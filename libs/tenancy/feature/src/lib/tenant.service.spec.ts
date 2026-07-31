@@ -1,6 +1,7 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Tenant } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
+import { StorageService } from '@africahr/platform-storage';
 import { TenantRepository } from '@africahr/tenancy-data-access';
 import { TenantStatus } from '@africahr/tenancy-domain';
 import { TenantService } from './tenant.service';
@@ -9,6 +10,7 @@ describe('TenantService', () => {
   let service: TenantService;
   let repo: jest.Mocked<TenantRepository>;
   let audit: jest.Mocked<AuditService>;
+  let storage: jest.Mocked<StorageService>;
 
   const baseTenant: Tenant = {
     id: 'tenant-1',
@@ -18,6 +20,7 @@ describe('TenantService', () => {
     country: 'GH',
     currency: 'GHS',
     timezone: 'Africa/Accra',
+    logoStorageKey: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
@@ -33,11 +36,18 @@ describe('TenantService', () => {
       list: jest.fn(),
       updateStatus: jest.fn(),
       softDelete: jest.fn(),
+      updateLogo: jest.fn(),
     } as unknown as jest.Mocked<TenantRepository>;
 
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
 
-    service = new TenantService(repo, audit);
+    storage = {
+      getUploadUrl: jest.fn(),
+      getViewUrl: jest.fn(),
+      deleteObject: jest.fn(),
+    } as unknown as jest.Mocked<StorageService>;
+
+    service = new TenantService(repo, audit, storage);
   });
 
   describe('create', () => {
@@ -149,6 +159,83 @@ describe('TenantService', () => {
 
       await expect(service.softDelete('missing')).rejects.toThrow(NotFoundException);
       expect(repo.softDelete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('requestLogoUpload', () => {
+    it('mints a namespaced storage key, requests a signed upload URL, and saves it on the tenant', async () => {
+      repo.findById.mockResolvedValue(baseTenant);
+      storage.getUploadUrl.mockResolvedValue('https://storage.example/upload?sig=abc');
+      repo.updateLogo.mockResolvedValue({ ...baseTenant, logoStorageKey: 'tenant-logos/tenant-1/uuid-logo.png' });
+
+      const result = await service.requestLogoUpload(
+        'tenant-1',
+        { fileName: 'logo.png', contentType: 'image/png' },
+        'user-1',
+      );
+
+      expect(result).toEqual({ uploadUrl: 'https://storage.example/upload?sig=abc' });
+      expect(storage.getUploadUrl).toHaveBeenCalledWith(
+        expect.stringMatching(/^tenant-logos\/tenant-1\/.+-logo\.png$/),
+        'image/png',
+      );
+      expect(repo.updateLogo).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.stringMatching(/^tenant-logos\/tenant-1\/.+-logo\.png$/),
+        'user-1',
+      );
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'tenant.logo_updated', tenantId: 'tenant-1' }),
+      );
+    });
+
+    it('throws NotFoundException when the tenant does not exist', async () => {
+      repo.findById.mockResolvedValue(null);
+
+      await expect(
+        service.requestLogoUpload('missing', { fileName: 'logo.png', contentType: 'image/png' }),
+      ).rejects.toThrow(NotFoundException);
+      expect(storage.getUploadUrl).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('removeLogo', () => {
+    it('deletes the stored object and clears the logo key', async () => {
+      repo.findById.mockResolvedValue({ ...baseTenant, logoStorageKey: 'tenant-logos/tenant-1/uuid-logo.png' });
+
+      await service.removeLogo('tenant-1', 'user-1');
+
+      expect(storage.deleteObject).toHaveBeenCalledWith('tenant-logos/tenant-1/uuid-logo.png');
+      expect(repo.updateLogo).toHaveBeenCalledWith('tenant-1', null, 'user-1');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'tenant.logo_removed', tenantId: 'tenant-1' }),
+      );
+    });
+
+    it('is a no-op when the tenant has no logo', async () => {
+      repo.findById.mockResolvedValue(baseTenant);
+
+      await service.removeLogo('tenant-1', 'user-1');
+
+      expect(storage.deleteObject).not.toHaveBeenCalled();
+      expect(repo.updateLogo).not.toHaveBeenCalled();
+      expect(audit.record).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getLogoUrl', () => {
+    it('returns null when the tenant has no logo', async () => {
+      await expect(service.getLogoUrl(baseTenant)).resolves.toBeNull();
+      expect(storage.getViewUrl).not.toHaveBeenCalled();
+    });
+
+    it('resolves a signed view URL when a logo is set', async () => {
+      storage.getViewUrl.mockResolvedValue('https://storage.example/view?sig=xyz');
+
+      await expect(
+        service.getLogoUrl({ ...baseTenant, logoStorageKey: 'tenant-logos/tenant-1/uuid-logo.png' }),
+      ).resolves.toBe('https://storage.example/view?sig=xyz');
+      expect(storage.getViewUrl).toHaveBeenCalledWith('tenant-logos/tenant-1/uuid-logo.png', 60 * 60);
     });
   });
 });

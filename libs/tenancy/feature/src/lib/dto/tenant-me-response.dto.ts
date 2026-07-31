@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
 
 export class TenantMeResponseDto {
   @ApiProperty({ example: 'Acme Ghana Ltd' })
@@ -6,4 +6,7 @@ export class TenantMeResponseDto {
 
   @ApiProperty({ example: 'acme-ghana-ltd' })
   slug!: string;
+
+  @ApiPropertyOptional({ description: 'Signed view URL for the uploaded business logo, or null if none set' })
+  logoUrl?: string | null;
 }

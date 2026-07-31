@@ -8,6 +8,7 @@ import { NotificationTemplateController } from './notification-template.controll
 import { NotificationService } from './notification.service';
 import { MyNotificationController } from './my-notification.controller';
 import { NotificationController } from './notification.controller';
+import { LeaveRequestNotificationListener } from './leave-request-notification.listener';
 import {
   LogNotificationDispatcher,
   NotificationDispatcher,
@@ -28,6 +29,7 @@ import {
   providers: [
     NotificationTemplateService,
     NotificationService,
+    LeaveRequestNotificationListener,
     {
       provide: NotificationDispatcher,
       inject: [AppConfigService],

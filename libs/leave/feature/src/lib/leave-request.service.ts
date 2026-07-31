@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LeaveBalance, LeaveRequest, LeaveType, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import {
@@ -16,6 +17,30 @@ import {
 } from '@africahr/leave-domain';
 import { CreateLeaveRequestDto } from './dto/create-leave-request.dto';
 
+export interface LeaveRequestWithEmployeeName extends LeaveRequest {
+  employeeName: string;
+}
+
+/**
+ * Emitted after a leave request is created, only when the employee has a
+ * direct manager who also has portal access (a linked User). Consumed by a
+ * listener living in notifications-feature — scope:leave is not allowed to
+ * depend on scope:notifications directly (see eslint.config.mjs module
+ * boundaries), so this event is the decoupling point between the two. Both
+ * sides must agree on this literal string and payload shape informally;
+ * there's no shared type between scopes for it.
+ */
+export const LEAVE_REQUEST_CREATED_EVENT = 'leave.request.created';
+
+export interface LeaveRequestCreatedEvent {
+  tenantId: string;
+  managerUserId: string;
+  employeeName: string;
+  leaveTypeName: string;
+  startDate: string;
+  endDate: string;
+}
+
 interface EffectiveBalance {
   balance: LeaveBalance | null;
   leaveType: LeaveType;
@@ -31,6 +56,7 @@ export class LeaveRequestService {
     private readonly leaveTypes: LeaveTypeRepository,
     private readonly employees: LeaveEmployeeRepository,
     private readonly audit: AuditService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   /** Resolves the caller's own Employee id from their User id — the basis for every self-service method below. */
@@ -108,7 +134,42 @@ export class LeaveRequestService {
       resourceId: request.id,
     });
 
+    await this.notifyManagerOfNewRequest(tenantId, employeeId, request);
+
     return request;
+  }
+
+  /**
+   * Silent no-op when the employee has no manager, or that manager has no
+   * portal access (no linked User) — there's simply no one to notify, not
+   * an error condition.
+   */
+  private async notifyManagerOfNewRequest(
+    tenantId: string,
+    employeeId: string,
+    request: LeaveRequest,
+  ): Promise<void> {
+    const employee = await this.employees.findById(tenantId, employeeId);
+    if (!employee?.managerId) {
+      return;
+    }
+
+    const manager = await this.employees.findById(tenantId, employee.managerId);
+    if (!manager?.userId) {
+      return;
+    }
+
+    const leaveType = await this.leaveTypes.findById(tenantId, request.leaveTypeId);
+
+    const event: LeaveRequestCreatedEvent = {
+      tenantId,
+      managerUserId: manager.userId,
+      employeeName: `${employee.firstName} ${employee.lastName}`,
+      leaveTypeName: leaveType?.name ?? 'Leave',
+      startDate: request.startDate.toISOString().slice(0, 10),
+      endDate: request.endDate.toISOString().slice(0, 10),
+    };
+    this.eventEmitter.emit(LEAVE_REQUEST_CREATED_EVENT, event);
   }
 
   async findById(tenantId: string, id: string): Promise<LeaveRequest> {
@@ -129,6 +190,30 @@ export class LeaveRequestService {
   async listForSelf(tenantId: string, userId: string): Promise<LeaveRequest[]> {
     const employeeId = await this.resolveOwnEmployeeId(tenantId, userId);
     return this.requests.list(tenantId, { employeeId });
+  }
+
+  /**
+   * Requests for the caller's direct reports only (not skip-level).
+   * Enriched with each report's name: the caller is a plain EMPLOYEE
+   * (manager-of-X, not a LEAVE_MANAGE holder), so unlike the HR-facing
+   * list they cannot resolve names themselves via EMPLOYEE_READ. Mirrors
+   * PerformanceReviewService.listForDirectReports exactly.
+   */
+  async listForDirectReports(tenantId: string, userId: string): Promise<LeaveRequestWithEmployeeName[]> {
+    const managerEmployeeId = await this.resolveOwnEmployeeId(tenantId, userId);
+    const reportIds = await this.employees.listDirectReportIds(tenantId, managerEmployeeId);
+    if (reportIds.length === 0) {
+      return [];
+    }
+    const [perReport, names] = await Promise.all([
+      Promise.all(reportIds.map((employeeId) => this.requests.list(tenantId, { employeeId }))),
+      this.employees.findManyByIds(tenantId, reportIds),
+    ]);
+    const nameById = new Map(names.map((employee) => [employee.id, `${employee.firstName} ${employee.lastName}`]));
+    return perReport.flat().map((request) => ({
+      ...request,
+      employeeName: nameById.get(request.employeeId) ?? request.employeeId,
+    }));
   }
 
   async cancelForSelf(tenantId: string, userId: string, id: string): Promise<LeaveRequest> {
@@ -183,6 +268,35 @@ export class LeaveRequestService {
     });
 
     return updated;
+  }
+
+  async approveAsManager(tenantId: string, userId: string, id: string): Promise<LeaveRequest> {
+    const request = await this.findById(tenantId, id);
+    await this.assertIsDirectManager(tenantId, userId, request.employeeId);
+    return this.approve(tenantId, id, userId);
+  }
+
+  async rejectAsManager(
+    tenantId: string,
+    userId: string,
+    id: string,
+    rejectionReason: string,
+  ): Promise<LeaveRequest> {
+    const request = await this.findById(tenantId, id);
+    await this.assertIsDirectManager(tenantId, userId, request.employeeId);
+    return this.reject(tenantId, id, rejectionReason, userId);
+  }
+
+  private async assertIsDirectManager(
+    tenantId: string,
+    userId: string,
+    targetEmployeeId: string,
+  ): Promise<void> {
+    const managerEmployeeId = await this.resolveOwnEmployeeId(tenantId, userId);
+    const targetEmployee = await this.employees.findById(tenantId, targetEmployeeId);
+    if (!targetEmployee || targetEmployee.managerId !== managerEmployeeId) {
+      throw new ForbiddenException('You are not the direct manager of this employee');
+    }
   }
 
   async approve(tenantId: string, id: string, approverUserId?: string): Promise<LeaveRequest> {

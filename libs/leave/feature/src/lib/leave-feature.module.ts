@@ -6,14 +6,21 @@ import { LeaveTypeService } from './leave-type.service';
 import { LeaveTypeController } from './leave-type.controller';
 import { LeaveRequestService } from './leave-request.service';
 import { MyLeaveRequestController } from './my-leave-request.controller';
+import { TeamLeaveRequestController } from './team-leave-request.controller';
 import { LeaveRequestController } from './leave-request.controller';
 
 @Module({
   imports: [LeaveDataAccessModule, PlatformAuthModule, AuditModule],
-  // MyLeaveRequestController (literal "/me" path) must be registered
-  // before LeaveRequestController (dynamic "/:id" path) so Nest's router
-  // matches "/me" as the literal segment, not as :id="me".
-  controllers: [LeaveTypeController, MyLeaveRequestController, LeaveRequestController],
+  // MyLeaveRequestController ("/me") and TeamLeaveRequestController
+  // ("/team") are literal-path segments that must be registered before
+  // LeaveRequestController's dynamic "/:id" route, or Nest's router would
+  // match "/me"/"/team" as :id instead.
+  controllers: [
+    LeaveTypeController,
+    MyLeaveRequestController,
+    TeamLeaveRequestController,
+    LeaveRequestController,
+  ],
   providers: [LeaveTypeService, LeaveRequestService],
   exports: [LeaveTypeService, LeaveRequestService],
 })

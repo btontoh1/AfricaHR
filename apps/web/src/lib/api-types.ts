@@ -992,6 +992,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/leave-requests/team": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TeamLeaveRequestController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/leave-requests/team/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["TeamLeaveRequestController_approve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/leave-requests/team/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["TeamLeaveRequestController_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/leave-requests": {
         parameters: {
             query?: never;
@@ -2499,6 +2547,23 @@ export interface components {
             rejectionReason?: string;
             createdAt: string;
             updatedAt: string;
+        };
+        TeamLeaveRequestResponseDto: {
+            id: string;
+            employeeId: string;
+            leaveTypeId: string;
+            startDate: string;
+            endDate: string;
+            daysRequested: string;
+            reason?: string;
+            /** @enum {string} */
+            status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+            approverUserId?: string;
+            approvedAt?: string;
+            rejectionReason?: string;
+            createdAt: string;
+            updatedAt: string;
+            employeeName: string;
         };
         CreateLeaveRequestDto: {
             leaveTypeId: string;
@@ -5003,6 +5068,75 @@ export interface operations {
         };
     };
     LeaveRequestController_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectLeaveRequestDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaveRequestResponseDto"];
+                };
+            };
+        };
+    };
+    TeamLeaveRequestController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamLeaveRequestResponseDto"][];
+                };
+            };
+        };
+    };
+    TeamLeaveRequestController_approve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaveRequestResponseDto"];
+                };
+            };
+        };
+    };
+    TeamLeaveRequestController_reject: {
         parameters: {
             query?: never;
             header?: never;

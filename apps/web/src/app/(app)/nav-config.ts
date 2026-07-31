@@ -106,6 +106,12 @@ export function buildNavGroups(user: SessionUser): NavGroup[] {
         ...(hasLeaveAdminAccess
           ? [{ label: 'Leave Requests', href: '/leave/requests', icon: ClipboardCheck }]
           : []),
+        // Direct-manager tier, visible to every tenant member same as Team
+        // Reviews — a dynamic Employee.managerId relationship, not a role
+        // permission (see TeamLeaveRequestController).
+        ...(isTenantMember
+          ? [{ label: 'Team Leave Requests', href: '/leave/requests/team', icon: Users2 }]
+          : []),
         ...(hasLeaveAdminAccess
           ? [{ label: 'Leave Types', href: '/leave/types', icon: ListTree }]
           : []),

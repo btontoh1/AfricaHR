@@ -14,20 +14,19 @@ import { toNextResponse } from '@/lib/proxy-response';
  * a transparent refresh on 401.
  */
 async function forward(
-  request: NextRequest,
-  path: string[],
+  method: string,
+  url: string,
+  contentType: string | null,
+  body: string | undefined,
   accessToken: string | undefined,
 ): Promise<Response> {
-  const url = `${process.env.API_BASE_URL}/${path.join('/')}${request.nextUrl.search}`;
-  const hasBody = !['GET', 'HEAD'].includes(request.method);
-
   return fetch(url, {
-    method: request.method,
+    method,
     headers: {
-      ...(hasBody ? { 'Content-Type': request.headers.get('content-type') ?? 'application/json' } : {}),
+      ...(body !== undefined ? { 'Content-Type': contentType ?? 'application/json' } : {}),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     },
-    body: hasBody ? await request.text() : undefined,
+    body,
   });
 }
 
@@ -39,7 +38,14 @@ async function handler(
   const store = await cookies();
   const accessToken = store.get(ACCESS_TOKEN_COOKIE)?.value;
 
-  const firstAttempt = await forward(request, path, accessToken);
+  const url = `${process.env.API_BASE_URL}/${path.join('/')}${request.nextUrl.search}`;
+  const contentType = request.headers.get('content-type');
+  // Read the body exactly once - a Request's body stream can only be
+  // consumed a single time, and the retry-after-refresh below reuses this
+  // same string rather than re-reading `request` a second time.
+  const body = ['GET', 'HEAD'].includes(request.method) ? undefined : await request.text();
+
+  const firstAttempt = await forward(request.method, url, contentType, body, accessToken);
   if (firstAttempt.status !== 401) {
     return toNextResponse(firstAttempt);
   }
@@ -51,7 +57,7 @@ async function handler(
     return res;
   }
 
-  const retried = await forward(request, path, refreshed.accessToken);
+  const retried = await forward(request.method, url, contentType, body, refreshed.accessToken);
   const res = await toNextResponse(retried);
   setAuthCookies(res, refreshed.accessToken, refreshed.refreshToken);
   return res;

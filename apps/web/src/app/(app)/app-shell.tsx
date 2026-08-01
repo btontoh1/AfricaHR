@@ -78,13 +78,13 @@ function NavGroups({ groups, pathname, onNavigate }: { groups: NavGroup[]; pathn
   );
 }
 
-// Falls back to the default ParrotHR mark when a tenant hasn't uploaded
-// their own business logo (or for PLATFORM_ADMIN, which has no tenant).
-function BrandMark({ logoUrl }: { logoUrl?: string | null }) {
+// Falls back to the default ParrotHR mark and name when a tenant hasn't
+// uploaded their own logo, or has no tenant at all (PLATFORM_ADMIN).
+function BrandMark({ logoUrl, tenantName }: { logoUrl?: string | null; tenantName?: string | null }) {
   return (
     <div className="flex items-center gap-2 px-2">
       <Logo className="size-8 rounded-lg" src={logoUrl} />
-      <span className="text-lg font-semibold tracking-tight">ParrotHR</span>
+      <span className="truncate text-lg font-semibold tracking-tight">{tenantName ?? 'ParrotHR'}</span>
     </div>
   );
 }
@@ -110,7 +110,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
 
       {/* Desktop sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card px-3 py-5 lg:flex print:hidden">
-        <BrandMark logoUrl={tenant?.logoUrl} />
+        <BrandMark logoUrl={tenant?.logoUrl} tenantName={tenant?.name} />
         <div className="mt-6 flex-1 overflow-y-auto">
           <NavGroups groups={navGroups} pathname={pathname} />
         </div>
@@ -129,7 +129,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
               <SheetContent side="left" className="w-72 p-0">
                 <SheetTitle className="sr-only">Navigation</SheetTitle>
                 <div className="flex flex-col px-3 py-5">
-                  <BrandMark logoUrl={tenant?.logoUrl} />
+                  <BrandMark logoUrl={tenant?.logoUrl} tenantName={tenant?.name} />
                   <div className="mt-6">
                     <NavGroups groups={navGroups} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
                   </div>

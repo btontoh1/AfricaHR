@@ -205,6 +205,54 @@ export interface paths {
         patch: operations["TenantController_updateStatus"];
         trace?: never;
     };
+    "/api/tenants/{tenantId}/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PlatformTenantUsersController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/users/{id}/role": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["PlatformTenantUsersController_updateRole"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/users/{id}/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["PlatformTenantUsersController_setActive"];
+        trace?: never;
+    };
     "/api/organizations/verification-queue": {
         parameters: {
             query?: never;
@@ -2157,6 +2205,22 @@ export interface components {
             /** @enum {string} */
             status: "TRIAL" | "ACTIVE" | "SUSPENDED" | "CLOSED";
         };
+        Tenant: {
+            id: string;
+            name: string;
+            slug: string;
+            /** @enum {string} */
+            status: "TRIAL" | "ACTIVE" | "SUSPENDED" | "CLOSED";
+            country: string;
+            currency: string;
+            timezone: string;
+            logoStorageKey: string | null;
+            createdAt: string;
+            updatedAt: string;
+            deletedAt: string | null;
+            createdBy: string | null;
+            updatedBy: string | null;
+        };
         OrganizationResponseDto: {
             id: string;
             legalName: string;
@@ -3596,7 +3660,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["Tenant"][];
+                };
             };
         };
     };
@@ -3617,7 +3683,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["Tenant"];
+                };
             };
         };
     };
@@ -3636,7 +3704,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["Tenant"];
+                };
             };
         };
     };
@@ -3659,7 +3729,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["Tenant"];
+                };
             };
         };
     };
@@ -4310,6 +4382,79 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUserActiveDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponseDto"];
+                };
+            };
+        };
+    };
+    PlatformTenantUsersController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponseDto"][];
+                };
+            };
+        };
+    };
+    PlatformTenantUsersController_updateRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUserRoleDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponseDto"];
+                };
+            };
+        };
+    };
+    PlatformTenantUsersController_setActive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
                 id: string;
             };
             cookie?: never;

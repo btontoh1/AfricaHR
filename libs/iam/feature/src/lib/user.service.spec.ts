@@ -155,4 +155,69 @@ describe('UserService', () => {
       ).rejects.toThrow(BadRequestException);
     });
   });
+
+  describe('listForTenant', () => {
+    it('lists users for an arbitrary tenant (no actor.tenantId needed)', async () => {
+      users.listByTenant.mockResolvedValue([]);
+
+      await service.listForTenant('tenant-9');
+
+      expect(users.listByTenant).toHaveBeenCalledWith('tenant-9');
+    });
+  });
+
+  describe('updateRoleForTenant', () => {
+    it('throws NotFoundException when the user does not exist in that tenant', async () => {
+      users.findById.mockResolvedValue(null);
+
+      await expect(
+        service.updateRoleForTenant('tenant-9', 'missing', SystemRole.HR_MANAGER),
+      ).rejects.toThrow(NotFoundException);
+      expect(users.updateRole).not.toHaveBeenCalled();
+    });
+
+    it('rejects assigning PLATFORM_ADMIN within a tenant', async () => {
+      users.findById.mockResolvedValue({ id: 'user-2' } as User);
+
+      await expect(
+        service.updateRoleForTenant('tenant-9', 'user-2', SystemRole.PLATFORM_ADMIN),
+      ).rejects.toThrow(BadRequestException);
+      expect(users.updateRole).not.toHaveBeenCalled();
+    });
+
+    it('updates the role and records an audit entry', async () => {
+      users.findById.mockResolvedValue({ id: 'user-2' } as User);
+      users.updateRole.mockResolvedValue({ id: 'user-2', role: SystemRole.HR_MANAGER } as User);
+
+      await service.updateRoleForTenant('tenant-9', 'user-2', SystemRole.HR_MANAGER, 'actor-2');
+
+      expect(users.updateRole).toHaveBeenCalledWith('tenant-9', 'user-2', SystemRole.HR_MANAGER, 'actor-2');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'user.role_changed', tenantId: 'tenant-9', resourceId: 'user-2' }),
+      );
+    });
+  });
+
+  describe('setActiveForTenant', () => {
+    it('throws NotFoundException when the user does not exist in that tenant', async () => {
+      users.findById.mockResolvedValue(null);
+
+      await expect(service.setActiveForTenant('tenant-9', 'missing', false)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(users.setActive).not.toHaveBeenCalled();
+    });
+
+    it('deactivates the user and records an audit entry', async () => {
+      users.findById.mockResolvedValue({ id: 'user-2' } as User);
+      users.setActive.mockResolvedValue({ id: 'user-2', isActive: false } as User);
+
+      await service.setActiveForTenant('tenant-9', 'user-2', false, 'actor-2');
+
+      expect(users.setActive).toHaveBeenCalledWith('tenant-9', 'user-2', false, 'actor-2');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'user.deactivated', tenantId: 'tenant-9', resourceId: 'user-2' }),
+      );
+    });
+  });
 });

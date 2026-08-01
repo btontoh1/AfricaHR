@@ -119,3 +119,14 @@ export function useUpdateTenantUserActive(tenantId: string) {
     },
   });
 }
+
+export function usePlatformDashboard() {
+  return useQuery({
+    queryKey: ['platform-admin-dashboard'] as const,
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/platform-admin/dashboard');
+      if (error) throw error;
+      return data;
+    },
+  });
+}

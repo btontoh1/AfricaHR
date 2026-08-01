@@ -253,6 +253,22 @@ export interface paths {
         patch: operations["PlatformTenantUsersController_setActive"];
         trace?: never;
     };
+    "/api/platform-admin/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PlatformDashboardController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organizations/verification-queue": {
         parameters: {
             query?: never;
@@ -2220,6 +2236,30 @@ export interface components {
             deletedAt: string | null;
             createdBy: string | null;
             updatedBy: string | null;
+        };
+        PlatformDashboardSummaryDto: {
+            recentTenants: {
+                id: string;
+                name: string;
+                slug: string;
+                /** @enum {string} */
+                status: "TRIAL" | "ACTIVE" | "SUSPENDED" | "CLOSED";
+                createdAt: string;
+            }[];
+            totalTenants: number;
+            /** @description null if the storage check failed */
+            storage: {
+                usedBytes: number;
+                objectCount: number;
+            } | null;
+            /** @description null if the database size check failed */
+            databaseSizeBytes?: number | null;
+            health: {
+                /** @description Always true - reaching this endpoint proves the API process is up */
+                api: boolean;
+                database: boolean;
+                redis: boolean;
+            };
         };
         OrganizationResponseDto: {
             id: string;
@@ -4471,6 +4511,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserResponseDto"];
+                };
+            };
+        };
+    };
+    PlatformDashboardController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformDashboardSummaryDto"];
                 };
             };
         };

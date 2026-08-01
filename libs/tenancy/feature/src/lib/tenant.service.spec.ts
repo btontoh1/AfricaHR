@@ -34,6 +34,8 @@ describe('TenantService', () => {
       findById: jest.fn(),
       findBySlug: jest.fn(),
       list: jest.fn(),
+      listRecent: jest.fn(),
+      count: jest.fn(),
       updateStatus: jest.fn(),
       softDelete: jest.fn(),
       updateLogo: jest.fn(),
@@ -236,6 +238,23 @@ describe('TenantService', () => {
         service.getLogoUrl({ ...baseTenant, logoStorageKey: 'tenant-logos/tenant-1/uuid-logo.png' }),
       ).resolves.toBe('https://storage.example/view?sig=xyz');
       expect(storage.getViewUrl).toHaveBeenCalledWith('tenant-logos/tenant-1/uuid-logo.png', 60 * 60);
+    });
+  });
+
+  describe('listRecent', () => {
+    it('delegates to the repository', async () => {
+      repo.listRecent.mockResolvedValue([baseTenant]);
+
+      await expect(service.listRecent(5)).resolves.toEqual([baseTenant]);
+      expect(repo.listRecent).toHaveBeenCalledWith(5);
+    });
+  });
+
+  describe('count', () => {
+    it('delegates to the repository', async () => {
+      repo.count.mockResolvedValue(3);
+
+      await expect(service.count()).resolves.toBe(3);
     });
   });
 });

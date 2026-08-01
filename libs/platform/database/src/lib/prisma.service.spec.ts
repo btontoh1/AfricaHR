@@ -53,4 +53,12 @@ describe('PrismaService', () => {
       expect(callback).toHaveBeenCalledWith(fakeTx);
     });
   });
+
+  describe('getDatabaseSizeBytes', () => {
+    it('runs an unscoped raw query and coerces the bigint result to a number', async () => {
+      jest.spyOn(service, '$queryRaw').mockResolvedValue([{ size: BigInt(123456789) }]);
+
+      await expect(service.getDatabaseSizeBytes()).resolves.toBe(123456789);
+    });
+  });
 });

@@ -73,4 +73,47 @@ describe('StorageService', () => {
       });
     });
   });
+
+  describe('getStorageUsage', () => {
+    it('sums size and count across a single page of objects', async () => {
+      const send = jest.fn().mockResolvedValue({
+        Contents: [{ Size: 100 }, { Size: 250 }],
+        IsTruncated: false,
+      });
+      const service = createService({ send });
+
+      const usage = await service.getStorageUsage();
+
+      expect(usage).toEqual({ usedBytes: 350, objectCount: 2 });
+      expect(send).toHaveBeenCalledTimes(1);
+    });
+
+    it('paginates across multiple pages via ContinuationToken', async () => {
+      const send = jest
+        .fn()
+        .mockResolvedValueOnce({
+          Contents: [{ Size: 100 }],
+          IsTruncated: true,
+          NextContinuationToken: 'token-2',
+        })
+        .mockResolvedValueOnce({
+          Contents: [{ Size: 200 }, { Size: 300 }],
+          IsTruncated: false,
+        });
+      const service = createService({ send });
+
+      const usage = await service.getStorageUsage();
+
+      expect(usage).toEqual({ usedBytes: 600, objectCount: 3 });
+      expect(send).toHaveBeenCalledTimes(2);
+      expect(send.mock.calls[1][0].input).toMatchObject({ ContinuationToken: 'token-2' });
+    });
+
+    it('handles an empty bucket', async () => {
+      const send = jest.fn().mockResolvedValue({ Contents: undefined, IsTruncated: false });
+      const service = createService({ send });
+
+      await expect(service.getStorageUsage()).resolves.toEqual({ usedBytes: 0, objectCount: 0 });
+    });
+  });
 });

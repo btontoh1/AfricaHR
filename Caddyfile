@@ -1,14 +1,24 @@
-# Caddy reads APP_DOMAIN from its own environment — pass it through via
-# docker-compose.prod.yml (Caddy needs it directly, not just the api/web
-# services), e.g.:
+# Caddy reads APP_DOMAIN and APEX_DOMAIN from its own environment - pass
+# them through via docker-compose.prod.yml (Caddy needs them directly, not
+# just the api/web services), e.g.:
 #   caddy:
 #     environment:
 #       APP_DOMAIN: ${APP_DOMAIN}
+#       APEX_DOMAIN: ${APEX_DOMAIN}
+# Both must be set to non-empty values - an empty site address is invalid
+# Caddyfile syntax and would fail Caddy's config parse entirely.
 #
-# Caddy requests and renews the TLS certificate automatically the first time
-# it starts, as long as DNS for this domain already points at this machine
-# and ports 80/443 are reachable from the internet.
+# Caddy requests and renews TLS certificates automatically the first time it
+# starts, as long as DNS for each domain already points at this machine and
+# ports 80/443 are reachable from the internet.
 
 {$APP_DOMAIN} {
 	reverse_proxy web:3000
+}
+
+# Bare/apex domain (e.g. example.com when APP_DOMAIN is www.example.com) -
+# redirects to the canonical APP_DOMAIN rather than serving the app twice
+# under two different hostnames.
+{$APEX_DOMAIN} {
+	redir https://{$APP_DOMAIN}{uri} permanent
 }

@@ -61,8 +61,88 @@ model Tenant {
 
   organizations Organization[]
   users         User[]
+  subscription  Subscription?
+  invoices      Invoice[]
 
   @@map("tenants")
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+}
+
+/// One per tenant, per-employee pricing (see project memory: billing v1 is
+/// platform-admin-assigned, not tenant self-serve - there's no tenant-side
+/// checkout flow). The "amount currently due" isn't stored here - it's
+/// computed on read as pricePerEmployee × the tenant's current active
+/// employee count (see BillingHeadcountRepository), so it's never stale
+/// between invoices.
+model Subscription {
+  id                   String             @id @default(uuid())
+  tenantId             String             @unique @map("tenant_id")
+  pricePerEmployee     Decimal            @map("price_per_employee")
+  currency             String
+  status               SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart   DateTime           @map("current_period_start")
+  currentPeriodEnd     DateTime           @map("current_period_end")
+  cancelAtPeriodEnd    Boolean            @default(false) @map("cancel_at_period_end")
+  /// Paystack's customer code, minted lazily on the first invoice - not
+  /// known until then, since assigning a plan doesn't itself talk to Paystack.
+  paystackCustomerCode String?            @map("paystack_customer_code")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  invoices Invoice[]
+
+  @@map("subscriptions")
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+/// One per billing period. employeeCountAtIssue is a snapshot (the
+/// headcount used to compute `amount` at generation time) - deliberately
+/// not recomputed later, so a paid invoice's amount stays meaningful even
+/// after headcount changes.
+model Invoice {
+  id                   String        @id @default(uuid())
+  tenantId             String        @map("tenant_id")
+  subscriptionId       String        @map("subscription_id")
+  amount               Decimal
+  currency             String
+  employeeCountAtIssue Int           @map("employee_count_at_issue")
+  status               InvoiceStatus @default(PENDING)
+  periodStart          DateTime      @map("period_start")
+  periodEnd            DateTime      @map("period_end")
+  dueDate              DateTime      @map("due_date")
+  paidAt               DateTime?     @map("paid_at")
+  /// Paystack transaction reference - the join key the webhook uses to
+  /// find this invoice again when payment completes.
+  paystackReference    String?       @unique @map("paystack_reference")
+  checkoutUrl          String?       @map("checkout_url")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+
+  @@index([tenantId])
+  @@index([subscriptionId])
+  @@index([status])
+  @@map("invoices")
 }
 
 /// A legal entity under a tenant (a tenant may own more than one — e.g. a

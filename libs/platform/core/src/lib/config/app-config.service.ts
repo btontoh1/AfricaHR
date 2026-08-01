@@ -78,4 +78,8 @@ export class AppConfigService {
   get mfaEncryptionKey(): string | undefined {
     return this.configService.get('MFA_ENCRYPTION_KEY', { infer: true });
   }
+
+  get paystackSecretKey(): string | undefined {
+    return this.configService.get('PAYSTACK_SECRET_KEY', { infer: true });
+  }
 }

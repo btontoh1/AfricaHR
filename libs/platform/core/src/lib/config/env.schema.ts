@@ -52,6 +52,13 @@ export const envSchema = z.object({
   // same posture as JWT_ACCESS_SECRET.
   MFA_ENCRYPTION_KEY: z.string().optional(),
 
+  // Real payment collection (billing/subscriptions) via Paystack. Optional -
+  // when unset, PaystackClient falls back to a placeholder that logs
+  // instead of calling the real API (same "optional at schema level,
+  // enforced by the consuming service" posture as SENDGRID_API_KEY), so
+  // local/dev/CI environments never need a real key.
+  PAYSTACK_SECRET_KEY: z.string().optional(),
+
   CORS_ORIGINS: z
     .string()
     .default('')

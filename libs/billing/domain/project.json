@@ -1,0 +1,19 @@
+{
+  "name": "billing-domain",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/billing/domain/src",
+  "projectType": "library",
+  "tags": ["scope:billing", "type:domain"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/billing/domain",
+        "main": "libs/billing/domain/src/index.ts",
+        "tsConfig": "libs/billing/domain/tsconfig.lib.json",
+        "assets": ["libs/billing/domain/*.md"]
+      }
+    }
+  }
+}

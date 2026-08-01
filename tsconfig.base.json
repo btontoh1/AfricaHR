@@ -85,7 +85,12 @@
       "@africahr/notifications-feature": [
         "./libs/notifications/feature/src/index.ts"
       ],
-      "@africahr/platform-storage": ["./libs/platform/storage/src/index.ts"]
+      "@africahr/platform-storage": ["./libs/platform/storage/src/index.ts"],
+      "@africahr/billing-domain": ["./libs/billing/domain/src/index.ts"],
+      "@africahr/billing-data-access": [
+        "./libs/billing/data-access/src/index.ts"
+      ],
+      "@africahr/billing-feature": ["./libs/billing/feature/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

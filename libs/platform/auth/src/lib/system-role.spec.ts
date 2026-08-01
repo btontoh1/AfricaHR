@@ -204,4 +204,13 @@ describe('hasPermission', () => {
     expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.TENANT_BRANDING_MANAGE)).toBe(false);
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.TENANT_BRANDING_MANAGE)).toBe(false);
   });
+
+  it('restricts billing management to platform admins', () => {
+    expect(hasPermission(SystemRole.PLATFORM_ADMIN, Permission.PLATFORM_BILLING_MANAGE)).toBe(
+      true,
+    );
+    expect(hasPermission(SystemRole.TENANT_ADMIN, Permission.PLATFORM_BILLING_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.HR_MANAGER, Permission.PLATFORM_BILLING_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.EMPLOYEE, Permission.PLATFORM_BILLING_MANAGE)).toBe(false);
+  });
 });

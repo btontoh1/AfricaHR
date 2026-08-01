@@ -73,6 +73,12 @@ describe('permission matrix', () => {
       role: 'TENANT_ADMIN',
       expectStatus: 403,
     },
+    {
+      area: 'billing (platform-only)',
+      path: `/api/tenants/{t}/subscription`,
+      role: 'TENANT_ADMIN',
+      expectStatus: 403,
+    },
   ];
 
   it.each(checks)('$area :: $role -> $expectStatus on $path', async ({ path, role, expectStatus }) => {

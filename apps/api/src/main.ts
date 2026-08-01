@@ -6,7 +6,11 @@ import { AppConfigService } from '@africahr/platform-core';
 import { AppModule } from './app/app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  // rawBody: true preserves the unparsed request body alongside Nest's
+  // normal JSON parsing, needed to verify the Paystack webhook's
+  // x-paystack-signature header (an HMAC over the exact raw bytes) - see
+  // PaystackWebhookController.
+  const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
 
   const logger = app.get(Logger);
   app.useLogger(logger);

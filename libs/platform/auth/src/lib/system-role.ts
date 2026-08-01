@@ -55,6 +55,10 @@ export const Permission = {
   // their own branding, unlike PLATFORM_TENANT_MANAGE's ops-only lifecycle
   // actions (status changes, etc).
   TENANT_BRANDING_MANAGE: 'tenant:branding:manage',
+  // Platform-admin only: subscriptions/invoices are assigned and managed by
+  // the platform admin in v1 (no tenant self-serve checkout - see project
+  // scoping decision), so there is no tenant-level counterpart yet.
+  PLATFORM_BILLING_MANAGE: 'platform:billing:manage',
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
@@ -85,6 +89,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.REPORTING_READ,
     Permission.NOTIFICATIONS_MANAGE,
     Permission.NOTIFICATIONS_READ,
+    Permission.PLATFORM_BILLING_MANAGE,
   ],
   [SystemRole.TENANT_ADMIN]: [
     Permission.TENANT_BRANDING_MANAGE,

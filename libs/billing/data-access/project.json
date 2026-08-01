@@ -1,0 +1,19 @@
+{
+  "name": "billing-data-access",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/billing/data-access/src",
+  "projectType": "library",
+  "tags": ["scope:billing", "type:data-access"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/billing/data-access",
+        "main": "libs/billing/data-access/src/index.ts",
+        "tsConfig": "libs/billing/data-access/tsconfig.lib.json",
+        "assets": ["libs/billing/data-access/*.md"]
+      }
+    }
+  }
+}

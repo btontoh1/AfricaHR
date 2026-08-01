@@ -5,6 +5,7 @@ import { useTenant, useUpdateTenantStatus } from './queries';
 import { TenantStatusBadge } from './tenant-status-badge';
 import { allowedNextStatuses, TENANT_STATUS_LABEL } from './tenant-status';
 import { AddTenantUserDialog } from './add-tenant-user-dialog';
+import { TenantUsersTable } from './tenant-users-table';
 import type { TenantStatus } from './types';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
@@ -94,10 +95,7 @@ export function TenantDetail({ tenantId }: { tenantId: string }) {
           <AddTenantUserDialog tenantId={tenantId} />
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Add an admin or other user to this tenant. To see everyone already on this tenant, sign in as one of its
-            admins and check Team Members.
-          </p>
+          <TenantUsersTable tenantId={tenantId} />
         </CardContent>
       </Card>
     </div>

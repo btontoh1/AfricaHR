@@ -121,6 +121,60 @@ export class UserService {
   }
 
   /**
+   * Platform-admin-only counterparts to list/updateRole/setActive above,
+   * for an arbitrary tenant rather than the actor's own (there is no
+   * actor.tenantId to scope by — see requireTenantScope). The route these
+   * back is gated by PLATFORM_TENANT_MANAGE, so by the time control
+   * reaches here the caller is already known to be a platform admin; that
+   * permission check is the real enforcement, not anything in this class.
+   */
+  listForTenant(tenantId: string): Promise<User[]> {
+    return this.users.listByTenant(tenantId);
+  }
+
+  async updateRoleForTenant(tenantId: string, id: string, role: SystemRole, actorId?: string): Promise<User> {
+    const existing = await this.users.findById(tenantId, id);
+    if (!existing) {
+      throw new NotFoundException(`User "${id}" not found`);
+    }
+    if (role === SystemRole.PLATFORM_ADMIN) {
+      throw new BadRequestException('Cannot assign PLATFORM_ADMIN within a tenant');
+    }
+
+    const user = await this.users.updateRole(tenantId, id, role, actorId);
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'user.role_changed',
+      resourceType: 'User',
+      resourceId: id,
+      metadata: { role },
+    });
+
+    return user;
+  }
+
+  async setActiveForTenant(tenantId: string, id: string, isActive: boolean, actorId?: string): Promise<User> {
+    const existing = await this.users.findById(tenantId, id);
+    if (!existing) {
+      throw new NotFoundException(`User "${id}" not found`);
+    }
+
+    const user = await this.users.setActive(tenantId, id, isActive, actorId);
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: isActive ? 'user.activated' : 'user.deactivated',
+      resourceType: 'User',
+      resourceId: id,
+    });
+
+    return user;
+  }
+
+  /**
    * Platform admins may create the first user for a tenant they've just
    * provisioned (or another platform admin, by omitting tenantId) — this is
    * the one case where the actor's own tenant isn't the target tenant.

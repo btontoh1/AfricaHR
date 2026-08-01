@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { UserPlus } from 'lucide-react';
 import { useCreateUser } from '@/features/iam/queries';
@@ -31,6 +32,7 @@ const ROLE_LABEL: Record<AddTenantUserFormValues['role'], string> = {
 export function AddTenantUserDialog({ tenantId }: { tenantId: string }) {
   const [open, setOpen] = useState(false);
   const createUser = useCreateUser();
+  const queryClient = useQueryClient();
 
   const form = useForm<AddTenantUserFormValues>({
     resolver: zodResolver(addTenantUserFormSchema),
@@ -40,6 +42,11 @@ export function AddTenantUserDialog({ tenantId }: { tenantId: string }) {
   async function onSubmit(values: AddTenantUserFormValues) {
     try {
       await createUser.mutateAsync({ tenantId, ...values });
+      // useCreateUser only invalidates the generic (actor-tenant-scoped)
+      // ['users'] list - this dialog runs in the platform-admin tenant
+      // detail page, so the list that needs refreshing is the
+      // per-tenant one instead.
+      queryClient.invalidateQueries({ queryKey: ['platform-tenants', tenantId, 'users'] });
       toast.success('User created');
       form.reset();
       setOpen(false);

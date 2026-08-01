@@ -9,6 +9,7 @@ import { MfaService } from './mfa.service';
 import { AuthController } from './auth.controller';
 import { UserController } from './user.controller';
 import { MyMfaController } from './my-mfa.controller';
+import { PlatformTenantUsersController } from './platform-tenant-users.controller';
 
 @Module({
   imports: [IamDataAccessModule, PlatformAuthModule, AuditModule, AppConfigModule],
@@ -17,8 +18,10 @@ import { MyMfaController } from './my-mfa.controller';
   // dynamic /users/:id route (same gotcha as every self-service module
   // since Module 5) - though /users/me/mfa/... has an extra segment
   // UserController's own routes never do, so this is defense-in-depth
-  // rather than strictly required here.
-  controllers: [AuthController, MyMfaController, UserController],
+  // rather than strictly required here. PlatformTenantUsersController's
+  // "tenants/:tenantId/users" path never collides with anything above
+  // (different first segment).
+  controllers: [AuthController, MyMfaController, UserController, PlatformTenantUsersController],
   providers: [AuthService, UserService, MfaService],
   exports: [AuthService, UserService, MfaService],
 })

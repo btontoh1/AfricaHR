@@ -184,7 +184,14 @@ enum SystemRole {
 model User {
   id           String     @id @default(uuid())
   tenantId     String?    @map("tenant_id")
-  email        String     @unique
+  // Deliberately not @unique here: uniqueness is enforced by a partial
+  // index (WHERE deleted_at IS NULL) added via raw SQL migration instead,
+  // since Prisma's schema DSL can't express a filtered unique constraint.
+  // A plain @unique would let one soft-deleted user permanently block
+  // that email from ever being reused - find_user_for_login() already
+  // treats deleted_at IS NULL as "the email is free," so the DB
+  // constraint needs to agree.
+  email        String
   passwordHash String     @map("password_hash")
   firstName    String     @map("first_name")
   lastName     String     @map("last_name")

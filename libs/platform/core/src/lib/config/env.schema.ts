@@ -24,7 +24,13 @@ export const envSchema = z.object({
   STORAGE_REGION: z.string().default('us-east-1'),
   // MinIO requires path-style URLs (http://host/bucket/key); real S3 uses
   // virtual-hosted style (http://bucket.host/key) and should set this false.
-  STORAGE_FORCE_PATH_STYLE: z.coerce.boolean().default(true),
+  // z.coerce.boolean() is a trap for a string env var: JS's Boolean("false")
+  // is true (any non-empty string is truthy), so it would silently ignore
+  // an explicit "false" - this enum+transform parses the literal text instead.
+  STORAGE_FORCE_PATH_STYLE: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
 
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 

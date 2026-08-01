@@ -23,6 +23,7 @@ import { getDefaultDateRange } from '@/features/reporting/date-range';
 import { StatCard } from '@/features/reporting/stat-card';
 import { PendingLeaveRequestsCard } from '@/features/leave/pending-leave-requests-card';
 import { TeamPendingLeaveRequestsCard } from '@/features/leave/team-pending-leave-requests-card';
+import { PlatformAdminOverview } from '@/features/platform-tenants/platform-admin-overview';
 import { CardSkeleton } from '@/components/loading-state';
 import { ErrorState } from '@/components/error-state';
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -137,6 +138,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <Greeting email={session.email} />
+      {session.role === 'PLATFORM_ADMIN' && <PlatformAdminOverview />}
       {hasLeaveAdminAccess && session.tenantId && (
         <PendingLeaveRequestsCard tenantId={session.tenantId} />
       )}

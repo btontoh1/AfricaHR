@@ -16,6 +16,8 @@
     "@africahr/platform-auth": "0.0.1",
     "@africahr/platform-audit": "0.0.1",
     "@africahr/platform-core": "0.0.1",
-    "@africahr/platform-storage": "0.0.1"
+    "@africahr/platform-storage": "0.0.1",
+    "@africahr/platform-database": "0.0.1",
+    "@africahr/platform-redis": "0.0.1"
   }
 }

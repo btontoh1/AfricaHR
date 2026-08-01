@@ -10,6 +10,7 @@ describe('TenantRepository', () => {
       findFirst: jest.Mock;
       findMany: jest.Mock;
       update: jest.Mock;
+      count: jest.Mock;
     };
   };
 
@@ -20,6 +21,7 @@ describe('TenantRepository', () => {
         findFirst: jest.fn(),
         findMany: jest.fn(),
         update: jest.fn(),
+        count: jest.fn(),
       },
     };
     repository = new TenantRepository(prisma as unknown as PrismaService);
@@ -95,5 +97,22 @@ describe('TenantRepository', () => {
       where: { id: 'tenant-1' },
       data: { logoStorageKey: null, updatedBy: 'user-1' },
     });
+  });
+
+  it('lists the most recently created tenants first', async () => {
+    await repository.listRecent(5);
+
+    expect(prisma.tenant.findMany).toHaveBeenCalledWith({
+      where: { deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    });
+  });
+
+  it('counts non-deleted tenants', async () => {
+    prisma.tenant.count.mockResolvedValue(7);
+
+    await expect(repository.count()).resolves.toBe(7);
+    expect(prisma.tenant.count).toHaveBeenCalledWith({ where: { deletedAt: null } });
   });
 });

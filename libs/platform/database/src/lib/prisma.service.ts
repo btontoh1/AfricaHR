@@ -65,4 +65,17 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       return fn(tx);
     });
   }
+
+  /**
+   * Whole-database disk usage - a platform-wide operational metric, not
+   * tenant data, so this deliberately doesn't go through
+   * withTenantContext/withPlatformScope (same "direct, unscoped raw query"
+   * posture as UserRepository.findByEmail).
+   */
+  async getDatabaseSizeBytes(): Promise<number> {
+    const rows = await this.$queryRaw<
+      { size: bigint }[]
+    >`SELECT pg_database_size(current_database()) as size`;
+    return Number(rows[0].size);
+  }
 }

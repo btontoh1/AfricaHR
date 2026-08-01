@@ -64,6 +64,14 @@ export class TenantService {
     return this.tenants.list(params);
   }
 
+  listRecent(take: number): Promise<Tenant[]> {
+    return this.tenants.listRecent(take);
+  }
+
+  count(): Promise<number> {
+    return this.tenants.count();
+  }
+
   /**
    * For org-scoped login: TRIAL and ACTIVE tenants can log in, SUSPENDED and
    * CLOSED cannot. Uses the same not-found message for "no such slug" and

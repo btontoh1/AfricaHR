@@ -46,6 +46,19 @@ export class TenantRepository {
     });
   }
 
+  /** Newest first - a separate method rather than a param on list() above, so that method's existing callers/ordering are untouched. */
+  listRecent(take: number): Promise<Tenant[]> {
+    return this.prisma.tenant.findMany({
+      where: { deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+      take,
+    });
+  }
+
+  count(): Promise<number> {
+    return this.prisma.tenant.count({ where: { deletedAt: null } });
+  }
+
   updateStatus(id: string, status: TenantStatus, updatedBy?: string): Promise<Tenant> {
     return this.prisma.tenant.update({
       where: { id },

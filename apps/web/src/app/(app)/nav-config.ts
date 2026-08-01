@@ -33,6 +33,7 @@ import {
   Send,
   ShieldCheck,
   Settings,
+  Building,
 } from 'lucide-react';
 import type { SessionUser } from '@/lib/session';
 
@@ -80,8 +81,14 @@ export function buildNavGroups(user: SessionUser): NavGroup[] {
   const groups: NavGroup[] = [
     {
       label: 'Overview',
+      items: [{ label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard }],
+    },
+    {
+      label: 'Platform Admin',
       items: [
-        { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+        ...(isPlatformAdmin
+          ? [{ label: 'Tenants', href: '/platform-admin/tenants', icon: Building }]
+          : []),
         ...(isPlatformAdmin
           ? [{ label: 'Verification Queue', href: '/organizations/verification-queue', icon: ShieldCheck }]
           : []),

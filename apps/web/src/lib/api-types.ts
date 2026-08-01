@@ -2157,6 +2157,22 @@ export interface components {
             /** @enum {string} */
             status: "TRIAL" | "ACTIVE" | "SUSPENDED" | "CLOSED";
         };
+        Tenant: {
+            id: string;
+            name: string;
+            slug: string;
+            /** @enum {string} */
+            status: "TRIAL" | "ACTIVE" | "SUSPENDED" | "CLOSED";
+            country: string;
+            currency: string;
+            timezone: string;
+            logoStorageKey: string | null;
+            createdAt: string;
+            updatedAt: string;
+            deletedAt: string | null;
+            createdBy: string | null;
+            updatedBy: string | null;
+        };
         OrganizationResponseDto: {
             id: string;
             legalName: string;
@@ -3596,7 +3612,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["Tenant"][];
+                };
             };
         };
     };
@@ -3617,7 +3635,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["Tenant"];
+                };
             };
         };
     };
@@ -3636,7 +3656,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["Tenant"];
+                };
             };
         };
     };
@@ -3659,7 +3681,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["Tenant"];
+                };
             };
         };
     };

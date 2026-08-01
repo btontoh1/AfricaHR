@@ -24,6 +24,28 @@ describe('validateEnv', () => {
     expect(result.REDIS_PORT).toBe(6380);
   });
 
+  it('defaults STORAGE_FORCE_PATH_STYLE to true when unset', () => {
+    expect(validateEnv(validEnv).STORAGE_FORCE_PATH_STYLE).toBe(true);
+  });
+
+  it('parses the literal string "false" as false, not just "non-empty = true"', () => {
+    expect(
+      validateEnv({ ...validEnv, STORAGE_FORCE_PATH_STYLE: 'false' }).STORAGE_FORCE_PATH_STYLE,
+    ).toBe(false);
+  });
+
+  it('parses the literal string "true" as true', () => {
+    expect(
+      validateEnv({ ...validEnv, STORAGE_FORCE_PATH_STYLE: 'true' }).STORAGE_FORCE_PATH_STYLE,
+    ).toBe(true);
+  });
+
+  it('rejects a STORAGE_FORCE_PATH_STYLE value that is neither "true" nor "false"', () => {
+    expect(() =>
+      validateEnv({ ...validEnv, STORAGE_FORCE_PATH_STYLE: 'yes' }),
+    ).toThrow(/STORAGE_FORCE_PATH_STYLE/);
+  });
+
   it('parses CORS_ORIGINS as a trimmed comma-separated list', () => {
     const result = validateEnv({
       ...validEnv,

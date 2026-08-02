@@ -137,7 +137,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
               </SheetContent>
             </Sheet>
             <span className="text-sm text-muted-foreground">
-              {user.tenantId ? `Tenant ${user.tenantId.slice(0, 8)}` : 'Platform Admin'}
+              {user.tenantId ? (tenant ? `Tenant - ${tenant.name}` : null) : 'Platform Admin'}
             </span>
           </div>
 

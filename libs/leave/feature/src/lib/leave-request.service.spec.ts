@@ -220,7 +220,7 @@ describe('LeaveRequestService', () => {
       );
     });
 
-    it('does not emit when the employee has no manager', async () => {
+    it('emits with a null managerUserId when the employee has no manager', async () => {
       requests.create.mockResolvedValue(makeRequest());
       employees.findById.mockResolvedValue({
         id: 'emp-1',
@@ -236,10 +236,13 @@ describe('LeaveRequestService', () => {
         endDate: '2026-02-06',
       });
 
-      expect(eventEmitter.emit).not.toHaveBeenCalled();
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        LEAVE_REQUEST_CREATED_EVENT,
+        expect.objectContaining({ tenantId: 'tenant-1', managerUserId: null }),
+      );
     });
 
-    it('does not emit when the manager has no portal access', async () => {
+    it('emits with a null managerUserId when the manager has no portal access', async () => {
       requests.create.mockResolvedValue(makeRequest());
       employees.findById.mockImplementation(async (_tenantId, id) => {
         if (id === 'emp-1') {
@@ -257,7 +260,10 @@ describe('LeaveRequestService', () => {
         endDate: '2026-02-06',
       });
 
-      expect(eventEmitter.emit).not.toHaveBeenCalled();
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        LEAVE_REQUEST_CREATED_EVENT,
+        expect.objectContaining({ tenantId: 'tenant-1', managerUserId: null }),
+      );
     });
   });
 

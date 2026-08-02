@@ -22,19 +22,22 @@ export interface LeaveRequestWithEmployeeName extends LeaveRequest {
 }
 
 /**
- * Emitted after a leave request is created, only when the employee has a
- * direct manager who also has portal access (a linked User). Consumed by a
- * listener living in notifications-feature — scope:leave is not allowed to
- * depend on scope:notifications directly (see eslint.config.mjs module
- * boundaries), so this event is the decoupling point between the two. Both
- * sides must agree on this literal string and payload shape informally;
- * there's no shared type between scopes for it.
+ * Emitted after every leave request is created. managerUserId is null when
+ * the employee has no manager, or that manager has no portal access (no
+ * linked User) - the listener still notifies whoever can approve leave
+ * tenant-wide (TENANT_ADMIN/HR_MANAGER) even when there's no manager to
+ * also notify. Consumed by a listener living in notifications-feature —
+ * scope:leave is not allowed to depend on scope:notifications directly
+ * (see eslint.config.mjs module boundaries), so this event is the
+ * decoupling point between the two. Both sides must agree on this literal
+ * string and payload shape informally; there's no shared type between
+ * scopes for it.
  */
 export const LEAVE_REQUEST_CREATED_EVENT = 'leave.request.created';
 
 export interface LeaveRequestCreatedEvent {
   tenantId: string;
-  managerUserId: string;
+  managerUserId: string | null;
   employeeName: string;
   leaveTypeName: string;
   startDate: string;
@@ -134,36 +137,40 @@ export class LeaveRequestService {
       resourceId: request.id,
     });
 
-    await this.notifyManagerOfNewRequest(tenantId, employeeId, request);
+    await this.notifyOfNewRequest(tenantId, employeeId, request);
 
     return request;
   }
 
   /**
-   * Silent no-op when the employee has no manager, or that manager has no
-   * portal access (no linked User) — there's simply no one to notify, not
-   * an error condition.
+   * Always emits, even when there's no manager to notify - the listener
+   * separately notifies tenant admins/HR managers regardless, so a missing
+   * manager shouldn't suppress the event entirely (see
+   * LeaveRequestCreatedEvent's doc comment). Silently resolves
+   * managerUserId to null rather than throwing when the employee record or
+   * its manager can't be found - not an error condition here.
    */
-  private async notifyManagerOfNewRequest(
+  private async notifyOfNewRequest(
     tenantId: string,
     employeeId: string,
     request: LeaveRequest,
   ): Promise<void> {
     const employee = await this.employees.findById(tenantId, employeeId);
-    if (!employee?.managerId) {
+    if (!employee) {
       return;
     }
 
-    const manager = await this.employees.findById(tenantId, employee.managerId);
-    if (!manager?.userId) {
-      return;
+    let managerUserId: string | null = null;
+    if (employee.managerId) {
+      const manager = await this.employees.findById(tenantId, employee.managerId);
+      managerUserId = manager?.userId ?? null;
     }
 
     const leaveType = await this.leaveTypes.findById(tenantId, request.leaveTypeId);
 
     const event: LeaveRequestCreatedEvent = {
       tenantId,
-      managerUserId: manager.userId,
+      managerUserId,
       employeeName: `${employee.firstName} ${employee.lastName}`,
       leaveTypeName: leaveType?.name ?? 'Leave',
       startDate: request.startDate.toISOString().slice(0, 10),

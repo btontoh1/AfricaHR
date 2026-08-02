@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { SystemRole } from '@prisma/client';
 import { PrismaService } from '@africahr/platform-database';
 
 export interface NotificationRecipient {
@@ -27,5 +28,22 @@ export class NotificationUserRepository {
         select: { id: true, email: true },
       }),
     );
+  }
+
+  /**
+   * Active user ids in a tenant holding any of the given roles - used to
+   * notify whoever can act on a request tenant-wide (e.g. leave approval:
+   * TENANT_ADMIN/HR_MANAGER) alongside whatever specific person it's
+   * routed to, without scope:notifications importing iam-feature's
+   * role/permission logic.
+   */
+  async listActiveUserIdsByRole(tenantId: string, roles: SystemRole[]): Promise<string[]> {
+    const users = await this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.user.findMany({
+        where: { tenantId, role: { in: roles }, isActive: true, deletedAt: null },
+        select: { id: true },
+      }),
+    );
+    return users.map((user) => user.id);
   }
 }

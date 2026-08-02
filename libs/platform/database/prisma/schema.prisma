@@ -1,4 +1,4 @@
-// ParrotHR — shared-schema, multi-tenant PostgreSQL database.
+// ParotHR — shared-schema, multi-tenant PostgreSQL database.
 //
 // Tenant isolation convention (see RLS_CONVENTION.md in this directory):
 // every tenant-scoped model gets a `tenantId` column, an index on it, and a

@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: 'ParrotHR',
+  title: 'ParotHR',
   description: 'Enterprise multi-tenant HR & Payroll platform for Africa',
 };
 

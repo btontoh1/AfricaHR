@@ -78,13 +78,13 @@ function NavGroups({ groups, pathname, onNavigate }: { groups: NavGroup[]; pathn
   );
 }
 
-// Falls back to the default ParrotHR mark and name when a tenant hasn't
+// Falls back to the default ParotHR mark and name when a tenant hasn't
 // uploaded their own logo, or has no tenant at all (PLATFORM_ADMIN).
 function BrandMark({ logoUrl, tenantName }: { logoUrl?: string | null; tenantName?: string | null }) {
   return (
     <div className="flex items-center gap-2 px-2">
       <Logo className="size-8 rounded-lg" src={logoUrl} />
-      <span className="truncate text-lg font-semibold tracking-tight">{tenantName ?? 'ParrotHR'}</span>
+      <span className="truncate text-lg font-semibold tracking-tight">{tenantName ?? 'ParotHR'}</span>
     </div>
   );
 }

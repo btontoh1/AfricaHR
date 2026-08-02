@@ -37,7 +37,7 @@ async function bootstrap() {
   app.enableCors({ origin: config.corsOrigins });
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('ParrotHR API')
+    .setTitle('ParotHR API')
     .setDescription('Enterprise multi-tenant HR & Payroll platform for Africa')
     .setVersion('0.1.0')
     .addBearerAuth()

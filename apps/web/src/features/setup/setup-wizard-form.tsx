@@ -66,7 +66,7 @@ export function SetupWizardForm() {
     <Card className="w-full max-w-lg shadow-soft-lg">
       <CardHeader>
         <Logo className="mb-1 size-11 rounded-xl" />
-        <CardTitle className="text-xl">Welcome to ParrotHR</CardTitle>
+        <CardTitle className="text-xl">Welcome to ParotHR</CardTitle>
         <CardDescription>
           Let&apos;s set up your company and create the first administrator account.
         </CardDescription>

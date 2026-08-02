@@ -4,8 +4,8 @@ describe('renderTemplate', () => {
   it('substitutes known {{variable}} placeholders', () => {
     expect(renderTemplate('Hello {{firstName}}, welcome to {{company}}!', {
       firstName: 'Ama',
-      company: 'ParrotHR',
-    })).toBe('Hello Ama, welcome to ParrotHR!');
+      company: 'ParotHR',
+    })).toBe('Hello Ama, welcome to ParotHR!');
   });
 
   it('tolerates whitespace inside the placeholder braces', () => {

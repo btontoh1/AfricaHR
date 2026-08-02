@@ -128,9 +128,17 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
               </SheetTrigger>
               <SheetContent side="left" className="w-72 p-0">
                 <SheetTitle className="sr-only">Navigation</SheetTitle>
-                <div className="flex flex-col px-3 py-5">
+                {/* SheetContent is a fixed, viewport-height box (h-full), not
+                    part of document flow like the desktop <aside> below - so
+                    without an explicit scroll region here, a nav list taller
+                    than the screen just gets clipped at the bottom with no
+                    way to reach it. min-h-0 is required alongside flex-1:
+                    flex items default to min-height:auto, which blocks them
+                    from ever shrinking enough to trigger their own
+                    overflow-y-auto scrollbar. */}
+                <div className="flex h-full min-h-0 flex-col px-3 py-5">
                   <BrandMark logoUrl={tenant?.logoUrl} tenantName={tenant?.name} />
-                  <div className="mt-6">
+                  <div className="mt-6 min-h-0 flex-1 overflow-y-auto">
                     <NavGroups groups={navGroups} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
                   </div>
                 </div>

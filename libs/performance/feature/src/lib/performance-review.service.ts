@@ -1,4 +1,5 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PerformanceReview, PerformanceReviewStatus, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import {
@@ -12,6 +13,26 @@ import { SubmitSelfAssessmentDto } from './dto/submit-self-assessment.dto';
 
 export type PerformanceReviewWithEmployeeName = PerformanceReview & { employeeName: string };
 
+/**
+ * Emitted after an employee submits their self-assessment. managerUserId
+ * is null when the employee has no manager, or that manager has no portal
+ * access (no linked User) - the listener still notifies tenant admins/HR
+ * managers regardless (mirrors leave-feature's LeaveRequestCreatedEvent).
+ * Consumed by a listener living in notifications-feature — scope:performance
+ * is not allowed to depend on scope:notifications directly (see
+ * eslint.config.mjs module boundaries), so this event is the decoupling
+ * point between the two. Both sides must agree on this literal string and
+ * payload shape informally; there's no shared type between scopes for it.
+ */
+export const PERFORMANCE_REVIEW_SELF_SUBMITTED_EVENT = 'performance.review.self_submitted';
+
+export interface PerformanceReviewSelfSubmittedEvent {
+  tenantId: string;
+  managerUserId: string | null;
+  employeeName: string;
+  cycleName: string;
+}
+
 @Injectable()
 export class PerformanceReviewService {
   constructor(
@@ -19,6 +40,7 @@ export class PerformanceReviewService {
     private readonly cycles: PerformanceReviewCycleRepository,
     private readonly employees: PerformanceEmployeeRepository,
     private readonly audit: AuditService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async resolveOwnEmployeeId(tenantId: string, userId: string): Promise<string> {
@@ -175,7 +197,41 @@ export class PerformanceReviewService {
       resourceId: id,
     });
 
+    await this.notifyOfSelfAssessment(tenantId, updated);
+
     return updated;
+  }
+
+  /**
+   * Always emits, even when there's no manager to notify - the listener
+   * separately notifies tenant admins/HR managers regardless (see
+   * PerformanceReviewSelfSubmittedEvent's doc comment).
+   */
+  private async notifyOfSelfAssessment(tenantId: string, review: PerformanceReview): Promise<void> {
+    const employee = await this.employees.findById(tenantId, review.employeeId);
+    if (!employee) {
+      return;
+    }
+
+    let managerUserId: string | null = null;
+    if (employee.managerId) {
+      const manager = await this.employees.findById(tenantId, employee.managerId);
+      managerUserId = manager?.userId ?? null;
+    }
+
+    const [names, cycle] = await Promise.all([
+      this.employees.findManyByIds(tenantId, [review.employeeId]),
+      this.cycles.findById(tenantId, review.cycleId),
+    ]);
+    const employeeName = names[0] ? `${names[0].firstName} ${names[0].lastName}` : 'An employee';
+
+    const event: PerformanceReviewSelfSubmittedEvent = {
+      tenantId,
+      managerUserId,
+      employeeName,
+      cycleName: cycle?.name ?? 'Performance review',
+    };
+    this.eventEmitter.emit(PERFORMANCE_REVIEW_SELF_SUBMITTED_EVENT, event);
   }
 
   async submitManagerAssessmentAsManager(

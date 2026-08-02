@@ -1,6 +1,6 @@
 import { Secret, TOTP } from 'otpauth';
 
-const ISSUER = 'ParrotHR';
+const ISSUER = 'ParotHR';
 // Tolerates one 30s step of clock drift each direction between server and
 // the user's authenticator app - the standard TOTP allowance, not
 // something to widen casually (each extra step doubles the guessable
@@ -14,7 +14,7 @@ export function generateTotpSecret(): string {
 /**
  * otpauth:// URI for QR-code rendering. `label` is the account identifier
  * shown under the entry in the user's authenticator app - their email, so
- * multiple ParrotHR accounts (e.g. platform admin + a tenant account) are
+ * multiple ParotHR accounts (e.g. platform admin + a tenant account) are
  * distinguishable.
  */
 export function buildTotpUri(secretBase32: string, label: string): string {

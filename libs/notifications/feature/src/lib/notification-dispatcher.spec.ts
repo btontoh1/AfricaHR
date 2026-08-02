@@ -28,20 +28,20 @@ describe('SendGridNotificationDispatcher', () => {
   });
 
   it('sets the API key on construction', () => {
-    new SendGridNotificationDispatcher('sg-key', 'noreply@parrothr.com');
+    new SendGridNotificationDispatcher('sg-key', 'noreply@parothr.com');
 
     expect(mockedSgMail.setApiKey).toHaveBeenCalledWith('sg-key');
   });
 
   it('sends a plain-text email via SendGrid and reports success', async () => {
     mockedSgMail.send.mockResolvedValue([{}, {}]);
-    const dispatcher = new SendGridNotificationDispatcher('sg-key', 'noreply@parrothr.com');
+    const dispatcher = new SendGridNotificationDispatcher('sg-key', 'noreply@parothr.com');
 
     const result = await dispatcher.dispatchEmail('ama@example.com', 'Subject', 'Body');
 
     expect(mockedSgMail.send).toHaveBeenCalledWith({
       to: 'ama@example.com',
-      from: 'noreply@parrothr.com',
+      from: 'noreply@parothr.com',
       subject: 'Subject',
       text: 'Body',
     });
@@ -50,7 +50,7 @@ describe('SendGridNotificationDispatcher', () => {
 
   it('reports failure with the error message when SendGrid rejects, rather than throwing', async () => {
     mockedSgMail.send.mockRejectedValue(new Error('Unauthorized'));
-    const dispatcher = new SendGridNotificationDispatcher('sg-key', 'noreply@parrothr.com');
+    const dispatcher = new SendGridNotificationDispatcher('sg-key', 'noreply@parothr.com');
 
     const result = await dispatcher.dispatchEmail('ama@example.com', 'Subject', 'Body');
 

@@ -24,7 +24,7 @@ describe('buildTotpUri', () => {
     const uri = buildTotpUri(secret, 'ama@example.com');
 
     expect(uri).toMatch(/^otpauth:\/\/totp\//);
-    expect(uri).toContain('ParrotHR');
+    expect(uri).toContain('ParotHR');
     expect(uri).toContain(encodeURIComponent('ama@example.com'));
   });
 });

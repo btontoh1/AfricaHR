@@ -38,7 +38,7 @@ export default async function TenantLoginPage({ params }: { params: Promise<{ sl
         />
         <div className="relative flex items-center gap-2">
           <Logo className="size-9 rounded-lg" />
-          <span className="text-xl font-semibold tracking-tight">ParrotHR</span>
+          <span className="text-xl font-semibold tracking-tight">ParotHR</span>
         </div>
         <div className="relative space-y-8">
           <h2 className="text-3xl leading-tight font-semibold text-balance">
@@ -56,7 +56,7 @@ export default async function TenantLoginPage({ params }: { params: Promise<{ sl
           </ul>
         </div>
         <p className="relative text-xs text-primary-foreground/70">
-          &copy; {new Date().getFullYear()} ParrotHR. All rights reserved.
+          &copy; {new Date().getFullYear()} ParotHR. All rights reserved.
         </p>
       </div>
 

@@ -34,6 +34,7 @@ import {
   ShieldCheck,
   Settings,
   Building,
+  KeyRound,
 } from 'lucide-react';
 import type { SessionUser } from '@/lib/session';
 
@@ -243,6 +244,10 @@ export function buildNavGroups(user: SessionUser): NavGroup[] {
     {
       label: 'Settings',
       items: [
+        // Every authenticated user manages their own password regardless
+        // of role or tenant membership - unlike the tenant-wide Settings
+        // page below (sign-in link, logo), this isn't admin-gated.
+        { label: 'My Account', href: '/account', icon: KeyRound },
         ...(user.role === 'TENANT_ADMIN'
           ? [{ label: 'Settings', href: '/settings', icon: Settings }]
           : []),

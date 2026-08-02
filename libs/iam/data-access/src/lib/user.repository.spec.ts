@@ -147,6 +147,18 @@ describe('UserRepository', () => {
     });
   });
 
+  describe('updatePassword', () => {
+    it('updates only the password hash', async () => {
+      await repository.updatePassword('tenant-1', 'user-1', 'new-hash');
+
+      expect(withTenantContext).toHaveBeenCalledWith('tenant-1', expect.any(Function));
+      expect(userDelegate.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { passwordHash: 'new-hash' },
+      });
+    });
+  });
+
   describe('MFA state transitions', () => {
     it('setPendingMfaSecret stores the encrypted secret without enabling MFA', async () => {
       await repository.setPendingMfaSecret('tenant-1', 'user-1', 'encrypted-blob');

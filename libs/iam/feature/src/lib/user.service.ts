@@ -1,16 +1,25 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { User } from '@prisma/client';
-import { RequestUser, SystemRole } from '@africahr/platform-auth';
+import { RequestUser, SystemRole, TokenRevocationService } from '@africahr/platform-auth';
 import { AuditService } from '@africahr/platform-audit';
-import { UserRepository } from '@africahr/iam-data-access';
+import { RefreshTokenRepository, UserRepository } from '@africahr/iam-data-access';
 import { getPasswordRequirementErrors } from '@africahr/iam-domain';
 import { CreateUserDto } from './dto/create-user.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Injectable()
 export class UserService {
   constructor(
     private readonly users: UserRepository,
+    private readonly refreshTokens: RefreshTokenRepository,
+    private readonly revocation: TokenRevocationService,
     private readonly audit: AuditService,
   ) {}
 
@@ -118,6 +127,46 @@ export class UserService {
     });
 
     return user;
+  }
+
+  /**
+   * Self-service password change - unlike the tenant-scoped methods above,
+   * this works for any actor including a platform admin (tenantId: null),
+   * since it acts on the caller's own account rather than a tenant-scoped
+   * resource. Requires the current password (same re-auth posture as
+   * MfaService.disable()) and then forces re-login everywhere: a hijacked
+   * session shouldn't be able to change the password and keep using the
+   * account under the old, now-superseded credential.
+   */
+  async changePassword(actor: RequestUser, dto: ChangePasswordDto): Promise<void> {
+    const user = await this.users.findById(actor.tenantId, actor.sub);
+    if (!user) {
+      throw new UnauthorizedException('Account no longer exists');
+    }
+
+    const currentValid = await argon2.verify(user.passwordHash, dto.currentPassword);
+    if (!currentValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const passwordErrors = getPasswordRequirementErrors(dto.newPassword);
+    if (passwordErrors.length > 0) {
+      throw new BadRequestException(passwordErrors);
+    }
+
+    const passwordHash = await argon2.hash(dto.newPassword);
+    await this.users.updatePassword(actor.tenantId, actor.sub, passwordHash);
+
+    await this.refreshTokens.revokeAllForUser(actor.tenantId, actor.sub);
+    await this.revocation.revokeAllForUser(actor.sub);
+
+    await this.audit.record({
+      tenantId: actor.tenantId,
+      actorUserId: actor.sub,
+      action: 'user.password_changed',
+      resourceType: 'User',
+      resourceId: actor.sub,
+    });
   }
 
   /**

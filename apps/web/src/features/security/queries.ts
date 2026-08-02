@@ -54,6 +54,15 @@ export function useMfaDisable() {
   });
 }
 
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: async (input: { currentPassword: string; newPassword: string }) => {
+      const { error } = await apiClient.PATCH('/api/users/me/password', { body: input });
+      if (error) throw error;
+    },
+  });
+}
+
 export function useForgetAllDevices() {
   return useMutation({
     mutationFn: async () => {

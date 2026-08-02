@@ -1,9 +1,9 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { User } from '@prisma/client';
-import { RequestUser, SystemRole } from '@africahr/platform-auth';
+import { RequestUser, SystemRole, TokenRevocationService } from '@africahr/platform-auth';
 import { AuditService } from '@africahr/platform-audit';
-import { UserRepository } from '@africahr/iam-data-access';
+import { RefreshTokenRepository, UserRepository } from '@africahr/iam-data-access';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 
@@ -12,6 +12,8 @@ jest.mock('argon2');
 describe('UserService', () => {
   let service: UserService;
   let users: jest.Mocked<UserRepository>;
+  let refreshTokens: jest.Mocked<RefreshTokenRepository>;
+  let revocation: jest.Mocked<TokenRevocationService>;
   let audit: jest.Mocked<AuditService>;
 
   const validPassword = 'CorrectHorse9';
@@ -54,13 +56,17 @@ describe('UserService', () => {
       updateRole: jest.fn(),
       setActive: jest.fn(),
       softDelete: jest.fn(),
+      updatePassword: jest.fn(),
     } as unknown as jest.Mocked<UserRepository>;
 
+    refreshTokens = { revokeAllForUser: jest.fn() } as unknown as jest.Mocked<RefreshTokenRepository>;
+    revocation = { revokeAllForUser: jest.fn() } as unknown as jest.Mocked<TokenRevocationService>;
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
 
     (argon2.hash as jest.Mock).mockResolvedValue('hashed-password');
+    (argon2.verify as jest.Mock).mockResolvedValue(true);
 
-    service = new UserService(users, audit);
+    service = new UserService(users, refreshTokens, revocation, audit);
   });
 
   describe('create', () => {
@@ -153,6 +159,56 @@ describe('UserService', () => {
       await expect(
         service.updateRole(tenantAdmin, 'user-2', SystemRole.PLATFORM_ADMIN),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('changePassword', () => {
+    const dto = { currentPassword: 'OldPassword9', newPassword: validPassword };
+
+    it('rejects when the current password is wrong', async () => {
+      users.findById.mockResolvedValue({ id: 'actor-1', passwordHash: 'hash' } as User);
+      (argon2.verify as jest.Mock).mockResolvedValue(false);
+
+      await expect(service.changePassword(tenantAdmin, dto)).rejects.toThrow(UnauthorizedException);
+      expect(users.updatePassword).not.toHaveBeenCalled();
+    });
+
+    it('rejects a new password that fails the strength requirements', async () => {
+      users.findById.mockResolvedValue({ id: 'actor-1', passwordHash: 'hash' } as User);
+
+      await expect(
+        service.changePassword(tenantAdmin, { ...dto, newPassword: 'weak' }),
+      ).rejects.toThrow(BadRequestException);
+      expect(users.updatePassword).not.toHaveBeenCalled();
+    });
+
+    it('updates the password, revokes every session, and records an audit entry', async () => {
+      users.findById.mockResolvedValue({ id: 'actor-1', passwordHash: 'hash' } as User);
+      users.updatePassword.mockResolvedValue({ id: 'actor-1' } as User);
+
+      await service.changePassword(tenantAdmin, dto);
+
+      expect(users.updatePassword).toHaveBeenCalledWith('tenant-1', 'actor-1', 'hashed-password');
+      expect(refreshTokens.revokeAllForUser).toHaveBeenCalledWith('tenant-1', 'actor-1');
+      expect(revocation.revokeAllForUser).toHaveBeenCalledWith('actor-1');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'user.password_changed', resourceId: 'actor-1' }),
+      );
+    });
+
+    it('works for a platform admin (no tenant)', async () => {
+      users.findById.mockResolvedValue({ id: 'actor-2', passwordHash: 'hash' } as User);
+      users.updatePassword.mockResolvedValue({ id: 'actor-2' } as User);
+
+      await service.changePassword(platformAdmin, dto);
+
+      expect(users.updatePassword).toHaveBeenCalledWith(null, 'actor-2', 'hashed-password');
+    });
+
+    it('throws when the account no longer exists', async () => {
+      users.findById.mockResolvedValue(null);
+
+      await expect(service.changePassword(tenantAdmin, dto)).rejects.toThrow(UnauthorizedException);
     });
   });
 

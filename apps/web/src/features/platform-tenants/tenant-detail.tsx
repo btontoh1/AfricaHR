@@ -7,6 +7,9 @@ import { allowedNextStatuses, TENANT_STATUS_LABEL } from './tenant-status';
 import { AddTenantUserDialog } from './add-tenant-user-dialog';
 import { TenantUsersTable } from './tenant-users-table';
 import type { TenantStatus } from './types';
+import { useSubscription } from '@/features/billing/queries';
+import { SubscriptionCard } from '@/features/billing/subscription-card';
+import { InvoicesTable } from '@/features/billing/invoices-table';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +31,9 @@ const DESTRUCTIVE_STATUSES: TenantStatus[] = ['SUSPENDED', 'CLOSED'];
 export function TenantDetail({ tenantId }: { tenantId: string }) {
   const { data: tenant, isLoading, isError, error } = useTenant(tenantId);
   const updateStatus = useUpdateTenantStatus(tenantId);
+  // Fetched here (not just inside SubscriptionCard) so InvoicesTable knows
+  // whether generating an invoice is possible before the user tries.
+  const { data: subscriptionSummary } = useSubscription(tenantId);
 
   if (isLoading) {
     return <CardSkeleton />;
@@ -86,6 +92,20 @@ export function TenantDetail({ tenantId }: { tenantId: string }) {
               </Button>
             ))
           )}
+        </CardContent>
+      </Card>
+
+      <SubscriptionCard tenantId={tenantId} tenantCurrency={tenant.currency} />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Invoices</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <InvoicesTable
+            tenantId={tenantId}
+            canGenerate={subscriptionSummary?.subscription.status === 'ACTIVE'}
+          />
         </CardContent>
       </Card>
 

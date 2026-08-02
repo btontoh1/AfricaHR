@@ -143,6 +143,12 @@ export class UserRepository {
     );
   }
 
+  updatePassword(tenantId: string | null, id: string, passwordHash: string): Promise<User> {
+    return withScope(this.prisma, tenantId, (client) =>
+      client.user.update({ where: { id }, data: { passwordHash } }),
+    );
+  }
+
   clearMfa(tenantId: string | null, id: string): Promise<User> {
     return withScope(this.prisma, tenantId, (client) =>
       client.user.update({

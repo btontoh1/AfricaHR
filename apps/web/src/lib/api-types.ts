@@ -2216,6 +2216,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/users/me/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["MyPasswordController_change"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3357,6 +3373,12 @@ export interface components {
             /** @description All-time paid invoice total, grouped by currency */
             platformRevenue: components["schemas"]["RevenueByCurrencyResponseDto"][];
             expiringSubscriptions: components["schemas"]["ExpiringSubscriptionResponseDto"][];
+        };
+        ChangePasswordDto: {
+            /** @description The account's current password */
+            currentPassword: string;
+            /** @description The new password to set. Must meet the platform password requirements. */
+            newPassword: string;
         };
     };
     responses: never;
@@ -7606,6 +7628,27 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PlatformBillingSummaryResponseDto"];
                 };
+            };
+        };
+    };
+    MyPasswordController_change: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordDto"];
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

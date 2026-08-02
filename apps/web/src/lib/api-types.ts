@@ -2130,6 +2130,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/subscription": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a tenant's subscription, including current usage and amount due */
+        get: operations["SubscriptionController_get"];
+        put?: never;
+        /** Assign a new per-seat subscription to a tenant */
+        post: operations["SubscriptionController_assign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/subscription/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a tenant's subscription */
+        post: operations["SubscriptionController_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["InvoiceController_list"];
+        put?: never;
+        /** Generate an invoice for the current billing period at the tenant's current headcount */
+        post: operations["InvoiceController_generate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/invoices/{id}/mark-paid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Manually mark an invoice paid (e.g. payment collected outside Paystack) */
+        patch: operations["InvoiceController_markPaid"];
+        trace?: never;
+    };
+    "/api/platform-admin/billing/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Platform-wide MRR, all-time revenue, and expiring subscriptions */
+        get: operations["PlatformBillingController_getSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3201,6 +3287,76 @@ export interface components {
             variables?: {
                 [key: string]: string;
             };
+        };
+        SubscriptionResponseDto: {
+            id: string;
+            tenantId: string;
+            pricePerEmployee: number;
+            currency: string;
+            /** @enum {string} */
+            status: "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELLED";
+            /** Format: date-time */
+            currentPeriodStart: string;
+            /** Format: date-time */
+            currentPeriodEnd: string;
+            cancelAtPeriodEnd: boolean;
+        };
+        SubscriptionSummaryResponseDto: {
+            subscription: components["schemas"]["SubscriptionResponseDto"];
+            activeEmployeeCount: number;
+            /** @description What the next invoice would total at the current headcount */
+            currentAmountDue: number;
+            isExpiringSoon: boolean;
+        };
+        AssignSubscriptionDto: {
+            /**
+             * @description Monthly price per active employee
+             * @example 10
+             */
+            pricePerEmployee: number;
+            /**
+             * @description ISO 4217 currency code
+             * @example GHS
+             */
+            currency: string;
+        };
+        InvoiceResponseDto: {
+            id: string;
+            tenantId: string;
+            subscriptionId: string;
+            amount: number;
+            currency: string;
+            employeeCountAtIssue: number;
+            /** @enum {string} */
+            status: "PENDING" | "PAID" | "CANCELLED";
+            /** Format: date-time */
+            periodStart: string;
+            /** Format: date-time */
+            periodEnd: string;
+            /** Format: date-time */
+            dueDate: string;
+            /** Format: date-time */
+            paidAt?: string | null;
+            checkoutUrl?: string | null;
+        };
+        RevenueByCurrencyResponseDto: {
+            currency: string;
+            amount: number;
+        };
+        ExpiringSubscriptionResponseDto: {
+            tenantId: string;
+            tenantName: string;
+            /** Format: date-time */
+            currentPeriodEnd: string;
+            currency: string;
+            /** @description What the tenant's next invoice would total at its current headcount */
+            amountDue: number;
+        };
+        PlatformBillingSummaryResponseDto: {
+            mrr: components["schemas"]["RevenueByCurrencyResponseDto"][];
+            /** @description All-time paid invoice total, grouped by currency */
+            platformRevenue: components["schemas"]["RevenueByCurrencyResponseDto"][];
+            expiringSubscriptions: components["schemas"]["ExpiringSubscriptionResponseDto"][];
         };
     };
     responses: never;
@@ -7303,6 +7459,152 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotificationResponseDto"];
+                };
+            };
+        };
+    };
+    SubscriptionController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionSummaryResponseDto"];
+                };
+            };
+        };
+    };
+    SubscriptionController_assign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignSubscriptionDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SubscriptionController_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    InvoiceController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceResponseDto"][];
+                };
+            };
+        };
+    };
+    InvoiceController_generate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceResponseDto"];
+                };
+            };
+        };
+    };
+    InvoiceController_markPaid: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceResponseDto"];
+                };
+            };
+        };
+    };
+    PlatformBillingController_getSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformBillingSummaryResponseDto"];
                 };
             };
         };

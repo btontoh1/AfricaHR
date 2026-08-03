@@ -61,6 +61,15 @@ export const envSchema = z.object({
   // never need a real key.
   PAYSTACK_SECRET_KEY: z.string().optional(),
 
+  // Encrypts EmployeePaymentMethod's bank/mobile-money fields at rest
+  // (see aes-gcm-cipher.ts and PaymentMethodService). Optional at the
+  // schema level, but PaymentMethodService/PayRunService both derive it
+  // eagerly at construction time, so the app fails to boot without it -
+  // same posture as MFA_ENCRYPTION_KEY, and for the same reason: there's
+  // no safe placeholder for "encrypt this bank account number" the way
+  // there is for SendGrid/Paystack's log-only fallbacks.
+  PAYMENT_METHOD_ENCRYPTION_KEY: z.string().optional(),
+
   CORS_ORIGINS: z
     .string()
     .default('')

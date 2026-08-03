@@ -487,10 +487,14 @@ enum PaymentMethodType {
 /// by PayRunService.markPaid to initiate a real Paystack Transfer payout
 /// (bankCode is Paystack's bank/mobile-money-provider code, required to
 /// create a transfer recipient — distinct from bankName/
-/// mobileMoneyProvider, which are free-text display values only). Stored
-/// in plain text, same "trust the shared schema" posture as the rest of
-/// this codebase — revisit encryption-at-rest now that this is wired to
-/// a real payment provider and money actually moves off these values.
+/// mobileMoneyProvider, which are free-text display values only).
+/// bankName/bankCode/accountNumber/accountName/mobileMoneyProvider/
+/// mobileMoneyNumber are AES-256-GCM encrypted at the service layer
+/// before they ever reach this table (see
+/// libs/platform/core/src/lib/crypto/aes-gcm-cipher.ts,
+/// PaymentMethodService, PayRunService.decryptPaymentMethod) - this
+/// column type is still a plain TEXT/String? column since a ciphertext
+/// string fits the same shape, no schema change needed beyond that.
 model EmployeePaymentMethod {
   id         String            @id @default(uuid())
   tenantId   String            @map("tenant_id")

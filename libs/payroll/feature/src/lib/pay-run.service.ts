@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable, Logger, NotFoundExc
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { randomUUID } from 'node:crypto';
 import { PayRun, PayRunStatus as PrismaPayRunStatus, PayslipStatus, Prisma } from '@prisma/client';
+import { AppConfigService, decryptAesGcm, deriveEncryptionKey } from '@africahr/platform-core';
 import { AuditService } from '@africahr/platform-audit';
 import {
   PayrollEmployeePaymentMethod,
@@ -72,6 +73,7 @@ export interface PayRunProcessedEvent {
 @Injectable()
 export class PayRunService {
   private readonly logger = new Logger(PayRunService.name);
+  private readonly paymentMethodEncryptionKey: Buffer;
 
   constructor(
     private readonly payRuns: PayRunRepository,
@@ -82,7 +84,20 @@ export class PayRunService {
     private readonly audit: AuditService,
     private readonly eventEmitter: EventEmitter2,
     private readonly paystack: PaystackTransferClient,
-  ) {}
+    config: AppConfigService,
+  ) {
+    // Derived once at construction (Nest instantiates providers eagerly).
+    // scope:payroll cannot depend on scope:employee (Nx module boundary),
+    // so this service can't reuse employee-feature's PaymentMethodService
+    // - it derives its own copy of the same key (same
+    // PAYMENT_METHOD_ENCRYPTION_KEY env var) to decrypt the payment
+    // method fields it reads directly from the shared table (see
+    // PayrollEmployeeRepository.findPaymentMethodByEmployeeId).
+    this.paymentMethodEncryptionKey = deriveEncryptionKey(
+      config.paymentMethodEncryptionKey,
+      'PAYMENT_METHOD_ENCRYPTION_KEY',
+    );
+  }
 
   async create(tenantId: string, dto: CreatePayRunDto, actorId?: string): Promise<PayRun> {
     const periodStart = new Date(dto.periodStart);
@@ -309,7 +324,11 @@ export class PayRunService {
   }
 
   private async disburse(tenantId: string, payslip: PayslipWithLineItems): Promise<void> {
-    const paymentMethod = await this.employees.findPaymentMethodByEmployeeId(tenantId, payslip.employeeId);
+    const encryptedPaymentMethod = await this.employees.findPaymentMethodByEmployeeId(
+      tenantId,
+      payslip.employeeId,
+    );
+    const paymentMethod = this.decryptPaymentMethod(encryptedPaymentMethod);
     const accountNumber = resolveAccountNumber(paymentMethod);
     if (!paymentMethod || !paymentMethod.bankCode || !accountNumber) {
       return;
@@ -349,6 +368,24 @@ export class PayRunService {
       paystackRecipientCode: recipient.recipientCode,
       paystackTransferReference: reference,
     });
+  }
+
+  /** bankCode/accountNumber/accountName/mobileMoneyNumber are encrypted at rest (see PaymentMethodService) - decrypted here before they're used to build a Paystack recipient. */
+  private decryptPaymentMethod(
+    paymentMethod: PayrollEmployeePaymentMethod | null,
+  ): PayrollEmployeePaymentMethod | null {
+    if (!paymentMethod) {
+      return null;
+    }
+    const decrypt = (value: string | null) =>
+      value ? decryptAesGcm(value, this.paymentMethodEncryptionKey) : value;
+    return {
+      ...paymentMethod,
+      bankCode: decrypt(paymentMethod.bankCode),
+      accountNumber: decrypt(paymentMethod.accountNumber),
+      accountName: decrypt(paymentMethod.accountName),
+      mobileMoneyNumber: decrypt(paymentMethod.mobileMoneyNumber),
+    };
   }
 
   async close(tenantId: string, id: string, actorId?: string): Promise<PayRun> {

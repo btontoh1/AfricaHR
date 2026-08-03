@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AppConfigModule } from '@africahr/platform-core';
 import { PlatformAuthModule } from '@africahr/platform-auth';
 import { AuditModule } from '@africahr/platform-audit';
 import { EmployeeDataAccessModule } from '@africahr/employee-data-access';
@@ -8,7 +9,7 @@ import { PaymentMethodService } from './payment-method.service';
 import { MyPaymentMethodController } from './my-payment-method.controller';
 
 @Module({
-  imports: [EmployeeDataAccessModule, PlatformAuthModule, AuditModule],
+  imports: [EmployeeDataAccessModule, PlatformAuthModule, AuditModule, AppConfigModule],
   controllers: [EmployeeController, MyPaymentMethodController],
   providers: [EmployeeService, PaymentMethodService],
   exports: [EmployeeService, PaymentMethodService],

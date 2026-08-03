@@ -1,10 +1,17 @@
 import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { randomUUID } from 'node:crypto';
-import { PayRun, PayRunStatus as PrismaPayRunStatus, PayslipStatus, Prisma } from '@prisma/client';
+import {
+  PayRun,
+  PayRunStatus as PrismaPayRunStatus,
+  PayslipDisbursementStatus,
+  PayslipStatus,
+  Prisma,
+} from '@prisma/client';
 import { AppConfigService, decryptAesGcm, deriveEncryptionKey } from '@africahr/platform-core';
 import { AuditService } from '@africahr/platform-audit';
 import {
+  PayrollEligibleEmployee,
   PayrollEmployeePaymentMethod,
   PayRunRepository,
   PayrollEmployeeRepository,
@@ -23,6 +30,7 @@ import {
 } from '@africahr/payroll-domain';
 import { CreatePayRunDto } from './dto/create-pay-run.dto';
 import { PaystackTransferClient } from './paystack-transfer-client';
+import { buildDisbursementFailedEvent, PAYROLL_DISBURSEMENT_FAILED_EVENT } from './payroll-transfer-webhook.listener';
 
 /** BANK_ACCOUNT uses accountNumber; MOBILE_MONEY uses the phone number Paystack treats as the recipient's "account number." */
 function resolveAccountNumber(paymentMethod: PayrollEmployeePaymentMethod | null): string | null {
@@ -347,26 +355,123 @@ export class PayRunService {
       return;
     }
 
-    const recipient = await this.paystack.createRecipient({
-      type: recipientType,
-      name: paymentMethod.accountName ?? `${employee.firstName} ${employee.lastName}`,
-      accountNumber,
-      bankCode: paymentMethod.bankCode,
-      currency: payslip.currency,
-    });
+    // Reuse a recipient already created against these exact payment-method
+    // details rather than calling Paystack's Create Transfer Recipient
+    // endpoint again on every pay run - encryptedPaymentMethod carries it
+    // straight through since it isn't one of the encrypted fields (see
+    // EmployeePaymentMethod.paystackRecipientCode's schema comment), and it's
+    // cleared to null the moment the employee edits their payment method.
+    let recipientCode = encryptedPaymentMethod?.paystackRecipientCode ?? null;
+    if (!recipientCode) {
+      try {
+        const recipient = await this.paystack.createRecipient({
+          type: recipientType,
+          name: paymentMethod.accountName ?? `${employee.firstName} ${employee.lastName}`,
+          accountNumber,
+          bankCode: paymentMethod.bankCode,
+          currency: payslip.currency,
+        });
+        recipientCode = recipient.recipientCode;
+        await this.employees.savePaystackRecipientCode(tenantId, payslip.employeeId, recipientCode);
+      } catch (error) {
+        this.logger.error(
+          `Failed to create Paystack transfer recipient for payslip "${payslip.id}" (employee "${payslip.employeeId}")`,
+          error as Error,
+        );
+        await this.markDisbursementInitiationFailed(tenantId, payslip, employee);
+        return;
+      }
+    }
 
     const reference = randomUUID();
-    await this.paystack.initiateTransfer({
-      amount: Number(payslip.netPay),
-      currency: payslip.currency,
-      recipientCode: recipient.recipientCode,
-      reference,
-      reason: `Payslip for pay run ${payslip.payRunId}`,
-    });
+    try {
+      await this.paystack.initiateTransfer({
+        amount: Number(payslip.netPay),
+        currency: payslip.currency,
+        recipientCode,
+        reference,
+        reason: `Payslip for pay run ${payslip.payRunId}`,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to initiate Paystack transfer for payslip "${payslip.id}" (employee "${payslip.employeeId}")`,
+        error as Error,
+      );
+      await this.markDisbursementInitiationFailed(tenantId, payslip, employee);
+      return;
+    }
 
     await this.payslips.recordDisbursementInitiated(tenantId, payslip.id, {
-      paystackRecipientCode: recipient.recipientCode,
+      paystackRecipientCode: recipientCode,
       paystackTransferReference: reference,
+    });
+  }
+
+  /**
+   * A disbursement that fails before Paystack ever accepts a transfer
+   * (bad recipient/account details, Paystack outage) would otherwise sit at
+   * NOT_INITIATED indefinitely - the reconciliation sweep only re-checks
+   * payslips already PENDING (see PayrollTransferWebhookListener), so
+   * nothing would ever revisit it. Marking it FAILED instead surfaces it
+   * (same notification tenant admins/payroll managers get for a transfer
+   * that failed after initiating - see PAYROLL_DISBURSEMENT_FAILED_EVENT)
+   * and makes it eligible for retryDisbursement() below. Deliberately not
+   * auto-retried: retrying a money-movement call without knowing why it
+   * failed risks a duplicate transfer once the underlying issue (e.g. a
+   * bad account number) is fixed by a human, not by itself.
+   */
+  private async markDisbursementInitiationFailed(
+    tenantId: string,
+    payslip: PayslipWithLineItems,
+    employee: PayrollEligibleEmployee,
+  ): Promise<void> {
+    await this.payslips.recordDisbursementResult(tenantId, payslip.id, PayslipDisbursementStatus.FAILED);
+
+    const payRun = await this.payRuns.findById(tenantId, payslip.payRunId);
+    if (!payRun) {
+      return;
+    }
+    this.eventEmitter.emit(
+      PAYROLL_DISBURSEMENT_FAILED_EVENT,
+      buildDisbursementFailedEvent(tenantId, employee, payRun),
+    );
+  }
+
+  /**
+   * Lets a payroll manager retry a single payslip's disbursement after
+   * fixing whatever caused it to fail (e.g. the employee corrected their
+   * bank details) - see markDisbursementInitiationFailed's docstring for
+   * why this isn't automatic. Restricted to FAILED/NOT_INITIATED so a
+   * disbursement that's already PENDING or SUCCESS can never be retried
+   * into a duplicate transfer.
+   */
+  async retryDisbursement(tenantId: string, payslipId: string, actorId?: string): Promise<void> {
+    const payslip = await this.payslips.findById(tenantId, payslipId);
+    if (!payslip) {
+      throw new NotFoundException(`Payslip "${payslipId}" not found`);
+    }
+    if (
+      payslip.disbursementStatus !== PayslipDisbursementStatus.FAILED &&
+      payslip.disbursementStatus !== PayslipDisbursementStatus.NOT_INITIATED
+    ) {
+      throw new ConflictException(
+        `Cannot retry a disbursement in status ${payslip.disbursementStatus} - it must be FAILED or NOT_INITIATED`,
+      );
+    }
+
+    const payRun = await this.findById(tenantId, payslip.payRunId);
+    if (payRun.status !== PrismaPayRunStatus.PAID) {
+      throw new ConflictException(`Cannot retry a disbursement for a pay run in status ${payRun.status}`);
+    }
+
+    await this.disburse(tenantId, payslip);
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'payroll.payslip.disbursement_retried',
+      resourceType: 'Payslip',
+      resourceId: payslip.id,
     });
   }
 

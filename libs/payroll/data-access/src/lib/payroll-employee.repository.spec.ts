@@ -3,7 +3,10 @@ import { PayrollEmployeeRepository } from './payroll-employee.repository';
 
 describe('PayrollEmployeeRepository', () => {
   let repository: PayrollEmployeeRepository;
-  let tx: { employee: { findMany: jest.Mock; findFirst: jest.Mock }; employeePaymentMethod: { findFirst: jest.Mock } };
+  let tx: {
+    employee: { findMany: jest.Mock; findFirst: jest.Mock };
+    employeePaymentMethod: { findFirst: jest.Mock; update: jest.Mock };
+  };
   let prisma: { withTenantContext: jest.Mock };
 
   const EMPLOYEE_SELECT = {
@@ -19,7 +22,7 @@ describe('PayrollEmployeeRepository', () => {
   beforeEach(() => {
     tx = {
       employee: { findMany: jest.fn(), findFirst: jest.fn() },
-      employeePaymentMethod: { findFirst: jest.fn() },
+      employeePaymentMethod: { findFirst: jest.fn(), update: jest.fn().mockResolvedValue({}) },
     };
     prisma = { withTenantContext: jest.fn((_tenantId, fn) => fn(tx)) };
     repository = new PayrollEmployeeRepository(prisma as unknown as PrismaService);
@@ -57,7 +60,23 @@ describe('PayrollEmployeeRepository', () => {
 
     expect(tx.employeePaymentMethod.findFirst).toHaveBeenCalledWith({
       where: { tenantId: 'tenant-1', employeeId: 'emp-1' },
-      select: { type: true, bankCode: true, accountNumber: true, accountName: true, mobileMoneyNumber: true },
+      select: {
+        type: true,
+        bankCode: true,
+        accountNumber: true,
+        accountName: true,
+        mobileMoneyNumber: true,
+        paystackRecipientCode: true,
+      },
+    });
+  });
+
+  it("caches a newly-created Paystack recipient code onto the employee's payment method", async () => {
+    await repository.savePaystackRecipientCode('tenant-1', 'emp-1', 'RCP_abc123');
+
+    expect(tx.employeePaymentMethod.update).toHaveBeenCalledWith({
+      where: { employeeId: 'emp-1' },
+      data: { paystackRecipientCode: 'RCP_abc123' },
     });
   });
 });

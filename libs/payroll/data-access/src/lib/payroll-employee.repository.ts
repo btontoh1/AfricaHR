@@ -23,6 +23,8 @@ export interface PayrollEmployeePaymentMethod {
   accountNumber: string | null;
   accountName: string | null;
   mobileMoneyNumber: string | null;
+  /** Not encrypted - see EmployeePaymentMethod.paystackRecipientCode's schema comment. */
+  paystackRecipientCode: string | null;
 }
 
 const EMPLOYEE_SELECT = {
@@ -87,8 +89,27 @@ export class PayrollEmployeeRepository {
     return this.prisma.withTenantContext(tenantId, (tx) =>
       tx.employeePaymentMethod.findFirst({
         where: { tenantId, employeeId },
-        select: { type: true, bankCode: true, accountNumber: true, accountName: true, mobileMoneyNumber: true },
+        select: {
+          type: true,
+          bankCode: true,
+          accountNumber: true,
+          accountName: true,
+          mobileMoneyNumber: true,
+          paystackRecipientCode: true,
+        },
       }),
     );
+  }
+
+  /** Caches a newly-created Paystack transfer recipient so later pay runs for this employee reuse it instead of creating a new one each time (see PayRunService.disburse). */
+  savePaystackRecipientCode(tenantId: string, employeeId: string, paystackRecipientCode: string): Promise<void> {
+    return this.prisma
+      .withTenantContext(tenantId, (tx) =>
+        tx.employeePaymentMethod.update({
+          where: { employeeId },
+          data: { paystackRecipientCode },
+        }),
+      )
+      .then(() => undefined);
   }
 }

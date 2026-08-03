@@ -47,6 +47,20 @@ export interface PayrollDisbursementFailedEvent {
   periodEnd: string;
 }
 
+/** Shared by this listener's own notifyOfFailedDisbursement and PayRunService's equivalent for a disbursement that fails before ever reaching PENDING (see PayRunService.markDisbursementInitiationFailed) - same event, two triggers. */
+export function buildDisbursementFailedEvent(
+  tenantId: string,
+  employee: { firstName: string; lastName: string },
+  payRun: { periodStart: Date; periodEnd: Date },
+): PayrollDisbursementFailedEvent {
+  return {
+    tenantId,
+    employeeName: `${employee.firstName} ${employee.lastName}`,
+    periodStart: payRun.periodStart.toISOString().slice(0, 10),
+    periodEnd: payRun.periodEnd.toISOString().slice(0, 10),
+  };
+}
+
 /** A transfer stuck this long without a webhook is worth double-checking directly against Paystack, rather than waiting indefinitely. */
 const STALE_PENDING_THRESHOLD_MS = 30 * 60 * 1000;
 
@@ -154,12 +168,9 @@ export class PayrollTransferWebhookListener {
       return;
     }
 
-    const event: PayrollDisbursementFailedEvent = {
-      tenantId: payslip.tenantId,
-      employeeName: `${employee.firstName} ${employee.lastName}`,
-      periodStart: payRun.periodStart.toISOString().slice(0, 10),
-      periodEnd: payRun.periodEnd.toISOString().slice(0, 10),
-    };
-    this.eventEmitter.emit(PAYROLL_DISBURSEMENT_FAILED_EVENT, event);
+    this.eventEmitter.emit(
+      PAYROLL_DISBURSEMENT_FAILED_EVENT,
+      buildDisbursementFailedEvent(payslip.tenantId, employee, payRun),
+    );
   }
 }

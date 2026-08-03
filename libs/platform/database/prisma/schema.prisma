@@ -508,6 +508,16 @@ model EmployeePaymentMethod {
   mobileMoneyProvider String? @map("mobile_money_provider")
   mobileMoneyNumber   String? @map("mobile_money_number")
 
+  /// Cached Paystack transfer recipient for these exact details - lets
+  /// PayRunService reuse it across pay runs instead of calling Paystack's
+  /// "Create Transfer Recipient" endpoint on every single disbursement.
+  /// Not encrypted (an opaque Paystack-issued identifier, not the
+  /// underlying bank/mobile-money details it was derived from) and cleared
+  /// back to null on every payment-method edit (see
+  /// PaymentMethodRepository.upsert) since a changed bank code/account
+  /// number/name invalidates it.
+  paystackRecipientCode String? @map("paystack_recipient_code")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   createdBy String?  @map("created_by")

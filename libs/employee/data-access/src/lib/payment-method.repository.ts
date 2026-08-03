@@ -53,6 +53,11 @@ export class PaymentMethodRepository {
           accountName: input.accountName,
           mobileMoneyProvider: input.mobileMoneyProvider,
           mobileMoneyNumber: input.mobileMoneyNumber,
+          // Any edit invalidates a cached Paystack recipient created against
+          // the old details (see PayRunService.disburse) - cheaper to always
+          // clear it than to work out whether this particular edit changed
+          // a field Paystack's recipient actually cares about.
+          paystackRecipientCode: null,
           updatedBy: input.actorId,
         },
       }),

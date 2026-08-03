@@ -308,9 +308,11 @@ export class PayRunService {
    * pay run has already been administratively marked PAID by this point,
    * and one bad account number shouldn't block paying everyone else.
    * disbursementStatus stays NOT_INITIATED (its DB default) for anyone
-   * skipped; PENDING is recorded only once a transfer is actually
-   * initiated, and the transfer.success/transfer.failed webhook moves it
-   * to SUCCESS/FAILED later (see PayrollTransferWebhookListener).
+   * skipped or whose recipient couldn't be created; PENDING is recorded
+   * just before a transfer is attempted (see disburse()'s docstring for
+   * why it's before, not after), and the transfer.success/transfer.failed
+   * webhook (or the reconciliation sweep) moves it to SUCCESS/FAILED later
+   * (see PayrollTransferWebhookListener).
    */
   private async initiateDisbursements(tenantId: string, payRunId: string): Promise<void> {
     const payslips = await this.payslips.listByPayRun(tenantId, payRunId);
@@ -383,7 +385,22 @@ export class PayRunService {
       }
     }
 
+    // Recorded PENDING *before* calling Paystack, not after - a crash
+    // between the Paystack call succeeding and a later write would
+    // otherwise leave real money already sent with zero local record of
+    // it, and nothing would stop a later retry from sending a second
+    // transfer. Committing the reference first closes that window: a
+    // crash on either side of the call below leaves this payslip PENDING,
+    // which only the reconciliation sweep's direct Paystack verification
+    // is allowed to resolve (retryDisbursement's FAILED/NOT_INITIATED
+    // guard deliberately excludes PENDING, so a human can't retry an
+    // in-flight disbursement either).
     const reference = randomUUID();
+    await this.payslips.recordDisbursementInitiated(tenantId, payslip.id, {
+      paystackRecipientCode: recipientCode,
+      paystackTransferReference: reference,
+    });
+
     try {
       await this.paystack.initiateTransfer({
         amount: Number(payslip.netPay),
@@ -393,32 +410,30 @@ export class PayRunService {
         reason: `Payslip for pay run ${payslip.payRunId}`,
       });
     } catch (error) {
+      // Deliberately left PENDING, not marked FAILED: a rejected request
+      // and a network failure that Paystack may have still processed look
+      // identical here, and marking this FAILED without being sure would
+      // let a human retry it into a duplicate transfer. The reconciliation
+      // sweep resolves it definitively via Paystack's own Verify Transfer
+      // endpoint once it's reachable - see
+      // PayrollTransferWebhookListener.reconcileStalePendingDisbursements.
       this.logger.error(
-        `Failed to initiate Paystack transfer for payslip "${payslip.id}" (employee "${payslip.employeeId}")`,
+        `Paystack transfer initiation errored for payslip "${payslip.id}" (employee "${payslip.employeeId}") - left PENDING for reconciliation to resolve`,
         error as Error,
       );
-      await this.markDisbursementInitiationFailed(tenantId, payslip, employee);
-      return;
     }
-
-    await this.payslips.recordDisbursementInitiated(tenantId, payslip.id, {
-      paystackRecipientCode: recipientCode,
-      paystackTransferReference: reference,
-    });
   }
 
   /**
-   * A disbursement that fails before Paystack ever accepts a transfer
-   * (bad recipient/account details, Paystack outage) would otherwise sit at
-   * NOT_INITIATED indefinitely - the reconciliation sweep only re-checks
-   * payslips already PENDING (see PayrollTransferWebhookListener), so
-   * nothing would ever revisit it. Marking it FAILED instead surfaces it
-   * (same notification tenant admins/payroll managers get for a transfer
-   * that failed after initiating - see PAYROLL_DISBURSEMENT_FAILED_EVENT)
-   * and makes it eligible for retryDisbursement() below. Deliberately not
-   * auto-retried: retrying a money-movement call without knowing why it
-   * failed risks a duplicate transfer once the underlying issue (e.g. a
-   * bad account number) is fixed by a human, not by itself.
+   * Only reached from a recipient-creation failure (bad bank code/account
+   * number, Paystack outage) - unambiguous and unconcerned with the
+   * duplicate-transfer risk disburse()'s own initiateTransfer catch has to
+   * worry about, since no transfer reference has been committed yet at
+   * this point. Marking it FAILED surfaces it (same notification tenant
+   * admins/payroll managers get for a transfer that failed after
+   * initiating - see PAYROLL_DISBURSEMENT_FAILED_EVENT) and makes it
+   * eligible for retryDisbursement() below, instead of leaving it at
+   * NOT_INITIATED indefinitely with nothing to revisit it.
    */
   private async markDisbursementInitiationFailed(
     tenantId: string,

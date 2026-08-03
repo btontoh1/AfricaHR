@@ -134,7 +134,7 @@ export class PayslipRepository {
     );
   }
 
-  /** Called once markPaid() has initiated a Paystack transfer for this payslip - reference is unique, used to match the later webhook. */
+  /** Called by PayRunService.disburse just *before* it calls Paystack's Initiate Transfer, not after - see that method's docstring for why. reference is unique, used to match the later webhook. */
   recordDisbursementInitiated(
     tenantId: string,
     id: string,

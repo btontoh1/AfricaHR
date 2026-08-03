@@ -525,6 +525,77 @@ describe('PayRunService', () => {
       expect(paystack.createRecipient).toHaveBeenCalledTimes(2);
       expect(payslips.recordDisbursementInitiated).toHaveBeenCalledTimes(1);
     });
+
+    it('marks a payslip FAILED and notifies when recipient creation fails', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PAID' }));
+      payslips.listByPayRun.mockResolvedValue([makePayslip({ countryCode: 'GH', currency: 'GHS' })]);
+      employees.findPaymentMethodByEmployeeId.mockResolvedValue({
+        type: 'BANK_ACCOUNT',
+        bankCode: encrypt('040'),
+        accountNumber: encrypt('1234567890'),
+        accountName: encrypt('Test Employee'),
+        mobileMoneyNumber: null,
+        paystackRecipientCode: null,
+      });
+      employees.findById.mockResolvedValue({
+        id: 'emp-1',
+        firstName: 'Test',
+        lastName: 'Employee',
+        baseSalary: new Prisma.Decimal(1000),
+        currency: 'GHS',
+        annualRentPaid: null,
+        countryCode: 'GH',
+      });
+      paystack.createRecipient.mockRejectedValue(new Error('Invalid bank code'));
+
+      await service.markPaid('tenant-1', 'run-1', 'mgr-1');
+
+      expect(paystack.initiateTransfer).not.toHaveBeenCalled();
+      expect(payslips.recordDisbursementInitiated).not.toHaveBeenCalled();
+      expect(payslips.recordDisbursementResult).toHaveBeenCalledWith('tenant-1', 'payslip-1', 'FAILED');
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        'payroll.payslip.disbursement_failed',
+        expect.objectContaining({ tenantId: 'tenant-1', employeeName: 'Test Employee' }),
+      );
+    });
+
+    it('records PENDING before calling Paystack and leaves it PENDING (not FAILED) when the transfer call itself errors', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PAID' }));
+      payslips.listByPayRun.mockResolvedValue([makePayslip({ countryCode: 'GH', currency: 'GHS' })]);
+      employees.findPaymentMethodByEmployeeId.mockResolvedValue({
+        type: 'BANK_ACCOUNT',
+        bankCode: encrypt('040'),
+        accountNumber: encrypt('1234567890'),
+        accountName: encrypt('Test Employee'),
+        mobileMoneyNumber: null,
+        paystackRecipientCode: null,
+      });
+      employees.findById.mockResolvedValue({
+        id: 'emp-1',
+        firstName: 'Test',
+        lastName: 'Employee',
+        baseSalary: new Prisma.Decimal(1000),
+        currency: 'GHS',
+        annualRentPaid: null,
+        countryCode: 'GH',
+      });
+      paystack.createRecipient.mockResolvedValue({ recipientCode: 'RCP_abc' });
+      paystack.initiateTransfer.mockRejectedValue(new Error('Network timeout'));
+
+      await service.markPaid('tenant-1', 'run-1', 'mgr-1');
+
+      // Committed before the (failing) Paystack call, not after - the whole
+      // point of the reordering (see disburse()'s docstring).
+      expect(payslips.recordDisbursementInitiated).toHaveBeenCalledWith(
+        'tenant-1',
+        'payslip-1',
+        expect.objectContaining({ paystackRecipientCode: 'RCP_abc' }),
+      );
+      expect(payslips.recordDisbursementResult).not.toHaveBeenCalled();
+      expect(eventEmitter.emit).not.toHaveBeenCalled();
+    });
   });
 
   describe('cancel', () => {

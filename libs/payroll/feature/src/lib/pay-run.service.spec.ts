@@ -1,6 +1,8 @@
+import { randomBytes } from 'node:crypto';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PayRun, Prisma } from '@prisma/client';
+import { AppConfigService, encryptAesGcm } from '@africahr/platform-core';
 import { AuditService } from '@africahr/platform-audit';
 import {
   PayRunRepository,
@@ -13,6 +15,12 @@ import {
 import { PAY_RUN_PROCESSED_EVENT, PayRunService } from './pay-run.service';
 import { PaystackTransferClient } from './paystack-transfer-client';
 
+const validEncryptionKey = randomBytes(32).toString('hex');
+
+function encrypt(plaintext: string): string {
+  return encryptAesGcm(plaintext, Buffer.from(validEncryptionKey, 'hex'));
+}
+
 describe('PayRunService', () => {
   let service: PayRunService;
   let payRuns: jest.Mocked<PayRunRepository>;
@@ -23,6 +31,7 @@ describe('PayRunService', () => {
   let audit: jest.Mocked<AuditService>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let paystack: jest.Mocked<PaystackTransferClient>;
+  let config: AppConfigService;
 
   function makePayslip(overrides: Partial<PayslipWithLineItems> = {}): PayslipWithLineItems {
     return {
@@ -115,8 +124,28 @@ describe('PayRunService', () => {
       createRecipient: jest.fn(),
       initiateTransfer: jest.fn(),
     } as unknown as jest.Mocked<PaystackTransferClient>;
+    config = { paymentMethodEncryptionKey: validEncryptionKey } as unknown as AppConfigService;
 
-    service = new PayRunService(payRuns, payslips, employees, taxBands, rates, audit, eventEmitter, paystack);
+    service = new PayRunService(
+      payRuns,
+      payslips,
+      employees,
+      taxBands,
+      rates,
+      audit,
+      eventEmitter,
+      paystack,
+      config,
+    );
+  });
+
+  it('fails to construct when PAYMENT_METHOD_ENCRYPTION_KEY is unset', () => {
+    const badConfig = { paymentMethodEncryptionKey: undefined } as unknown as AppConfigService;
+
+    expect(
+      () =>
+        new PayRunService(payRuns, payslips, employees, taxBands, rates, audit, eventEmitter, paystack, badConfig),
+    ).toThrow(/PAYMENT_METHOD_ENCRYPTION_KEY must be set/);
   });
 
   describe('create', () => {
@@ -381,9 +410,9 @@ describe('PayRunService', () => {
       payslips.listByPayRun.mockResolvedValue([makePayslip({ countryCode: 'GH', currency: 'GHS', netPay: new Prisma.Decimal(856) })]);
       employees.findPaymentMethodByEmployeeId.mockResolvedValue({
         type: 'BANK_ACCOUNT',
-        bankCode: '040',
-        accountNumber: '1234567890',
-        accountName: 'Kwame Asante',
+        bankCode: encrypt('040'),
+        accountNumber: encrypt('1234567890'),
+        accountName: encrypt('Kwame Asante'),
         mobileMoneyNumber: null,
       });
       employees.findById.mockResolvedValue({
@@ -446,10 +475,10 @@ describe('PayRunService', () => {
       payslips.listByPayRun.mockResolvedValue([makePayslip({ countryCode: 'NG' })]);
       employees.findPaymentMethodByEmployeeId.mockResolvedValue({
         type: 'MOBILE_MONEY',
-        bankCode: 'MTN',
+        bankCode: encrypt('MTN'),
         accountNumber: null,
         accountName: null,
-        mobileMoneyNumber: '0244000000',
+        mobileMoneyNumber: encrypt('0244000000'),
       });
 
       await service.markPaid('tenant-1', 'run-1');
@@ -466,9 +495,9 @@ describe('PayRunService', () => {
       ]);
       employees.findPaymentMethodByEmployeeId.mockResolvedValue({
         type: 'BANK_ACCOUNT',
-        bankCode: '040',
-        accountNumber: '1234567890',
-        accountName: 'Test Employee',
+        bankCode: encrypt('040'),
+        accountNumber: encrypt('1234567890'),
+        accountName: encrypt('Test Employee'),
         mobileMoneyNumber: null,
       });
       employees.findById.mockResolvedValue({

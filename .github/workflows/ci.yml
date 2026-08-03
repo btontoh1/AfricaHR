@@ -58,6 +58,10 @@ jobs:
       # time (Nest instantiates providers eagerly), so the app fails to
       # boot without it, same as the JWT secrets above.
       MFA_ENCRYPTION_KEY: 46505a43bbd78f6c7e7a2b722b69f1dbcabddac5f1d39f994a367acbd87411b9
+      # CI-only throwaway AES key, distinct from MFA_ENCRYPTION_KEY above -
+      # PaymentMethodService/PayRunService both derive it at construction
+      # time, so the app fails to boot without it too.
+      PAYMENT_METHOD_ENCRYPTION_KEY: 9c1f6e4d2a7b8035f19e6c4a2d8b7f10e3c5a9d4b6f2718c0a5e3d9b7f4c1a62
       SEED_ADMIN_EMAIL: admin@africahr.local
       SEED_ADMIN_PASSWORD: CiSeedAdminPass123
       CORS_ORIGINS: http://localhost:4200

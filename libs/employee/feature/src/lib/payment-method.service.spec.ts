@@ -1,14 +1,24 @@
+import { randomBytes } from 'node:crypto';
 import { ForbiddenException } from '@nestjs/common';
 import { Employee, EmployeePaymentMethod } from '@prisma/client';
+import { AppConfigService, decryptAesGcm, deriveEncryptionKey, encryptAesGcm } from '@africahr/platform-core';
 import { AuditService } from '@africahr/platform-audit';
 import { EmployeeRepository, PaymentMethodRepository } from '@africahr/employee-data-access';
 import { PaymentMethodService } from './payment-method.service';
+
+const validEncryptionKey = randomBytes(32).toString('hex');
+const key = deriveEncryptionKey(validEncryptionKey, 'PAYMENT_METHOD_ENCRYPTION_KEY');
+
+function encrypt(plaintext: string): string {
+  return encryptAesGcm(plaintext, key);
+}
 
 describe('PaymentMethodService', () => {
   let service: PaymentMethodService;
   let paymentMethods: jest.Mocked<PaymentMethodRepository>;
   let employees: jest.Mocked<EmployeeRepository>;
   let audit: jest.Mocked<AuditService>;
+  let config: AppConfigService;
 
   function makePaymentMethod(overrides: Partial<EmployeePaymentMethod> = {}): EmployeePaymentMethod {
     return {
@@ -16,9 +26,10 @@ describe('PaymentMethodService', () => {
       tenantId: 'tenant-1',
       employeeId: 'emp-1',
       type: 'BANK_ACCOUNT',
-      bankName: 'GCB Bank',
-      accountNumber: '1234567890',
-      accountName: 'Frimpong Tontoh',
+      bankName: encrypt('GCB Bank'),
+      bankCode: encrypt('040'),
+      accountNumber: encrypt('1234567890'),
+      accountName: encrypt('Frimpong Tontoh'),
       mobileMoneyProvider: null,
       mobileMoneyNumber: null,
       createdAt: new Date(),
@@ -40,8 +51,17 @@ describe('PaymentMethodService', () => {
     } as unknown as jest.Mocked<EmployeeRepository>;
 
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
+    config = { paymentMethodEncryptionKey: validEncryptionKey } as unknown as AppConfigService;
 
-    service = new PaymentMethodService(paymentMethods, employees, audit);
+    service = new PaymentMethodService(paymentMethods, employees, audit, config);
+  });
+
+  it('fails to construct when PAYMENT_METHOD_ENCRYPTION_KEY is unset', () => {
+    const badConfig = { paymentMethodEncryptionKey: undefined } as unknown as AppConfigService;
+
+    expect(() => new PaymentMethodService(paymentMethods, employees, audit, badConfig)).toThrow(
+      /PAYMENT_METHOD_ENCRYPTION_KEY must be set/,
+    );
   });
 
   describe('resolveOwnEmployeeId', () => {
@@ -55,7 +75,7 @@ describe('PaymentMethodService', () => {
   });
 
   describe('getForSelf', () => {
-    it('resolves the caller\'s own employeeId and fetches their payment method', async () => {
+    it('resolves the caller\'s own employeeId and returns the decrypted payment method', async () => {
       employees.findByUserId.mockResolvedValue({ id: 'emp-1' } as Employee);
       paymentMethods.findByEmployeeId.mockResolvedValue(makePaymentMethod());
 
@@ -64,6 +84,10 @@ describe('PaymentMethodService', () => {
       expect(employees.findByUserId).toHaveBeenCalledWith('tenant-1', 'user-1');
       expect(paymentMethods.findByEmployeeId).toHaveBeenCalledWith('tenant-1', 'emp-1');
       expect(result?.id).toBe('pm-1');
+      expect(result?.bankName).toBe('GCB Bank');
+      expect(result?.bankCode).toBe('040');
+      expect(result?.accountNumber).toBe('1234567890');
+      expect(result?.accountName).toBe('Frimpong Tontoh');
     });
 
     it('returns null when the employee has no payment method on file yet', async () => {
@@ -77,35 +101,78 @@ describe('PaymentMethodService', () => {
   });
 
   describe('upsertForSelf', () => {
+    it('encrypts fields before storing them, rather than persisting plaintext', async () => {
+      employees.findByUserId.mockResolvedValue({ id: 'emp-1' } as Employee);
+      paymentMethods.upsert.mockResolvedValue(makePaymentMethod());
+
+      await service.upsertForSelf('tenant-1', 'user-1', {
+        type: 'BANK_ACCOUNT',
+        bankName: 'GCB Bank',
+        bankCode: '040',
+        accountNumber: '1234567890',
+        accountName: 'Frimpong Tontoh',
+      } as never);
+
+      const [, , storedInput] = paymentMethods.upsert.mock.calls[0];
+      expect(storedInput.bankName).not.toBe('GCB Bank');
+      expect(storedInput.accountNumber).not.toBe('1234567890');
+      expect(decryptAesGcm(storedInput.bankName as string, key)).toBe('GCB Bank');
+      expect(decryptAesGcm(storedInput.accountNumber as string, key)).toBe('1234567890');
+    });
+
+    it('returns the decrypted payment method, not the ciphertext that was stored', async () => {
+      employees.findByUserId.mockResolvedValue({ id: 'emp-1' } as Employee);
+      paymentMethods.upsert.mockResolvedValue(makePaymentMethod());
+
+      const result = await service.upsertForSelf('tenant-1', 'user-1', {
+        type: 'BANK_ACCOUNT',
+        bankName: 'GCB Bank',
+        bankCode: '040',
+        accountNumber: '1234567890',
+        accountName: 'Frimpong Tontoh',
+      } as never);
+
+      expect(result.bankName).toBe('GCB Bank');
+      expect(result.accountNumber).toBe('1234567890');
+    });
+
     it('clears the other type\'s fields when switching from bank account to mobile money', async () => {
       employees.findByUserId.mockResolvedValue({ id: 'emp-1' } as Employee);
       paymentMethods.upsert.mockResolvedValue(
         makePaymentMethod({
           type: 'MOBILE_MONEY',
           bankName: null,
+          bankCode: null,
           accountNumber: null,
           accountName: null,
-          mobileMoneyProvider: 'MTN Mobile Money',
-          mobileMoneyNumber: '0244000000',
+          mobileMoneyProvider: encrypt('MTN Mobile Money'),
+          mobileMoneyNumber: encrypt('0244000000'),
         }),
       );
 
-      await service.upsertForSelf('tenant-1', 'user-1', {
+      const result = await service.upsertForSelf('tenant-1', 'user-1', {
         type: 'MOBILE_MONEY',
         mobileMoneyProvider: 'MTN Mobile Money',
         mobileMoneyNumber: '0244000000',
       } as never);
 
-      expect(paymentMethods.upsert).toHaveBeenCalledWith('tenant-1', 'emp-1', {
-        type: 'MOBILE_MONEY',
-        bankName: null,
-        bankCode: null,
-        accountNumber: null,
-        accountName: null,
-        mobileMoneyProvider: 'MTN Mobile Money',
-        mobileMoneyNumber: '0244000000',
-        actorId: 'user-1',
-      });
+      expect(paymentMethods.upsert).toHaveBeenCalledWith(
+        'tenant-1',
+        'emp-1',
+        expect.objectContaining({
+          type: 'MOBILE_MONEY',
+          bankName: null,
+          bankCode: null,
+          accountNumber: null,
+          accountName: null,
+          actorId: 'user-1',
+        }),
+      );
+      const [, , storedInput] = paymentMethods.upsert.mock.calls[0];
+      expect(storedInput.mobileMoneyProvider).not.toBe('MTN Mobile Money');
+      expect(decryptAesGcm(storedInput.mobileMoneyProvider as string, key)).toBe('MTN Mobile Money');
+      expect(result.mobileMoneyProvider).toBe('MTN Mobile Money');
+      expect(result.mobileMoneyNumber).toBe('0244000000');
     });
 
     it('audits the update', async () => {
@@ -115,6 +182,7 @@ describe('PaymentMethodService', () => {
       await service.upsertForSelf('tenant-1', 'user-1', {
         type: 'BANK_ACCOUNT',
         bankName: 'GCB Bank',
+        bankCode: '040',
         accountNumber: '1234567890',
         accountName: 'Frimpong Tontoh',
       } as never);

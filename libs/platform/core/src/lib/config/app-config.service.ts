@@ -82,4 +82,8 @@ export class AppConfigService {
   get paystackSecretKey(): string | undefined {
     return this.configService.get('PAYSTACK_SECRET_KEY', { infer: true });
   }
+
+  get paymentMethodEncryptionKey(): string | undefined {
+    return this.configService.get('PAYMENT_METHOD_ENCRYPTION_KEY', { infer: true });
+  }
 }

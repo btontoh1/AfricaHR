@@ -1,10 +1,11 @@
 import { randomBytes } from 'node:crypto';
-import { ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Employee, EmployeePaymentMethod } from '@prisma/client';
 import { AppConfigService, decryptAesGcm, deriveEncryptionKey, encryptAesGcm } from '@africahr/platform-core';
 import { AuditService } from '@africahr/platform-audit';
 import { EmployeeRepository, PaymentMethodRepository } from '@africahr/employee-data-access';
 import { PaymentMethodService } from './payment-method.service';
+import { PaystackBankClient } from './paystack-bank-client';
 
 const validEncryptionKey = randomBytes(32).toString('hex');
 const key = deriveEncryptionKey(validEncryptionKey, 'PAYMENT_METHOD_ENCRYPTION_KEY');
@@ -18,6 +19,7 @@ describe('PaymentMethodService', () => {
   let paymentMethods: jest.Mocked<PaymentMethodRepository>;
   let employees: jest.Mocked<EmployeeRepository>;
   let audit: jest.Mocked<AuditService>;
+  let bankClient: jest.Mocked<PaystackBankClient>;
   let config: AppConfigService;
 
   function makePaymentMethod(overrides: Partial<EmployeePaymentMethod> = {}): EmployeePaymentMethod {
@@ -51,17 +53,54 @@ describe('PaymentMethodService', () => {
     } as unknown as jest.Mocked<EmployeeRepository>;
 
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
+    bankClient = { listBanks: jest.fn().mockResolvedValue([]) } as unknown as jest.Mocked<PaystackBankClient>;
     config = { paymentMethodEncryptionKey: validEncryptionKey } as unknown as AppConfigService;
 
-    service = new PaymentMethodService(paymentMethods, employees, audit, config);
+    service = new PaymentMethodService(paymentMethods, employees, audit, bankClient, config);
   });
 
   it('fails to construct when PAYMENT_METHOD_ENCRYPTION_KEY is unset', () => {
     const badConfig = { paymentMethodEncryptionKey: undefined } as unknown as AppConfigService;
 
-    expect(() => new PaymentMethodService(paymentMethods, employees, audit, badConfig)).toThrow(
-      /PAYMENT_METHOD_ENCRYPTION_KEY must be set/,
-    );
+    expect(
+      () => new PaymentMethodService(paymentMethods, employees, audit, bankClient, badConfig),
+    ).toThrow(/PAYMENT_METHOD_ENCRYPTION_KEY must be set/);
+  });
+
+  describe('listBanksForSelf', () => {
+    it('rejects an invalid payment method type', async () => {
+      await expect(
+        service.listBanksForSelf('tenant-1', 'user-1', 'NOT_A_TYPE' as never),
+      ).rejects.toThrow(BadRequestException);
+      expect(employees.findByUserId).not.toHaveBeenCalled();
+    });
+
+    it("looks up banks for the caller's own country and payment method type", async () => {
+      employees.findByUserId.mockResolvedValue({ id: 'emp-1', countryCode: 'GH' } as Employee);
+      bankClient.listBanks.mockResolvedValue([{ name: 'GCB Bank', code: '040' }]);
+
+      const result = await service.listBanksForSelf('tenant-1', 'user-1', 'BANK_ACCOUNT');
+
+      expect(bankClient.listBanks).toHaveBeenCalledWith({ country: 'ghana', type: 'ghipss' });
+      expect(result).toEqual([{ name: 'GCB Bank', code: '040' }]);
+    });
+
+    it('returns an empty list for an unsupported country/type combination, without calling Paystack', async () => {
+      employees.findByUserId.mockResolvedValue({ id: 'emp-1', countryCode: 'NG' } as Employee);
+
+      const result = await service.listBanksForSelf('tenant-1', 'user-1', 'MOBILE_MONEY');
+
+      expect(result).toEqual([]);
+      expect(bankClient.listBanks).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when the user has no linked employee', async () => {
+      employees.findByUserId.mockResolvedValue(null);
+
+      await expect(service.listBanksForSelf('tenant-1', 'user-1', 'BANK_ACCOUNT')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
   });
 
   describe('resolveOwnEmployeeId', () => {

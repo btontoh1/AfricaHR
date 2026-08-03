@@ -1,11 +1,12 @@
 'use client';
 
 import { useForm } from 'react-hook-form';
+import type { Control, UseFormSetValue } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { useMyPaymentMethod, useUpsertMyPaymentMethod } from './queries';
+import { useMyPaymentMethod, useMyPaymentMethodBanks, useUpsertMyPaymentMethod } from './queries';
 import { paymentMethodFormSchema, type PaymentMethodFormValues } from './payment-method-form-schema';
-import type { PaymentMethod } from './types';
+import type { PaymentMethod, PaymentMethodType } from './types';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +31,71 @@ const EMPTY_VALUES: PaymentMethodFormValues = {
   mobileMoneyProvider: '',
   mobileMoneyNumber: '',
 };
+
+/**
+ * One control that fills in both the display name (bankName/
+ * mobileMoneyProvider) and bankCode together on selection - the two used
+ * to be separate fields (a free-text name plus a raw code the employee
+ * had to already know), which was the actual blocker to anyone using
+ * this in practice. The bank list is scoped to the employee's own
+ * country server-side (see PaymentMethodService.listBanksForSelf), so
+ * there's no country picker here.
+ */
+function BankPicker({
+  tenantId,
+  paymentMethodType,
+  nameField,
+  control,
+  setValue,
+  label,
+}: {
+  tenantId: string;
+  paymentMethodType: PaymentMethodType;
+  nameField: 'bankName' | 'mobileMoneyProvider';
+  control: Control<PaymentMethodFormValues>;
+  setValue: UseFormSetValue<PaymentMethodFormValues>;
+  label: string;
+}) {
+  const { data: banks, isLoading } = useMyPaymentMethodBanks(tenantId, paymentMethodType);
+
+  return (
+    <FormField
+      control={control}
+      name="bankCode"
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>{label}</FormLabel>
+          <Select
+            value={field.value}
+            onValueChange={(code) => {
+              const bank = banks?.find((option) => option.code === code);
+              field.onChange(code);
+              setValue(nameField, bank?.name ?? '');
+            }}
+          >
+            <FormControl>
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    isLoading ? 'Loading…' : banks?.length ? 'Select one' : 'No options available'
+                  }
+                />
+              </SelectTrigger>
+            </FormControl>
+            <SelectContent>
+              {banks?.map((bank) => (
+                <SelectItem key={bank.code} value={bank.code}>
+                  {bank.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+}
 
 function Fields({ tenantId, existing }: { tenantId: string; existing: PaymentMethod | null }) {
   const upsert = useUpsertMyPaymentMethod(tenantId);
@@ -93,7 +159,20 @@ function Fields({ tenantId, existing }: { tenantId: string; existing: PaymentMet
               render={({ field }) => (
                 <FormItem className="max-w-xs">
                   <FormLabel>How would you like to be paid?</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select
+                    value={field.value}
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      // Clear the previous type's picker selection - a
+                      // GH bank code and a mobile money provider code
+                      // aren't interchangeable, so carrying one over
+                      // after switching type would silently submit the
+                      // wrong thing.
+                      form.setValue('bankCode', '');
+                      form.setValue('bankName', '');
+                      form.setValue('mobileMoneyProvider', '');
+                    }}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue />
@@ -110,32 +189,14 @@ function Fields({ tenantId, existing }: { tenantId: string; existing: PaymentMet
             />
 
             {type === 'BANK_ACCOUNT' && (
-              <div className="grid gap-4 sm:grid-cols-4">
-                <FormField
+              <div className="grid gap-4 sm:grid-cols-3">
+                <BankPicker
+                  tenantId={tenantId}
+                  paymentMethodType="BANK_ACCOUNT"
+                  nameField="bankName"
                   control={form.control}
-                  name="bankName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Bank name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="GCB Bank" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="bankCode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Bank code</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. 040" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  setValue={form.setValue}
+                  label="Bank"
                 />
                 <FormField
                   control={form.control}
@@ -167,32 +228,14 @@ function Fields({ tenantId, existing }: { tenantId: string; existing: PaymentMet
             )}
 
             {type === 'MOBILE_MONEY' && (
-              <div className="grid gap-4 sm:grid-cols-3">
-                <FormField
+              <div className="grid gap-4 sm:grid-cols-2">
+                <BankPicker
+                  tenantId={tenantId}
+                  paymentMethodType="MOBILE_MONEY"
+                  nameField="mobileMoneyProvider"
                   control={form.control}
-                  name="mobileMoneyProvider"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Provider</FormLabel>
-                      <FormControl>
-                        <Input placeholder="MTN Mobile Money" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="bankCode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Provider code</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. MTN" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  setValue={form.setValue}
+                  label="Provider"
                 />
                 <FormField
                   control={form.control}

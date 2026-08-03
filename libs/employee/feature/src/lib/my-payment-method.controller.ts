@@ -1,9 +1,11 @@
-import { Body, Controller, Get, Param, Put, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Param, Put, Query, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { PaymentMethodType } from '@prisma/client';
 import { assertTenantScope, CurrentUser, JwtAuthGuard, PermissionsGuard, RequestUser } from '@africahr/platform-auth';
 import { PaymentMethodService } from './payment-method.service';
 import { UpsertPaymentMethodDto } from './dto/upsert-payment-method.dto';
 import { PaymentMethodResponseDto } from './dto/payment-method-response.dto';
+import { BankOptionResponseDto } from './dto/bank-option-response.dto';
 
 /**
  * Self-service: no @RequirePermissions on this controller — any
@@ -39,5 +41,18 @@ export class MyPaymentMethodController {
   ) {
     assertTenantScope(actor, tenantId);
     return this.paymentMethods.upsertForSelf(tenantId, actor.sub, dto);
+  }
+
+  /** Bank/mobile-money-provider options for the "bankCode" picker, scoped to the caller's own country - see PaymentMethodService.listBanksForSelf. */
+  @Get('banks')
+  @ApiQuery({ name: 'type', enum: Object.values(PaymentMethodType) })
+  @ApiOkResponse({ type: BankOptionResponseDto, isArray: true })
+  listBanks(
+    @Param('tenantId') tenantId: string,
+    @Query('type') type: PaymentMethodType,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.paymentMethods.listBanksForSelf(tenantId, actor.sub, type);
   }
 }

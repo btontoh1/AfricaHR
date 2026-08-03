@@ -20,6 +20,7 @@ describe('MyPaymentMethodController', () => {
     service = {
       getForSelf: jest.fn(),
       upsertForSelf: jest.fn(),
+      listBanksForSelf: jest.fn(),
     } as unknown as jest.Mocked<PaymentMethodService>;
 
     controller = new MyPaymentMethodController(service);
@@ -41,5 +42,11 @@ describe('MyPaymentMethodController', () => {
 
   it('rejects an actor acting on a different tenant even for self-service routes', () => {
     expect(() => controller.get('tenant-2', employee)).toThrow(ForbiddenException);
+  });
+
+  it("lists banks for the caller's own country via their user id", () => {
+    controller.listBanks('tenant-1', 'BANK_ACCOUNT', employee);
+
+    expect(service.listBanksForSelf).toHaveBeenCalledWith('tenant-1', 'emp-user-1', 'BANK_ACCOUNT');
   });
 });

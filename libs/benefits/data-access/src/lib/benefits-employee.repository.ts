@@ -6,6 +6,8 @@ export interface BenefitsEligibleEmployee {
   id: string;
   userId: string | null;
   baseSalary: Prisma.Decimal | null;
+  firstName: string;
+  lastName: string;
 }
 
 /**
@@ -25,7 +27,7 @@ export class BenefitsEmployeeRepository {
     return this.prisma.withTenantContext(tenantId, (tx) =>
       tx.employee.findFirst({
         where: { tenantId, userId, deletedAt: null },
-        select: { id: true, userId: true, baseSalary: true },
+        select: { id: true, userId: true, baseSalary: true, firstName: true, lastName: true },
       }),
     );
   }
@@ -34,7 +36,7 @@ export class BenefitsEmployeeRepository {
     return this.prisma.withTenantContext(tenantId, (tx) =>
       tx.employee.findFirst({
         where: { id, tenantId, deletedAt: null },
-        select: { id: true, userId: true, baseSalary: true },
+        select: { id: true, userId: true, baseSalary: true, firstName: true, lastName: true },
       }),
     );
   }

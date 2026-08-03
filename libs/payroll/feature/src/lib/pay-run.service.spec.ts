@@ -95,6 +95,7 @@ describe('PayRunService', () => {
 
     payslips = {
       upsert: jest.fn(),
+      findById: jest.fn(),
       findByPayRunAndEmployee: jest.fn().mockResolvedValue(null),
       listByPayRun: jest.fn().mockResolvedValue([]),
       updateManyStatusByPayRun: jest.fn(),
@@ -106,6 +107,7 @@ describe('PayRunService', () => {
       listActiveByOrganization: jest.fn().mockResolvedValue([]),
       findById: jest.fn(),
       findPaymentMethodByEmployeeId: jest.fn().mockResolvedValue(null),
+      savePaystackRecipientCode: jest.fn(),
     } as unknown as jest.Mocked<PayrollEmployeeRepository>;
 
     taxBands = {
@@ -414,6 +416,7 @@ describe('PayRunService', () => {
         accountNumber: encrypt('1234567890'),
         accountName: encrypt('Kwame Asante'),
         mobileMoneyNumber: null,
+        paystackRecipientCode: null,
       });
       employees.findById.mockResolvedValue({
         id: 'emp-1',
@@ -479,6 +482,7 @@ describe('PayRunService', () => {
         accountNumber: null,
         accountName: null,
         mobileMoneyNumber: encrypt('0244000000'),
+        paystackRecipientCode: null,
       });
 
       await service.markPaid('tenant-1', 'run-1');
@@ -499,6 +503,7 @@ describe('PayRunService', () => {
         accountNumber: encrypt('1234567890'),
         accountName: encrypt('Test Employee'),
         mobileMoneyNumber: null,
+        paystackRecipientCode: null,
       });
       employees.findById.mockResolvedValue({
         id: 'emp-1',

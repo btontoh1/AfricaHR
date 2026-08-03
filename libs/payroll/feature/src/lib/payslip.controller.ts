@@ -22,6 +22,7 @@ import {
   RequirePermissions,
 } from '@africahr/platform-auth';
 import { PayslipService } from './payslip.service';
+import { PayRunService } from './pay-run.service';
 import { CreatePayslipLineItemDto } from './dto/create-payslip-line-item.dto';
 import { PayslipResponseDto } from './dto/payslip-response.dto';
 import { PayslipLineItemResponseDto } from './dto/payslip-line-item-response.dto';
@@ -31,7 +32,10 @@ import { PayslipLineItemResponseDto } from './dto/payslip-line-item-response.dto
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('tenants/:tenantId/payslips')
 export class PayslipController {
-  constructor(private readonly payslips: PayslipService) {}
+  constructor(
+    private readonly payslips: PayslipService,
+    private readonly payRuns: PayRunService,
+  ) {}
 
   @Get()
   @RequirePermissions(Permission.PAYROLL_READ)
@@ -90,5 +94,18 @@ export class PayslipController {
   ) {
     assertTenantScope(actor, tenantId);
     return this.payslips.removeLineItem(tenantId, id, lineItemId, actor.sub);
+  }
+
+  /** Retries this payslip's disbursement after it FAILED or was skipped (NOT_INITIATED) - e.g. once the employee has corrected their payment method. */
+  @Post(':id/retry-disbursement')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermissions(Permission.PAYROLL_MANAGE)
+  async retryDisbursement(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: RequestUser,
+  ): Promise<void> {
+    assertTenantScope(actor, tenantId);
+    await this.payRuns.retryDisbursement(tenantId, id, actor.sub);
   }
 }

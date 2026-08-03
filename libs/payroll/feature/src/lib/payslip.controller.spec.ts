@@ -2,10 +2,12 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { RequestUser, SystemRole } from '@africahr/platform-auth';
 import { PayslipController } from './payslip.controller';
 import { PayslipService } from './payslip.service';
+import { PayRunService } from './pay-run.service';
 
 describe('PayslipController', () => {
   let controller: PayslipController;
   let service: jest.Mocked<PayslipService>;
+  let payRuns: jest.Mocked<PayRunService>;
 
   const payrollManager: RequestUser = {
     sub: 'mgr-1',
@@ -26,7 +28,11 @@ describe('PayslipController', () => {
       removeLineItem: jest.fn(),
     } as unknown as jest.Mocked<PayslipService>;
 
-    controller = new PayslipController(service);
+    payRuns = {
+      retryDisbursement: jest.fn(),
+    } as unknown as jest.Mocked<PayRunService>;
+
+    controller = new PayslipController(service, payRuns);
   });
 
   it('lists by payRunId when provided', () => {
@@ -68,5 +74,17 @@ describe('PayslipController', () => {
 
     expect(service.addLineItem).toHaveBeenCalledWith('tenant-1', 'payslip-1', dto, 'mgr-1');
     expect(service.removeLineItem).toHaveBeenCalledWith('tenant-1', 'payslip-1', 'li-1', 'mgr-1');
+  });
+
+  it('delegates retryDisbursement with tenant, id, and actor', async () => {
+    await controller.retryDisbursement('tenant-1', 'payslip-1', payrollManager);
+
+    expect(payRuns.retryDisbursement).toHaveBeenCalledWith('tenant-1', 'payslip-1', 'mgr-1');
+  });
+
+  it('rejects retryDisbursement for an actor acting on a different tenant', async () => {
+    await expect(controller.retryDisbursement('tenant-2', 'payslip-1', payrollManager)).rejects.toThrow(
+      ForbiddenException,
+    );
   });
 });

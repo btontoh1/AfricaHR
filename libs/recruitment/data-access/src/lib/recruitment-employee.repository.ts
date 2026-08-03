@@ -28,4 +28,13 @@ export class RecruitmentEmployeeRepository {
       }),
     );
   }
+
+  findById(tenantId: string, id: string): Promise<RecruitmentEligibleEmployee | null> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.employee.findFirst({
+        where: { id, tenantId, deletedAt: null },
+        select: { id: true, userId: true },
+      }),
+    );
+  }
 }

@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PayRun, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import {
@@ -8,7 +9,7 @@ import {
   StatutoryRateRepository,
   StatutoryTaxBandRepository,
 } from '@africahr/payroll-data-access';
-import { PayRunService } from './pay-run.service';
+import { PAY_RUN_PROCESSED_EVENT, PayRunService } from './pay-run.service';
 
 describe('PayRunService', () => {
   let service: PayRunService;
@@ -18,6 +19,7 @@ describe('PayRunService', () => {
   let taxBands: jest.Mocked<StatutoryTaxBandRepository>;
   let rates: jest.Mocked<StatutoryRateRepository>;
   let audit: jest.Mocked<AuditService>;
+  let eventEmitter: jest.Mocked<EventEmitter2>;
 
   function makePayRun(overrides: Partial<PayRun> = {}): PayRun {
     return {
@@ -71,8 +73,9 @@ describe('PayRunService', () => {
     } as unknown as jest.Mocked<StatutoryRateRepository>;
 
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
+    eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
 
-    service = new PayRunService(payRuns, payslips, employees, taxBands, rates, audit);
+    service = new PayRunService(payRuns, payslips, employees, taxBands, rates, audit, eventEmitter);
   });
 
   describe('create', () => {
@@ -182,6 +185,26 @@ describe('PayRunService', () => {
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'payroll.pay_run.processed' }),
       );
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        PAY_RUN_PROCESSED_EVENT,
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          payRunId: 'run-1',
+          periodStart: '2026-01-01',
+          periodEnd: '2026-01-31',
+          employeeCount: 1,
+          actorUserId: 'mgr-1',
+        }),
+      );
+    });
+
+    it('does not emit a notification when reprocessing an already-PROCESSING run', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'PROCESSING' }));
+      employees.listActiveByOrganization.mockResolvedValue([]);
+
+      await service.process('tenant-1', 'run-1');
+
+      expect(eventEmitter.emit).not.toHaveBeenCalled();
     });
 
     it('derives the payslip currency from country when the employee has none set, instead of hardcoding GHS', async () => {

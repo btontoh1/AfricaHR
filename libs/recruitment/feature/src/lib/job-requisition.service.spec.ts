@@ -1,14 +1,16 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JobRequisition, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import { JobRequisitionRepository, RecruitmentEmployeeRepository } from '@africahr/recruitment-data-access';
-import { JobRequisitionService } from './job-requisition.service';
+import { JobRequisitionService, RECRUITMENT_REQUISITION_CREATED_EVENT } from './job-requisition.service';
 
 describe('JobRequisitionService', () => {
   let service: JobRequisitionService;
   let requisitions: jest.Mocked<JobRequisitionRepository>;
   let employees: jest.Mocked<RecruitmentEmployeeRepository>;
   let audit: jest.Mocked<AuditService>;
+  let eventEmitter: jest.Mocked<EventEmitter2>;
 
   function makeRequisition(overrides: Partial<JobRequisition> = {}): JobRequisition {
     return {
@@ -42,11 +44,13 @@ describe('JobRequisitionService', () => {
 
     employees = {
       findByUserId: jest.fn(),
+      findById: jest.fn().mockResolvedValue({ id: 'mgr-emp-1', userId: 'mgr-user-1' }),
     } as unknown as jest.Mocked<RecruitmentEmployeeRepository>;
 
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
+    eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
 
-    service = new JobRequisitionService(requisitions, employees, audit);
+    service = new JobRequisitionService(requisitions, employees, audit, eventEmitter);
   });
 
   describe('resolveOwnEmployeeId', () => {
@@ -93,6 +97,45 @@ describe('JobRequisitionService', () => {
       );
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'recruitment.requisition.created', resourceId: created.id }),
+      );
+    });
+
+    it('emits a notification event with the hiring manager and actor', async () => {
+      const created = makeRequisition({ hiringManagerId: 'mgr-emp-1', title: 'Software Engineer' });
+      requisitions.create.mockResolvedValue(created);
+
+      await service.create(
+        'tenant-1',
+        { organizationId: 'org-1', title: 'Software Engineer', employmentType: 'FULL_TIME' } as never,
+        'hr-1',
+      );
+
+      expect(employees.findById).toHaveBeenCalledWith('tenant-1', 'mgr-emp-1');
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        RECRUITMENT_REQUISITION_CREATED_EVENT,
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          hiringManagerUserId: 'mgr-user-1',
+          jobTitle: 'Software Engineer',
+          actorUserId: 'hr-1',
+        }),
+      );
+    });
+
+    it('emits with a null hiringManagerUserId when the requisition has no hiring manager', async () => {
+      const created = makeRequisition({ hiringManagerId: null });
+      requisitions.create.mockResolvedValue(created);
+
+      await service.create(
+        'tenant-1',
+        { organizationId: 'org-1', title: 'Software Engineer', employmentType: 'FULL_TIME' } as never,
+        'hr-1',
+      );
+
+      expect(employees.findById).not.toHaveBeenCalled();
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        RECRUITMENT_REQUISITION_CREATED_EVENT,
+        expect.objectContaining({ hiringManagerUserId: null }),
       );
     });
   });

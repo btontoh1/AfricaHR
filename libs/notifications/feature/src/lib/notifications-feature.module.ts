@@ -13,6 +13,7 @@ import { PerformanceReviewNotificationListener } from './performance-review-noti
 import { RecruitmentApplicationNotificationListener } from './recruitment-application-notification.listener';
 import { BenefitEnrollmentNotificationListener } from './benefit-enrollment-notification.listener';
 import { PayRunNotificationListener } from './pay-run-notification.listener';
+import { JobRequisitionNotificationListener } from './job-requisition-notification.listener';
 import {
   LogNotificationDispatcher,
   NotificationDispatcher,
@@ -38,6 +39,7 @@ import {
     RecruitmentApplicationNotificationListener,
     BenefitEnrollmentNotificationListener,
     PayRunNotificationListener,
+    JobRequisitionNotificationListener,
     {
       provide: NotificationDispatcher,
       inject: [AppConfigService],

@@ -6,10 +6,12 @@ import {
   PayRunRepository,
   PayrollEmployeeRepository,
   PayslipRepository,
+  PayslipWithLineItems,
   StatutoryRateRepository,
   StatutoryTaxBandRepository,
 } from '@africahr/payroll-data-access';
 import { PAY_RUN_PROCESSED_EVENT, PayRunService } from './pay-run.service';
+import { PaystackTransferClient } from './paystack-transfer-client';
 
 describe('PayRunService', () => {
   let service: PayRunService;
@@ -20,6 +22,38 @@ describe('PayRunService', () => {
   let rates: jest.Mocked<StatutoryRateRepository>;
   let audit: jest.Mocked<AuditService>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
+  let paystack: jest.Mocked<PaystackTransferClient>;
+
+  function makePayslip(overrides: Partial<PayslipWithLineItems> = {}): PayslipWithLineItems {
+    return {
+      id: 'payslip-1',
+      tenantId: 'tenant-1',
+      payRunId: 'run-1',
+      employeeId: 'emp-1',
+      status: 'PAID',
+      countryCode: 'GH',
+      basicSalary: new Prisma.Decimal(1000),
+      grossPay: new Prisma.Decimal(1000),
+      taxableIncome: new Prisma.Decimal(945),
+      payeTax: new Prisma.Decimal(89),
+      ssnitEmployee: new Prisma.Decimal(55),
+      ssnitEmployer: new Prisma.Decimal(130),
+      totalDeductions: new Prisma.Decimal(144),
+      netPay: new Prisma.Decimal(856),
+      currency: 'GHS',
+      disbursementStatus: 'NOT_INITIATED',
+      paystackRecipientCode: null,
+      paystackTransferReference: null,
+      disbursedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+      createdBy: null,
+      updatedBy: null,
+      lineItems: [],
+      ...overrides,
+    } as PayslipWithLineItems;
+  }
 
   function makePayRun(overrides: Partial<PayRun> = {}): PayRun {
     return {
@@ -53,13 +87,16 @@ describe('PayRunService', () => {
     payslips = {
       upsert: jest.fn(),
       findByPayRunAndEmployee: jest.fn().mockResolvedValue(null),
-      listByPayRun: jest.fn(),
+      listByPayRun: jest.fn().mockResolvedValue([]),
       updateManyStatusByPayRun: jest.fn(),
+      recordDisbursementInitiated: jest.fn(),
+      recordDisbursementResult: jest.fn(),
     } as unknown as jest.Mocked<PayslipRepository>;
 
     employees = {
       listActiveByOrganization: jest.fn().mockResolvedValue([]),
       findById: jest.fn(),
+      findPaymentMethodByEmployeeId: jest.fn().mockResolvedValue(null),
     } as unknown as jest.Mocked<PayrollEmployeeRepository>;
 
     taxBands = {
@@ -74,8 +111,12 @@ describe('PayRunService', () => {
 
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
     eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
+    paystack = {
+      createRecipient: jest.fn(),
+      initiateTransfer: jest.fn(),
+    } as unknown as jest.Mocked<PaystackTransferClient>;
 
-    service = new PayRunService(payRuns, payslips, employees, taxBands, rates, audit, eventEmitter);
+    service = new PayRunService(payRuns, payslips, employees, taxBands, rates, audit, eventEmitter, paystack);
   });
 
   describe('create', () => {
@@ -163,6 +204,8 @@ describe('PayRunService', () => {
       employees.listActiveByOrganization.mockResolvedValue([
         {
           id: 'emp-1',
+          firstName: 'Kwame',
+          lastName: 'Asante',
           baseSalary: new Prisma.Decimal(1000),
           currency: 'GHS',
           annualRentPaid: null,
@@ -212,6 +255,8 @@ describe('PayRunService', () => {
       employees.listActiveByOrganization.mockResolvedValue([
         {
           id: 'emp-1',
+          firstName: 'Chidi',
+          lastName: 'Okafor',
           baseSalary: new Prisma.Decimal(1000),
           currency: null,
           annualRentPaid: null,
@@ -233,6 +278,8 @@ describe('PayRunService', () => {
       employees.listActiveByOrganization.mockResolvedValue([
         {
           id: 'emp-1',
+          firstName: 'Chidi',
+          lastName: 'Okafor',
           baseSalary: new Prisma.Decimal(100_000),
           currency: 'NGN',
           annualRentPaid: new Prisma.Decimal(1_200_000),
@@ -272,6 +319,8 @@ describe('PayRunService', () => {
       employees.listActiveByOrganization.mockResolvedValue([
         {
           id: 'emp-1',
+          firstName: 'Kwame',
+          lastName: 'Asante',
           baseSalary: new Prisma.Decimal(1000),
           currency: 'GHS',
           annualRentPaid: null,
@@ -324,6 +373,123 @@ describe('PayRunService', () => {
       await service.markPaid('tenant-1', 'run-1', 'mgr-1');
 
       expect(payslips.updateManyStatusByPayRun).toHaveBeenCalledWith('tenant-1', 'run-1', 'PAID', 'mgr-1');
+    });
+
+    it('initiates a Paystack transfer for a payslip whose employee has a usable payment method', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PAID' }));
+      payslips.listByPayRun.mockResolvedValue([makePayslip({ countryCode: 'GH', currency: 'GHS', netPay: new Prisma.Decimal(856) })]);
+      employees.findPaymentMethodByEmployeeId.mockResolvedValue({
+        type: 'BANK_ACCOUNT',
+        bankCode: '040',
+        accountNumber: '1234567890',
+        accountName: 'Kwame Asante',
+        mobileMoneyNumber: null,
+      });
+      employees.findById.mockResolvedValue({
+        id: 'emp-1',
+        firstName: 'Kwame',
+        lastName: 'Asante',
+        baseSalary: new Prisma.Decimal(1000),
+        currency: 'GHS',
+        annualRentPaid: null,
+        countryCode: 'GH',
+      });
+      paystack.createRecipient.mockResolvedValue({ recipientCode: 'RCP_abc' });
+      paystack.initiateTransfer.mockResolvedValue({ transferCode: 'TRF_abc', reference: 'ref-123', status: 'pending' });
+
+      await service.markPaid('tenant-1', 'run-1', 'mgr-1');
+
+      expect(paystack.createRecipient).toHaveBeenCalledWith({
+        type: 'ghipss',
+        name: 'Kwame Asante',
+        accountNumber: '1234567890',
+        bankCode: '040',
+        currency: 'GHS',
+      });
+      expect(paystack.initiateTransfer).toHaveBeenCalledWith(
+        expect.objectContaining({ amount: 856, currency: 'GHS', recipientCode: 'RCP_abc' }),
+      );
+      expect(payslips.recordDisbursementInitiated).toHaveBeenCalledWith(
+        'tenant-1',
+        'payslip-1',
+        expect.objectContaining({ paystackRecipientCode: 'RCP_abc' }),
+      );
+    });
+
+    it('skips disbursement for a payslip with no net pay', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PAID' }));
+      payslips.listByPayRun.mockResolvedValue([makePayslip({ netPay: new Prisma.Decimal(0) })]);
+
+      await service.markPaid('tenant-1', 'run-1');
+
+      expect(employees.findPaymentMethodByEmployeeId).not.toHaveBeenCalled();
+      expect(paystack.createRecipient).not.toHaveBeenCalled();
+    });
+
+    it('skips disbursement for an employee with no payment method on file, without failing the whole call', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PAID' }));
+      payslips.listByPayRun.mockResolvedValue([makePayslip()]);
+      employees.findPaymentMethodByEmployeeId.mockResolvedValue(null);
+
+      await expect(service.markPaid('tenant-1', 'run-1')).resolves.toBeDefined();
+
+      expect(paystack.createRecipient).not.toHaveBeenCalled();
+      expect(payslips.recordDisbursementInitiated).not.toHaveBeenCalled();
+    });
+
+    it('skips disbursement for a payment-method/country combination Paystack does not support', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PAID' }));
+      payslips.listByPayRun.mockResolvedValue([makePayslip({ countryCode: 'NG' })]);
+      employees.findPaymentMethodByEmployeeId.mockResolvedValue({
+        type: 'MOBILE_MONEY',
+        bankCode: 'MTN',
+        accountNumber: null,
+        accountName: null,
+        mobileMoneyNumber: '0244000000',
+      });
+
+      await service.markPaid('tenant-1', 'run-1');
+
+      expect(paystack.createRecipient).not.toHaveBeenCalled();
+    });
+
+    it('does not let one employee\'s Paystack failure block the pay run from being marked paid or the rest from being disbursed', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PAID' }));
+      payslips.listByPayRun.mockResolvedValue([
+        makePayslip({ id: 'payslip-1', employeeId: 'emp-1' }),
+        makePayslip({ id: 'payslip-2', employeeId: 'emp-2' }),
+      ]);
+      employees.findPaymentMethodByEmployeeId.mockResolvedValue({
+        type: 'BANK_ACCOUNT',
+        bankCode: '040',
+        accountNumber: '1234567890',
+        accountName: 'Test Employee',
+        mobileMoneyNumber: null,
+      });
+      employees.findById.mockResolvedValue({
+        id: 'emp-1',
+        firstName: 'Test',
+        lastName: 'Employee',
+        baseSalary: new Prisma.Decimal(1000),
+        currency: 'GHS',
+        annualRentPaid: null,
+        countryCode: 'GH',
+      });
+      paystack.createRecipient
+        .mockRejectedValueOnce(new Error('Paystack is down'))
+        .mockResolvedValueOnce({ recipientCode: 'RCP_abc' });
+      paystack.initiateTransfer.mockResolvedValue({ transferCode: 'TRF_abc', reference: 'ref-123', status: 'pending' });
+
+      const result = await service.markPaid('tenant-1', 'run-1', 'mgr-1');
+
+      expect(result.status).toBe('PAID');
+      expect(paystack.createRecipient).toHaveBeenCalledTimes(2);
+      expect(payslips.recordDisbursementInitiated).toHaveBeenCalledTimes(1);
     });
   });
 

@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { PayslipStatus } from '@prisma/client';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { PayslipDisbursementStatus, PayslipStatus } from '@prisma/client';
 import { PayslipLineItemResponseDto } from './payslip-line-item-response.dto';
 
 export class PayslipResponseDto {
@@ -53,6 +53,12 @@ export class PayslipResponseDto {
 
   @ApiProperty()
   currency!: string;
+
+  @ApiProperty({ enum: Object.values(PayslipDisbursementStatus) })
+  disbursementStatus!: PayslipDisbursementStatus;
+
+  @ApiPropertyOptional({ description: 'When the Paystack transfer settled (success or failure)' })
+  disbursedAt?: string | null;
 
   @ApiProperty({ type: PayslipLineItemResponseDto, isArray: true })
   lineItems!: PayslipLineItemResponseDto[];

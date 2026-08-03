@@ -24,6 +24,7 @@ import {
 const EMPTY_VALUES: PaymentMethodFormValues = {
   type: 'BANK_ACCOUNT',
   bankName: '',
+  bankCode: '',
   accountNumber: '',
   accountName: '',
   mobileMoneyProvider: '',
@@ -39,6 +40,7 @@ function Fields({ tenantId, existing }: { tenantId: string; existing: PaymentMet
       ? {
           type: existing.type,
           bankName: existing.bankName ?? '',
+          bankCode: existing.bankCode ?? '',
           accountNumber: existing.accountNumber ?? '',
           accountName: existing.accountName ?? '',
           mobileMoneyProvider: existing.mobileMoneyProvider ?? '',
@@ -60,6 +62,7 @@ function Fields({ tenantId, existing }: { tenantId: string; existing: PaymentMet
       await upsert.mutateAsync({
         type: values.type,
         bankName: isBankAccount ? values.bankName || undefined : undefined,
+        bankCode: values.bankCode || undefined,
         accountNumber: isBankAccount ? values.accountNumber || undefined : undefined,
         accountName: isBankAccount ? values.accountName || undefined : undefined,
         mobileMoneyProvider: isBankAccount ? undefined : values.mobileMoneyProvider || undefined,
@@ -107,7 +110,7 @@ function Fields({ tenantId, existing }: { tenantId: string; existing: PaymentMet
             />
 
             {type === 'BANK_ACCOUNT' && (
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-4">
                 <FormField
                   control={form.control}
                   name="bankName"
@@ -116,6 +119,19 @@ function Fields({ tenantId, existing }: { tenantId: string; existing: PaymentMet
                       <FormLabel>Bank name</FormLabel>
                       <FormControl>
                         <Input placeholder="GCB Bank" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="bankCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bank code</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. 040" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -151,7 +167,7 @@ function Fields({ tenantId, existing }: { tenantId: string; existing: PaymentMet
             )}
 
             {type === 'MOBILE_MONEY' && (
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-3">
                 <FormField
                   control={form.control}
                   name="mobileMoneyProvider"
@@ -160,6 +176,19 @@ function Fields({ tenantId, existing }: { tenantId: string; existing: PaymentMet
                       <FormLabel>Provider</FormLabel>
                       <FormControl>
                         <Input placeholder="MTN Mobile Money" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="bankCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Provider code</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. MTN" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

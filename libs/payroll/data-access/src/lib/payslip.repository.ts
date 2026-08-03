@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Payslip, PayslipStatus, Prisma } from '@prisma/client';
+import { Payslip, PayslipDisbursementStatus, PayslipStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '@africahr/platform-database';
 
 export type PayslipWithLineItems = Prisma.PayslipGetPayload<{ include: { lineItems: true } }>;
@@ -131,6 +131,38 @@ export class PayslipRepository {
   ): Promise<Prisma.BatchPayload> {
     return this.prisma.withTenantContext(tenantId, (tx) =>
       tx.payslip.updateMany({ where: { tenantId, payRunId }, data: { status, updatedBy } }),
+    );
+  }
+
+  /** Called once markPaid() has initiated a Paystack transfer for this payslip - reference is unique, used to match the later webhook. */
+  recordDisbursementInitiated(
+    tenantId: string,
+    id: string,
+    input: { paystackRecipientCode: string; paystackTransferReference: string },
+  ): Promise<Payslip> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.payslip.update({
+        where: { id },
+        data: {
+          disbursementStatus: PayslipDisbursementStatus.PENDING,
+          paystackRecipientCode: input.paystackRecipientCode,
+          paystackTransferReference: input.paystackTransferReference,
+        },
+      }),
+    );
+  }
+
+  /** Called by PayrollTransferWebhookListener once the transfer.success/transfer.failed webhook arrives. */
+  recordDisbursementResult(
+    tenantId: string,
+    id: string,
+    status: typeof PayslipDisbursementStatus.SUCCESS | typeof PayslipDisbursementStatus.FAILED,
+  ): Promise<Payslip> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.payslip.update({
+        where: { id },
+        data: { disbursementStatus: status, disbursedAt: new Date() },
+      }),
     );
   }
 }

@@ -99,6 +99,7 @@ describe('PaymentMethodService', () => {
       expect(paymentMethods.upsert).toHaveBeenCalledWith('tenant-1', 'emp-1', {
         type: 'MOBILE_MONEY',
         bankName: null,
+        bankCode: null,
         accountNumber: null,
         accountName: null,
         mobileMoneyProvider: 'MTN Mobile Money',

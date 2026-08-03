@@ -12,6 +12,9 @@ export class PaymentMethodResponseDto {
   bankName?: string | null;
 
   @ApiPropertyOptional()
+  bankCode?: string | null;
+
+  @ApiPropertyOptional()
   accountNumber?: string | null;
 
   @ApiPropertyOptional()

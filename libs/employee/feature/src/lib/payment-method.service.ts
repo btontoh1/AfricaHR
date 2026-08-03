@@ -35,6 +35,7 @@ export class PaymentMethodService {
     const result = await this.paymentMethods.upsert(tenantId, employeeId, {
       type: dto.type,
       bankName: dto.bankName ?? null,
+      bankCode: dto.bankCode ?? null,
       accountNumber: dto.accountNumber ?? null,
       accountName: dto.accountName ?? null,
       mobileMoneyProvider: dto.mobileMoneyProvider ?? null,

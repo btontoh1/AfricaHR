@@ -5,6 +5,7 @@ import { PrismaService } from '@africahr/platform-database';
 export interface UpsertPaymentMethodInput {
   type: PaymentMethodType;
   bankName?: string | null;
+  bankCode?: string | null;
   accountNumber?: string | null;
   accountName?: string | null;
   mobileMoneyProvider?: string | null;
@@ -36,6 +37,7 @@ export class PaymentMethodRepository {
           employeeId,
           type: input.type,
           bankName: input.bankName,
+          bankCode: input.bankCode,
           accountNumber: input.accountNumber,
           accountName: input.accountName,
           mobileMoneyProvider: input.mobileMoneyProvider,
@@ -46,6 +48,7 @@ export class PaymentMethodRepository {
         update: {
           type: input.type,
           bankName: input.bankName,
+          bankCode: input.bankCode,
           accountNumber: input.accountNumber,
           accountName: input.accountName,
           mobileMoneyProvider: input.mobileMoneyProvider,

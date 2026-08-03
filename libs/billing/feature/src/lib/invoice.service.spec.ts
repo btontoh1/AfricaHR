@@ -1,4 +1,5 @@
 import { BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Invoice, Prisma, Subscription } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import {
@@ -8,7 +9,7 @@ import {
   PlatformBillingRepository,
   SubscriptionRepository,
 } from '@africahr/billing-data-access';
-import { InvoiceService } from './invoice.service';
+import { InvoiceService, PAYSTACK_TRANSFER_UPDATED_EVENT } from './invoice.service';
 import { PaystackClient } from './paystack-client';
 
 describe('InvoiceService', () => {
@@ -20,6 +21,7 @@ describe('InvoiceService', () => {
   let platformBilling: jest.Mocked<PlatformBillingRepository>;
   let paystack: jest.Mocked<PaystackClient>;
   let audit: jest.Mocked<AuditService>;
+  let eventEmitter: jest.Mocked<EventEmitter2>;
 
   const activeSubscription: Subscription = {
     id: 'sub-1',
@@ -80,6 +82,7 @@ describe('InvoiceService', () => {
       verifyWebhookSignature: jest.fn(),
     } as unknown as jest.Mocked<PaystackClient>;
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
+    eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
 
     service = new InvoiceService(
       invoices,
@@ -89,6 +92,7 @@ describe('InvoiceService', () => {
       platformBilling,
       paystack,
       audit,
+      eventEmitter,
     );
   });
 
@@ -230,6 +234,49 @@ describe('InvoiceService', () => {
       );
 
       expect(invoices.update).not.toHaveBeenCalled();
+    });
+
+    it('re-emits a transfer.success event instead of handling it as billing', async () => {
+      paystack.verifyWebhookSignature.mockReturnValue(true);
+
+      await service.handlePaystackWebhook(
+        JSON.stringify({ event: 'transfer.success', data: { reference: 'ref-456' } }),
+        'valid-signature',
+      );
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(PAYSTACK_TRANSFER_UPDATED_EVENT, {
+        reference: 'ref-456',
+        status: 'success',
+      });
+      expect(platformBilling.findInvoiceByPaystackReference).not.toHaveBeenCalled();
+    });
+
+    it('re-emits a transfer.failed event as a failed status', async () => {
+      paystack.verifyWebhookSignature.mockReturnValue(true);
+
+      await service.handlePaystackWebhook(
+        JSON.stringify({ event: 'transfer.failed', data: { reference: 'ref-456' } }),
+        'valid-signature',
+      );
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(PAYSTACK_TRANSFER_UPDATED_EVENT, {
+        reference: 'ref-456',
+        status: 'failed',
+      });
+    });
+
+    it('re-emits a transfer.reversed event as a failed status', async () => {
+      paystack.verifyWebhookSignature.mockReturnValue(true);
+
+      await service.handlePaystackWebhook(
+        JSON.stringify({ event: 'transfer.reversed', data: { reference: 'ref-456' } }),
+        'valid-signature',
+      );
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(PAYSTACK_TRANSFER_UPDATED_EVENT, {
+        reference: 'ref-456',
+        status: 'failed',
+      });
     });
   });
 });

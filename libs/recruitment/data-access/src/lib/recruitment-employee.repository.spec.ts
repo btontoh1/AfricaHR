@@ -20,4 +20,13 @@ describe('RecruitmentEmployeeRepository', () => {
       select: { id: true, userId: true },
     });
   });
+
+  it('resolves an employee by id, scoped to the tenant, selecting only id/userId', async () => {
+    await repository.findById('tenant-1', 'emp-1');
+
+    expect(tx.employee.findFirst).toHaveBeenCalledWith({
+      where: { id: 'emp-1', tenantId: 'tenant-1', deletedAt: null },
+      select: { id: true, userId: true },
+    });
+  });
 });

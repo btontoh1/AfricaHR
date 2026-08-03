@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { Application, Candidate, JobRequisition, Prisma } from '@prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Candidate, JobRequisition, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import {
   ApplicationRepository,
@@ -7,7 +8,7 @@ import {
   JobRequisitionRepository,
   RecruitmentEmployeeRepository,
 } from '@africahr/recruitment-data-access';
-import { ApplicationService } from './application.service';
+import { ApplicationService, RECRUITMENT_APPLICATION_CREATED_EVENT } from './application.service';
 
 describe('ApplicationService', () => {
   let service: ApplicationService;
@@ -15,6 +16,7 @@ describe('ApplicationService', () => {
   let requisitions: jest.Mocked<JobRequisitionRepository>;
   let employees: jest.Mocked<RecruitmentEmployeeRepository>;
   let audit: jest.Mocked<AuditService>;
+  let eventEmitter: jest.Mocked<EventEmitter2>;
 
   function makeCandidate(overrides: Partial<Candidate> = {}): Candidate {
     return {
@@ -56,7 +58,7 @@ describe('ApplicationService', () => {
     } as JobRequisition;
   }
 
-  function makeApplication(overrides: Partial<Application> = {}): ApplicationWithRelations {
+  function makeApplication(overrides: Partial<ApplicationWithRelations> = {}): ApplicationWithRelations {
     return {
       id: 'app-1',
       tenantId: 'tenant-1',
@@ -99,11 +101,13 @@ describe('ApplicationService', () => {
 
     employees = {
       findByUserId: jest.fn(),
+      findById: jest.fn(),
     } as unknown as jest.Mocked<RecruitmentEmployeeRepository>;
 
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
+    eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
 
-    service = new ApplicationService(applications, requisitions, employees, audit);
+    service = new ApplicationService(applications, requisitions, employees, audit, eventEmitter);
   });
 
   describe('create', () => {
@@ -137,6 +141,63 @@ describe('ApplicationService', () => {
 
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'recruitment.application.created', resourceId: created.id }),
+      );
+    });
+
+    it('emits a notification event when the requisition has a hiring manager with portal access', async () => {
+      const created = makeApplication({ candidateId: 'cand-1', requisitionId: 'req-1' });
+      applications.create.mockResolvedValue(created);
+      applications.findById.mockResolvedValue(
+        makeApplication({
+          id: created.id,
+          candidate: makeCandidate({ firstName: 'Kwame', lastName: 'Asante' }),
+          requisition: makeRequisition({ hiringManagerId: 'mgr-emp-1', title: 'Software Engineer' }),
+        }),
+      );
+      employees.findById.mockResolvedValue({ id: 'mgr-emp-1', userId: 'mgr-user-1' });
+
+      await service.create('tenant-1', { candidateId: 'cand-1', requisitionId: 'req-1' }, 'hr-1');
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        RECRUITMENT_APPLICATION_CREATED_EVENT,
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          hiringManagerUserId: 'mgr-user-1',
+          candidateName: 'Kwame Asante',
+          jobTitle: 'Software Engineer',
+          actorUserId: 'hr-1',
+        }),
+      );
+    });
+
+    it('emits with a null hiringManagerUserId when the requisition has no hiring manager', async () => {
+      const created = makeApplication();
+      applications.create.mockResolvedValue(created);
+      applications.findById.mockResolvedValue(
+        makeApplication({ id: created.id, requisition: makeRequisition({ hiringManagerId: null }) }),
+      );
+
+      await service.create('tenant-1', { candidateId: 'cand-1', requisitionId: 'req-1' }, 'hr-1');
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        RECRUITMENT_APPLICATION_CREATED_EVENT,
+        expect.objectContaining({ tenantId: 'tenant-1', hiringManagerUserId: null }),
+      );
+    });
+
+    it('emits with a null hiringManagerUserId when the hiring manager has no portal access', async () => {
+      const created = makeApplication();
+      applications.create.mockResolvedValue(created);
+      applications.findById.mockResolvedValue(
+        makeApplication({ id: created.id, requisition: makeRequisition({ hiringManagerId: 'mgr-emp-1' }) }),
+      );
+      employees.findById.mockResolvedValue({ id: 'mgr-emp-1', userId: null });
+
+      await service.create('tenant-1', { candidateId: 'cand-1', requisitionId: 'req-1' }, 'hr-1');
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        RECRUITMENT_APPLICATION_CREATED_EVENT,
+        expect.objectContaining({ tenantId: 'tenant-1', hiringManagerUserId: null }),
       );
     });
   });

@@ -10,6 +10,7 @@ import { MyNotificationController } from './my-notification.controller';
 import { NotificationController } from './notification.controller';
 import { LeaveRequestNotificationListener } from './leave-request-notification.listener';
 import { PerformanceReviewNotificationListener } from './performance-review-notification.listener';
+import { RecruitmentApplicationNotificationListener } from './recruitment-application-notification.listener';
 import {
   LogNotificationDispatcher,
   NotificationDispatcher,
@@ -32,6 +33,7 @@ import {
     NotificationService,
     LeaveRequestNotificationListener,
     PerformanceReviewNotificationListener,
+    RecruitmentApplicationNotificationListener,
     {
       provide: NotificationDispatcher,
       inject: [AppConfigService],

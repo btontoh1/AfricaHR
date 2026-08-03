@@ -8,10 +8,22 @@ export interface CrossTenantPayslipDisbursement {
   disbursementStatus: PayslipDisbursementStatus;
 }
 
+export interface StalePendingDisbursement {
+  id: string;
+  tenantId: string;
+  paystackTransferReference: string;
+}
+
 interface RawPayslipDisbursementRow {
   id: string;
   tenantId: string;
   disbursementStatus: PayslipDisbursementStatus;
+}
+
+interface RawStalePendingDisbursementRow {
+  id: string;
+  tenantId: string;
+  paystackTransferReference: string;
 }
 
 /**
@@ -35,5 +47,12 @@ export class PayrollDisbursementRepository {
       RawPayslipDisbursementRow[]
     >`SELECT * FROM find_payslip_by_paystack_transfer_reference_across_tenants(${reference})`;
     return rows[0] ?? null;
+  }
+
+  /** Every payslip still PENDING as of before olderThan, across every tenant - see the reconciliation sweep's own SECURITY DEFINER function for why this can't be a tenant-scoped read. */
+  listStalePendingDisbursements(olderThan: Date): Promise<StalePendingDisbursement[]> {
+    return this.prisma.$queryRaw<
+      RawStalePendingDisbursementRow[]
+    >`SELECT * FROM find_stale_pending_payslip_disbursements(${olderThan})`;
   }
 }

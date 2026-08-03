@@ -26,4 +26,16 @@ describe('PayrollDisbursementRepository', () => {
 
     await expect(repository.findPayslipByPaystackTransferReference('missing')).resolves.toBeNull();
   });
+
+  it('lists stale pending disbursements across tenants', async () => {
+    const olderThan = new Date('2026-01-01');
+    prisma.$queryRaw.mockResolvedValue([
+      { id: 'payslip-1', tenantId: 'tenant-1', paystackTransferReference: 'ref-123' },
+    ]);
+
+    const result = await repository.listStalePendingDisbursements(olderThan);
+
+    expect(prisma.$queryRaw).toHaveBeenCalled();
+    expect(result).toEqual([{ id: 'payslip-1', tenantId: 'tenant-1', paystackTransferReference: 'ref-123' }]);
+  });
 });

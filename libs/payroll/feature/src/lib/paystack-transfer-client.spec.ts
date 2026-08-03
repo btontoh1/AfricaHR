@@ -29,6 +29,14 @@ describe('LogPaystackTransferClient', () => {
     expect(result.reference).toBe('ref-123');
     expect(result.status).toBe('pending');
   });
+
+  it('reports a placeholder transfer as immediately successful, so a reconciliation sweep has something to resolve', async () => {
+    const client = new LogPaystackTransferClient();
+
+    const result = await client.verifyTransfer('ref-123');
+
+    expect(result).toEqual({ status: 'success' });
+  });
 });
 
 describe('RealPaystackTransferClient', () => {
@@ -131,5 +139,36 @@ describe('RealPaystackTransferClient', () => {
         reference: 'ref-123',
       }),
     ).rejects.toThrow('Failed to initiate Paystack transfer: Insufficient balance');
+  });
+
+  it('verifies a transfer via the Paystack REST API', async () => {
+    const mockFetch = jest.fn().mockResolvedValue({
+      ok: true,
+      statusText: 'OK',
+      json: async () => ({ status: true, message: 'ok', data: { status: 'success' } }),
+    });
+    global.fetch = mockFetch as unknown as typeof fetch;
+    const client = new RealPaystackTransferClient('sk_test_key');
+
+    const result = await client.verifyTransfer('ref-123');
+
+    expect(result).toEqual({ status: 'success' });
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://api.paystack.co/transfer/verify/ref-123',
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer sk_test_key' }) }),
+    );
+  });
+
+  it('throws when Paystack reports a non-success status verifying a transfer', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      statusText: 'OK',
+      json: async () => ({ status: false, message: 'Transfer not found' }),
+    }) as unknown as typeof fetch;
+    const client = new RealPaystackTransferClient('sk_test_key');
+
+    await expect(client.verifyTransfer('unknown-ref')).rejects.toThrow(
+      'Failed to verify Paystack transfer: Transfer not found',
+    );
   });
 });

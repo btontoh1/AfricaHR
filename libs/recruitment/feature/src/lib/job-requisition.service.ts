@@ -1,9 +1,36 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JobRequisition, JobRequisitionStatus, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import { JobRequisitionRepository, RecruitmentEmployeeRepository } from '@africahr/recruitment-data-access';
 import { CreateJobRequisitionDto } from './dto/create-job-requisition.dto';
 import { UpdateJobRequisitionDto } from './dto/update-job-requisition.dto';
+
+/**
+ * Emitted after a new requisition is created. hiringManagerUserId is null
+ * when the requisition has no hiring manager assigned yet, or that
+ * manager has no portal access (no linked User) - the listener still
+ * notifies tenant admins/HR managers regardless (mirrors
+ * ApplicationService's RecruitmentApplicationCreatedEvent - see its doc
+ * comment). actorUserId lets the listener skip notifying whoever just
+ * created the requisition: like applications, requisitions can only be
+ * created by RECRUITMENT_MANAGE-holding HR/admin staff (see
+ * JobRequisitionController - there's no self-service create), so without
+ * this they'd self-notify every time they create one. Consumed by a
+ * listener living in notifications-feature — scope:recruitment is not
+ * allowed to depend on scope:notifications directly (see
+ * eslint.config.mjs module boundaries), so this event is the decoupling
+ * point between the two. Both sides must agree on this literal string and
+ * payload shape informally; there's no shared type between scopes for it.
+ */
+export const RECRUITMENT_REQUISITION_CREATED_EVENT = 'recruitment.requisition.created';
+
+export interface RecruitmentRequisitionCreatedEvent {
+  tenantId: string;
+  hiringManagerUserId: string | null;
+  jobTitle: string;
+  actorUserId: string | null;
+}
 
 @Injectable()
 export class JobRequisitionService {
@@ -11,6 +38,7 @@ export class JobRequisitionService {
     private readonly requisitions: JobRequisitionRepository,
     private readonly employees: RecruitmentEmployeeRepository,
     private readonly audit: AuditService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async resolveOwnEmployeeId(tenantId: string, userId: string): Promise<string> {
@@ -56,7 +84,34 @@ export class JobRequisitionService {
       resourceId: requisition.id,
     });
 
+    await this.notifyOfNewRequisition(tenantId, requisition, actorId);
+
     return requisition;
+  }
+
+  /**
+   * Always emits, even when the requisition has no hiring manager - the
+   * listener separately notifies tenant admins/HR managers regardless
+   * (see RecruitmentRequisitionCreatedEvent's doc comment).
+   */
+  private async notifyOfNewRequisition(
+    tenantId: string,
+    requisition: JobRequisition,
+    actorId?: string,
+  ): Promise<void> {
+    let hiringManagerUserId: string | null = null;
+    if (requisition.hiringManagerId) {
+      const manager = await this.employees.findById(tenantId, requisition.hiringManagerId);
+      hiringManagerUserId = manager?.userId ?? null;
+    }
+
+    const event: RecruitmentRequisitionCreatedEvent = {
+      tenantId,
+      hiringManagerUserId,
+      jobTitle: requisition.title,
+      actorUserId: actorId ?? null,
+    };
+    this.eventEmitter.emit(RECRUITMENT_REQUISITION_CREATED_EVENT, event);
   }
 
   async findById(tenantId: string, id: string): Promise<JobRequisition> {

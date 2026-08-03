@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { parseJsonResponse } from '@africahr/platform-core';
 
 export interface CreateTransferRecipientInput {
   /** Paystack recipient type - see resolvePaystackRecipientType (payroll-domain), e.g. 'ghipss', 'nuban', 'mobile_money'. */
@@ -148,7 +149,10 @@ export class RealPaystackTransferClient extends PaystackTransferClient {
       }),
     });
 
-    const body = (await response.json()) as PaystackRecipientResponse;
+    const body = await parseJsonResponse<PaystackRecipientResponse>(
+      response,
+      'Failed to create Paystack transfer recipient',
+    );
     if (!response.ok || !body.status) {
       this.logger.error(`Paystack recipient creation failed: ${body.message ?? response.statusText}`);
       throw new Error(`Failed to create Paystack transfer recipient: ${body.message ?? response.statusText}`);
@@ -175,7 +179,10 @@ export class RealPaystackTransferClient extends PaystackTransferClient {
       }),
     });
 
-    const body = (await response.json()) as PaystackTransferResponse;
+    const body = await parseJsonResponse<PaystackTransferResponse>(
+      response,
+      'Failed to initiate Paystack transfer',
+    );
     if (!response.ok || !body.status) {
       this.logger.error(`Paystack transfer initiation failed: ${body.message ?? response.statusText}`);
       throw new Error(`Failed to initiate Paystack transfer: ${body.message ?? response.statusText}`);
@@ -194,7 +201,10 @@ export class RealPaystackTransferClient extends PaystackTransferClient {
       { headers: { Authorization: `Bearer ${this.secretKey}` } },
     );
 
-    const body = (await response.json()) as PaystackVerifyTransferResponse;
+    const body = await parseJsonResponse<PaystackVerifyTransferResponse>(
+      response,
+      'Failed to verify Paystack transfer',
+    );
     if (!response.ok || !body.status) {
       this.logger.error(`Paystack transfer verification failed: ${body.message ?? response.statusText}`);
       throw new Error(`Failed to verify Paystack transfer: ${body.message ?? response.statusText}`);

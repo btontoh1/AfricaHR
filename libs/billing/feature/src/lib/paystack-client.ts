@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { createHmac, randomUUID } from 'node:crypto';
+import { parseJsonResponse } from '@africahr/platform-core';
 
 export interface InitializeTransactionInput {
   email: string;
@@ -109,7 +110,10 @@ export class RealPaystackClient extends PaystackClient {
       }),
     });
 
-    const body = (await response.json()) as PaystackInitializeResponse;
+    const body = await parseJsonResponse<PaystackInitializeResponse>(
+      response,
+      'Failed to initialize Paystack transaction',
+    );
     if (!response.ok || !body.status) {
       this.logger.error(`Paystack transaction initialize failed: ${body.message ?? response.statusText}`);
       throw new Error(`Failed to initialize Paystack transaction: ${body.message ?? response.statusText}`);

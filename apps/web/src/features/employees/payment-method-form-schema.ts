@@ -5,6 +5,7 @@ export const paymentMethodFormSchema = z
   .object({
     type: z.enum(['BANK_ACCOUNT', 'MOBILE_MONEY']),
     bankName: z.string().optional().or(z.literal('')),
+    bankCode: z.string().optional().or(z.literal('')),
     accountNumber: z.string().optional().or(z.literal('')),
     accountName: z.string().optional().or(z.literal('')),
     mobileMoneyProvider: z.string().optional().or(z.literal('')),
@@ -15,6 +16,9 @@ export const paymentMethodFormSchema = z
       if (!values.bankName) {
         ctx.addIssue({ code: 'custom', path: ['bankName'], message: 'Bank name is required' });
       }
+      if (!values.bankCode) {
+        ctx.addIssue({ code: 'custom', path: ['bankCode'], message: 'Bank code is required' });
+      }
       if (!values.accountNumber) {
         ctx.addIssue({ code: 'custom', path: ['accountNumber'], message: 'Account number is required' });
       }
@@ -24,6 +28,9 @@ export const paymentMethodFormSchema = z
     } else {
       if (!values.mobileMoneyProvider) {
         ctx.addIssue({ code: 'custom', path: ['mobileMoneyProvider'], message: 'Provider is required' });
+      }
+      if (!values.bankCode) {
+        ctx.addIssue({ code: 'custom', path: ['bankCode'], message: 'Provider code is required' });
       }
       if (!values.mobileMoneyNumber) {
         ctx.addIssue({ code: 'custom', path: ['mobileMoneyNumber'], message: 'Mobile money number is required' });

@@ -7,3 +7,4 @@ export * from './lib/ghana-ssnit-cap';
 export * from './lib/country-currency';
 export * from './lib/payslip-line-item-type';
 export * from './lib/payslip-calculator';
+export * from './lib/paystack-recipient-type';

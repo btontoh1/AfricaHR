@@ -483,13 +483,14 @@ enum PaymentMethodType {
 
 /// How an employee wants to be paid, self-managed by the employee (see
 /// MyPaymentMethodController) rather than HR-entered — one active record
-/// per employee, upserted in place rather than kept as history. Nothing
-/// in payroll consumes this yet: PayRun.markPaid only records a
-/// timestamp, there is no actual disbursement/payment-rail integration,
-/// so today this is just the data an employee can maintain ahead of one
-/// being built. Stored in plain text, same "trust the shared schema"
-/// posture as the rest of this codebase — revisit encryption-at-rest
-/// before wiring this to a real payment provider.
+/// per employee, upserted in place rather than kept as history. Consumed
+/// by PayRunService.markPaid to initiate a real Paystack Transfer payout
+/// (bankCode is Paystack's bank/mobile-money-provider code, required to
+/// create a transfer recipient — distinct from bankName/
+/// mobileMoneyProvider, which are free-text display values only). Stored
+/// in plain text, same "trust the shared schema" posture as the rest of
+/// this codebase — revisit encryption-at-rest now that this is wired to
+/// a real payment provider and money actually moves off these values.
 model EmployeePaymentMethod {
   id         String            @id @default(uuid())
   tenantId   String            @map("tenant_id")
@@ -497,6 +498,7 @@ model EmployeePaymentMethod {
   type       PaymentMethodType
 
   bankName            String? @map("bank_name")
+  bankCode            String? @map("bank_code")
   accountNumber       String? @map("account_number")
   accountName         String? @map("account_name")
   mobileMoneyProvider String? @map("mobile_money_provider")
@@ -638,6 +640,20 @@ enum PayslipStatus {
   PAID
 }
 
+/// Real-money disbursement state for a payslip's Paystack transfer -
+/// separate from PayslipStatus (administrative: has the pay run been
+/// marked paid) because the two lifecycles are independent: markPaid()
+/// flips every payslip to PAID synchronously, but the actual bank/mobile-
+/// money transfer settles asynchronously via webhook, and can fail even
+/// after the run is administratively PAID. NOT_INITIATED covers both "no
+/// transfer attempted yet" and "employee has no usable payment method."
+enum PayslipDisbursementStatus {
+  NOT_INITIATED
+  PENDING
+  SUCCESS
+  FAILED
+}
+
 /// One employee's computed pay for a PayRun. baseSalary/currency are copied
 /// from Employee at computation time (not re-read live), so an approved
 /// payslip's numbers don't silently drift if the employee's compensation
@@ -659,6 +675,18 @@ model Payslip {
   totalDeductions Decimal @map("total_deductions")
   netPay          Decimal @map("net_pay")
   currency        String
+
+  // Paystack Transfers disbursement — set when markPaid() initiates a
+  // real payout, updated by the transfer.success/transfer.failed webhook
+  // (see PayRunService.markPaid / PayrollTransferWebhookListener).
+  // paystackTransferReference is unique so the webhook (which only knows
+  // the reference, not the tenant) can find this row via the
+  // find_payslip_by_paystack_transfer_reference_across_tenants SECURITY
+  // DEFINER function, same shape as invoices.paystack_reference.
+  disbursementStatus         PayslipDisbursementStatus @default(NOT_INITIATED) @map("disbursement_status")
+  paystackRecipientCode      String?                   @map("paystack_recipient_code")
+  paystackTransferReference  String?                   @unique @map("paystack_transfer_reference")
+  disbursedAt                DateTime?                 @map("disbursed_at")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")

@@ -2628,6 +2628,7 @@ export interface components {
             /** @enum {string} */
             type: "BANK_ACCOUNT" | "MOBILE_MONEY";
             bankName?: string;
+            bankCode?: string;
             accountNumber?: string;
             accountName?: string;
             mobileMoneyProvider?: string;
@@ -2639,6 +2640,11 @@ export interface components {
             type: "BANK_ACCOUNT" | "MOBILE_MONEY";
             /** @example GCB Bank */
             bankName?: string;
+            /**
+             * @description Paystack's bank/mobile-money-provider code (e.g. a NUBAN/GHIPSS bank code, or a mobile network's transfer code) - required to disburse this employee's pay via Paystack Transfers. Distinct from bankName/mobileMoneyProvider, which are free-text display values Paystack doesn't accept.
+             * @example 058
+             */
+            bankCode?: string;
             /** @example 1234567890 */
             accountNumber?: string;
             /** @example Frimpong Tontoh */

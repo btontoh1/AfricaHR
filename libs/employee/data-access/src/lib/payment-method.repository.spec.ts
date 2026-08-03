@@ -25,10 +25,11 @@ describe('PaymentMethodRepository', () => {
     });
   });
 
-  it('upserts a bank account payment method', async () => {
+  it('upserts a bank account payment method, including the Paystack bank code', async () => {
     await repository.upsert('tenant-1', 'emp-1', {
       type: 'BANK_ACCOUNT',
       bankName: 'GCB Bank',
+      bankCode: '040',
       accountNumber: '1234567890',
       accountName: 'Frimpong Tontoh',
       actorId: 'user-1',
@@ -41,6 +42,7 @@ describe('PaymentMethodRepository', () => {
         employeeId: 'emp-1',
         type: 'BANK_ACCOUNT',
         bankName: 'GCB Bank',
+        bankCode: '040',
         accountNumber: '1234567890',
         accountName: 'Frimpong Tontoh',
         createdBy: 'user-1',
@@ -49,6 +51,7 @@ describe('PaymentMethodRepository', () => {
       update: expect.objectContaining({
         type: 'BANK_ACCOUNT',
         bankName: 'GCB Bank',
+        bankCode: '040',
         accountNumber: '1234567890',
         accountName: 'Frimpong Tontoh',
         updatedBy: 'user-1',

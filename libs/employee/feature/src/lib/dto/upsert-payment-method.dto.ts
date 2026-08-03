@@ -13,6 +13,18 @@ export class UpsertPaymentMethodDto {
   @Length(1, 200)
   bankName?: string;
 
+  @ApiPropertyOptional({
+    example: '058',
+    description:
+      "Paystack's bank/mobile-money-provider code (e.g. a NUBAN/GHIPSS bank code, or a mobile network's transfer code) - required to disburse this employee's pay via Paystack Transfers. Distinct from bankName/mobileMoneyProvider, which are free-text display values Paystack doesn't accept.",
+  })
+  @ValidateIf(
+    (dto) => dto.type === PaymentMethodType.BANK_ACCOUNT || dto.type === PaymentMethodType.MOBILE_MONEY,
+  )
+  @IsString()
+  @Length(1, 20)
+  bankCode?: string;
+
   @ApiPropertyOptional({ example: '1234567890' })
   @ValidateIf((dto) => dto.type === PaymentMethodType.BANK_ACCOUNT)
   @IsString()

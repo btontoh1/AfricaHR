@@ -1,11 +1,14 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { randomUUID } from 'node:crypto';
 import { PayRun, PayRunStatus as PrismaPayRunStatus, PayslipStatus, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import {
+  PayrollEmployeePaymentMethod,
   PayRunRepository,
   PayrollEmployeeRepository,
   PayslipRepository,
+  PayslipWithLineItems,
   StatutoryRateRepository,
   StatutoryTaxBandRepository,
 } from '@africahr/payroll-data-access';
@@ -15,8 +18,18 @@ import {
   getDefaultCurrencyForCountry,
   isPayRunEditable,
   PayRunStatus,
+  resolvePaystackRecipientType,
 } from '@africahr/payroll-domain';
 import { CreatePayRunDto } from './dto/create-pay-run.dto';
+import { PaystackTransferClient } from './paystack-transfer-client';
+
+/** BANK_ACCOUNT uses accountNumber; MOBILE_MONEY uses the phone number Paystack treats as the recipient's "account number." */
+function resolveAccountNumber(paymentMethod: PayrollEmployeePaymentMethod | null): string | null {
+  if (!paymentMethod) {
+    return null;
+  }
+  return paymentMethod.type === 'BANK_ACCOUNT' ? paymentMethod.accountNumber : paymentMethod.mobileMoneyNumber;
+}
 
 function translateReferenceError(error: unknown, organizationId: string): never {
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -58,6 +71,8 @@ export interface PayRunProcessedEvent {
 
 @Injectable()
 export class PayRunService {
+  private readonly logger = new Logger(PayRunService.name);
+
   constructor(
     private readonly payRuns: PayRunRepository,
     private readonly payslips: PayslipRepository,
@@ -66,6 +81,7 @@ export class PayRunService {
     private readonly rates: StatutoryRateRepository,
     private readonly audit: AuditService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly paystack: PaystackTransferClient,
   ) {}
 
   async create(tenantId: string, dto: CreatePayRunDto, actorId?: string): Promise<PayRun> {
@@ -256,7 +272,83 @@ export class PayRunService {
       resourceId: id,
     });
 
+    await this.initiateDisbursements(tenantId, id);
+
     return updated;
+  }
+
+  /**
+   * Best-effort: initiates a Paystack Transfer for every payslip with
+   * netPay > 0, skipping (not failing the whole markPaid() call) an
+   * employee with no usable payment method, and isolating one employee's
+   * Paystack failure from the rest via a per-employee try/catch - the
+   * pay run has already been administratively marked PAID by this point,
+   * and one bad account number shouldn't block paying everyone else.
+   * disbursementStatus stays NOT_INITIATED (its DB default) for anyone
+   * skipped; PENDING is recorded only once a transfer is actually
+   * initiated, and the transfer.success/transfer.failed webhook moves it
+   * to SUCCESS/FAILED later (see PayrollTransferWebhookListener).
+   */
+  private async initiateDisbursements(tenantId: string, payRunId: string): Promise<void> {
+    const payslips = await this.payslips.listByPayRun(tenantId, payRunId);
+
+    for (const payslip of payslips) {
+      if (Number(payslip.netPay) <= 0) {
+        continue;
+      }
+
+      try {
+        await this.disburse(tenantId, payslip);
+      } catch (error) {
+        this.logger.error(
+          `Failed to initiate Paystack transfer for payslip "${payslip.id}" (employee "${payslip.employeeId}")`,
+          error as Error,
+        );
+      }
+    }
+  }
+
+  private async disburse(tenantId: string, payslip: PayslipWithLineItems): Promise<void> {
+    const paymentMethod = await this.employees.findPaymentMethodByEmployeeId(tenantId, payslip.employeeId);
+    const accountNumber = resolveAccountNumber(paymentMethod);
+    if (!paymentMethod || !paymentMethod.bankCode || !accountNumber) {
+      return;
+    }
+
+    const recipientType = resolvePaystackRecipientType(payslip.countryCode, paymentMethod.type);
+    if (!recipientType) {
+      this.logger.warn(
+        `No Paystack transfer recipient type for country "${payslip.countryCode}" / method "${paymentMethod.type}" - skipping payslip "${payslip.id}"`,
+      );
+      return;
+    }
+
+    const employee = await this.employees.findById(tenantId, payslip.employeeId);
+    if (!employee) {
+      return;
+    }
+
+    const recipient = await this.paystack.createRecipient({
+      type: recipientType,
+      name: paymentMethod.accountName ?? `${employee.firstName} ${employee.lastName}`,
+      accountNumber,
+      bankCode: paymentMethod.bankCode,
+      currency: payslip.currency,
+    });
+
+    const reference = randomUUID();
+    await this.paystack.initiateTransfer({
+      amount: Number(payslip.netPay),
+      currency: payslip.currency,
+      recipientCode: recipient.recipientCode,
+      reference,
+      reason: `Payslip for pay run ${payslip.payRunId}`,
+    });
+
+    await this.payslips.recordDisbursementInitiated(tenantId, payslip.id, {
+      paystackRecipientCode: recipient.recipientCode,
+      paystackTransferReference: reference,
+    });
   }
 
   async close(tenantId: string, id: string, actorId?: string): Promise<PayRun> {

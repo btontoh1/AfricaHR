@@ -49,4 +49,42 @@ describe('PayslipRepository', () => {
       orderBy: { createdAt: 'asc' },
     });
   });
+
+  describe('recordDisbursementInitiated', () => {
+    it('marks the payslip PENDING and stores the Paystack references', async () => {
+      await repository.recordDisbursementInitiated('tenant-1', 'payslip-1', {
+        paystackRecipientCode: 'RCP_abc',
+        paystackTransferReference: 'ref-123',
+      });
+
+      expect(tx.payslip.update).toHaveBeenCalledWith({
+        where: { id: 'payslip-1' },
+        data: {
+          disbursementStatus: 'PENDING',
+          paystackRecipientCode: 'RCP_abc',
+          paystackTransferReference: 'ref-123',
+        },
+      });
+    });
+  });
+
+  describe('recordDisbursementResult', () => {
+    it('records a successful transfer with a disbursedAt timestamp', async () => {
+      await repository.recordDisbursementResult('tenant-1', 'payslip-1', 'SUCCESS');
+
+      expect(tx.payslip.update).toHaveBeenCalledWith({
+        where: { id: 'payslip-1' },
+        data: { disbursementStatus: 'SUCCESS', disbursedAt: expect.any(Date) },
+      });
+    });
+
+    it('records a failed transfer', async () => {
+      await repository.recordDisbursementResult('tenant-1', 'payslip-1', 'FAILED');
+
+      expect(tx.payslip.update).toHaveBeenCalledWith({
+        where: { id: 'payslip-1' },
+        data: { disbursementStatus: 'FAILED', disbursedAt: expect.any(Date) },
+      });
+    });
+  });
 });

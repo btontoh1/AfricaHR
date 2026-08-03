@@ -5,6 +5,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Invoice } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import {
@@ -22,6 +23,32 @@ interface PaystackWebhookPayload {
   data?: { reference?: string };
 }
 
+/**
+ * Emitted when this webhook endpoint sees a transfer.success/
+ * transfer.failed/transfer.reversed event - payroll payout events, not
+ * billing's own concern. Paystack allows only one webhook URL per
+ * account, and this endpoint (PaystackWebhookController) already owns
+ * it, so every Paystack event this app cares about arrives here
+ * regardless of domain. scope:billing cannot depend on scope:payroll
+ * (Nx module boundary) to hand this off directly, so it's re-emitted as
+ * an internal event instead - payroll-feature's
+ * PayrollTransferWebhookListener consumes it. Both sides must agree on
+ * this literal string and payload shape informally; there's no shared
+ * type between scopes for it.
+ */
+export const PAYSTACK_TRANSFER_UPDATED_EVENT = 'payroll.paystack_transfer.updated';
+
+export interface PaystackTransferUpdatedEvent {
+  reference: string;
+  status: 'success' | 'failed';
+}
+
+const TRANSFER_EVENT_STATUS: Record<string, 'success' | 'failed'> = {
+  'transfer.success': 'success',
+  'transfer.failed': 'failed',
+  'transfer.reversed': 'failed',
+};
+
 @Injectable()
 export class InvoiceService {
   constructor(
@@ -32,6 +59,7 @@ export class InvoiceService {
     private readonly platformBilling: PlatformBillingRepository,
     private readonly paystack: PaystackClient,
     private readonly audit: AuditService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async generate(tenantId: string, actorId?: string): Promise<Invoice> {
@@ -116,12 +144,18 @@ export class InvoiceService {
 
   /**
    * Verifies the Paystack webhook signature against the *raw* request body
-   * (see PaystackClient.verifyWebhookSignature) and, on a successful
-   * charge, marks the matching invoice paid and rolls its subscription's
-   * billing period forward. Anything it doesn't recognize (a different
-   * event type, an already-paid or unknown reference) is silently
-   * ignored rather than erroring — Paystack retries webhooks that respond
-   * with a non-2xx status, and a duplicate delivery isn't a failure.
+   * (see PaystackClient.verifyWebhookSignature) - this is the only
+   * Paystack webhook endpoint in the app (Paystack allows just one per
+   * account), so it dispatches by event type: charge.success marks the
+   * matching invoice paid and rolls its subscription's billing period
+   * forward; transfer.success/transfer.failed/transfer.reversed (payroll
+   * payouts, not this service's own concern) are re-emitted as
+   * PaystackTransferUpdatedEvent for payroll-feature to consume - see
+   * that event's doc comment for why. Anything else it doesn't recognize
+   * (a different event type, an already-paid or unknown reference) is
+   * silently ignored rather than erroring — Paystack retries webhooks
+   * that respond with a non-2xx status, and a duplicate delivery isn't a
+   * failure.
    */
   async handlePaystackWebhook(
     rawBody: string,
@@ -133,6 +167,14 @@ export class InvoiceService {
 
     const payload = JSON.parse(rawBody) as PaystackWebhookPayload;
     const reference = payload.data?.reference;
+
+    const transferStatus = TRANSFER_EVENT_STATUS[payload.event];
+    if (transferStatus && reference) {
+      const event: PaystackTransferUpdatedEvent = { reference, status: transferStatus };
+      this.eventEmitter.emit(PAYSTACK_TRANSFER_UPDATED_EVENT, event);
+      return;
+    }
+
     if (payload.event !== 'charge.success' || !reference) {
       return;
     }

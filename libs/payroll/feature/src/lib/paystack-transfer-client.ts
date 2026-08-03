@@ -29,6 +29,11 @@ export interface InitiateTransferResult {
   status: string;
 }
 
+export interface VerifyTransferResult {
+  /** Paystack's transfer status, e.g. 'success', 'failed', 'reversed', 'pending', 'otp'. */
+  status: string;
+}
+
 /**
  * Abstract class (not an interface) so it doubles as a NestJS DI token —
  * same reasoning and shape as billing's PaystackClient/
@@ -49,6 +54,9 @@ export abstract class PaystackTransferClient {
   ): Promise<CreateTransferRecipientResult>;
 
   abstract initiateTransfer(input: InitiateTransferInput): Promise<InitiateTransferResult>;
+
+  /** Used by the disbursement reconciliation sweep to look up a transfer's current status directly, for when the transfer.success/transfer.failed webhook was never delivered (see PayrollTransferWebhookListener). */
+  abstract verifyTransfer(reference: string): Promise<VerifyTransferResult>;
 }
 
 /**
@@ -76,6 +84,17 @@ export class LogPaystackTransferClient extends PaystackTransferClient {
     );
     return { transferCode: `TRF_placeholder_${randomUUID()}`, reference: input.reference, status: 'pending' };
   }
+
+  async verifyTransfer(reference: string): Promise<VerifyTransferResult> {
+    this.logger.log(
+      `[PLACEHOLDER PAYSTACK TRANSFER VERIFY — no real provider configured] reference=${reference}`,
+    );
+    // No real webhook ever arrives in placeholder mode, so a reconciliation
+    // sweep would otherwise find these stuck PENDING forever - reporting
+    // 'success' here lets the reconciliation flow still be exercised
+    // end-to-end in dev/CI without a real Paystack account.
+    return { status: 'success' };
+  }
 }
 
 interface PaystackRecipientResponse {
@@ -88,6 +107,12 @@ interface PaystackTransferResponse {
   status: boolean;
   message: string;
   data: { transfer_code: string; reference: string; status: string };
+}
+
+interface PaystackVerifyTransferResponse {
+  status: boolean;
+  message: string;
+  data: { status: string };
 }
 
 /**
@@ -161,5 +186,20 @@ export class RealPaystackTransferClient extends PaystackTransferClient {
       reference: body.data.reference,
       status: body.data.status,
     };
+  }
+
+  async verifyTransfer(reference: string): Promise<VerifyTransferResult> {
+    const response = await fetch(
+      `${RealPaystackTransferClient.BASE_URL}/transfer/verify/${encodeURIComponent(reference)}`,
+      { headers: { Authorization: `Bearer ${this.secretKey}` } },
+    );
+
+    const body = (await response.json()) as PaystackVerifyTransferResponse;
+    if (!response.ok || !body.status) {
+      this.logger.error(`Paystack transfer verification failed: ${body.message ?? response.statusText}`);
+      throw new Error(`Failed to verify Paystack transfer: ${body.message ?? response.statusText}`);
+    }
+
+    return { status: body.data.status };
   }
 }

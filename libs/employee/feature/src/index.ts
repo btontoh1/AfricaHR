@@ -8,3 +8,5 @@ export * from './lib/dto/update-employee.dto';
 export * from './lib/dto/update-employment-status.dto';
 export * from './lib/dto/upsert-payment-method.dto';
 export * from './lib/dto/payment-method-response.dto';
+export * from './lib/dto/bank-option-response.dto';
+export * from './lib/paystack-bank-client';

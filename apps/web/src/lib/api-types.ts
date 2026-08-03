@@ -786,6 +786,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/employees/me/payment-method/banks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyPaymentMethodController_listBanks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/payroll/statutory/tax-bands": {
         parameters: {
             query?: never;
@@ -2653,6 +2669,12 @@ export interface components {
             mobileMoneyProvider?: string;
             /** @example 0244000000 */
             mobileMoneyNumber?: string;
+        };
+        BankOptionResponseDto: {
+            /** @example GCB Bank */
+            name: string;
+            /** @example 040 */
+            code: string;
         };
         CreateStatutoryTaxBandDto: {
             /**
@@ -4931,6 +4953,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaymentMethodResponseDto"];
+                };
+            };
+        };
+    };
+    MyPaymentMethodController_listBanks: {
+        parameters: {
+            query: {
+                type: components["schemas"]["UpsertPaymentMethodDto"]["type"];
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BankOptionResponseDto"][];
                 };
             };
         };

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
 import type {
   CreateEmployeeInput,
+  PaymentMethodType,
   UpdateEmployeeInput,
   UpdateEmploymentStatusInput,
   UpsertPaymentMethodInput,
@@ -19,6 +20,10 @@ function employeeKey(tenantId: string, id: string) {
 
 function myPaymentMethodKey(tenantId: string) {
   return ['payment-method', 'me', tenantId] as const;
+}
+
+function myPaymentMethodBanksKey(tenantId: string, type: PaymentMethodType) {
+  return ['payment-method', 'me', 'banks', tenantId, type] as const;
 }
 
 export function useEmployees(tenantId: string) {
@@ -98,6 +103,20 @@ export function useMyPaymentMethod(tenantId: string) {
       // as `data: undefined` here - react-query rejects undefined query
       // results outright, so this must be coerced to null explicitly.
       return data ?? null;
+    },
+  });
+}
+
+/** Populates the bank/provider picker on the payment-method form - scoped to the caller's own country server-side, so only `type` is passed. */
+export function useMyPaymentMethodBanks(tenantId: string, type: PaymentMethodType) {
+  return useQuery({
+    queryKey: myPaymentMethodBanksKey(tenantId, type),
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/employees/me/payment-method/banks', {
+        params: { path: { tenantId }, query: { type } },
+      });
+      if (error) throw error;
+      return data;
     },
   });
 }

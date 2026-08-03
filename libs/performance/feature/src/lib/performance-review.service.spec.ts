@@ -1,4 +1,5 @@
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PerformanceReview, PerformanceReviewCycle, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import {
@@ -6,7 +7,10 @@ import {
   PerformanceReviewCycleRepository,
   PerformanceReviewRepository,
 } from '@africahr/performance-data-access';
-import { PerformanceReviewService } from './performance-review.service';
+import {
+  PERFORMANCE_REVIEW_SELF_SUBMITTED_EVENT,
+  PerformanceReviewService,
+} from './performance-review.service';
 
 describe('PerformanceReviewService', () => {
   let service: PerformanceReviewService;
@@ -14,6 +18,7 @@ describe('PerformanceReviewService', () => {
   let cycles: jest.Mocked<PerformanceReviewCycleRepository>;
   let employees: jest.Mocked<PerformanceEmployeeRepository>;
   let audit: jest.Mocked<AuditService>;
+  let eventEmitter: jest.Mocked<EventEmitter2>;
 
   function makeCycle(overrides: Partial<PerformanceReviewCycle> = {}): PerformanceReviewCycle {
     return {
@@ -79,8 +84,9 @@ describe('PerformanceReviewService', () => {
     } as unknown as jest.Mocked<PerformanceEmployeeRepository>;
 
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
+    eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
 
-    service = new PerformanceReviewService(reviews, cycles, employees, audit);
+    service = new PerformanceReviewService(reviews, cycles, employees, audit, eventEmitter);
   });
 
   describe('resolveOwnEmployeeId', () => {
@@ -228,6 +234,69 @@ describe('PerformanceReviewService', () => {
       );
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'performance.review.self_submitted' }),
+      );
+    });
+
+    it('emits a notification event when the employee has a manager with portal access', async () => {
+      reviews.findById.mockResolvedValue(makeReview({ status: 'DRAFT', employeeId: 'emp-1' }));
+      reviews.update.mockResolvedValue(makeReview({ status: 'SELF_SUBMITTED', employeeId: 'emp-1' }));
+      employees.findById.mockImplementation(async (_tenantId, id) => {
+        if (id === 'emp-1') {
+          return { id: 'emp-1', userId: 'emp-1-user', managerId: 'mgr-1' };
+        }
+        if (id === 'mgr-1') {
+          return { id: 'mgr-1', userId: 'mgr-user-1', managerId: null };
+        }
+        return null;
+      });
+      employees.findManyByIds.mockResolvedValue([{ id: 'emp-1', firstName: 'Kwame', lastName: 'Asante' }]);
+
+      await service.submitSelfAssessment('tenant-1', 'rev-1', { selfRating: 4 }, 'emp-1-user');
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        PERFORMANCE_REVIEW_SELF_SUBMITTED_EVENT,
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          managerUserId: 'mgr-user-1',
+          employeeName: 'Kwame Asante',
+          cycleName: 'Q1 2026 Review',
+        }),
+      );
+    });
+
+    it('emits with a null managerUserId when the employee has no manager', async () => {
+      reviews.findById.mockResolvedValue(makeReview({ status: 'DRAFT', employeeId: 'emp-1' }));
+      reviews.update.mockResolvedValue(makeReview({ status: 'SELF_SUBMITTED', employeeId: 'emp-1' }));
+      employees.findById.mockResolvedValue({ id: 'emp-1', userId: 'emp-1-user', managerId: null });
+      employees.findManyByIds.mockResolvedValue([{ id: 'emp-1', firstName: 'Kwame', lastName: 'Asante' }]);
+
+      await service.submitSelfAssessment('tenant-1', 'rev-1', { selfRating: 4 }, 'emp-1-user');
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        PERFORMANCE_REVIEW_SELF_SUBMITTED_EVENT,
+        expect.objectContaining({ tenantId: 'tenant-1', managerUserId: null }),
+      );
+    });
+
+    it('emits with a null managerUserId when the manager has no portal access', async () => {
+      reviews.findById.mockResolvedValue(makeReview({ status: 'DRAFT', employeeId: 'emp-1' }));
+      reviews.update.mockResolvedValue(makeReview({ status: 'SELF_SUBMITTED', employeeId: 'emp-1' }));
+      employees.findById.mockImplementation(async (_tenantId, id) => {
+        if (id === 'emp-1') {
+          return { id: 'emp-1', userId: 'emp-1-user', managerId: 'mgr-1' };
+        }
+        if (id === 'mgr-1') {
+          return { id: 'mgr-1', userId: null, managerId: null };
+        }
+        return null;
+      });
+      employees.findManyByIds.mockResolvedValue([{ id: 'emp-1', firstName: 'Kwame', lastName: 'Asante' }]);
+
+      await service.submitSelfAssessment('tenant-1', 'rev-1', { selfRating: 4 }, 'emp-1-user');
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        PERFORMANCE_REVIEW_SELF_SUBMITTED_EVENT,
+        expect.objectContaining({ tenantId: 'tenant-1', managerUserId: null }),
       );
     });
   });

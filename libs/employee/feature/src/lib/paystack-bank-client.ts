@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { parseJsonResponse } from '@africahr/platform-core';
 
 export interface BankOption {
   name: string;
@@ -112,7 +113,7 @@ export class RealPaystackBankClient extends PaystackBankClient {
       headers: { Authorization: `Bearer ${this.secretKey}` },
     });
 
-    const body = (await response.json()) as PaystackBankListResponse;
+    const body = await parseJsonResponse<PaystackBankListResponse>(response, 'Failed to fetch Paystack bank list');
     if (!response.ok || !body.status) {
       this.logger.error(`Paystack bank list fetch failed: ${body.message ?? response.statusText}`);
       throw new Error(`Failed to fetch Paystack bank list: ${body.message ?? response.statusText}`);

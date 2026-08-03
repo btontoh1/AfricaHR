@@ -1,4 +1,5 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { BenefitEnrollment, BenefitEnrollmentStatus, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import {
@@ -10,6 +11,33 @@ import {
 import { BenefitContribution, canCancelBenefitEnrollment, computeBenefitContribution } from '@africahr/benefits-domain';
 import { CreateBenefitEnrollmentDto } from './dto/create-benefit-enrollment.dto';
 
+/**
+ * Emitted after a new enrollment is created. Unlike leave/performance,
+ * benefit enrollment has no manager-review step (BenefitEnrollmentStatus
+ * is just ACTIVE/CANCELLED - see project memory on why it's never
+ * denormalized/pending), so there's no manager recipient here, only
+ * tenant admins/HR managers (BENEFITS_MANAGE holders). actorUserId lets
+ * the listener skip notifying whoever just created the enrollment: like
+ * recruitment applications (not leave/performance), enrollment can be
+ * created directly by BENEFITS_MANAGE-holding HR/admin staff on an
+ * employee's behalf via BenefitEnrollmentController, not only
+ * self-service, so without this they'd self-notify. Consumed by a
+ * listener living in notifications-feature — scope:benefits is not
+ * allowed to depend on scope:notifications directly (see
+ * eslint.config.mjs module boundaries), so this event is the decoupling
+ * point between the two. Both sides must agree on this literal string and
+ * payload shape informally; there's no shared type between scopes for it.
+ */
+export const BENEFIT_ENROLLMENT_CREATED_EVENT = 'benefits.enrollment.created';
+
+export interface BenefitEnrollmentCreatedEvent {
+  tenantId: string;
+  employeeName: string;
+  planName: string;
+  effectiveDate: string;
+  actorUserId: string | null;
+}
+
 @Injectable()
 export class BenefitEnrollmentService {
   constructor(
@@ -17,6 +45,7 @@ export class BenefitEnrollmentService {
     private readonly plans: BenefitPlanRepository,
     private readonly employees: BenefitsEmployeeRepository,
     private readonly audit: AuditService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async resolveOwnEmployeeId(tenantId: string, userId: string): Promise<string> {
@@ -79,7 +108,31 @@ export class BenefitEnrollmentService {
       resourceId: enrollment.id,
     });
 
+    await this.notifyOfNewEnrollment(tenantId, enrollment, plan.name, actorId);
+
     return enrollment;
+  }
+
+  /** Silent no-op if the employee can no longer be found - not an error condition here. */
+  private async notifyOfNewEnrollment(
+    tenantId: string,
+    enrollment: BenefitEnrollment,
+    planName: string,
+    actorId?: string,
+  ): Promise<void> {
+    const employee = await this.employees.findById(tenantId, enrollment.employeeId);
+    if (!employee) {
+      return;
+    }
+
+    const event: BenefitEnrollmentCreatedEvent = {
+      tenantId,
+      employeeName: `${employee.firstName} ${employee.lastName}`,
+      planName,
+      effectiveDate: enrollment.effectiveDate.toISOString().slice(0, 10),
+      actorUserId: actorId ?? null,
+    };
+    this.eventEmitter.emit(BENEFIT_ENROLLMENT_CREATED_EVENT, event);
   }
 
   async findById(tenantId: string, id: string): Promise<BenefitEnrollmentWithPlan> {

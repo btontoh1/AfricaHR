@@ -1,4 +1,5 @@
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { BenefitEnrollment, BenefitPlan, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import {
@@ -7,7 +8,7 @@ import {
   BenefitPlanRepository,
   BenefitsEmployeeRepository,
 } from '@africahr/benefits-data-access';
-import { BenefitEnrollmentService } from './benefit-enrollment.service';
+import { BENEFIT_ENROLLMENT_CREATED_EVENT, BenefitEnrollmentService } from './benefit-enrollment.service';
 
 describe('BenefitEnrollmentService', () => {
   let service: BenefitEnrollmentService;
@@ -15,6 +16,7 @@ describe('BenefitEnrollmentService', () => {
   let plans: jest.Mocked<BenefitPlanRepository>;
   let employees: jest.Mocked<BenefitsEmployeeRepository>;
   let audit: jest.Mocked<AuditService>;
+  let eventEmitter: jest.Mocked<EventEmitter2>;
 
   function makePlan(overrides: Partial<BenefitPlan> = {}): BenefitPlan {
     return {
@@ -73,12 +75,19 @@ describe('BenefitEnrollmentService', () => {
 
     employees = {
       findByUserId: jest.fn(),
-      findById: jest.fn().mockResolvedValue({ id: 'emp-1', userId: 'user-1', baseSalary: new Prisma.Decimal(3000) }),
+      findById: jest.fn().mockResolvedValue({
+        id: 'emp-1',
+        userId: 'user-1',
+        baseSalary: new Prisma.Decimal(3000),
+        firstName: 'Kwame',
+        lastName: 'Asante',
+      }),
     } as unknown as jest.Mocked<BenefitsEmployeeRepository>;
 
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
+    eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
 
-    service = new BenefitEnrollmentService(enrollments, plans, employees, audit);
+    service = new BenefitEnrollmentService(enrollments, plans, employees, audit, eventEmitter);
   });
 
   describe('resolveOwnEmployeeId', () => {
@@ -125,7 +134,7 @@ describe('BenefitEnrollmentService', () => {
     });
 
     it('creates the enrollment and audits on success', async () => {
-      const created = { id: 'enr-1' } as BenefitEnrollment;
+      const created = { id: 'enr-1', employeeId: 'emp-1', effectiveDate: new Date('2026-03-01') } as BenefitEnrollment;
       enrollments.create.mockResolvedValue(created);
 
       await service.enroll('tenant-1', 'emp-1', 'plan-1', '2026-03-01', 'hr-1');
@@ -138,11 +147,50 @@ describe('BenefitEnrollmentService', () => {
         expect.objectContaining({ action: 'benefits.enrollment.created', resourceId: 'enr-1' }),
       );
     });
+
+    it('emits a notification event with the employee, plan, and actor', async () => {
+      const created = {
+        id: 'enr-1',
+        employeeId: 'emp-1',
+        effectiveDate: new Date('2026-03-01'),
+      } as BenefitEnrollment;
+      enrollments.create.mockResolvedValue(created);
+      plans.findById.mockResolvedValue(makePlan({ name: 'Private Health Insurance' }));
+
+      await service.enroll('tenant-1', 'emp-1', 'plan-1', '2026-03-01', 'hr-1');
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        BENEFIT_ENROLLMENT_CREATED_EVENT,
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          employeeName: 'Kwame Asante',
+          planName: 'Private Health Insurance',
+          effectiveDate: '2026-03-01',
+          actorUserId: 'hr-1',
+        }),
+      );
+    });
+
+    it('does not emit when the employee can no longer be found', async () => {
+      const created = { id: 'enr-1', employeeId: 'emp-1', effectiveDate: new Date() } as BenefitEnrollment;
+      enrollments.create.mockResolvedValue(created);
+      employees.findById.mockResolvedValue(null);
+
+      await service.enroll('tenant-1', 'emp-1', 'plan-1', undefined, 'hr-1');
+
+      expect(eventEmitter.emit).not.toHaveBeenCalled();
+    });
   });
 
   describe('cancelForSelf', () => {
     it('does not reveal an enrollment belonging to a different employee', async () => {
-      employees.findByUserId.mockResolvedValue({ id: 'emp-1', userId: 'user-1', baseSalary: null });
+      employees.findByUserId.mockResolvedValue({
+        id: 'emp-1',
+        userId: 'user-1',
+        baseSalary: null,
+        firstName: 'Kwame',
+        lastName: 'Asante',
+      });
       enrollments.findById.mockResolvedValue(makeEnrollment({ employeeId: 'someone-else' }));
 
       await expect(service.cancelForSelf('tenant-1', 'user-1', 'enr-1')).rejects.toThrow(
@@ -195,7 +243,13 @@ describe('BenefitEnrollmentService', () => {
           }),
         }),
       );
-      employees.findById.mockResolvedValue({ id: 'emp-1', userId: 'user-1', baseSalary: new Prisma.Decimal(3000) });
+      employees.findById.mockResolvedValue({
+        id: 'emp-1',
+        userId: 'user-1',
+        baseSalary: new Prisma.Decimal(3000),
+        firstName: 'Kwame',
+        lastName: 'Asante',
+      });
 
       const result = await service.getContribution('tenant-1', 'enr-1');
 
@@ -204,7 +258,13 @@ describe('BenefitEnrollmentService', () => {
 
     it('treats a null baseSalary as 0', async () => {
       enrollments.findById.mockResolvedValue(makeEnrollment());
-      employees.findById.mockResolvedValue({ id: 'emp-1', userId: 'user-1', baseSalary: null });
+      employees.findById.mockResolvedValue({
+        id: 'emp-1',
+        userId: 'user-1',
+        baseSalary: null,
+        firstName: 'Kwame',
+        lastName: 'Asante',
+      });
 
       const result = await service.getContribution('tenant-1', 'enr-1');
 

@@ -12,12 +12,12 @@ describe('BenefitsEmployeeRepository', () => {
     repository = new BenefitsEmployeeRepository(prisma as unknown as PrismaService);
   });
 
-  it('resolves an employee by userId, scoped to the tenant, including baseSalary', async () => {
+  it('resolves an employee by userId, scoped to the tenant, including baseSalary/name', async () => {
     await repository.findByUserId('tenant-1', 'user-1');
 
     expect(tx.employee.findFirst).toHaveBeenCalledWith({
       where: { tenantId: 'tenant-1', userId: 'user-1', deletedAt: null },
-      select: { id: true, userId: true, baseSalary: true },
+      select: { id: true, userId: true, baseSalary: true, firstName: true, lastName: true },
     });
   });
 
@@ -26,7 +26,7 @@ describe('BenefitsEmployeeRepository', () => {
 
     expect(tx.employee.findFirst).toHaveBeenCalledWith({
       where: { id: 'emp-1', tenantId: 'tenant-1', deletedAt: null },
-      select: { id: true, userId: true, baseSalary: true },
+      select: { id: true, userId: true, baseSalary: true, firstName: true, lastName: true },
     });
   });
 });

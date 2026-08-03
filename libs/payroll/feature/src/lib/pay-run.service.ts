@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PayRun, PayRunStatus as PrismaPayRunStatus, PayslipStatus, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import {
@@ -29,6 +30,32 @@ function translateReferenceError(error: unknown, organizationId: string): never 
   throw error;
 }
 
+/**
+ * Emitted the first time a pay run finishes processing (DRAFT ->
+ * PROCESSING), not on later idempotent re-processing of the same run
+ * (e.g. after a new hire - see process()'s docstring) - a repeat run
+ * doesn't need repeat "ready for approval" notifications. Every pay-run
+ * action shares one permission (PAYROLL_MANAGE - see
+ * pay-run.controller.ts), so unlike leave/performance there's no separate
+ * "requester vs approver" role here: processing and approving are done
+ * by the same pool of tenant admins/payroll managers, sometimes the same
+ * person. actorUserId lets the listener skip notifying whoever just
+ * processed the run. Consumed by a listener living in
+ * notifications-feature - scope:payroll is not allowed to depend on
+ * scope:notifications (see eslint.config.mjs module boundaries), so this
+ * event is the decoupling point between the two.
+ */
+export const PAY_RUN_PROCESSED_EVENT = 'payroll.pay_run.processed';
+
+export interface PayRunProcessedEvent {
+  tenantId: string;
+  payRunId: string;
+  periodStart: string;
+  periodEnd: string;
+  employeeCount: number;
+  actorUserId: string | null;
+}
+
 @Injectable()
 export class PayRunService {
   constructor(
@@ -38,6 +65,7 @@ export class PayRunService {
     private readonly taxBands: StatutoryTaxBandRepository,
     private readonly rates: StatutoryRateRepository,
     private readonly audit: AuditService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async create(tenantId: string, dto: CreatePayRunDto, actorId?: string): Promise<PayRun> {
@@ -149,13 +177,13 @@ export class PayRunService {
       });
     }
 
-    const updated =
-      payRun.status === PrismaPayRunStatus.DRAFT
-        ? await this.payRuns.updateStatus(tenantId, id, {
-            status: PrismaPayRunStatus.PROCESSING,
-            updatedBy: actorId,
-          })
-        : payRun;
+    const isFirstProcessing = payRun.status === PrismaPayRunStatus.DRAFT;
+    const updated = isFirstProcessing
+      ? await this.payRuns.updateStatus(tenantId, id, {
+          status: PrismaPayRunStatus.PROCESSING,
+          updatedBy: actorId,
+        })
+      : payRun;
 
     await this.audit.record({
       tenantId,
@@ -165,6 +193,18 @@ export class PayRunService {
       resourceId: id,
       metadata: { employeeCount: eligibleEmployees.length },
     });
+
+    if (isFirstProcessing) {
+      const event: PayRunProcessedEvent = {
+        tenantId,
+        payRunId: id,
+        periodStart: payRun.periodStart.toISOString().slice(0, 10),
+        periodEnd: payRun.periodEnd.toISOString().slice(0, 10),
+        employeeCount: eligibleEmployees.length,
+        actorUserId: actorId ?? null,
+      };
+      this.eventEmitter.emit(PAY_RUN_PROCESSED_EVENT, event);
+    }
 
     return updated;
   }

@@ -12,6 +12,7 @@ import { LeaveRequestNotificationListener } from './leave-request-notification.l
 import { PerformanceReviewNotificationListener } from './performance-review-notification.listener';
 import { RecruitmentApplicationNotificationListener } from './recruitment-application-notification.listener';
 import { BenefitEnrollmentNotificationListener } from './benefit-enrollment-notification.listener';
+import { PayRunNotificationListener } from './pay-run-notification.listener';
 import {
   LogNotificationDispatcher,
   NotificationDispatcher,
@@ -36,6 +37,7 @@ import {
     PerformanceReviewNotificationListener,
     RecruitmentApplicationNotificationListener,
     BenefitEnrollmentNotificationListener,
+    PayRunNotificationListener,
     {
       provide: NotificationDispatcher,
       inject: [AppConfigService],

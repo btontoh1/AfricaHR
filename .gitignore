@@ -38,6 +38,9 @@ testem.log
 .DS_Store
 Thumbs.db
 
+# Local Redis persistence dump (e.g. from running `redis-server` directly in dev)
+dump.rdb
+
 # environment
 .env
 .env.local

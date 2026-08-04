@@ -6,6 +6,7 @@ export interface PayrollEligibleEmployee {
   id: string;
   firstName: string;
   lastName: string;
+  organizationId: string;
   baseSalary: Prisma.Decimal | null;
   currency: string | null;
   annualRentPaid: Prisma.Decimal | null;
@@ -31,6 +32,7 @@ const EMPLOYEE_SELECT = {
   id: true,
   firstName: true,
   lastName: true,
+  organizationId: true,
   baseSalary: true,
   currency: true,
   annualRentPaid: true,

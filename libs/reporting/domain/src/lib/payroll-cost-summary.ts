@@ -8,6 +8,10 @@ export interface PayslipCostEntry {
   ghanaTier2PensionEmployer: number;
   /** Kenya only, else 0. */
   kenyaHousingLevyEmployer: number;
+  /** Nigeria only (employer threshold met), else 0. */
+  nigeriaNsitfEmployer: number;
+  /** Nigeria only (employer threshold + employee eligibility met), else 0. */
+  nigeriaNhisEmployer: number;
 }
 
 export interface PayrollCostByCurrency {
@@ -16,7 +20,7 @@ export interface PayrollCostByCurrency {
   totalGrossPay: number;
   totalNetPay: number;
   totalDeductions: number;
-  /** Gross pay plus the employer's own pension/levy contributions (SSNIT/NSSF, Ghana Tier 2, Kenya's Housing Levy employer share) — the tenant's true cost, not just what employees are paid. */
+  /** Gross pay plus the employer's own pension/levy contributions (SSNIT/NSSF, Ghana Tier 2, Kenya's Housing Levy employer share, Nigeria's NSITF/NHIS employer share) — the tenant's true cost, not just what employees are paid. */
   totalEmployerCost: number;
 }
 
@@ -47,7 +51,12 @@ export function summarizePayrollCosts(entries: PayslipCostEntry[]): PayrollCostB
     summary.totalNetPay += entry.netPay;
     summary.totalDeductions += entry.totalDeductions;
     summary.totalEmployerCost +=
-      entry.grossPay + entry.ssnitEmployer + entry.ghanaTier2PensionEmployer + entry.kenyaHousingLevyEmployer;
+      entry.grossPay +
+      entry.ssnitEmployer +
+      entry.ghanaTier2PensionEmployer +
+      entry.kenyaHousingLevyEmployer +
+      entry.nigeriaNsitfEmployer +
+      entry.nigeriaNhisEmployer;
 
     byCurrency.set(entry.currency, summary);
   }

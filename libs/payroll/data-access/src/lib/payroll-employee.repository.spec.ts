@@ -13,6 +13,7 @@ describe('PayrollEmployeeRepository', () => {
     id: true,
     firstName: true,
     lastName: true,
+    organizationId: true,
     baseSalary: true,
     currency: true,
     annualRentPaid: true,

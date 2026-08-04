@@ -594,6 +594,12 @@ enum StatutoryRateCode {
   KENYA_HOUSING_LEVY_EMPLOYEE
   /// Kenya's Affordable Housing Levy - employer share.
   KENYA_HOUSING_LEVY_EMPLOYER
+  /// Nigeria Social Insurance Trust Fund contribution - employer-only, gated in code on the employing organization having 5+ active employees (see payslip-calculator.ts), not here as data.
+  NIGERIA_NSITF_EMPLOYER
+  /// Nigeria NHIA-mandated health insurance (OPSSHIP) - employee share, gated in code on both the 5+ employee organization threshold and the employee's own basic salary meeting the NGN 30,000 minimum.
+  NIGERIA_NHIS_EMPLOYEE
+  /// Nigeria NHIA-mandated health insurance (OPSSHIP) - employer share, same gating as NIGERIA_NHIS_EMPLOYEE.
+  NIGERIA_NHIS_EMPLOYER
 }
 
 /// SSNIT contribution rates, applied to basic salary. Same platform-root,
@@ -703,6 +709,13 @@ model Payslip {
   kenyaHousingLevyEmployee Decimal @default(0) @map("kenya_housing_levy_employee")
   /// Kenya only, else 0 - employer-only. Not part of totalDeductions/netPay, same as ssnitEmployer.
   kenyaHousingLevyEmployer Decimal @default(0) @map("kenya_housing_levy_employer")
+
+  /// Nigeria only (and only when the employing organization has 5+ active employees), else 0 - employer-only NSITF contribution. Not part of totalDeductions/netPay, same as ssnitEmployer.
+  nigeriaNsitfEmployer Decimal @default(0) @map("nigeria_nsitf_employer")
+  /// Nigeria only (org threshold + employee's own basic salary meeting the eligibility floor), else 0 - part of totalDeductions/netPay, but does not reduce taxableIncome (unresolved conflict in secondary sources on tax treatment - defaulted to post-tax, see payslip-calculator.ts).
+  nigeriaNhisEmployee Decimal @default(0) @map("nigeria_nhis_employee")
+  /// Nigeria only, same gating as nigeriaNhisEmployee, else 0 - employer-only. Not part of totalDeductions/netPay.
+  nigeriaNhisEmployer Decimal @default(0) @map("nigeria_nhis_employer")
 
   totalDeductions Decimal @map("total_deductions")
   netPay          Decimal @map("net_pay")

@@ -195,6 +195,7 @@ export class PayRunService {
         countryCode: employee.countryCode,
         basicSalary,
         annualRentPaid: employee.annualRentPaid ? Number(employee.annualRentPaid) : undefined,
+        organizationEmployeeCount: eligibleEmployees.length,
         ...extraRates,
         lineItems: lineItemInputs,
         taxBands: bands.map((band) => ({
@@ -252,12 +253,16 @@ export class PayRunService {
   }
 
   /**
-   * Ghana Tier 2 and Kenya SHIF/Housing Levy are mandatory once a country
-   * has StatutoryRate rows for them, but unlike SSNIT/NSSF (fetched
-   * unconditionally for every country above) they only apply to their own
-   * country - fetched conditionally here, and required (throws if missing,
-   * same fail-loud posture as the SSNIT/NSSF check above) only for the
-   * country they apply to.
+   * Ghana Tier 2, Kenya SHIF/Housing Levy, and Nigeria's NSITF/NHIS are
+   * mandatory once a country has StatutoryRate rows for them, but unlike
+   * SSNIT/NSSF (fetched unconditionally for every country above) they
+   * only apply to their own country - fetched conditionally here, and
+   * required (throws if missing, same fail-loud posture as the SSNIT/NSSF
+   * check above) only for the country they apply to. Nigeria's rates are
+   * required unconditionally here too, same as Ghana/Kenya's - whether
+   * they actually apply to a given payslip (the 5-employee organization
+   * threshold, and for NHIS, the employee's own basic salary) is decided
+   * inside computePayslip, not here.
    */
   private async fetchExtraStatutoryRates(
     countryCode: string,
@@ -267,6 +272,9 @@ export class PayRunService {
     kenyaShifRate?: number;
     kenyaHousingLevyEmployeeRate?: number;
     kenyaHousingLevyEmployerRate?: number;
+    nigeriaNsitfRate?: number;
+    nigeriaNhisEmployeeRate?: number;
+    nigeriaNhisEmployerRate?: number;
   }> {
     if (countryCode === 'GH') {
       const tier2Rate = await this.rates.findEffective(countryCode, 'GHANA_TIER2_PENSION_EMPLOYER', asOf);
@@ -291,6 +299,22 @@ export class PayRunService {
         kenyaShifRate: Number(shifRate.rate),
         kenyaHousingLevyEmployeeRate: Number(housingEmployeeRate.rate),
         kenyaHousingLevyEmployerRate: Number(housingEmployerRate.rate),
+      };
+    }
+
+    if (countryCode === 'NG') {
+      const nsitfRate = await this.rates.findEffective(countryCode, 'NIGERIA_NSITF_EMPLOYER', asOf);
+      const nhisEmployeeRate = await this.rates.findEffective(countryCode, 'NIGERIA_NHIS_EMPLOYEE', asOf);
+      const nhisEmployerRate = await this.rates.findEffective(countryCode, 'NIGERIA_NHIS_EMPLOYER', asOf);
+      if (!nsitfRate || !nhisEmployeeRate || !nhisEmployerRate) {
+        throw new ConflictException(
+          `No effective Nigeria NSITF/NHIS rates as of ${asOf.toISOString()} — add StatutoryRate records before processing this run`,
+        );
+      }
+      return {
+        nigeriaNsitfRate: Number(nsitfRate.rate),
+        nigeriaNhisEmployeeRate: Number(nhisEmployeeRate.rate),
+        nigeriaNhisEmployerRate: Number(nhisEmployerRate.rate),
       };
     }
 

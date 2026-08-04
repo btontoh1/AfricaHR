@@ -1,0 +1,9 @@
+-- AlterEnum
+ALTER TYPE "StatutoryRateCode" ADD VALUE 'NIGERIA_NSITF_EMPLOYER';
+ALTER TYPE "StatutoryRateCode" ADD VALUE 'NIGERIA_NHIS_EMPLOYEE';
+ALTER TYPE "StatutoryRateCode" ADD VALUE 'NIGERIA_NHIS_EMPLOYER';
+
+-- AlterTable
+ALTER TABLE "payslips" ADD COLUMN "nigeria_nsitf_employer" DECIMAL(65,30) NOT NULL DEFAULT 0,
+ADD COLUMN "nigeria_nhis_employee" DECIMAL(65,30) NOT NULL DEFAULT 0,
+ADD COLUMN "nigeria_nhis_employer" DECIMAL(65,30) NOT NULL DEFAULT 0;

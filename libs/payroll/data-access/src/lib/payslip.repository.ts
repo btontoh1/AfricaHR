@@ -18,6 +18,9 @@ export interface UpsertPayslipInput {
   kenyaShifEmployee: Prisma.Decimal | number;
   kenyaHousingLevyEmployee: Prisma.Decimal | number;
   kenyaHousingLevyEmployer: Prisma.Decimal | number;
+  nigeriaNsitfEmployer: Prisma.Decimal | number;
+  nigeriaNhisEmployee: Prisma.Decimal | number;
+  nigeriaNhisEmployer: Prisma.Decimal | number;
   totalDeductions: Prisma.Decimal | number;
   netPay: Prisma.Decimal | number;
   currency: string;
@@ -55,6 +58,9 @@ export class PayslipRepository {
           kenyaShifEmployee: input.kenyaShifEmployee,
           kenyaHousingLevyEmployee: input.kenyaHousingLevyEmployee,
           kenyaHousingLevyEmployer: input.kenyaHousingLevyEmployer,
+          nigeriaNsitfEmployer: input.nigeriaNsitfEmployer,
+          nigeriaNhisEmployee: input.nigeriaNhisEmployee,
+          nigeriaNhisEmployer: input.nigeriaNhisEmployer,
           totalDeductions: input.totalDeductions,
           netPay: input.netPay,
           currency: input.currency,
@@ -73,6 +79,9 @@ export class PayslipRepository {
           kenyaShifEmployee: input.kenyaShifEmployee,
           kenyaHousingLevyEmployee: input.kenyaHousingLevyEmployee,
           kenyaHousingLevyEmployer: input.kenyaHousingLevyEmployer,
+          nigeriaNsitfEmployer: input.nigeriaNsitfEmployer,
+          nigeriaNhisEmployee: input.nigeriaNhisEmployee,
+          nigeriaNhisEmployer: input.nigeriaNhisEmployer,
           totalDeductions: input.totalDeductions,
           netPay: input.netPay,
           currency: input.currency,

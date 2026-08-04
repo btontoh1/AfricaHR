@@ -111,6 +111,22 @@ export function PayslipDetail({ tenantId, payslipId }: { tenantId: string; paysl
               />
             </>
           )}
+          {payslip.countryCode === 'NG' && (
+            <>
+              <Field
+                label="NSITF (employer)"
+                value={formatCurrency(payslip.nigeriaNsitfEmployer, payslip.currency)}
+              />
+              <Field
+                label="NHIS (employee)"
+                value={formatCurrency(payslip.nigeriaNhisEmployee, payslip.currency)}
+              />
+              <Field
+                label="NHIS (employer)"
+                value={formatCurrency(payslip.nigeriaNhisEmployer, payslip.currency)}
+              />
+            </>
+          )}
           <Field
             label="Total deductions"
             value={formatCurrency(payslip.totalDeductions, payslip.currency)}

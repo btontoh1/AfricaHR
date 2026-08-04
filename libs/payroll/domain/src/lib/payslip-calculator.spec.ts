@@ -376,4 +376,85 @@ describe('computePayslip', () => {
     expect(result.kenyaHousingLevyEmployee).toBe(0);
     expect(result.kenyaHousingLevyEmployer).toBe(0);
   });
+
+  it("computes Nigeria's NSITF and NHIS once the organization clears the 5-employee threshold, with NHIS reducing net pay but not taxable income", () => {
+    const result = computePayslip({
+      countryCode: 'NG',
+      basicSalary: 100_000,
+      organizationEmployeeCount: 5,
+      nigeriaNsitfRate: 0.01,
+      nigeriaNhisEmployeeRate: 0.05,
+      nigeriaNhisEmployerRate: 0.1,
+      lineItems: [],
+      taxBands: nigeriaBands,
+      ssnitRates: nigeriaRates,
+    });
+
+    expect(result.nigeriaNsitfEmployer).toBe(1000);
+    expect(result.nigeriaNhisEmployee).toBe(5000);
+    expect(result.nigeriaNhisEmployer).toBe(10_000);
+    // taxable = 100,000 - pension(8,000) = 92,000 - NHIS never enters this calc
+    expect(result.taxableIncome).toBe(92_000);
+    // PAYE unaffected by NHIS: (92,000-66,666.67)*0.15 = 3,799.9995 -> rounds to 3,800.00
+    expect(result.payeTax).toBe(3800);
+    // total = pension(8,000) + PAYE(3,800) + NHIS employee(5,000) = 16,800 - NSITF/NHIS-employer excluded
+    expect(result.totalDeductions).toBe(16_800);
+    expect(result.netPay).toBe(83_200);
+  });
+
+  it("does not apply Nigeria's NSITF or NHIS when the organization is under the 5-employee threshold", () => {
+    const result = computePayslip({
+      countryCode: 'NG',
+      basicSalary: 100_000,
+      organizationEmployeeCount: 4,
+      nigeriaNsitfRate: 0.01,
+      nigeriaNhisEmployeeRate: 0.05,
+      nigeriaNhisEmployerRate: 0.1,
+      lineItems: [],
+      taxBands: nigeriaBands,
+      ssnitRates: nigeriaRates,
+    });
+
+    expect(result.nigeriaNsitfEmployer).toBe(0);
+    expect(result.nigeriaNhisEmployee).toBe(0);
+    expect(result.nigeriaNhisEmployer).toBe(0);
+  });
+
+  it("applies NSITF but not NHIS when the organization clears the threshold but the employee's own basic salary is below NHIS's eligibility floor", () => {
+    const result = computePayslip({
+      countryCode: 'NG',
+      basicSalary: 20_000,
+      organizationEmployeeCount: 5,
+      nigeriaNsitfRate: 0.01,
+      nigeriaNhisEmployeeRate: 0.05,
+      nigeriaNhisEmployerRate: 0.1,
+      lineItems: [],
+      taxBands: nigeriaBands,
+      ssnitRates: nigeriaRates,
+    });
+
+    // NSITF only gates on the organization threshold, so it still applies
+    expect(result.nigeriaNsitfEmployer).toBe(20_000 * 0.01);
+    // NHIS also requires this employee's own basic salary >= NGN 30,000
+    expect(result.nigeriaNhisEmployee).toBe(0);
+    expect(result.nigeriaNhisEmployer).toBe(0);
+  });
+
+  it('never computes NSITF or NHIS for a non-Nigeria payslip', () => {
+    const result = computePayslip({
+      countryCode: 'GH',
+      basicSalary: 100_000,
+      organizationEmployeeCount: 10,
+      nigeriaNsitfRate: 0.01,
+      nigeriaNhisEmployeeRate: 0.05,
+      nigeriaNhisEmployerRate: 0.1,
+      lineItems: [],
+      taxBands: bands,
+      ssnitRates,
+    });
+
+    expect(result.nigeriaNsitfEmployer).toBe(0);
+    expect(result.nigeriaNhisEmployee).toBe(0);
+    expect(result.nigeriaNhisEmployer).toBe(0);
+  });
 });

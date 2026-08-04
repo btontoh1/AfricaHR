@@ -7,8 +7,8 @@ describe('summarizePayrollCosts', () => {
 
   it('sums gross, net, deductions, and employer cost within a single currency', () => {
     const result = summarizePayrollCosts([
-      { currency: 'GHS', grossPay: 3000, netPay: 2400, totalDeductions: 600, ssnitEmployer: 390 },
-      { currency: 'GHS', grossPay: 5000, netPay: 3900, totalDeductions: 1100, ssnitEmployer: 650 },
+      { currency: 'GHS', grossPay: 3000, netPay: 2400, totalDeductions: 600, ssnitEmployer: 390, ghanaTier2PensionEmployer: 0, kenyaHousingLevyEmployer: 0 },
+      { currency: 'GHS', grossPay: 5000, netPay: 3900, totalDeductions: 1100, ssnitEmployer: 650, ghanaTier2PensionEmployer: 0, kenyaHousingLevyEmployer: 0 },
     ]);
 
     expect(result).toEqual([
@@ -25,9 +25,9 @@ describe('summarizePayrollCosts', () => {
 
   it('keeps different currencies in separate totals instead of blending them together', () => {
     const result = summarizePayrollCosts([
-      { currency: 'GHS', grossPay: 3000, netPay: 2400, totalDeductions: 600, ssnitEmployer: 390 },
-      { currency: 'NGN', grossPay: 100_000, netPay: 91_200, totalDeductions: 8800, ssnitEmployer: 10_000 },
-      { currency: 'GHS', grossPay: 5000, netPay: 3900, totalDeductions: 1100, ssnitEmployer: 650 },
+      { currency: 'GHS', grossPay: 3000, netPay: 2400, totalDeductions: 600, ssnitEmployer: 390, ghanaTier2PensionEmployer: 0, kenyaHousingLevyEmployer: 0 },
+      { currency: 'NGN', grossPay: 100_000, netPay: 91_200, totalDeductions: 8800, ssnitEmployer: 10_000, ghanaTier2PensionEmployer: 0, kenyaHousingLevyEmployer: 0 },
+      { currency: 'GHS', grossPay: 5000, netPay: 3900, totalDeductions: 1100, ssnitEmployer: 650, ghanaTier2PensionEmployer: 0, kenyaHousingLevyEmployer: 0 },
     ]);
 
     expect(result).toEqual([
@@ -52,10 +52,38 @@ describe('summarizePayrollCosts', () => {
 
   it('orders currency groups alphabetically regardless of input order', () => {
     const result = summarizePayrollCosts([
-      { currency: 'NGN', grossPay: 1, netPay: 1, totalDeductions: 0, ssnitEmployer: 0 },
-      { currency: 'GHS', grossPay: 1, netPay: 1, totalDeductions: 0, ssnitEmployer: 0 },
+      { currency: 'NGN', grossPay: 1, netPay: 1, totalDeductions: 0, ssnitEmployer: 0, ghanaTier2PensionEmployer: 0, kenyaHousingLevyEmployer: 0 },
+      { currency: 'GHS', grossPay: 1, netPay: 1, totalDeductions: 0, ssnitEmployer: 0, ghanaTier2PensionEmployer: 0, kenyaHousingLevyEmployer: 0 },
     ]);
 
     expect(result.map((r) => r.currency)).toEqual(['GHS', 'NGN']);
+  });
+
+  it("includes Ghana Tier 2 and Kenya's Housing Levy employer shares in total employer cost", () => {
+    const result = summarizePayrollCosts([
+      {
+        currency: 'GHS',
+        grossPay: 3000,
+        netPay: 2400,
+        totalDeductions: 600,
+        ssnitEmployer: 390,
+        ghanaTier2PensionEmployer: 150,
+        kenyaHousingLevyEmployer: 0,
+      },
+      {
+        currency: 'KES',
+        grossPay: 50_000,
+        netPay: 38_804.15,
+        totalDeductions: 11195.85,
+        ssnitEmployer: 3000,
+        ghanaTier2PensionEmployer: 0,
+        kenyaHousingLevyEmployer: 750,
+      },
+    ]);
+
+    expect(result).toEqual([
+      expect.objectContaining({ currency: 'GHS', totalEmployerCost: 3000 + 390 + 150 }),
+      expect.objectContaining({ currency: 'KES', totalEmployerCost: 50_000 + 3000 + 750 }),
+    ]);
   });
 });

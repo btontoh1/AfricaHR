@@ -40,6 +40,8 @@ export class PayrollCostReportRepository {
           netPay: true,
           totalDeductions: true,
           ssnitEmployer: true,
+          ghanaTier2PensionEmployer: true,
+          kenyaHousingLevyEmployer: true,
         },
       }),
     );
@@ -50,6 +52,8 @@ export class PayrollCostReportRepository {
       netPay: payslip.netPay.toNumber(),
       totalDeductions: payslip.totalDeductions.toNumber(),
       ssnitEmployer: payslip.ssnitEmployer.toNumber(),
+      ghanaTier2PensionEmployer: payslip.ghanaTier2PensionEmployer.toNumber(),
+      kenyaHousingLevyEmployer: payslip.kenyaHousingLevyEmployer.toNumber(),
     }));
   }
 }

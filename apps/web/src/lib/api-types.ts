@@ -2766,6 +2766,14 @@ export interface components {
             payeTax: string;
             ssnitEmployee: string;
             ssnitEmployer: string;
+            /** @description Ghana only, else "0" - Tier 2 employer-only pension contribution */
+            ghanaTier2PensionEmployer: string;
+            /** @description Kenya only, else "0" - SHIF employee contribution */
+            kenyaShifEmployee: string;
+            /** @description Kenya only, else "0" - Affordable Housing Levy employee contribution */
+            kenyaHousingLevyEmployee: string;
+            /** @description Kenya only, else "0" - Affordable Housing Levy employer contribution */
+            kenyaHousingLevyEmployer: string;
             totalDeductions: string;
             netPay: string;
             currency: string;

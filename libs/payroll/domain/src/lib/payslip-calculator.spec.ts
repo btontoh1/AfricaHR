@@ -202,6 +202,7 @@ describe('computePayslip', () => {
     const result = computePayslip({
       countryCode: 'KE',
       basicSalary: 100_000,
+      kenyaShifRate: 0.0275,
       lineItems: [],
       taxBands: kenyaBands,
       ssnitRates: kenyaRates,
@@ -210,26 +211,31 @@ describe('computePayslip', () => {
     // NSSF employee = 100,000 * 0.06 = 6,000 (under the 108,000 UEL, uncapped)
     expect(result.ssnitEmployee).toBe(6000);
     expect(result.ssnitEmployer).toBe(6000);
-    // taxable = 100,000 - 6,000 = 94,000
-    expect(result.taxableIncome).toBe(94000);
-    // bands: 24,000*0.10 + 8,333*0.25 + 61,667*0.30 = 2,400 + 2,083.25 + 18,500.10 = 22,983.35
-    // relief: 22,983.35 - 2,400 = 20,583.35
-    expect(result.payeTax).toBe(20583.35);
-    expect(result.totalDeductions).toBe(26583.35);
-    expect(result.netPay).toBe(73416.65);
+    // SHIF = 100,000 * 0.0275 = 2,750 (above the KES 300 floor)
+    expect(result.kenyaShifEmployee).toBe(2750);
+    // taxable = 100,000 - 6,000 (NSSF) - 2,750 (SHIF) = 91,250
+    expect(result.taxableIncome).toBe(91250);
+    // bands: 24,000*0.10 + 8,333*0.25 + 58,917*0.30 = 2,400 + 2,083.25 + 17,675.10 = 22,158.35
+    // relief: 22,158.35 - 2,400 = 19,758.35
+    expect(result.payeTax).toBe(19758.35);
+    // total = NSSF(6,000) + PAYE(19,758.35) + SHIF(2,750) = 28,508.35
+    expect(result.totalDeductions).toBe(28508.35);
+    expect(result.netPay).toBe(71491.65);
   });
 
   it("floors Kenya's PAYE at zero when the personal relief exceeds the band tax, rather than refunding", () => {
     const result = computePayslip({
       countryCode: 'KE',
       basicSalary: 20_000,
+      kenyaShifRate: 0.0275,
       lineItems: [],
       taxBands: kenyaBands,
       ssnitRates: kenyaRates,
     });
 
-    // taxable = 20,000 - (20,000*0.06 = 1,200) = 18,800; band tax = 18,800*0.10 = 1,880
-    // relief (2,400) exceeds it, so PAYE floors at 0 rather than -520
+    // NSSF = 20,000*0.06 = 1,200; SHIF = 20,000*0.0275 = 550
+    // taxable = 20,000 - 1,200 - 550 = 18,250; band tax = 18,250*0.10 = 1,825
+    // relief (2,400) exceeds it, so PAYE floors at 0 rather than going negative
     expect(result.payeTax).toBe(0);
   });
 
@@ -237,6 +243,7 @@ describe('computePayslip', () => {
     const result = computePayslip({
       countryCode: 'KE',
       basicSalary: 150_000,
+      kenyaShifRate: 0.0275,
       lineItems: [],
       taxBands: kenyaBands,
       ssnitRates: kenyaRates,
@@ -245,8 +252,10 @@ describe('computePayslip', () => {
     // NSSF computed on the capped KES 108,000, not the full 150,000
     expect(result.ssnitEmployee).toBe(108_000 * 0.06);
     expect(result.ssnitEmployer).toBe(108_000 * 0.06);
+    // SHIF is computed on the uncapped 150,000 gross - NSSF's UEL doesn't apply to it
+    expect(result.kenyaShifEmployee).toBe(4125);
     // taxable income still starts from the full 150,000 gross pay
-    expect(result.taxableIncome).toBe(150_000 - 108_000 * 0.06);
+    expect(result.taxableIncome).toBe(150_000 - 108_000 * 0.06 - 4125);
   });
 
   it("never applies Kenya's NSSF cap or personal relief to a non-Kenya payslip", () => {
@@ -272,5 +281,99 @@ describe('computePayslip', () => {
     // PAYE (13.4) is well under Kenya's 2,400 relief - if that relief leaked
     // into a non-Kenya payslip, this would floor to 0 instead.
     expect(smallTaxResult.payeTax).toBe(13.4);
+  });
+
+  it("computes Ghana Tier 2 as a pure employer cost that never reduces net pay", () => {
+    const withoutTier2 = computePayslip({
+      countryCode: 'GH',
+      basicSalary: 50_000,
+      lineItems: [],
+      taxBands: bands,
+      ssnitRates,
+    });
+    const withTier2 = computePayslip({
+      countryCode: 'GH',
+      basicSalary: 50_000,
+      ghanaTier2Rate: 0.05,
+      lineItems: [],
+      taxBands: bands,
+      ssnitRates,
+    });
+
+    expect(withTier2.ghanaTier2PensionEmployer).toBe(50_000 * 0.05);
+    // Tier 2 doesn't touch taxable income, total deductions, or net pay
+    expect(withTier2.taxableIncome).toBe(withoutTier2.taxableIncome);
+    expect(withTier2.totalDeductions).toBe(withoutTier2.totalDeductions);
+    expect(withTier2.netPay).toBe(withoutTier2.netPay);
+  });
+
+  it('never computes Ghana Tier 2 for a non-Ghana payslip', () => {
+    const result = computePayslip({
+      countryCode: 'NG',
+      basicSalary: 50_000,
+      ghanaTier2Rate: 0.05,
+      lineItems: [],
+      taxBands: nigeriaBands,
+      ssnitRates: nigeriaRates,
+    });
+
+    expect(result.ghanaTier2PensionEmployer).toBe(0);
+  });
+
+  it("computes Kenya's SHIF and Housing Levy, with SHIF reducing taxable income and Housing Levy not", () => {
+    const result = computePayslip({
+      countryCode: 'KE',
+      basicSalary: 50_000,
+      kenyaShifRate: 0.0275,
+      kenyaHousingLevyEmployeeRate: 0.015,
+      kenyaHousingLevyEmployerRate: 0.015,
+      lineItems: [],
+      taxBands: kenyaBands,
+      ssnitRates: kenyaRates,
+    });
+
+    // SHIF = 50,000 * 0.0275 = 1,375 (above the KES 300 floor)
+    expect(result.kenyaShifEmployee).toBe(1375);
+    // Housing Levy: 1.5% each side
+    expect(result.kenyaHousingLevyEmployee).toBe(750);
+    expect(result.kenyaHousingLevyEmployer).toBe(750);
+    // taxable = 50,000 - NSSF(3,000) - SHIF(1,375) = 45,625 - Housing Levy does NOT reduce this
+    expect(result.taxableIncome).toBe(45625);
+    // bands: 2,400 + 2,083.25 + 13,292*0.30(3,987.60) = 8,470.85; relief: 8,470.85 - 2,400 = 6,070.85
+    expect(result.payeTax).toBe(6070.85);
+    // total = NSSF(3,000) + PAYE(6,070.85) + SHIF(1,375) + Housing Levy employee(750) = 11,195.85
+    expect(result.totalDeductions).toBe(11195.85);
+    expect(result.netPay).toBe(38804.15);
+  });
+
+  it("floors Kenya's SHIF at KES 300 for low earners", () => {
+    const result = computePayslip({
+      countryCode: 'KE',
+      basicSalary: 5_000,
+      kenyaShifRate: 0.0275,
+      lineItems: [],
+      taxBands: kenyaBands,
+      ssnitRates: kenyaRates,
+    });
+
+    // 5,000 * 0.0275 = 137.50, floored to the KES 300 minimum
+    expect(result.kenyaShifEmployee).toBe(300);
+  });
+
+  it('never computes SHIF or Housing Levy for a non-Kenya payslip', () => {
+    const result = computePayslip({
+      countryCode: 'NG',
+      basicSalary: 50_000,
+      kenyaShifRate: 0.0275,
+      kenyaHousingLevyEmployeeRate: 0.015,
+      kenyaHousingLevyEmployerRate: 0.015,
+      lineItems: [],
+      taxBands: nigeriaBands,
+      ssnitRates: nigeriaRates,
+    });
+
+    expect(result.kenyaShifEmployee).toBe(0);
+    expect(result.kenyaHousingLevyEmployee).toBe(0);
+    expect(result.kenyaHousingLevyEmployer).toBe(0);
   });
 });

@@ -56,6 +56,14 @@ const d = (value: string) => new Prisma.Decimal(value);
  * 2026) is enforced in code, not here as data - see
  * applyGhanaInsurableEarningsCap in payroll-domain, since it's a cap on
  * the calculation, not a rate to seed.
+ *
+ * Also seeds Tier 2's mandatory occupational pension rate (5% of basic
+ * salary, employer-only, paid to a licensed private trustee rather than
+ * SSNIT itself) under GHANA_TIER2_PENSION_EMPLOYER - a genuinely separate
+ * contribution from Tier 1 above, not an alternate name for it, so it
+ * can't reuse SSNIT_EMPLOYER (see the StatutoryRateCode enum's doc
+ * comments). Sourced from public NPRA-summary alerts in August 2026,
+ * same confirm-before-real-payroll caveat as the PAYE bands.
  */
 async function seedGhanaStatutoryData(prisma: PrismaClient): Promise<void> {
   const countryCode = 'GH';
@@ -127,10 +135,16 @@ async function seedGhanaStatutoryData(prisma: PrismaClient): Promise<void> {
           rate: 0.13,
           effectiveFrom,
         },
+        {
+          countryCode,
+          code: StatutoryRateCode.GHANA_TIER2_PENSION_EMPLOYER,
+          rate: 0.05,
+          effectiveFrom,
+        },
       ],
     });
     console.log(
-      `Seed: created SSNIT rates for "${countryCode}" (unchanged for 2026) — re-verify against SSNIT's current published rates before real payroll runs.`,
+      `Seed: created SSNIT Tier 1 + Tier 2 rates for "${countryCode}" (unchanged for 2026) — re-verify against SSNIT's/NPRA's current published rates before real payroll runs.`,
     );
   }
 }
@@ -280,12 +294,13 @@ async function seedNigeriaStatutoryData(prisma: PrismaClient): Promise<void> {
  * applyKenyaPensionableEarningsCap, same shape as Ghana's insurable
  * earnings cap, rather than modeled as two separate StatutoryRate rows.
  *
- * Scope note: this does not seed SHIF (2.75% of gross) or the Affordable
- * Housing Levy (1.5% of gross) - neither Ghana nor Nigeria's seed data
- * models their equivalent levies either (e.g. Ghana's NHIL), so adding
- * them for Kenya alone would model Kenya more completely than every other
- * country this platform supports. Deliberately out of scope, not an
- * oversight.
+ * Also seeds SHIF (KENYA_SHIF_EMPLOYEE, 2.75% of gross, subject to a
+ * KES 300 floor enforced in code - see kenya-shif.ts) and the Affordable
+ * Housing Levy (KENYA_HOUSING_LEVY_EMPLOYEE/EMPLOYER, 1.5% each side) -
+ * a prior version of this comment noted these were deliberately
+ * unmodeled to avoid getting ahead of Ghana/Nigeria's own statutory
+ * coverage; both are now modeled here, in the same pass that added
+ * Ghana's Tier 2 pension.
  */
 async function seedKenyaStatutoryData(prisma: PrismaClient): Promise<void> {
   const countryCode = 'KE';
@@ -355,10 +370,28 @@ async function seedKenyaStatutoryData(prisma: PrismaClient): Promise<void> {
           rate: 0.06,
           effectiveFrom,
         },
+        {
+          countryCode,
+          code: StatutoryRateCode.KENYA_SHIF_EMPLOYEE,
+          rate: 0.0275,
+          effectiveFrom,
+        },
+        {
+          countryCode,
+          code: StatutoryRateCode.KENYA_HOUSING_LEVY_EMPLOYEE,
+          rate: 0.015,
+          effectiveFrom,
+        },
+        {
+          countryCode,
+          code: StatutoryRateCode.KENYA_HOUSING_LEVY_EMPLOYER,
+          rate: 0.015,
+          effectiveFrom,
+        },
       ],
     });
     console.log(
-      `Seed: created NSSF rates for "${countryCode}" (stored under the SSNIT_EMPLOYEE/SSNIT_EMPLOYER codes - see this function's doc comment) — confirm against NSSF's current published rates before real payroll runs.`,
+      `Seed: created NSSF/SHIF/Housing Levy rates for "${countryCode}" (NSSF stored under the SSNIT_EMPLOYEE/SSNIT_EMPLOYER codes - see this function's doc comment) — confirm against NSSF's/SHA's/KRA's current published rates before real payroll runs.`,
     );
   }
 }

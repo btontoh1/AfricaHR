@@ -9,7 +9,15 @@ describe('PayrollCostReportService', () => {
   beforeEach(() => {
     payrollCost = {
       listPayslipCosts: jest.fn().mockResolvedValue([
-        { currency: 'GHS', grossPay: 3000, netPay: 2400, totalDeductions: 600, ssnitEmployer: 390 },
+        {
+          currency: 'GHS',
+          grossPay: 3000,
+          netPay: 2400,
+          totalDeductions: 600,
+          ssnitEmployer: 390,
+          ghanaTier2PensionEmployer: 0,
+          kenyaHousingLevyEmployer: 0,
+        },
       ]),
     } as unknown as jest.Mocked<PayrollCostReportRepository>;
 

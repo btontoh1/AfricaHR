@@ -89,6 +89,28 @@ export function PayslipDetail({ tenantId, payslipId }: { tenantId: string; paysl
             label="SSNIT (employer)"
             value={formatCurrency(payslip.ssnitEmployer, payslip.currency)}
           />
+          {payslip.countryCode === 'GH' && (
+            <Field
+              label="Tier 2 pension (employer)"
+              value={formatCurrency(payslip.ghanaTier2PensionEmployer, payslip.currency)}
+            />
+          )}
+          {payslip.countryCode === 'KE' && (
+            <>
+              <Field
+                label="SHIF (employee)"
+                value={formatCurrency(payslip.kenyaShifEmployee, payslip.currency)}
+              />
+              <Field
+                label="Housing Levy (employee)"
+                value={formatCurrency(payslip.kenyaHousingLevyEmployee, payslip.currency)}
+              />
+              <Field
+                label="Housing Levy (employer)"
+                value={formatCurrency(payslip.kenyaHousingLevyEmployer, payslip.currency)}
+              />
+            </>
+          )}
           <Field
             label="Total deductions"
             value={formatCurrency(payslip.totalDeductions, payslip.currency)}

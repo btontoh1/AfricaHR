@@ -586,6 +586,14 @@ model StatutoryTaxBand {
 enum StatutoryRateCode {
   SSNIT_EMPLOYEE
   SSNIT_EMPLOYER
+  /// Ghana's mandatory Tier 2 occupational pension - employer-only, on top of Tier 1's SSNIT_EMPLOYEE/SSNIT_EMPLOYER above.
+  GHANA_TIER2_PENSION_EMPLOYER
+  /// Kenya's Social Health Insurance Fund contribution - employee-only, subject to a KES 300 floor enforced in code (see kenya-shif.ts in payroll-domain), not here as data.
+  KENYA_SHIF_EMPLOYEE
+  /// Kenya's Affordable Housing Levy - employee share.
+  KENYA_HOUSING_LEVY_EMPLOYEE
+  /// Kenya's Affordable Housing Levy - employer share.
+  KENYA_HOUSING_LEVY_EMPLOYER
 }
 
 /// SSNIT contribution rates, applied to basic salary. Same platform-root,
@@ -686,6 +694,16 @@ model Payslip {
   payeTax         Decimal @map("paye_tax")
   ssnitEmployee   Decimal @map("ssnit_employee")
   ssnitEmployer   Decimal @map("ssnit_employer")
+
+  /// Ghana only, else 0 - Tier 2's employer-only contribution. Not part of totalDeductions/netPay, same as ssnitEmployer.
+  ghanaTier2PensionEmployer Decimal @default(0) @map("ghana_tier2_pension_employer")
+  /// Kenya only, else 0 - reduces taxableIncome and is part of totalDeductions/netPay. See payslip-calculator.ts (payroll-domain).
+  kenyaShifEmployee Decimal @default(0) @map("kenya_shif_employee")
+  /// Kenya only, else 0 - part of totalDeductions/netPay, but does not reduce taxableIncome (relief repealed December 2024).
+  kenyaHousingLevyEmployee Decimal @default(0) @map("kenya_housing_levy_employee")
+  /// Kenya only, else 0 - employer-only. Not part of totalDeductions/netPay, same as ssnitEmployer.
+  kenyaHousingLevyEmployer Decimal @default(0) @map("kenya_housing_levy_employer")
+
   totalDeductions Decimal @map("total_deductions")
   netPay          Decimal @map("net_pay")
   currency        String

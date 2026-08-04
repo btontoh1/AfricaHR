@@ -183,6 +183,8 @@ export class PayRunService {
         );
       }
 
+      const extraRates = await this.fetchExtraStatutoryRates(employee.countryCode, asOf);
+
       const existingPayslip = await this.payslips.findByPayRunAndEmployee(tenantId, id, employee.id);
       const lineItemInputs = (existingPayslip?.lineItems ?? []).map((item) => ({
         type: item.type,
@@ -193,6 +195,7 @@ export class PayRunService {
         countryCode: employee.countryCode,
         basicSalary,
         annualRentPaid: employee.annualRentPaid ? Number(employee.annualRentPaid) : undefined,
+        ...extraRates,
         lineItems: lineItemInputs,
         taxBands: bands.map((band) => ({
           order: band.order,
@@ -246,6 +249,52 @@ export class PayRunService {
     }
 
     return updated;
+  }
+
+  /**
+   * Ghana Tier 2 and Kenya SHIF/Housing Levy are mandatory once a country
+   * has StatutoryRate rows for them, but unlike SSNIT/NSSF (fetched
+   * unconditionally for every country above) they only apply to their own
+   * country - fetched conditionally here, and required (throws if missing,
+   * same fail-loud posture as the SSNIT/NSSF check above) only for the
+   * country they apply to.
+   */
+  private async fetchExtraStatutoryRates(
+    countryCode: string,
+    asOf: Date,
+  ): Promise<{
+    ghanaTier2Rate?: number;
+    kenyaShifRate?: number;
+    kenyaHousingLevyEmployeeRate?: number;
+    kenyaHousingLevyEmployerRate?: number;
+  }> {
+    if (countryCode === 'GH') {
+      const tier2Rate = await this.rates.findEffective(countryCode, 'GHANA_TIER2_PENSION_EMPLOYER', asOf);
+      if (!tier2Rate) {
+        throw new ConflictException(
+          `No effective Ghana Tier 2 pension rate as of ${asOf.toISOString()} — add a StatutoryRate record before processing this run`,
+        );
+      }
+      return { ghanaTier2Rate: Number(tier2Rate.rate) };
+    }
+
+    if (countryCode === 'KE') {
+      const shifRate = await this.rates.findEffective(countryCode, 'KENYA_SHIF_EMPLOYEE', asOf);
+      const housingEmployeeRate = await this.rates.findEffective(countryCode, 'KENYA_HOUSING_LEVY_EMPLOYEE', asOf);
+      const housingEmployerRate = await this.rates.findEffective(countryCode, 'KENYA_HOUSING_LEVY_EMPLOYER', asOf);
+      if (!shifRate || !housingEmployeeRate || !housingEmployerRate) {
+        throw new ConflictException(
+          `No effective Kenya SHIF/Housing Levy rates as of ${asOf.toISOString()} — add StatutoryRate records before processing this run`,
+        );
+      }
+      return {
+        kenyaShifRate: Number(shifRate.rate),
+        kenyaHousingLevyEmployeeRate: Number(housingEmployeeRate.rate),
+        kenyaHousingLevyEmployerRate: Number(housingEmployerRate.rate),
+      };
+    }
+
+    return {};
   }
 
   async approve(tenantId: string, id: string, actorId?: string): Promise<PayRun> {

@@ -127,6 +127,18 @@ export function PayslipDetail({ tenantId, payslipId }: { tenantId: string; paysl
               />
             </>
           )}
+          {Number(payslip.benefitsEmployeeDeduction) > 0 && (
+            <Field
+              label="Benefits (employee)"
+              value={formatCurrency(payslip.benefitsEmployeeDeduction, payslip.currency)}
+            />
+          )}
+          {Number(payslip.benefitsEmployerCost) > 0 && (
+            <Field
+              label="Benefits (employer)"
+              value={formatCurrency(payslip.benefitsEmployerCost, payslip.currency)}
+            />
+          )}
           <Field
             label="Total deductions"
             value={formatCurrency(payslip.totalDeductions, payslip.currency)}

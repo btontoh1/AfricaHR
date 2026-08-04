@@ -3,6 +3,7 @@ import { PayRun, PayslipLineItem, Prisma } from '@prisma/client';
 import { PayslipWithLineItems } from '@africahr/payroll-data-access';
 import { AuditService } from '@africahr/platform-audit';
 import {
+  PayrollBenefitEnrollmentRepository,
   PayRunRepository,
   PayrollEmployeeRepository,
   PayslipLineItemRepository,
@@ -20,6 +21,7 @@ describe('PayslipService', () => {
   let employees: jest.Mocked<PayrollEmployeeRepository>;
   let taxBands: jest.Mocked<StatutoryTaxBandRepository>;
   let rates: jest.Mocked<StatutoryRateRepository>;
+  let benefitEnrollments: jest.Mocked<PayrollBenefitEnrollmentRepository>;
   let audit: jest.Mocked<AuditService>;
 
   function makePayslip(overrides: Partial<PayslipWithLineItems> = {}): PayslipWithLineItems {
@@ -110,9 +112,22 @@ describe('PayslipService', () => {
       findEffective: jest.fn().mockResolvedValue({ rate: 0.055 }),
     } as unknown as jest.Mocked<StatutoryRateRepository>;
 
+    benefitEnrollments = {
+      listActiveForEmployee: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<PayrollBenefitEnrollmentRepository>;
+
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
 
-    service = new PayslipService(payslips, lineItems, payRuns, employees, taxBands, rates, audit);
+    service = new PayslipService(
+      payslips,
+      lineItems,
+      payRuns,
+      employees,
+      taxBands,
+      rates,
+      benefitEnrollments,
+      audit,
+    );
   });
 
   describe('findById', () => {
@@ -364,6 +379,31 @@ describe('PayslipService', () => {
       await expect(
         service.addLineItem('tenant-1', 'payslip-1', { type: 'EARNING', code: 'BONUS', amount: 0 }),
       ).rejects.toThrow(ConflictException);
+    });
+
+    it("includes the employee's active benefit enrollments in the recompute", async () => {
+      payslips.findById.mockResolvedValue(makePayslip());
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'PROCESSING' }));
+      lineItems.create.mockResolvedValue({ id: 'li-1' } as PayslipLineItem);
+      benefitEnrollments.listActiveForEmployee.mockResolvedValue([
+        {
+          contributionType: 'PERCENTAGE',
+          employeeContribution: new Prisma.Decimal(0.02),
+          employerContribution: new Prisma.Decimal(0.03),
+        } as never,
+      ]);
+
+      await service.addLineItem('tenant-1', 'payslip-1', { type: 'EARNING', code: 'OVERTIME', amount: 0 });
+
+      expect(benefitEnrollments.listActiveForEmployee).toHaveBeenCalledWith(
+        'tenant-1',
+        'emp-1',
+        expect.any(Date),
+      );
+      expect(payslips.upsert).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ benefitsEmployeeDeduction: 20, benefitsEmployerCost: 30 }),
+      );
     });
   });
 

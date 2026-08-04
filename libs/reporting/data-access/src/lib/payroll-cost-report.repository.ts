@@ -44,6 +44,7 @@ export class PayrollCostReportRepository {
           kenyaHousingLevyEmployer: true,
           nigeriaNsitfEmployer: true,
           nigeriaNhisEmployer: true,
+          benefitsEmployerCost: true,
         },
       }),
     );
@@ -58,6 +59,7 @@ export class PayrollCostReportRepository {
       kenyaHousingLevyEmployer: payslip.kenyaHousingLevyEmployer.toNumber(),
       nigeriaNsitfEmployer: payslip.nigeriaNsitfEmployer.toNumber(),
       nigeriaNhisEmployer: payslip.nigeriaNhisEmployer.toNumber(),
+      benefitsEmployerCost: payslip.benefitsEmployerCost.toNumber(),
     }));
   }
 }

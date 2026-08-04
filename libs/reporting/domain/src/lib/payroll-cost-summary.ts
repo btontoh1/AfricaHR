@@ -12,6 +12,8 @@ export interface PayslipCostEntry {
   nigeriaNsitfEmployer: number;
   /** Nigeria only (employer threshold + employee eligibility met), else 0. */
   nigeriaNhisEmployer: number;
+  /** Sum of every active benefit-plan employer premium as of the pay date, else 0. */
+  benefitsEmployerCost: number;
 }
 
 export interface PayrollCostByCurrency {
@@ -56,7 +58,8 @@ export function summarizePayrollCosts(entries: PayslipCostEntry[]): PayrollCostB
       entry.ghanaTier2PensionEmployer +
       entry.kenyaHousingLevyEmployer +
       entry.nigeriaNsitfEmployer +
-      entry.nigeriaNhisEmployer;
+      entry.nigeriaNhisEmployer +
+      entry.benefitsEmployerCost;
 
     byCurrency.set(entry.currency, summary);
   }

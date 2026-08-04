@@ -32,6 +32,8 @@ describe('PayslipRepository', () => {
       nigeriaNsitfEmployer: 0,
       nigeriaNhisEmployee: 0,
       nigeriaNhisEmployer: 0,
+      benefitsEmployeeDeduction: 0,
+      benefitsEmployerCost: 0,
       totalDeductions: 144,
       netPay: 856,
       currency: 'GHS',

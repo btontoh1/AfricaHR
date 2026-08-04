@@ -11,6 +11,7 @@ import {
 import { AppConfigService, decryptAesGcm, deriveEncryptionKey } from '@africahr/platform-core';
 import { AuditService } from '@africahr/platform-audit';
 import {
+  PayrollBenefitEnrollmentRepository,
   PayrollEligibleEmployee,
   PayrollEmployeePaymentMethod,
   PayRunRepository,
@@ -21,6 +22,7 @@ import {
   StatutoryTaxBandRepository,
 } from '@africahr/payroll-data-access';
 import {
+  BenefitEnrollmentContribution,
   canTransitionPayRunStatus,
   computePayslip,
   getDefaultCurrencyForCountry,
@@ -89,6 +91,7 @@ export class PayRunService {
     private readonly employees: PayrollEmployeeRepository,
     private readonly taxBands: StatutoryTaxBandRepository,
     private readonly rates: StatutoryRateRepository,
+    private readonly benefitEnrollments: PayrollBenefitEnrollmentRepository,
     private readonly audit: AuditService,
     private readonly eventEmitter: EventEmitter2,
     private readonly paystack: PaystackTransferClient,
@@ -184,6 +187,7 @@ export class PayRunService {
       }
 
       const extraRates = await this.fetchExtraStatutoryRates(employee.countryCode, asOf);
+      const benefitEnrollments = await this.fetchBenefitEnrollments(tenantId, employee.id, asOf);
 
       const existingPayslip = await this.payslips.findByPayRunAndEmployee(tenantId, id, employee.id);
       const lineItemInputs = (existingPayslip?.lineItems ?? []).map((item) => ({
@@ -197,6 +201,7 @@ export class PayRunService {
         annualRentPaid: employee.annualRentPaid ? Number(employee.annualRentPaid) : undefined,
         organizationEmployeeCount: eligibleEmployees.length,
         ...extraRates,
+        benefitEnrollments,
         lineItems: lineItemInputs,
         taxBands: bands.map((band) => ({
           order: band.order,
@@ -319,6 +324,20 @@ export class PayRunService {
     }
 
     return {};
+  }
+
+  /** Every active BenefitEnrollment for this employee as of the pay date, converted to the plain-number shape computePayslip expects (Decimal->number conversion happens at this boundary, not in domain logic). */
+  private async fetchBenefitEnrollments(
+    tenantId: string,
+    employeeId: string,
+    asOf: Date,
+  ): Promise<BenefitEnrollmentContribution[]> {
+    const enrollments = await this.benefitEnrollments.listActiveForEmployee(tenantId, employeeId, asOf);
+    return enrollments.map((enrollment) => ({
+      contributionType: enrollment.contributionType,
+      employeeContribution: Number(enrollment.employeeContribution),
+      employerContribution: Number(enrollment.employerContribution),
+    }));
   }
 
   async approve(tenantId: string, id: string, actorId?: string): Promise<PayRun> {

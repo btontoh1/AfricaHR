@@ -7,6 +7,7 @@ import { PayslipRepository } from './payslip.repository';
 import { PayslipLineItemRepository } from './payslip-line-item.repository';
 import { PayrollEmployeeRepository } from './payroll-employee.repository';
 import { PayrollDisbursementRepository } from './payroll-disbursement.repository';
+import { PayrollBenefitEnrollmentRepository } from './payroll-benefit-enrollment.repository';
 
 @Module({
   imports: [PrismaModule],
@@ -18,6 +19,7 @@ import { PayrollDisbursementRepository } from './payroll-disbursement.repository
     PayslipLineItemRepository,
     PayrollEmployeeRepository,
     PayrollDisbursementRepository,
+    PayrollBenefitEnrollmentRepository,
   ],
   exports: [
     StatutoryTaxBandRepository,
@@ -27,6 +29,7 @@ import { PayrollDisbursementRepository } from './payroll-disbursement.repository
     PayslipLineItemRepository,
     PayrollEmployeeRepository,
     PayrollDisbursementRepository,
+    PayrollBenefitEnrollmentRepository,
   ],
 })
 export class PayrollDataAccessModule {}

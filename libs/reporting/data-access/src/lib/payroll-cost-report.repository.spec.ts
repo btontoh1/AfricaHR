@@ -28,6 +28,7 @@ describe('PayrollCostReportRepository', () => {
         kenyaHousingLevyEmployer: decimal(0),
         nigeriaNsitfEmployer: decimal(0),
         nigeriaNhisEmployer: decimal(0),
+        benefitsEmployerCost: decimal(0),
       },
     ]);
 
@@ -47,6 +48,7 @@ describe('PayrollCostReportRepository', () => {
         kenyaHousingLevyEmployer: 0,
         nigeriaNsitfEmployer: 0,
         nigeriaNhisEmployer: 0,
+        benefitsEmployerCost: 0,
       },
     ]);
   });
@@ -74,6 +76,7 @@ describe('PayrollCostReportRepository', () => {
         kenyaHousingLevyEmployer: true,
         nigeriaNsitfEmployer: true,
         nigeriaNhisEmployer: true,
+        benefitsEmployerCost: true,
       },
     });
   });

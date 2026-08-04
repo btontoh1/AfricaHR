@@ -717,6 +717,11 @@ model Payslip {
   /// Nigeria only, same gating as nigeriaNhisEmployee, else 0 - employer-only. Not part of totalDeductions/netPay.
   nigeriaNhisEmployer Decimal @default(0) @map("nigeria_nhis_employer")
 
+  /// Sum of every active BenefitEnrollment's employee premium as of the pay date, else 0. Post-tax (does not reduce taxableIncome) and part of totalDeductions/netPay. See payslip-calculator.ts (payroll-domain).
+  benefitsEmployeeDeduction Decimal @default(0) @map("benefits_employee_deduction")
+  /// Sum of every active BenefitEnrollment's employer premium as of the pay date, else 0 - employer-only. Not part of totalDeductions/netPay, same as ssnitEmployer.
+  benefitsEmployerCost Decimal @default(0) @map("benefits_employer_cost")
+
   totalDeductions Decimal @map("total_deductions")
   netPay          Decimal @map("net_pay")
   currency        String

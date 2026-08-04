@@ -457,4 +457,56 @@ describe('computePayslip', () => {
     expect(result.nigeriaNhisEmployee).toBe(0);
     expect(result.nigeriaNhisEmployer).toBe(0);
   });
+
+  it('deducts active benefit enrollments from net pay without reducing taxable income', () => {
+    const result = computePayslip({
+      countryCode: 'GH',
+      basicSalary: 1000,
+      benefitEnrollments: [
+        { contributionType: 'PERCENTAGE', employeeContribution: 0.02, employerContribution: 0.03 },
+      ],
+      lineItems: [],
+      taxBands: bands,
+      ssnitRates,
+    });
+
+    // benefit employee = 1000 * 0.02 = 20; employer = 1000 * 0.03 = 30
+    expect(result.benefitsEmployeeDeduction).toBe(20);
+    expect(result.benefitsEmployerCost).toBe(30);
+    // taxable = gross - SSNIT employee only, benefits never enter this calc
+    expect(result.taxableIncome).toBe(945);
+    // total = ssnit(55) + paye(89) + benefits(20) = 164
+    expect(result.totalDeductions).toBe(164);
+    expect(result.netPay).toBe(836);
+  });
+
+  it('sums multiple active benefit enrollments', () => {
+    const result = computePayslip({
+      countryCode: 'GH',
+      basicSalary: 1000,
+      benefitEnrollments: [
+        { contributionType: 'PERCENTAGE', employeeContribution: 0.02, employerContribution: 0.03 },
+        { contributionType: 'FIXED', employeeContribution: 50, employerContribution: 100 },
+      ],
+      lineItems: [],
+      taxBands: bands,
+      ssnitRates,
+    });
+
+    expect(result.benefitsEmployeeDeduction).toBe(70);
+    expect(result.benefitsEmployerCost).toBe(130);
+  });
+
+  it('returns zero benefit contributions when there are no active enrollments', () => {
+    const result = computePayslip({
+      countryCode: 'GH',
+      basicSalary: 1000,
+      lineItems: [],
+      taxBands: bands,
+      ssnitRates,
+    });
+
+    expect(result.benefitsEmployeeDeduction).toBe(0);
+    expect(result.benefitsEmployerCost).toBe(0);
+  });
 });

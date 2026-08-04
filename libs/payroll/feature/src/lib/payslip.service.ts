@@ -2,6 +2,7 @@ import { ConflictException, ForbiddenException, Injectable, NotFoundException } 
 import { PayRun, Payslip, PayslipLineItem } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import {
+  PayrollBenefitEnrollmentRepository,
   PayRunRepository,
   PayrollEmployeeRepository,
   PayslipLineItemRepository,
@@ -9,7 +10,12 @@ import {
   StatutoryRateRepository,
   StatutoryTaxBandRepository,
 } from '@africahr/payroll-data-access';
-import { computePayslip, isPayRunEditable, PayRunStatus } from '@africahr/payroll-domain';
+import {
+  BenefitEnrollmentContribution,
+  computePayslip,
+  isPayRunEditable,
+  PayRunStatus,
+} from '@africahr/payroll-domain';
 import { CreatePayslipLineItemDto } from './dto/create-payslip-line-item.dto';
 
 /** A payslip only carries payRunId - callers displaying a payslip (rather than mutating it) also need the pay run's dates, so this is what the read-facing methods below return. */
@@ -37,6 +43,7 @@ export class PayslipService {
     private readonly employees: PayrollEmployeeRepository,
     private readonly taxBands: StatutoryTaxBandRepository,
     private readonly rates: StatutoryRateRepository,
+    private readonly benefitEnrollments: PayrollBenefitEnrollmentRepository,
     private readonly audit: AuditService,
   ) {}
 
@@ -199,6 +206,7 @@ export class PayslipService {
     const extraRates = await this.fetchExtraStatutoryRates(employee.countryCode, asOf);
     const organizationEmployeeCount =
       (await this.employees.listActiveByOrganization(tenantId, employee.organizationId)).length;
+    const benefitEnrollments = await this.fetchBenefitEnrollments(tenantId, employee.id, asOf);
 
     const currentLineItems = await this.lineItems.listByPayslip(tenantId, payslip.id);
 
@@ -208,6 +216,7 @@ export class PayslipService {
       annualRentPaid: employee.annualRentPaid ? Number(employee.annualRentPaid) : undefined,
       organizationEmployeeCount,
       ...extraRates,
+      benefitEnrollments,
       lineItems: currentLineItems.map((item) => ({ type: item.type, amount: Number(item.amount) })),
       taxBands: bands.map((band) => ({
         order: band.order,
@@ -297,5 +306,19 @@ export class PayslipService {
     }
 
     return {};
+  }
+
+  /** Every active BenefitEnrollment for this employee as of the pay date, converted to the plain-number shape computePayslip expects (Decimal->number conversion happens at this boundary, not in domain logic). */
+  private async fetchBenefitEnrollments(
+    tenantId: string,
+    employeeId: string,
+    asOf: Date,
+  ): Promise<BenefitEnrollmentContribution[]> {
+    const enrollments = await this.benefitEnrollments.listActiveForEmployee(tenantId, employeeId, asOf);
+    return enrollments.map((enrollment) => ({
+      contributionType: enrollment.contributionType,
+      employeeContribution: Number(enrollment.employeeContribution),
+      employerContribution: Number(enrollment.employerContribution),
+    }));
   }
 }

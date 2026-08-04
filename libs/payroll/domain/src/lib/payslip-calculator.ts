@@ -7,6 +7,7 @@ import { applyKenyaPensionableEarningsCap } from './kenya-nssf-cap';
 import { applyKenyaPersonalRelief } from './kenya-personal-relief';
 import { calculateKenyaShif } from './kenya-shif';
 import { isEligibleForNigeriaNhis } from './nigeria-nhis-eligibility';
+import { BenefitEnrollmentContribution, sumBenefitContributions } from './benefit-contribution';
 import { PayslipLineItemType } from './payslip-line-item-type';
 
 /** NSITF and NHIA's OPSSHIP both apply only once the employing organization has this many active employees - per public payroll-compliance summaries, not otherwise confirmed against nsitf.gov.ng/nhia.gov.ng directly (blocked by this environment's egress policy). */
@@ -38,6 +39,8 @@ export interface ComputePayslipInput {
   nigeriaNhisEmployeeRate?: number;
   /** Nigeria only - NHIS employer contribution rate (e.g. 0.1). Employer-only; same gating as nigeriaNhisEmployeeRate. */
   nigeriaNhisEmployerRate?: number;
+  /** Every active BenefitEnrollment for this employee as of the pay date - each plan's premium is summed into benefitsEmployeeDeduction/benefitsEmployerCost. Defaults to no enrollments when omitted. */
+  benefitEnrollments?: readonly BenefitEnrollmentContribution[];
   lineItems: readonly PayslipLineItemInput[];
   taxBands: readonly TaxBand[];
   ssnitRates: SsnitRates;
@@ -64,6 +67,10 @@ export interface ComputedPayslip {
   nigeriaNhisEmployee: number;
   /** Nigeria only, same gating as nigeriaNhisEmployee, else 0 - employer-only. Not part of totalDeductions/netPay. */
   nigeriaNhisEmployer: number;
+  /** Sum of every active benefit-plan employee premium as of the pay date. Post-tax, like an ad-hoc deduction - does not reduce taxableIncome. Part of totalDeductions/netPay. */
+  benefitsEmployeeDeduction: number;
+  /** Sum of every active benefit-plan employer premium as of the pay date - cost-reporting only, not part of totalDeductions/netPay, same as ssnitEmployer. */
+  benefitsEmployerCost: number;
   totalDeductions: number;
   netPay: number;
 }
@@ -117,6 +124,15 @@ export function sumLineItems(
  * taxable income, the safer default: wrongly withholding too much PAYE
  * is a correctable overpayment, wrongly withholding too little risks the
  * tenant under-remitting to FIRS.
+ *
+ * Benefit-plan premiums (health insurance, group life, ...) are summed
+ * across every active BenefitEnrollment the same way NHIS's employee share
+ * is: they reduce netPay via totalDeductions but, being voluntary
+ * tenant-defined business policy rather than statutory withholding, are
+ * treated as post-tax and never reduce taxableIncome. The employer share is
+ * cost-only, same treatment as ssnitEmployer/ghanaTier2PensionEmployer -
+ * see benefit-contribution.ts (duplicated from benefits-domain, not
+ * imported - scope:payroll cannot depend on scope:benefits).
  */
 export function computePayslip(input: ComputePayslipInput): ComputedPayslip {
   const earnings = sumLineItems(input.lineItems, PayslipLineItemType.EARNING);
@@ -157,6 +173,9 @@ export function computePayslip(input: ComputePayslipInput): ComputedPayslip {
     ? roundCurrency(basicSalary * (input.nigeriaNhisEmployerRate ?? 0))
     : 0;
 
+  const { employeeTotal: benefitsEmployeeDeduction, employerTotal: benefitsEmployerCost } =
+    sumBenefitContributions(input.benefitEnrollments ?? [], basicSalary);
+
   const relief =
     input.countryCode === 'NG' ? calculateNigeriaRentRelief(input.annualRentPaid ?? 0) : 0;
   const taxableIncome = roundCurrency(
@@ -171,7 +190,8 @@ export function computePayslip(input: ComputePayslipInput): ComputedPayslip {
       otherDeductions +
       kenyaShifEmployee +
       kenyaHousingLevyEmployee +
-      nigeriaNhisEmployee,
+      nigeriaNhisEmployee +
+      benefitsEmployeeDeduction,
   );
   const netPay = roundCurrency(grossPay - totalDeductions);
 
@@ -189,6 +209,8 @@ export function computePayslip(input: ComputePayslipInput): ComputedPayslip {
     nigeriaNsitfEmployer,
     nigeriaNhisEmployee,
     nigeriaNhisEmployer,
+    benefitsEmployeeDeduction,
+    benefitsEmployerCost,
     totalDeductions,
     netPay,
   };

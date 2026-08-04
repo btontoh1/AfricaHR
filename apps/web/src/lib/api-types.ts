@@ -2780,6 +2780,10 @@ export interface components {
             nigeriaNhisEmployee: string;
             /** @description Nigeria only, same gating as nigeriaNhisEmployee, else "0" - NHIS employer contribution */
             nigeriaNhisEmployer: string;
+            /** @description Sum of every active benefit-plan employee premium as of the pay date, else "0" */
+            benefitsEmployeeDeduction: string;
+            /** @description Sum of every active benefit-plan employer premium as of the pay date, else "0" */
+            benefitsEmployerCost: string;
             totalDeductions: string;
             netPay: string;
             currency: string;

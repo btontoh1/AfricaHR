@@ -19,6 +19,7 @@ describe('PayrollCostReportService', () => {
           kenyaHousingLevyEmployer: 0,
           nigeriaNsitfEmployer: 0,
           nigeriaNhisEmployer: 0,
+          benefitsEmployerCost: 0,
         },
       ]),
     } as unknown as jest.Mocked<PayrollCostReportRepository>;

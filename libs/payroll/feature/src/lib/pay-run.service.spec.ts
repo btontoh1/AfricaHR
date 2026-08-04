@@ -5,6 +5,7 @@ import { PayRun, Prisma } from '@prisma/client';
 import { AppConfigService, encryptAesGcm } from '@africahr/platform-core';
 import { AuditService } from '@africahr/platform-audit';
 import {
+  PayrollBenefitEnrollmentRepository,
   PayRunRepository,
   PayrollEmployeeRepository,
   PayslipRepository,
@@ -28,6 +29,7 @@ describe('PayRunService', () => {
   let employees: jest.Mocked<PayrollEmployeeRepository>;
   let taxBands: jest.Mocked<StatutoryTaxBandRepository>;
   let rates: jest.Mocked<StatutoryRateRepository>;
+  let benefitEnrollments: jest.Mocked<PayrollBenefitEnrollmentRepository>;
   let audit: jest.Mocked<AuditService>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let paystack: jest.Mocked<PaystackTransferClient>;
@@ -120,6 +122,10 @@ describe('PayRunService', () => {
       findEffective: jest.fn().mockResolvedValue({ rate: 0.055 }),
     } as unknown as jest.Mocked<StatutoryRateRepository>;
 
+    benefitEnrollments = {
+      listActiveForEmployee: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<PayrollBenefitEnrollmentRepository>;
+
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
     eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
     paystack = {
@@ -134,6 +140,7 @@ describe('PayRunService', () => {
       employees,
       taxBands,
       rates,
+      benefitEnrollments,
       audit,
       eventEmitter,
       paystack,
@@ -146,7 +153,18 @@ describe('PayRunService', () => {
 
     expect(
       () =>
-        new PayRunService(payRuns, payslips, employees, taxBands, rates, audit, eventEmitter, paystack, badConfig),
+        new PayRunService(
+          payRuns,
+          payslips,
+          employees,
+          taxBands,
+          rates,
+          benefitEnrollments,
+          audit,
+          eventEmitter,
+          paystack,
+          badConfig,
+        ),
     ).toThrow(/PAYMENT_METHOD_ENCRYPTION_KEY must be set/);
   });
 
@@ -336,6 +354,43 @@ describe('PayRunService', () => {
           payeTax: 7450,
           netPay: 87050,
         }),
+      );
+    });
+
+    it("deducts the employee's active benefit enrollments from net pay", async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'DRAFT' }));
+      employees.listActiveByOrganization.mockResolvedValue([
+        {
+          id: 'emp-1',
+          organizationId: 'org-1',
+          firstName: 'Kwame',
+          lastName: 'Asante',
+          baseSalary: new Prisma.Decimal(1000),
+          currency: 'GHS',
+          annualRentPaid: null,
+          countryCode: 'GH',
+        },
+      ]);
+      benefitEnrollments.listActiveForEmployee.mockResolvedValue([
+        {
+          contributionType: 'PERCENTAGE',
+          employeeContribution: new Prisma.Decimal(0.02),
+          employerContribution: new Prisma.Decimal(0.03),
+        } as never,
+      ]);
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PROCESSING' }));
+
+      await service.process('tenant-1', 'run-1');
+
+      expect(benefitEnrollments.listActiveForEmployee).toHaveBeenCalledWith(
+        'tenant-1',
+        'emp-1',
+        expect.any(Date),
+      );
+      // benefit employee = 1000 * 0.02 = 20, on top of the 5.5% mock pension (55) and 10% flat-band PAYE
+      expect(payslips.upsert).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ benefitsEmployeeDeduction: 20, benefitsEmployerCost: 30 }),
       );
     });
 

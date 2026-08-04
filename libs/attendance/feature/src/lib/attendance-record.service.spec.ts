@@ -1,4 +1,5 @@
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AttendancePolicy, AttendanceRecord, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import {
@@ -6,7 +7,7 @@ import {
   AttendancePolicyRepository,
   AttendanceRecordRepository,
 } from '@africahr/attendance-data-access';
-import { AttendanceRecordService } from './attendance-record.service';
+import { ATTENDANCE_RECORD_ADJUSTED_EVENT, AttendanceRecordService } from './attendance-record.service';
 
 describe('AttendanceRecordService', () => {
   let service: AttendanceRecordService;
@@ -14,6 +15,7 @@ describe('AttendanceRecordService', () => {
   let policies: jest.Mocked<AttendancePolicyRepository>;
   let employees: jest.Mocked<AttendanceEmployeeRepository>;
   let audit: jest.Mocked<AuditService>;
+  let eventEmitter: jest.Mocked<EventEmitter2>;
 
   const now = new Date('2026-02-02T17:00:00Z');
 
@@ -73,8 +75,9 @@ describe('AttendanceRecordService', () => {
     } as unknown as jest.Mocked<AttendanceEmployeeRepository>;
 
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
+    eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
 
-    service = new AttendanceRecordService(records, policies, employees, audit);
+    service = new AttendanceRecordService(records, policies, employees, audit, eventEmitter);
   });
 
   afterEach(() => {
@@ -277,6 +280,27 @@ describe('AttendanceRecordService', () => {
         expect.objectContaining({ hoursWorked: undefined, overtimeHours: undefined }),
       );
     });
+
+    it('emits a notification event to the employee when they have portal access', async () => {
+      records.create.mockResolvedValue(makeRecord({ employeeId: 'emp-1' }));
+      employees.findById.mockResolvedValue({ id: 'emp-1', userId: 'emp-1-user' });
+
+      await service.create('tenant-1', { employeeId: 'emp-1', date: '2026-02-02' });
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        ATTENDANCE_RECORD_ADJUSTED_EVENT,
+        expect.objectContaining({ tenantId: 'tenant-1', employeeUserId: 'emp-1-user', action: 'created' }),
+      );
+    });
+
+    it('does not emit when the employee has no portal access', async () => {
+      records.create.mockResolvedValue(makeRecord({ employeeId: 'emp-1' }));
+      employees.findById.mockResolvedValue({ id: 'emp-1', userId: null });
+
+      await service.create('tenant-1', { employeeId: 'emp-1', date: '2026-02-02' });
+
+      expect(eventEmitter.emit).not.toHaveBeenCalled();
+    });
   });
 
   describe('update (HR correction)', () => {
@@ -333,6 +357,19 @@ describe('AttendanceRecordService', () => {
         'tenant-1',
         'rec-1',
         expect.objectContaining({ hoursWorked: undefined, overtimeHours: undefined }),
+      );
+    });
+
+    it('emits a notification event to the employee', async () => {
+      records.findById.mockResolvedValue(makeRecord({ employeeId: 'emp-1' }));
+      records.update.mockResolvedValue(makeRecord({ employeeId: 'emp-1' }));
+      employees.findById.mockResolvedValue({ id: 'emp-1', userId: 'emp-1-user' });
+
+      await service.update('tenant-1', 'rec-1', { notes: 'corrected' });
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        ATTENDANCE_RECORD_ADJUSTED_EVENT,
+        expect.objectContaining({ tenantId: 'tenant-1', employeeUserId: 'emp-1-user', action: 'updated' }),
       );
     });
   });

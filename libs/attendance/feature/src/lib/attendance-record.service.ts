@@ -1,4 +1,5 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AttendanceRecord, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import {
@@ -22,6 +23,29 @@ function translateReferenceError(error: unknown, employeeId: string): never {
   throw error;
 }
 
+/**
+ * Emitted only from the HR-manual create()/update() paths, not from
+ * clockIn()/clockOut() - those are self-service and happen up to twice a
+ * day per employee, so notifying on every clock event would be noise. A
+ * manual create/edit is HR correcting or backfilling an employee's
+ * record, which the employee genuinely benefits from knowing about.
+ * Consumed by a listener living in notifications-feature - scope:attendance
+ * is not allowed to depend on scope:notifications directly (see
+ * eslint.config.mjs module boundaries), so this event is the decoupling
+ * point between the two. Both sides must agree on this literal string and
+ * payload shape informally; there's no shared type between scopes for it.
+ */
+export const ATTENDANCE_RECORD_ADJUSTED_EVENT = 'attendance.record.adjusted';
+
+export interface AttendanceRecordAdjustedEvent {
+  tenantId: string;
+  employeeUserId: string;
+  date: string;
+  clockIn: string | null;
+  clockOut: string | null;
+  action: 'created' | 'updated';
+}
+
 @Injectable()
 export class AttendanceRecordService {
   constructor(
@@ -29,6 +53,7 @@ export class AttendanceRecordService {
     private readonly policies: AttendancePolicyRepository,
     private readonly employees: AttendanceEmployeeRepository,
     private readonly audit: AuditService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async resolveOwnEmployeeId(tenantId: string, userId: string): Promise<string> {
@@ -179,7 +204,31 @@ export class AttendanceRecordService {
       resourceId: record.id,
     });
 
+    await this.notifyOfAdjustment(tenantId, record, 'created');
+
     return record;
+  }
+
+  /** Silent no-op if the employee can no longer be found or has no portal access. */
+  private async notifyOfAdjustment(
+    tenantId: string,
+    record: AttendanceRecord,
+    action: 'created' | 'updated',
+  ): Promise<void> {
+    const employee = await this.employees.findById(tenantId, record.employeeId);
+    if (!employee?.userId) {
+      return;
+    }
+
+    const event: AttendanceRecordAdjustedEvent = {
+      tenantId,
+      employeeUserId: employee.userId,
+      date: record.date.toISOString().slice(0, 10),
+      clockIn: record.clockIn?.toISOString() ?? null,
+      clockOut: record.clockOut?.toISOString() ?? null,
+      action,
+    };
+    this.eventEmitter.emit(ATTENDANCE_RECORD_ADJUSTED_EVENT, event);
   }
 
   async update(
@@ -217,6 +266,8 @@ export class AttendanceRecordService {
       resourceType: 'AttendanceRecord',
       resourceId: id,
     });
+
+    await this.notifyOfAdjustment(tenantId, updated, 'updated');
 
     return updated;
   }

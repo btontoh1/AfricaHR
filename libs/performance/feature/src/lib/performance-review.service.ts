@@ -317,6 +317,36 @@ export class PerformanceReviewService {
     this.eventEmitter.emit(PERFORMANCE_REVIEW_COMPLETED_EVENT, event);
   }
 
+  /**
+   * Undoes a review started for the wrong employee/cycle, or one nobody
+   * intends to finish. Only reachable from DRAFT/SELF_SUBMITTED - a
+   * COMPLETED review is a finalized record, not a mistake to undo (see
+   * canTransitionReviewStatus's doc comment). No notification: unlike
+   * completion, there's no one who needs to be told a review that was
+   * never finished is being withdrawn.
+   */
+  async cancel(tenantId: string, id: string, actorId?: string): Promise<PerformanceReview> {
+    const review = await this.findById(tenantId, id);
+    if (!canTransitionReviewStatus(review.status, 'CANCELLED')) {
+      throw new ConflictException(`Cannot cancel a review in status ${review.status}`);
+    }
+
+    const updated = await this.reviews.update(tenantId, id, {
+      status: 'CANCELLED',
+      updatedBy: actorId,
+    });
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'performance.review.cancelled',
+      resourceType: 'PerformanceReview',
+      resourceId: id,
+    });
+
+    return updated;
+  }
+
   private async assertIsDirectManager(
     tenantId: string,
     userId: string,

@@ -34,6 +34,7 @@ const STATUS_FILTERS: (PerformanceReviewStatus | typeof ALL)[] = [
   'DRAFT',
   'SELF_SUBMITTED',
   'COMPLETED',
+  'CANCELLED',
 ];
 
 export function AllReviewsAdminList({ tenantId }: { tenantId: string }) {

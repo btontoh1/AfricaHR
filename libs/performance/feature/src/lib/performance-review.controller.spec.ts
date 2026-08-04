@@ -22,6 +22,7 @@ describe('PerformanceReviewController', () => {
       findById: jest.fn(),
       start: jest.fn(),
       submitManagerAssessment: jest.fn(),
+      cancel: jest.fn(),
     } as unknown as jest.Mocked<PerformanceReviewService>;
 
     controller = new PerformanceReviewController(service);
@@ -55,5 +56,11 @@ describe('PerformanceReviewController', () => {
     controller.submitManagerAssessment('tenant-1', 'rev-1', dto, hrManager);
 
     expect(service.submitManagerAssessment).toHaveBeenCalledWith('tenant-1', 'rev-1', dto, 'hr-1');
+  });
+
+  it('delegates cancel with tenant, id, and actor', () => {
+    controller.cancel('tenant-1', 'rev-1', hrManager);
+
+    expect(service.cancel).toHaveBeenCalledWith('tenant-1', 'rev-1', 'hr-1');
   });
 });

@@ -299,3 +299,21 @@ export function useStartReviewForEmployee(tenantId: string) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: allReviewsKey(tenantId) }),
   });
 }
+
+export function useCancelReview(tenantId: string, id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await apiClient.POST(
+        '/api/tenants/{tenantId}/performance-reviews/{id}/cancel',
+        { params: { path: { tenantId, id } } },
+      );
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: allReviewsKey(tenantId) });
+      queryClient.invalidateQueries({ queryKey: allReviewKey(tenantId, id) });
+    },
+  });
+}

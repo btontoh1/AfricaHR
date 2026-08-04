@@ -251,6 +251,66 @@ describe('PayslipService', () => {
         expect.objectContaining({ action: 'payroll.payslip.line_item_added' }),
       );
     });
+
+    it("fetches Ghana's Tier 2 pension rate when recomputing a Ghana payslip", async () => {
+      payslips.findById.mockResolvedValue(makePayslip());
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'PROCESSING' }));
+      lineItems.create.mockResolvedValue({ id: 'li-1' } as PayslipLineItem);
+      rates.findEffective.mockImplementation((_countryCode, code) =>
+        Promise.resolve(
+          code === 'GHANA_TIER2_PENSION_EMPLOYER' ? ({ rate: 0.05 } as never) : ({ rate: 0.055 } as never),
+        ),
+      );
+
+      await service.addLineItem('tenant-1', 'payslip-1', { type: 'EARNING', code: 'OVERTIME', amount: 150 });
+
+      expect(rates.findEffective).toHaveBeenCalledWith('GH', 'GHANA_TIER2_PENSION_EMPLOYER', expect.any(Date));
+      expect(payslips.upsert).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ ghanaTier2PensionEmployer: 50 }),
+      );
+    });
+
+    it("throws ConflictException when Ghana's Tier 2 pension rate is missing", async () => {
+      payslips.findById.mockResolvedValue(makePayslip());
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'PROCESSING' }));
+      rates.findEffective.mockImplementation((_countryCode, code) =>
+        Promise.resolve(code === 'GHANA_TIER2_PENSION_EMPLOYER' ? null : ({ rate: 0.055 } as never)),
+      );
+
+      await expect(
+        service.addLineItem('tenant-1', 'payslip-1', { type: 'EARNING', code: 'OVERTIME', amount: 150 }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it("fetches Kenya's SHIF and Housing Levy rates when recomputing a Kenya payslip", async () => {
+      payslips.findById.mockResolvedValue(makePayslip({ countryCode: 'KE' }));
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'PROCESSING' }));
+      employees.findById.mockResolvedValue({
+        id: 'emp-1',
+        baseSalary: new Prisma.Decimal(50_000),
+        currency: 'KES',
+        countryCode: 'KE',
+      } as never);
+      lineItems.create.mockResolvedValue({ id: 'li-1' } as PayslipLineItem);
+      rates.findEffective.mockImplementation((_countryCode, code) => {
+        if (code === 'KENYA_SHIF_EMPLOYEE') return Promise.resolve({ rate: 0.0275 } as never);
+        if (code === 'KENYA_HOUSING_LEVY_EMPLOYEE') return Promise.resolve({ rate: 0.015 } as never);
+        if (code === 'KENYA_HOUSING_LEVY_EMPLOYER') return Promise.resolve({ rate: 0.015 } as never);
+        return Promise.resolve({ rate: 0.06 } as never);
+      });
+
+      await service.addLineItem('tenant-1', 'payslip-1', { type: 'EARNING', code: 'BONUS', amount: 0 });
+
+      expect(payslips.upsert).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({
+          kenyaShifEmployee: expect.any(Number),
+          kenyaHousingLevyEmployee: expect.any(Number),
+          kenyaHousingLevyEmployer: expect.any(Number),
+        }),
+      );
+    });
   });
 
   describe('removeLineItem', () => {

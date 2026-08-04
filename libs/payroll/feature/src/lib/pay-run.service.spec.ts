@@ -362,6 +362,132 @@ describe('PayRunService', () => {
 
       await expect(service.process('tenant-1', 'run-1')).rejects.toThrow(ConflictException);
     });
+
+    it("fetches Ghana's Tier 2 pension rate and applies it as an employer-only cost", async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'DRAFT' }));
+      employees.listActiveByOrganization.mockResolvedValue([
+        {
+          id: 'emp-1',
+          firstName: 'Kwame',
+          lastName: 'Asante',
+          baseSalary: new Prisma.Decimal(1000),
+          currency: 'GHS',
+          annualRentPaid: null,
+          countryCode: 'GH',
+        },
+      ]);
+      rates.findEffective.mockImplementation((_countryCode, code) =>
+        Promise.resolve(
+          code === 'GHANA_TIER2_PENSION_EMPLOYER' ? ({ rate: 0.05 } as never) : ({ rate: 0.055 } as never),
+        ),
+      );
+
+      await service.process('tenant-1', 'run-1');
+
+      expect(rates.findEffective).toHaveBeenCalledWith('GH', 'GHANA_TIER2_PENSION_EMPLOYER', expect.any(Date));
+      expect(payslips.upsert).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ ghanaTier2PensionEmployer: 50 }),
+      );
+    });
+
+    it("throws ConflictException when Ghana's Tier 2 pension rate is missing", async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'DRAFT' }));
+      employees.listActiveByOrganization.mockResolvedValue([
+        {
+          id: 'emp-1',
+          firstName: 'Kwame',
+          lastName: 'Asante',
+          baseSalary: new Prisma.Decimal(1000),
+          currency: 'GHS',
+          annualRentPaid: null,
+          countryCode: 'GH',
+        },
+      ]);
+      rates.findEffective.mockImplementation((_countryCode, code) =>
+        Promise.resolve(code === 'GHANA_TIER2_PENSION_EMPLOYER' ? null : ({ rate: 0.055 } as never)),
+      );
+
+      await expect(service.process('tenant-1', 'run-1')).rejects.toThrow(ConflictException);
+    });
+
+    it("fetches Kenya's SHIF and Housing Levy rates and applies them", async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'DRAFT' }));
+      employees.listActiveByOrganization.mockResolvedValue([
+        {
+          id: 'emp-1',
+          firstName: 'Amina',
+          lastName: 'Wanjiru',
+          baseSalary: new Prisma.Decimal(50_000),
+          currency: 'KES',
+          annualRentPaid: null,
+          countryCode: 'KE',
+        },
+      ]);
+      rates.findEffective.mockImplementation((_countryCode, code) => {
+        if (code === 'KENYA_SHIF_EMPLOYEE') return Promise.resolve({ rate: 0.0275 } as never);
+        if (code === 'KENYA_HOUSING_LEVY_EMPLOYEE') return Promise.resolve({ rate: 0.015 } as never);
+        if (code === 'KENYA_HOUSING_LEVY_EMPLOYER') return Promise.resolve({ rate: 0.015 } as never);
+        return Promise.resolve({ rate: 0.06 } as never);
+      });
+
+      await service.process('tenant-1', 'run-1');
+
+      expect(rates.findEffective).toHaveBeenCalledWith('KE', 'KENYA_SHIF_EMPLOYEE', expect.any(Date));
+      expect(rates.findEffective).toHaveBeenCalledWith('KE', 'KENYA_HOUSING_LEVY_EMPLOYEE', expect.any(Date));
+      expect(rates.findEffective).toHaveBeenCalledWith('KE', 'KENYA_HOUSING_LEVY_EMPLOYER', expect.any(Date));
+      expect(payslips.upsert).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({
+          kenyaShifEmployee: 1375,
+          kenyaHousingLevyEmployee: 750,
+          kenyaHousingLevyEmployer: 750,
+        }),
+      );
+    });
+
+    it.each(['KENYA_SHIF_EMPLOYEE', 'KENYA_HOUSING_LEVY_EMPLOYEE', 'KENYA_HOUSING_LEVY_EMPLOYER'])(
+      'throws ConflictException when Kenya\'s %s rate is missing',
+      async (missingCode) => {
+        payRuns.findById.mockResolvedValue(makePayRun({ status: 'DRAFT' }));
+        employees.listActiveByOrganization.mockResolvedValue([
+          {
+            id: 'emp-1',
+            firstName: 'Amina',
+            lastName: 'Wanjiru',
+            baseSalary: new Prisma.Decimal(50_000),
+            currency: 'KES',
+            annualRentPaid: null,
+            countryCode: 'KE',
+          },
+        ]);
+        rates.findEffective.mockImplementation((_countryCode, code) =>
+          Promise.resolve(code === missingCode ? null : ({ rate: 0.06 } as never)),
+        );
+
+        await expect(service.process('tenant-1', 'run-1')).rejects.toThrow(ConflictException);
+      },
+    );
+
+    it('does not fetch Ghana or Kenya extra rates for a Nigeria payslip', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'DRAFT' }));
+      employees.listActiveByOrganization.mockResolvedValue([
+        {
+          id: 'emp-1',
+          firstName: 'Chidi',
+          lastName: 'Okafor',
+          baseSalary: new Prisma.Decimal(100_000),
+          currency: 'NGN',
+          annualRentPaid: null,
+          countryCode: 'NG',
+        },
+      ]);
+
+      await service.process('tenant-1', 'run-1');
+
+      expect(rates.findEffective).not.toHaveBeenCalledWith('NG', 'GHANA_TIER2_PENSION_EMPLOYER', expect.any(Date));
+      expect(rates.findEffective).not.toHaveBeenCalledWith('NG', 'KENYA_SHIF_EMPLOYEE', expect.any(Date));
+    });
   });
 
   describe('approve', () => {

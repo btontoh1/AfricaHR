@@ -45,6 +45,18 @@ export class PayslipResponseDto {
   @ApiProperty()
   ssnitEmployer!: string;
 
+  @ApiProperty({ description: 'Ghana only, else "0" - Tier 2 employer-only pension contribution' })
+  ghanaTier2PensionEmployer!: string;
+
+  @ApiProperty({ description: 'Kenya only, else "0" - SHIF employee contribution' })
+  kenyaShifEmployee!: string;
+
+  @ApiProperty({ description: 'Kenya only, else "0" - Affordable Housing Levy employee contribution' })
+  kenyaHousingLevyEmployee!: string;
+
+  @ApiProperty({ description: 'Kenya only, else "0" - Affordable Housing Levy employer contribution' })
+  kenyaHousingLevyEmployer!: string;
+
   @ApiProperty()
   totalDeductions!: string;
 

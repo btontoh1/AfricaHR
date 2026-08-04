@@ -24,6 +24,8 @@ describe('PayrollCostReportRepository', () => {
         netPay: decimal(2400),
         totalDeductions: decimal(600),
         ssnitEmployer: decimal(390),
+        ghanaTier2PensionEmployer: decimal(150),
+        kenyaHousingLevyEmployer: decimal(0),
       },
     ]);
 
@@ -33,7 +35,15 @@ describe('PayrollCostReportRepository', () => {
     });
 
     expect(result).toEqual([
-      { currency: 'GHS', grossPay: 3000, netPay: 2400, totalDeductions: 600, ssnitEmployer: 390 },
+      {
+        currency: 'GHS',
+        grossPay: 3000,
+        netPay: 2400,
+        totalDeductions: 600,
+        ssnitEmployer: 390,
+        ghanaTier2PensionEmployer: 150,
+        kenyaHousingLevyEmployer: 0,
+      },
     ]);
   });
 
@@ -56,6 +66,8 @@ describe('PayrollCostReportRepository', () => {
         netPay: true,
         totalDeductions: true,
         ssnitEmployer: true,
+        ghanaTier2PensionEmployer: true,
+        kenyaHousingLevyEmployer: true,
       },
     });
   });

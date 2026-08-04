@@ -1106,6 +1106,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/leave-balances/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyLeaveBalanceController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/leave-requests/team": {
         parameters: {
             query?: never;
@@ -2884,6 +2900,14 @@ export interface components {
             startDate: string;
             endDate: string;
             reason?: string;
+        };
+        LeaveBalanceResponseDto: {
+            leaveTypeId: string;
+            leaveTypeName: string;
+            entitledDays: number;
+            usedDays: number;
+            remainingDays: number;
+            year: number;
         };
         RejectLeaveRequestDto: {
             /** @example Insufficient team coverage for the requested dates */
@@ -5642,6 +5666,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LeaveRequestResponseDto"];
+                };
+            };
+        };
+    };
+    MyLeaveBalanceController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaveBalanceResponseDto"][];
                 };
             };
         };

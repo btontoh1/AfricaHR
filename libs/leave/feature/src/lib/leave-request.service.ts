@@ -44,6 +44,32 @@ export interface LeaveRequestCreatedEvent {
   endDate: string;
 }
 
+/**
+ * Emitted after a leave request is approved, rejected, or cancelled -
+ * notifying the employee whose request it is. Unlike
+ * LeaveRequestCreatedEvent's manager/HR audience, this always has a single
+ * recipient (the employee), so actorUserId is used to skip
+ * self-notification: approve()/reject() are always done by someone else
+ * (a manager or HR/admin), but cancelRequest() can be the employee acting
+ * on their own request (cancelForSelf), so without this they'd be told
+ * about their own cancellation. Consumed by a listener living in
+ * notifications-feature — see LeaveRequestCreatedEvent's doc comment for
+ * why this event is a plain string/payload contract rather than a shared
+ * type.
+ */
+export const LEAVE_REQUEST_DECIDED_EVENT = 'leave.request.decided';
+
+export interface LeaveRequestDecidedEvent {
+  tenantId: string;
+  employeeUserId: string;
+  leaveTypeName: string;
+  startDate: string;
+  endDate: string;
+  status: LeaveRequest['status'];
+  rejectionReason: string | null;
+  actorUserId: string | null;
+}
+
 interface EffectiveBalance {
   balance: LeaveBalance | null;
   leaveType: LeaveType;
@@ -179,6 +205,32 @@ export class LeaveRequestService {
     this.eventEmitter.emit(LEAVE_REQUEST_CREATED_EVENT, event);
   }
 
+  /** Silent no-op if the employee can no longer be found or has no portal access. */
+  private async notifyOfDecision(
+    tenantId: string,
+    request: LeaveRequest,
+    actorId?: string,
+  ): Promise<void> {
+    const employee = await this.employees.findById(tenantId, request.employeeId);
+    if (!employee?.userId) {
+      return;
+    }
+
+    const leaveType = await this.leaveTypes.findById(tenantId, request.leaveTypeId);
+
+    const event: LeaveRequestDecidedEvent = {
+      tenantId,
+      employeeUserId: employee.userId,
+      leaveTypeName: leaveType?.name ?? 'Leave',
+      startDate: request.startDate.toISOString().slice(0, 10),
+      endDate: request.endDate.toISOString().slice(0, 10),
+      status: request.status,
+      rejectionReason: request.rejectionReason,
+      actorUserId: actorId ?? null,
+    };
+    this.eventEmitter.emit(LEAVE_REQUEST_DECIDED_EVENT, event);
+  }
+
   async findById(tenantId: string, id: string): Promise<LeaveRequest> {
     const request = await this.requests.findById(tenantId, id);
     if (!request) {
@@ -274,6 +326,8 @@ export class LeaveRequestService {
       resourceId: request.id,
     });
 
+    await this.notifyOfDecision(tenantId, updated, actorId);
+
     return updated;
   }
 
@@ -356,6 +410,8 @@ export class LeaveRequestService {
       resourceId: id,
     });
 
+    await this.notifyOfDecision(tenantId, updated, approverUserId);
+
     return updated;
   }
 
@@ -385,6 +441,8 @@ export class LeaveRequestService {
       resourceId: id,
       metadata: { rejectionReason },
     });
+
+    await this.notifyOfDecision(tenantId, updated, approverUserId);
 
     return updated;
   }

@@ -9,6 +9,7 @@ import { NotificationService } from './notification.service';
 import { MyNotificationController } from './my-notification.controller';
 import { NotificationController } from './notification.controller';
 import { LeaveRequestNotificationListener } from './leave-request-notification.listener';
+import { LeaveRequestDecidedNotificationListener } from './leave-request-decided-notification.listener';
 import { PerformanceReviewNotificationListener } from './performance-review-notification.listener';
 import { PerformanceReviewCompletedNotificationListener } from './performance-review-completed-notification.listener';
 import { RecruitmentApplicationNotificationListener } from './recruitment-application-notification.listener';
@@ -40,6 +41,7 @@ import {
     NotificationTemplateService,
     NotificationService,
     LeaveRequestNotificationListener,
+    LeaveRequestDecidedNotificationListener,
     PerformanceReviewNotificationListener,
     PerformanceReviewCompletedNotificationListener,
     RecruitmentApplicationNotificationListener,

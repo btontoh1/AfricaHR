@@ -16,6 +16,7 @@ import {
   PayrollEmployeePaymentMethod,
   PayRunRepository,
   PayrollEmployeeRepository,
+  PayrollLeaveRequestRepository,
   PayslipRepository,
   PayslipWithLineItems,
   StatutoryRateRepository,
@@ -92,6 +93,7 @@ export class PayRunService {
     private readonly taxBands: StatutoryTaxBandRepository,
     private readonly rates: StatutoryRateRepository,
     private readonly benefitEnrollments: PayrollBenefitEnrollmentRepository,
+    private readonly leaveRequests: PayrollLeaveRequestRepository,
     private readonly audit: AuditService,
     private readonly eventEmitter: EventEmitter2,
     private readonly paystack: PaystackTransferClient,
@@ -188,6 +190,12 @@ export class PayRunService {
 
       const extraRates = await this.fetchExtraStatutoryRates(employee.countryCode, asOf);
       const benefitEnrollments = await this.fetchBenefitEnrollments(tenantId, employee.id, asOf);
+      const unpaidLeaveDays = await this.leaveRequests.sumUnpaidDays(
+        tenantId,
+        employee.id,
+        payRun.periodStart,
+        payRun.periodEnd,
+      );
 
       const existingPayslip = await this.payslips.findByPayRunAndEmployee(tenantId, id, employee.id);
       const lineItemInputs = (existingPayslip?.lineItems ?? []).map((item) => ({
@@ -202,6 +210,9 @@ export class PayRunService {
         organizationEmployeeCount: eligibleEmployees.length,
         ...extraRates,
         benefitEnrollments,
+        unpaidLeaveDays,
+        periodStart: payRun.periodStart,
+        periodEnd: payRun.periodEnd,
         lineItems: lineItemInputs,
         taxBands: bands.map((band) => ({
           order: band.order,

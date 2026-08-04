@@ -722,6 +722,9 @@ model Payslip {
   /// Sum of every active BenefitEnrollment's employer premium as of the pay date, else 0 - employer-only. Not part of totalDeductions/netPay, same as ssnitEmployer.
   benefitsEmployerCost Decimal @default(0) @map("benefits_employer_cost")
 
+  /// Value of unpaid-leave days within the pay period at the daily rate, else 0. Informational only - already baked into basicSalary/grossPay above, NOT part of totalDeductions (that would double-count it). See payslip-calculator.ts (payroll-domain).
+  unpaidLeaveDeduction Decimal @default(0) @map("unpaid_leave_deduction")
+
   totalDeductions Decimal @map("total_deductions")
   netPay          Decimal @map("net_pay")
   currency        String

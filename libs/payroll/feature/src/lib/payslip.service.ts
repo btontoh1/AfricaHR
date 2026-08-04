@@ -5,6 +5,7 @@ import {
   PayrollBenefitEnrollmentRepository,
   PayRunRepository,
   PayrollEmployeeRepository,
+  PayrollLeaveRequestRepository,
   PayslipLineItemRepository,
   PayslipRepository,
   StatutoryRateRepository,
@@ -44,6 +45,7 @@ export class PayslipService {
     private readonly taxBands: StatutoryTaxBandRepository,
     private readonly rates: StatutoryRateRepository,
     private readonly benefitEnrollments: PayrollBenefitEnrollmentRepository,
+    private readonly leaveRequests: PayrollLeaveRequestRepository,
     private readonly audit: AuditService,
   ) {}
 
@@ -207,6 +209,12 @@ export class PayslipService {
     const organizationEmployeeCount =
       (await this.employees.listActiveByOrganization(tenantId, employee.organizationId)).length;
     const benefitEnrollments = await this.fetchBenefitEnrollments(tenantId, employee.id, asOf);
+    const unpaidLeaveDays = await this.leaveRequests.sumUnpaidDays(
+      tenantId,
+      employee.id,
+      payRun.periodStart,
+      payRun.periodEnd,
+    );
 
     const currentLineItems = await this.lineItems.listByPayslip(tenantId, payslip.id);
 
@@ -217,6 +225,9 @@ export class PayslipService {
       organizationEmployeeCount,
       ...extraRates,
       benefitEnrollments,
+      unpaidLeaveDays,
+      periodStart: payRun.periodStart,
+      periodEnd: payRun.periodEnd,
       lineItems: currentLineItems.map((item) => ({ type: item.type, amount: Number(item.amount) })),
       taxBands: bands.map((band) => ({
         order: band.order,

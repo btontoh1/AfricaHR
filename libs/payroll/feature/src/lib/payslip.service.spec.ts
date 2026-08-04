@@ -6,6 +6,7 @@ import {
   PayrollBenefitEnrollmentRepository,
   PayRunRepository,
   PayrollEmployeeRepository,
+  PayrollLeaveRequestRepository,
   PayslipLineItemRepository,
   PayslipRepository,
   StatutoryRateRepository,
@@ -22,6 +23,7 @@ describe('PayslipService', () => {
   let taxBands: jest.Mocked<StatutoryTaxBandRepository>;
   let rates: jest.Mocked<StatutoryRateRepository>;
   let benefitEnrollments: jest.Mocked<PayrollBenefitEnrollmentRepository>;
+  let leaveRequests: jest.Mocked<PayrollLeaveRequestRepository>;
   let audit: jest.Mocked<AuditService>;
 
   function makePayslip(overrides: Partial<PayslipWithLineItems> = {}): PayslipWithLineItems {
@@ -116,6 +118,10 @@ describe('PayslipService', () => {
       listActiveForEmployee: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<PayrollBenefitEnrollmentRepository>;
 
+    leaveRequests = {
+      sumUnpaidDays: jest.fn().mockResolvedValue(0),
+    } as unknown as jest.Mocked<PayrollLeaveRequestRepository>;
+
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
 
     service = new PayslipService(
@@ -126,6 +132,7 @@ describe('PayslipService', () => {
       taxBands,
       rates,
       benefitEnrollments,
+      leaveRequests,
       audit,
     );
   });
@@ -403,6 +410,36 @@ describe('PayslipService', () => {
       expect(payslips.upsert).toHaveBeenCalledWith(
         'tenant-1',
         expect.objectContaining({ benefitsEmployeeDeduction: 20, benefitsEmployerCost: 30 }),
+      );
+    });
+
+    it("reduces the employee's basic salary in the recompute for unpaid leave within the pay period", async () => {
+      payslips.findById.mockResolvedValue(makePayslip());
+      payRuns.findById.mockResolvedValue(
+        makePayRun({ status: 'PROCESSING', periodStart: new Date('2026-01-01'), periodEnd: new Date('2026-01-31') }),
+      );
+      lineItems.create.mockResolvedValue({ id: 'li-1' } as PayslipLineItem);
+      employees.findById.mockResolvedValue({
+        id: 'emp-1',
+        organizationId: 'org-1',
+        baseSalary: new Prisma.Decimal(2000),
+        currency: 'GHS',
+        countryCode: 'GH',
+      } as never);
+      // Jan 2026 has 22 working days; 2 unpaid days at 2000 = (2000/22)*2 ≈ 181.82
+      leaveRequests.sumUnpaidDays.mockResolvedValue(2);
+
+      await service.addLineItem('tenant-1', 'payslip-1', { type: 'EARNING', code: 'OVERTIME', amount: 0 });
+
+      expect(leaveRequests.sumUnpaidDays).toHaveBeenCalledWith(
+        'tenant-1',
+        'emp-1',
+        new Date('2026-01-01'),
+        new Date('2026-01-31'),
+      );
+      expect(payslips.upsert).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ unpaidLeaveDeduction: 181.82, basicSalary: 1818.18 }),
       );
     });
   });

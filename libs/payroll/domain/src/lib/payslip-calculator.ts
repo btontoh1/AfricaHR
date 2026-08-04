@@ -8,6 +8,7 @@ import { applyKenyaPersonalRelief } from './kenya-personal-relief';
 import { calculateKenyaShif } from './kenya-shif';
 import { isEligibleForNigeriaNhis } from './nigeria-nhis-eligibility';
 import { BenefitEnrollmentContribution, sumBenefitContributions } from './benefit-contribution';
+import { computeUnpaidLeaveDeduction } from './unpaid-leave-deduction';
 import { PayslipLineItemType } from './payslip-line-item-type';
 
 /** NSITF and NHIA's OPSSHIP both apply only once the employing organization has this many active employees - per public payroll-compliance summaries, not otherwise confirmed against nsitf.gov.ng/nhia.gov.ng directly (blocked by this environment's egress policy). */
@@ -41,12 +42,18 @@ export interface ComputePayslipInput {
   nigeriaNhisEmployerRate?: number;
   /** Every active BenefitEnrollment for this employee as of the pay date - each plan's premium is summed into benefitsEmployeeDeduction/benefitsEmployerCost. Defaults to no enrollments when omitted. */
   benefitEnrollments?: readonly BenefitEnrollmentContribution[];
+  /** Sum of daysRequested for every APPROVED leave request on an unpaid LeaveType falling entirely within the pay period (periodStart/periodEnd below) - see PayrollLeaveRequestRepository. Defaults to 0 (no unpaid leave) when omitted. */
+  unpaidLeaveDays?: number;
+  /** The pay run's period bounds - used only to derive unpaidLeaveDays' daily-rate denominator (see unpaid-leave-deduction.ts). Required whenever unpaidLeaveDays is nonzero; ignored otherwise. */
+  periodStart?: Date;
+  periodEnd?: Date;
   lineItems: readonly PayslipLineItemInput[];
   taxBands: readonly TaxBand[];
   ssnitRates: SsnitRates;
 }
 
 export interface ComputedPayslip {
+  /** The employee's pay-period basic salary, already net of unpaidLeaveDeduction (see that field below) - not always equal to the contracted basicSalary passed in. */
   basicSalary: number;
   grossPay: number;
   taxableIncome: number;
@@ -71,6 +78,8 @@ export interface ComputedPayslip {
   benefitsEmployeeDeduction: number;
   /** Sum of every active benefit-plan employer premium as of the pay date - cost-reporting only, not part of totalDeductions/netPay, same as ssnitEmployer. */
   benefitsEmployerCost: number;
+  /** Value of unpaidLeaveDays at the pay period's daily rate, else 0. Informational only - unlike benefitsEmployeeDeduction, this is NOT part of totalDeductions; it already reduced basicSalary/grossPay (and therefore taxableIncome) upstream, since it's pay never owed rather than a withholding. See unpaid-leave-deduction.ts. */
+  unpaidLeaveDeduction: number;
   totalDeductions: number;
   netPay: number;
 }
@@ -133,12 +142,29 @@ export function sumLineItems(
  * cost-only, same treatment as ssnitEmployer/ghanaTier2PensionEmployer -
  * see benefit-contribution.ts (duplicated from benefits-domain, not
  * imported - scope:payroll cannot depend on scope:benefits).
+ *
+ * Unpaid leave is handled differently from every deduction above: it isn't
+ * money withheld from pay owed, it's simply pay never owed in the first
+ * place for days not worked. So unpaidLeaveDays reduces basicSalary itself
+ * (pro-rated at a daily rate over the pay period's working days - see
+ * unpaid-leave-deduction.ts) before anything else runs, which correctly
+ * flows through to shrink grossPay, taxableIncome, PAYE, and every
+ * statutory contribution computed off basicSalary/grossPay - unlike
+ * benefits/NHIS, it is NOT added to totalDeductions (that would double-count
+ * it, since it already shrank grossPay upstream). unpaidLeaveDeduction is
+ * returned purely for display, same reporting-only role as
+ * benefitsEmployerCost.
  */
 export function computePayslip(input: ComputePayslipInput): ComputedPayslip {
   const earnings = sumLineItems(input.lineItems, PayslipLineItemType.EARNING);
   const otherDeductions = sumLineItems(input.lineItems, PayslipLineItemType.DEDUCTION);
 
-  const basicSalary = roundCurrency(input.basicSalary);
+  const contractedBasicSalary = roundCurrency(input.basicSalary);
+  const unpaidLeaveDeduction =
+    input.unpaidLeaveDays && input.periodStart && input.periodEnd
+      ? computeUnpaidLeaveDeduction(contractedBasicSalary, input.unpaidLeaveDays, input.periodStart, input.periodEnd)
+      : 0;
+  const basicSalary = roundCurrency(Math.max(0, contractedBasicSalary - unpaidLeaveDeduction));
   const grossPay = roundCurrency(basicSalary + earnings);
 
   const insurableSalary =
@@ -211,6 +237,7 @@ export function computePayslip(input: ComputePayslipInput): ComputedPayslip {
     nigeriaNhisEmployer,
     benefitsEmployeeDeduction,
     benefitsEmployerCost,
+    unpaidLeaveDeduction,
     totalDeductions,
     netPay,
   };

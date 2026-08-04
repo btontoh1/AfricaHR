@@ -15,6 +15,7 @@ import { BenefitEnrollmentNotificationListener } from './benefit-enrollment-noti
 import { PayRunNotificationListener } from './pay-run-notification.listener';
 import { JobRequisitionNotificationListener } from './job-requisition-notification.listener';
 import { PayrollDisbursementFailedNotificationListener } from './payroll-disbursement-failed-notification.listener';
+import { PayrollDisbursementStuckNotificationListener } from './payroll-disbursement-stuck-notification.listener';
 import {
   LogNotificationDispatcher,
   NotificationDispatcher,
@@ -42,6 +43,7 @@ import {
     PayRunNotificationListener,
     JobRequisitionNotificationListener,
     PayrollDisbursementFailedNotificationListener,
+    PayrollDisbursementStuckNotificationListener,
     {
       provide: NotificationDispatcher,
       inject: [AppConfigService],

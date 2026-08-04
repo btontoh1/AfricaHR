@@ -40,6 +40,17 @@ export interface PaystackTransferUpdatedEventPayload {
  */
 export const PAYROLL_DISBURSEMENT_FAILED_EVENT = 'payroll.payslip.disbursement_failed';
 
+/**
+ * Emitted once per payslip when the reconciliation sweep below finds it
+ * still PENDING past CRITICAL_STALE_THRESHOLD_MS - i.e. several 15-minute
+ * sweeps and Paystack verify-transfer calls have gone by without it
+ * resolving. Distinct from PAYROLL_DISBURSEMENT_FAILED_EVENT: Paystack
+ * hasn't said the transfer failed, so this is "needs a human to look",
+ * not "known to have failed". Same cross-scope decoupling as the FAILED
+ * event - consumed by a listener in notifications-feature.
+ */
+export const PAYROLL_DISBURSEMENT_STUCK_EVENT = 'payroll.payslip.disbursement_stuck';
+
 export interface PayrollDisbursementFailedEvent {
   tenantId: string;
   employeeName: string;
@@ -64,6 +75,9 @@ export function buildDisbursementFailedEvent(
 /** A transfer stuck this long without a webhook is worth double-checking directly against Paystack, rather than waiting indefinitely. */
 const STALE_PENDING_THRESHOLD_MS = 30 * 60 * 1000;
 
+/** Past this point, repeated 15-minute sweeps have already had many chances to resolve it via Paystack - worth alerting a human instead of trusting the next sweep. */
+const CRITICAL_STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
+
 function mapVerifiedStatus(
   paystackStatus: string,
 ): typeof PayslipDisbursementStatus.SUCCESS | typeof PayslipDisbursementStatus.FAILED | null {
@@ -81,6 +95,9 @@ function mapVerifiedStatus(
 @Injectable()
 export class PayrollTransferWebhookListener {
   private readonly logger = new Logger(PayrollTransferWebhookListener.name);
+
+  /** Payslip ids already alerted on as critically stale, so a human isn't re-notified every 15 minutes about the same stuck disbursement. Reset on process restart - a possible duplicate alert after a redeploy is preferable to a missed one, and a resolved payslip drops out on its own (see alertOnCriticallyStaleDisbursements). */
+  private readonly alertedStuckPayslipIds = new Set<string>();
 
   constructor(
     private readonly disbursements: PayrollDisbursementRepository,
@@ -128,6 +145,48 @@ export class PayrollTransferWebhookListener {
         this.logger.error(`Failed to reconcile disbursement for payslip "${item.id}"`, error as Error);
       }
     }
+
+    await this.alertOnCriticallyStaleDisbursements();
+  }
+
+  /**
+   * Runs after the reconcile loop above so a payslip the sweep just
+   * resolved this run doesn't get flagged. One-shot per payslip via
+   * alertedStuckPayslipIds - a payslip only leaves PENDING once it
+   * resolves, so there's no need to re-alert, just to stop tracking it
+   * once it's no longer in the critical list.
+   */
+  private async alertOnCriticallyStaleDisbursements(): Promise<void> {
+    const olderThan = new Date(Date.now() - CRITICAL_STALE_THRESHOLD_MS);
+    let critical: StalePendingDisbursement[];
+    try {
+      critical = await this.disbursements.listStalePendingDisbursements(olderThan);
+    } catch (error) {
+      this.logger.error('Failed to list critically stale pending disbursements', error as Error);
+      return;
+    }
+
+    const criticalIds = new Set(critical.map((item) => item.id));
+    for (const id of this.alertedStuckPayslipIds) {
+      if (!criticalIds.has(id)) {
+        this.alertedStuckPayslipIds.delete(id);
+      }
+    }
+
+    for (const item of critical) {
+      if (this.alertedStuckPayslipIds.has(item.id)) {
+        continue;
+      }
+      try {
+        const payslip = await this.payslips.findById(item.tenantId, item.id);
+        if (payslip) {
+          await this.notifyOfStuckDisbursement(payslip);
+        }
+        this.alertedStuckPayslipIds.add(item.id);
+      } catch (error) {
+        this.logger.error(`Failed to alert on critically stale disbursement for payslip "${item.id}"`, error as Error);
+      }
+    }
   }
 
   /**
@@ -160,6 +219,14 @@ export class PayrollTransferWebhookListener {
   }
 
   private async notifyOfFailedDisbursement(payslip: Payslip): Promise<void> {
+    await this.emitDisbursementEvent(payslip, PAYROLL_DISBURSEMENT_FAILED_EVENT);
+  }
+
+  private async notifyOfStuckDisbursement(payslip: Payslip): Promise<void> {
+    await this.emitDisbursementEvent(payslip, PAYROLL_DISBURSEMENT_STUCK_EVENT);
+  }
+
+  private async emitDisbursementEvent(payslip: Payslip, eventName: string): Promise<void> {
     const [payRun, employee] = await Promise.all([
       this.payRuns.findById(payslip.tenantId, payslip.payRunId),
       this.employees.findById(payslip.tenantId, payslip.employeeId),
@@ -168,9 +235,10 @@ export class PayrollTransferWebhookListener {
       return;
     }
 
-    this.eventEmitter.emit(
-      PAYROLL_DISBURSEMENT_FAILED_EVENT,
-      buildDisbursementFailedEvent(payslip.tenantId, employee, payRun),
-    );
+    // buildDisbursementFailedEvent just assembles {tenantId, employeeName,
+    // periodStart, periodEnd} - the same shape both events need, "Failed"
+    // in its name notwithstanding (kept as-is since PayRunService also
+    // calls it directly).
+    this.eventEmitter.emit(eventName, buildDisbursementFailedEvent(payslip.tenantId, employee, payRun));
   }
 }

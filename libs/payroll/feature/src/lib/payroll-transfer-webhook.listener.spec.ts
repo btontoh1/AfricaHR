@@ -5,8 +5,13 @@ import {
   PayrollEmployeeRepository,
   PayRunRepository,
   PayslipRepository,
+  PayslipWithLineItems,
 } from '@africahr/payroll-data-access';
-import { PAYROLL_DISBURSEMENT_FAILED_EVENT, PayrollTransferWebhookListener } from './payroll-transfer-webhook.listener';
+import {
+  PAYROLL_DISBURSEMENT_FAILED_EVENT,
+  PAYROLL_DISBURSEMENT_STUCK_EVENT,
+  PayrollTransferWebhookListener,
+} from './payroll-transfer-webhook.listener';
 import { PaystackTransferClient } from './paystack-transfer-client';
 
 describe('PayrollTransferWebhookListener', () => {
@@ -29,6 +34,10 @@ describe('PayrollTransferWebhookListener', () => {
     } as Payslip;
   }
 
+  function makeFoundPayslip(overrides: Partial<Payslip> = {}): PayslipWithLineItems {
+    return { ...makeUpdatedPayslip(overrides), lineItems: [] } as PayslipWithLineItems;
+  }
+
   beforeEach(() => {
     disbursements = {
       findPayslipByPaystackTransferReference: jest.fn(),
@@ -36,6 +45,7 @@ describe('PayrollTransferWebhookListener', () => {
     } as unknown as jest.Mocked<PayrollDisbursementRepository>;
     payslips = {
       recordDisbursementResult: jest.fn().mockResolvedValue(makeUpdatedPayslip()),
+      findById: jest.fn().mockResolvedValue(null),
     } as unknown as jest.Mocked<PayslipRepository>;
     payRuns = {
       findById: jest.fn().mockResolvedValue({
@@ -230,6 +240,70 @@ describe('PayrollTransferWebhookListener', () => {
       await expect(listener.reconcileStalePendingDisbursements()).resolves.toBeUndefined();
 
       expect(paystack.verifyTransfer).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('critically stale disbursement alerting', () => {
+    it('alerts once a payslip is found critically stale', async () => {
+      disbursements.listStalePendingDisbursements
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ id: 'payslip-1', tenantId: 'tenant-1', paystackTransferReference: 'ref-123' }]);
+      payslips.findById.mockResolvedValue(makeFoundPayslip({ disbursementStatus: 'PENDING' }));
+
+      await listener.reconcileStalePendingDisbursements();
+
+      expect(payslips.findById).toHaveBeenCalledWith('tenant-1', 'payslip-1');
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        PAYROLL_DISBURSEMENT_STUCK_EVENT,
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          employeeName: 'Kwame Asante',
+          periodStart: '2026-01-01',
+          periodEnd: '2026-01-31',
+        }),
+      );
+    });
+
+    it('does not re-alert on the same payslip in a later sweep', async () => {
+      disbursements.listStalePendingDisbursements
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ id: 'payslip-1', tenantId: 'tenant-1', paystackTransferReference: 'ref-123' }]);
+      payslips.findById.mockResolvedValue(makeFoundPayslip({ disbursementStatus: 'PENDING' }));
+
+      await listener.reconcileStalePendingDisbursements();
+      eventEmitter.emit.mockClear();
+
+      disbursements.listStalePendingDisbursements
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ id: 'payslip-1', tenantId: 'tenant-1', paystackTransferReference: 'ref-123' }]);
+
+      await listener.reconcileStalePendingDisbursements();
+
+      expect(eventEmitter.emit).not.toHaveBeenCalledWith(PAYROLL_DISBURSEMENT_STUCK_EVENT, expect.anything());
+    });
+
+    it("does not let one item's alert failure stop the rest", async () => {
+      disbursements.listStalePendingDisbursements.mockResolvedValueOnce([]).mockResolvedValueOnce([
+        { id: 'payslip-1', tenantId: 'tenant-1', paystackTransferReference: 'ref-1' },
+        { id: 'payslip-2', tenantId: 'tenant-1', paystackTransferReference: 'ref-2' },
+      ]);
+      payslips.findById
+        .mockRejectedValueOnce(new Error('boom'))
+        .mockResolvedValueOnce(makeFoundPayslip({ id: 'payslip-2', disbursementStatus: 'PENDING' }));
+
+      await expect(listener.reconcileStalePendingDisbursements()).resolves.toBeUndefined();
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(PAYROLL_DISBURSEMENT_STUCK_EVENT, expect.anything());
+    });
+
+    it('does not throw when listing critically stale disbursements fails', async () => {
+      disbursements.listStalePendingDisbursements
+        .mockResolvedValueOnce([])
+        .mockRejectedValueOnce(new Error('boom'));
+
+      await expect(listener.reconcileStalePendingDisbursements()).resolves.toBeUndefined();
+
+      expect(eventEmitter.emit).not.toHaveBeenCalled();
     });
   });
 });

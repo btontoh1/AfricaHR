@@ -3,6 +3,7 @@
 import { HeartHandshake } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBenefitPlans, useUpdateBenefitPlan } from './queries';
+import { EditBenefitPlanDialog } from './edit-benefit-plan-dialog';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -89,7 +90,10 @@ export function BenefitPlansList({ tenantId }: { tenantId: string }) {
                 </Badge>
               </TableCell>
               <TableCell>
-                <ToggleActiveButton tenantId={tenantId} id={plan.id} isActive={plan.isActive} />
+                <div className="flex gap-2">
+                  <EditBenefitPlanDialog tenantId={tenantId} plan={plan} />
+                  <ToggleActiveButton tenantId={tenantId} id={plan.id} isActive={plan.isActive} />
+                </div>
               </TableCell>
             </TableRow>
           ))}

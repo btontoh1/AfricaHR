@@ -34,6 +34,25 @@ export function toContributionRate(
   return contributionType === 'PERCENTAGE' ? Number(value) / 100 : Number(value);
 }
 
+/** Inverse of toContributionRate - pre-fills the edit form with a plan's currently-stored rate as the whole-number percentage an admin expects to see (e.g. the stored 0.02 becomes "2"). */
+export function fromContributionRate(
+  value: number,
+  contributionType: BenefitPlanFormValues['contributionType'],
+): string {
+  return contributionType === 'PERCENTAGE' ? String(value * 100) : String(value);
+}
+
+// Mirrors UpdateBenefitPlanDto — code is immutable (the plan's identifier), so it's not editable here, unlike benefitPlanFormSchema.
+export const updateBenefitPlanFormSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(100),
+  description: z.string().max(500).optional().or(z.literal('')),
+  contributionType: z.enum(CONTRIBUTION_TYPES),
+  employeeContribution: z.string().min(1, 'Employee contribution is required'),
+  employerContribution: z.string().min(1, 'Employer contribution is required'),
+});
+
+export type UpdateBenefitPlanFormValues = z.infer<typeof updateBenefitPlanFormSchema>;
+
 // Mirrors EnrollEmployeeDto — HR enrolling an arbitrary employee.
 export const enrollEmployeeFormSchema = z.object({
   employeeId: z.string().uuid('Select an employee'),

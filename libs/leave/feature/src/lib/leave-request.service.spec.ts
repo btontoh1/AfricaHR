@@ -691,4 +691,103 @@ describe('LeaveRequestService', () => {
       expect(result.map((r) => r.leaveTypeId)).toEqual(['lt-1', 'lt-2']);
     });
   });
+
+  describe('adjustBalance', () => {
+    const dto = { employeeId: 'emp-1', leaveTypeId: 'lt-1', year: 2026 };
+
+    beforeEach(() => {
+      employees.findById.mockResolvedValue({
+        id: 'emp-1',
+        userId: 'emp-1-user',
+        managerId: null,
+        firstName: 'Kwame',
+        lastName: 'Asante',
+      });
+    });
+
+    it('throws NotFoundException when the leave type does not exist', async () => {
+      leaveTypes.findById.mockResolvedValue(null);
+
+      await expect(service.adjustBalance('tenant-1', { ...dto, entitledDays: 20 }, 'hr-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('throws NotFoundException when the employee does not exist', async () => {
+      employees.findById.mockResolvedValue(null);
+
+      await expect(service.adjustBalance('tenant-1', { ...dto, entitledDays: 20 }, 'hr-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('creates a balance row using the leave type default when entitledDays is omitted and none exists yet', async () => {
+      leaveTypes.findById.mockResolvedValue(makeLeaveType({ defaultEntitlementDays: new Prisma.Decimal(18) }));
+      balances.upsertEntitlement.mockResolvedValue(makeBalance({ entitledDays: new Prisma.Decimal(18) }));
+
+      const result = await service.adjustBalance('tenant-1', dto, 'hr-1');
+
+      expect(balances.upsertEntitlement).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ employeeId: 'emp-1', leaveTypeId: 'lt-1', year: 2026, entitledDays: 18 }),
+      );
+      expect(result.entitledDays).toBe(18);
+    });
+
+    it('sets entitledDays to the provided absolute value', async () => {
+      balances.upsertEntitlement.mockResolvedValue(makeBalance({ entitledDays: new Prisma.Decimal(25) }));
+
+      await service.adjustBalance('tenant-1', { ...dto, entitledDays: 25 }, 'hr-1');
+
+      expect(balances.upsertEntitlement).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ entitledDays: 25, actorId: 'hr-1' }),
+      );
+    });
+
+    it('does not touch entitledDays when omitted and a balance row already exists', async () => {
+      balances.findByEmployeeAndType.mockResolvedValue(makeBalance({ usedDays: new Prisma.Decimal(2) }));
+      balances.incrementUsedDays.mockResolvedValue(makeBalance({ usedDays: new Prisma.Decimal(5) }));
+
+      await service.adjustBalance('tenant-1', { ...dto, usedDays: 5 }, 'hr-1');
+
+      expect(balances.upsertEntitlement).not.toHaveBeenCalled();
+    });
+
+    it('increments usedDays by the delta when the new value is higher', async () => {
+      balances.findByEmployeeAndType.mockResolvedValue(makeBalance({ id: 'bal-1', usedDays: new Prisma.Decimal(2) }));
+      balances.incrementUsedDays.mockResolvedValue(makeBalance({ usedDays: new Prisma.Decimal(5) }));
+
+      await service.adjustBalance('tenant-1', { ...dto, usedDays: 5 }, 'hr-1');
+
+      expect(balances.incrementUsedDays).toHaveBeenCalledWith('tenant-1', 'bal-1', 3, 'hr-1');
+      expect(balances.decrementUsedDays).not.toHaveBeenCalled();
+    });
+
+    it('decrements usedDays by the delta when the new value is lower', async () => {
+      balances.findByEmployeeAndType.mockResolvedValue(makeBalance({ id: 'bal-1', usedDays: new Prisma.Decimal(5) }));
+      balances.decrementUsedDays.mockResolvedValue(makeBalance({ usedDays: new Prisma.Decimal(2) }));
+
+      await service.adjustBalance('tenant-1', { ...dto, usedDays: 2 }, 'hr-1');
+
+      expect(balances.decrementUsedDays).toHaveBeenCalledWith('tenant-1', 'bal-1', 3, 'hr-1');
+      expect(balances.incrementUsedDays).not.toHaveBeenCalled();
+    });
+
+    it('audits the adjustment', async () => {
+      balances.upsertEntitlement.mockResolvedValue(makeBalance({ id: 'bal-1' }));
+
+      await service.adjustBalance('tenant-1', { ...dto, entitledDays: 20 }, 'hr-1');
+
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          actorUserId: 'hr-1',
+          action: 'leave.balance.adjusted',
+          resourceType: 'LeaveBalance',
+          resourceId: 'bal-1',
+        }),
+      );
+    });
+  });
 });

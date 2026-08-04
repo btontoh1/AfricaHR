@@ -1234,6 +1234,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/leave-requests/adjust-balance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["LeaveRequestController_adjustBalance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/attendance-policy": {
         parameters: {
             query?: never;
@@ -2908,6 +2924,15 @@ export interface components {
             usedDays: number;
             remainingDays: number;
             year: number;
+        };
+        AdjustLeaveBalanceDto: {
+            employeeId: string;
+            leaveTypeId: string;
+            year: number;
+            /** @description Absolute value, not a delta. Omit to leave unchanged. */
+            entitledDays?: number;
+            /** @description Absolute value, not a delta. Omit to leave unchanged. */
+            usedDays?: number;
         };
         RejectLeaveRequestDto: {
             /** @example Insufficient team coverage for the requested dates */
@@ -5666,6 +5691,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LeaveRequestResponseDto"];
+                };
+            };
+        };
+    };
+    LeaveRequestController_adjustBalance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdjustLeaveBalanceDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaveBalanceResponseDto"];
                 };
             };
         };

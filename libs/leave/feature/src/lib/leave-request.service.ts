@@ -16,6 +16,7 @@ import {
   remainingDays,
 } from '@africahr/leave-domain';
 import { CreateLeaveRequestDto } from './dto/create-leave-request.dto';
+import { AdjustLeaveBalanceDto } from './dto/adjust-leave-balance.dto';
 
 export interface LeaveRequestWithEmployeeName extends LeaveRequest {
   employeeName: string;
@@ -290,6 +291,78 @@ export class LeaveRequestService {
         };
       }),
     );
+  }
+
+  /**
+   * HR-facing correction/grant, distinct from the incrementUsedDays()/
+   * decrementUsedDays() deltas approve()/cancelRequest() apply
+   * automatically as a side effect of a request's lifecycle -
+   * entitledDays/usedDays here are both absolute values the caller sets
+   * directly, not deltas. Falls back to the leave type's default
+   * entitlement (same as resolveEffectiveBalance) when entitledDays is
+   * omitted and no balance row exists yet, since upsertEntitlement's
+   * create path requires a non-null entitledDays.
+   */
+  async adjustBalance(
+    tenantId: string,
+    dto: AdjustLeaveBalanceDto,
+    actorId?: string,
+  ): Promise<LeaveBalanceSummary> {
+    const leaveType = await this.leaveTypes.findById(tenantId, dto.leaveTypeId);
+    if (!leaveType) {
+      throw new NotFoundException(`Leave type "${dto.leaveTypeId}" not found`);
+    }
+
+    const employee = await this.employees.findById(tenantId, dto.employeeId);
+    if (!employee) {
+      throw new NotFoundException(`Employee "${dto.employeeId}" not found`);
+    }
+
+    let balance = await this.balances.findByEmployeeAndType(
+      tenantId,
+      dto.employeeId,
+      dto.leaveTypeId,
+      dto.year,
+    );
+
+    if (dto.entitledDays !== undefined || !balance) {
+      balance = await this.balances.upsertEntitlement(tenantId, {
+        employeeId: dto.employeeId,
+        leaveTypeId: dto.leaveTypeId,
+        year: dto.year,
+        entitledDays: dto.entitledDays ?? Number(leaveType.defaultEntitlementDays),
+        actorId,
+      });
+    }
+
+    if (dto.usedDays !== undefined) {
+      const delta = dto.usedDays - Number(balance.usedDays);
+      if (delta > 0) {
+        balance = await this.balances.incrementUsedDays(tenantId, balance.id, delta, actorId);
+      } else if (delta < 0) {
+        balance = await this.balances.decrementUsedDays(tenantId, balance.id, -delta, actorId);
+      }
+    }
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'leave.balance.adjusted',
+      resourceType: 'LeaveBalance',
+      resourceId: balance.id,
+      metadata: { employeeId: dto.employeeId, leaveTypeId: dto.leaveTypeId, year: dto.year },
+    });
+
+    const entitledDays = Number(balance.entitledDays);
+    const usedDays = Number(balance.usedDays);
+    return {
+      leaveTypeId: leaveType.id,
+      leaveTypeName: leaveType.name,
+      entitledDays,
+      usedDays,
+      remainingDays: remainingDays(entitledDays, usedDays),
+      year: dto.year,
+    };
   }
 
   /**

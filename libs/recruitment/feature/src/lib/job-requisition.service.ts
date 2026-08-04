@@ -1,7 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JobRequisition, JobRequisitionStatus, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
+import { canTransitionRequisitionStatus } from '@africahr/recruitment-domain';
 import { JobRequisitionRepository, RecruitmentEmployeeRepository } from '@africahr/recruitment-data-access';
 import { CreateJobRequisitionDto } from './dto/create-job-requisition.dto';
 import { UpdateJobRequisitionDto } from './dto/update-job-requisition.dto';
@@ -151,7 +152,14 @@ export class JobRequisitionService {
     dto: UpdateJobRequisitionDto,
     actorId?: string,
   ): Promise<JobRequisition> {
-    await this.findById(tenantId, id);
+    const requisition = await this.findById(tenantId, id);
+    // Only a genuine status change goes through the transition guard -
+    // status is one of several optional fields on this general-purpose
+    // PATCH, so a caller updating e.g. just the title while re-sending the
+    // requisition's current status isn't attempting a transition at all.
+    if (dto.status !== undefined && dto.status !== requisition.status) {
+      this.assertStatusTransition(requisition.status, dto.status);
+    }
 
     let updated: JobRequisition;
     try {
@@ -197,6 +205,12 @@ export class JobRequisitionService {
     const requisition = await this.findById(tenantId, id);
     await this.assertIsHiringManager(tenantId, userId, requisition);
     return this.update(tenantId, id, dto, userId);
+  }
+
+  private assertStatusTransition(from: JobRequisitionStatus, to: JobRequisitionStatus): void {
+    if (!canTransitionRequisitionStatus(from, to)) {
+      throw new ConflictException(`Cannot move a requisition from ${from} to ${to}`);
+    }
   }
 
   private async assertIsHiringManager(

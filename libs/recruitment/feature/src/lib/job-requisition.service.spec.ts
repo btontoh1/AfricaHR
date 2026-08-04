@@ -1,4 +1,4 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JobRequisition, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
@@ -176,6 +176,53 @@ describe('JobRequisitionService', () => {
       await expect(
         service.findByIdForHiringManager('tenant-1', 'mgr-user-1', 'req-1'),
       ).resolves.toEqual(requisition);
+    });
+  });
+
+  describe('update', () => {
+    it('rejects an illegal status transition', async () => {
+      requisitions.findById.mockResolvedValue(makeRequisition({ status: 'CLOSED' }));
+
+      await expect(
+        service.update('tenant-1', 'req-1', { status: 'DRAFT' } as never),
+      ).rejects.toThrow(ConflictException);
+      expect(requisitions.update).not.toHaveBeenCalled();
+    });
+
+    it('allows a legal status transition', async () => {
+      requisitions.findById.mockResolvedValue(makeRequisition({ status: 'DRAFT' }));
+      requisitions.update.mockResolvedValue(makeRequisition({ status: 'OPEN' }));
+
+      await service.update('tenant-1', 'req-1', { status: 'OPEN' } as never);
+
+      expect(requisitions.update).toHaveBeenCalledWith(
+        'tenant-1',
+        'req-1',
+        expect.objectContaining({ status: 'OPEN' }),
+      );
+    });
+
+    it('does not run the transition guard when status is omitted from the update', async () => {
+      requisitions.findById.mockResolvedValue(makeRequisition({ status: 'CLOSED' }));
+      requisitions.update.mockResolvedValue(makeRequisition({ status: 'CLOSED', title: 'New title' }));
+
+      await service.update('tenant-1', 'req-1', { title: 'New title' });
+
+      expect(requisitions.update).toHaveBeenCalledWith(
+        'tenant-1',
+        'req-1',
+        expect.objectContaining({ title: 'New title' }),
+      );
+    });
+
+    it('does not run the transition guard when the status is unchanged', async () => {
+      requisitions.findById.mockResolvedValue(makeRequisition({ status: 'OPEN' }));
+      requisitions.update.mockResolvedValue(makeRequisition({ status: 'OPEN', title: 'New title' }));
+
+      await expect(
+        service.update('tenant-1', 'req-1', { status: 'OPEN', title: 'New title' } as never),
+      ).resolves.toBeDefined();
+      expect(requisitions.update).toHaveBeenCalled();
     });
   });
 

@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import {
-  REQUISITION_STATUS_OPTIONS,
+  getAvailableRequisitionStatuses,
   updateRequisitionFormSchema,
   type UpdateRequisitionFormValues,
 } from './recruitment-form-schema';
@@ -91,7 +91,7 @@ export function UpdateRequisitionForm({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {REQUISITION_STATUS_OPTIONS.map((status) => (
+                    {getAvailableRequisitionStatuses(requisition.status).map((status) => (
                       <SelectItem key={status} value={status}>
                         {status.replace('_', ' ')}
                       </SelectItem>

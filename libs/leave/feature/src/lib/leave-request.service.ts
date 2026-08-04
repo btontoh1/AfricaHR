@@ -77,6 +77,15 @@ interface EffectiveBalance {
   usedDays: number;
 }
 
+export interface LeaveBalanceSummary {
+  leaveTypeId: string;
+  leaveTypeName: string;
+  entitledDays: number;
+  usedDays: number;
+  remainingDays: number;
+  year: number;
+}
+
 @Injectable()
 export class LeaveRequestService {
   constructor(
@@ -249,6 +258,38 @@ export class LeaveRequestService {
   async listForSelf(tenantId: string, userId: string): Promise<LeaveRequest[]> {
     const employeeId = await this.resolveOwnEmployeeId(tenantId, userId);
     return this.requests.list(tenantId, { employeeId });
+  }
+
+  /**
+   * One row per active leave type for the current calendar year, even when
+   * the employee has no LeaveBalance row yet for that type - reuses
+   * resolveEffectiveBalance's same default-entitlement fallback that
+   * create()/approve() rely on, so a brand-new employee sees their full
+   * default entitlement rather than an empty list.
+   */
+  async listBalancesForSelf(tenantId: string, userId: string): Promise<LeaveBalanceSummary[]> {
+    const employeeId = await this.resolveOwnEmployeeId(tenantId, userId);
+    const year = new Date().getUTCFullYear();
+    const leaveTypes = await this.leaveTypes.list(tenantId, { activeOnly: true });
+
+    return Promise.all(
+      leaveTypes.map(async (leaveType) => {
+        const { entitledDays, usedDays } = await this.resolveEffectiveBalance(
+          tenantId,
+          employeeId,
+          leaveType.id,
+          year,
+        );
+        return {
+          leaveTypeId: leaveType.id,
+          leaveTypeName: leaveType.name,
+          entitledDays,
+          usedDays,
+          remainingDays: remainingDays(entitledDays, usedDays),
+          year,
+        };
+      }),
+    );
   }
 
   /**

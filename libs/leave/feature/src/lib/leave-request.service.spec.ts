@@ -629,4 +629,66 @@ describe('LeaveRequestService', () => {
       );
     });
   });
+
+  describe('listBalancesForSelf', () => {
+    beforeEach(() => {
+      employees.findByUserId.mockResolvedValue({
+        id: 'emp-1',
+        userId: 'emp-1-user',
+        managerId: null,
+        firstName: 'Kwame',
+        lastName: 'Asante',
+      });
+    });
+
+    it('lists only active leave types', async () => {
+      leaveTypes.list.mockResolvedValue([]);
+
+      await service.listBalancesForSelf('tenant-1', 'emp-1-user');
+
+      expect(leaveTypes.list).toHaveBeenCalledWith('tenant-1', { activeOnly: true });
+    });
+
+    it('falls back to the leave type default entitlement when no balance row exists yet', async () => {
+      leaveTypes.list.mockResolvedValue([makeLeaveType({ defaultEntitlementDays: new Prisma.Decimal(15) })]);
+      balances.findByEmployeeAndType.mockResolvedValue(null);
+
+      const result = await service.listBalancesForSelf('tenant-1', 'emp-1-user');
+
+      expect(result).toEqual([
+        expect.objectContaining({
+          leaveTypeId: 'lt-1',
+          leaveTypeName: 'Annual Leave',
+          entitledDays: 15,
+          usedDays: 0,
+          remainingDays: 15,
+        }),
+      ]);
+    });
+
+    it('uses the existing balance row when one exists', async () => {
+      leaveTypes.list.mockResolvedValue([makeLeaveType()]);
+      balances.findByEmployeeAndType.mockResolvedValue(
+        makeBalance({ entitledDays: new Prisma.Decimal(20), usedDays: new Prisma.Decimal(6) }),
+      );
+
+      const result = await service.listBalancesForSelf('tenant-1', 'emp-1-user');
+
+      expect(result).toEqual([
+        expect.objectContaining({ entitledDays: 20, usedDays: 6, remainingDays: 14 }),
+      ]);
+    });
+
+    it('returns one row per active leave type', async () => {
+      leaveTypes.list.mockResolvedValue([
+        makeLeaveType({ id: 'lt-1', name: 'Annual Leave' }),
+        makeLeaveType({ id: 'lt-2', name: 'Sick Leave' }),
+      ]);
+      balances.findByEmployeeAndType.mockResolvedValue(null);
+
+      const result = await service.listBalancesForSelf('tenant-1', 'emp-1-user');
+
+      expect(result.map((r) => r.leaveTypeId)).toEqual(['lt-1', 'lt-2']);
+    });
+  });
 });

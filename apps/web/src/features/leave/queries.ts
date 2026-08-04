@@ -17,6 +17,10 @@ function myLeaveRequestsKey(tenantId: string) {
   return ['leave-requests', 'me', tenantId] as const;
 }
 
+function myLeaveBalancesKey(tenantId: string) {
+  return ['leave-balances', 'me', tenantId] as const;
+}
+
 function leaveRequestsKey(tenantId: string) {
   return ['leave-requests', 'all', tenantId] as const;
 }
@@ -111,7 +115,24 @@ export function useCancelMyLeaveRequest(tenantId: string) {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: myLeaveRequestsKey(tenantId) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: myLeaveRequestsKey(tenantId) });
+      // Cancelling an APPROVED request refunds its days to the balance.
+      queryClient.invalidateQueries({ queryKey: myLeaveBalancesKey(tenantId) });
+    },
+  });
+}
+
+export function useMyLeaveBalances(tenantId: string) {
+  return useQuery({
+    queryKey: myLeaveBalancesKey(tenantId),
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/leave-balances/me', {
+        params: { path: { tenantId } },
+      });
+      if (error) throw error;
+      return data;
+    },
   });
 }
 

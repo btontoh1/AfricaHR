@@ -44,6 +44,26 @@ export type UpdateRequisitionFormValues = z.infer<typeof updateRequisitionFormSc
 export const EMPLOYMENT_TYPE_OPTIONS = EMPLOYMENT_TYPES;
 export const REQUISITION_STATUS_OPTIONS = REQUISITION_STATUSES;
 
+type RequisitionStatus = (typeof REQUISITION_STATUSES)[number];
+
+// Mirrors canTransitionRequisitionStatus (recruitment-domain) - duplicated
+// rather than imported, since the frontend doesn't share the backend's Nx
+// project graph. DRAFT opens or is cancelled; OPEN can pause, close, or be
+// cancelled; ON_HOLD can resume to OPEN or follow OPEN's same CLOSED/
+// CANCELLED paths; CLOSED and CANCELLED are terminal.
+const REQUISITION_STATUS_TRANSITIONS: Record<RequisitionStatus, readonly RequisitionStatus[]> = {
+  DRAFT: ['OPEN', 'CANCELLED'],
+  OPEN: ['ON_HOLD', 'CLOSED', 'CANCELLED'],
+  ON_HOLD: ['OPEN', 'CLOSED', 'CANCELLED'],
+  CLOSED: [],
+  CANCELLED: [],
+};
+
+/** The current status plus every status it can legally move to - keeps the form's dropdown from offering a transition the backend will reject. */
+export function getAvailableRequisitionStatuses(current: RequisitionStatus): readonly RequisitionStatus[] {
+  return [current, ...REQUISITION_STATUS_TRANSITIONS[current]];
+}
+
 // Mirrors CreateCandidateDto.
 export const createCandidateFormSchema = z.object({
   firstName: z.string().min(1, 'First name is required').max(100),

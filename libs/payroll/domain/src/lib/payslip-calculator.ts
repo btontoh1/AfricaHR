@@ -3,6 +3,8 @@ import { calculatePayeTax, TaxBand } from './tax-band';
 import { calculateSsnit, SsnitRates } from './ssnit';
 import { calculateNigeriaRentRelief } from './nigeria-rent-relief';
 import { applyGhanaInsurableEarningsCap } from './ghana-ssnit-cap';
+import { applyKenyaPensionableEarningsCap } from './kenya-nssf-cap';
+import { applyKenyaPersonalRelief } from './kenya-personal-relief';
 import { PayslipLineItemType } from './payslip-line-item-type';
 
 export interface PayslipLineItemInput {
@@ -51,7 +53,10 @@ export function sumLineItems(
  * income is just gross pay less the pension deduction. Ghana additionally
  * caps the salary SSNIT is computed on at the maximum insurable earnings
  * ceiling (see ghana-ssnit-cap.ts) — earnings above it are still fully
- * taxable, just no longer accrue SSNIT.
+ * taxable, just no longer accrue SSNIT. Kenya caps pensionable pay the same
+ * way (see kenya-nssf-cap.ts) and, unlike Nigeria's pre-tax relief, then
+ * subtracts a flat personal relief from the PAYE bands' output itself (see
+ * kenya-personal-relief.ts) rather than from taxable income.
  */
 export function computePayslip(input: ComputePayslipInput): ComputedPayslip {
   const earnings = sumLineItems(input.lineItems, PayslipLineItemType.EARNING);
@@ -61,12 +66,17 @@ export function computePayslip(input: ComputePayslipInput): ComputedPayslip {
   const grossPay = roundCurrency(basicSalary + earnings);
 
   const insurableSalary =
-    input.countryCode === 'GH' ? applyGhanaInsurableEarningsCap(basicSalary) : basicSalary;
+    input.countryCode === 'GH'
+      ? applyGhanaInsurableEarningsCap(basicSalary)
+      : input.countryCode === 'KE'
+        ? applyKenyaPensionableEarningsCap(basicSalary)
+        : basicSalary;
   const ssnit = calculateSsnit(insurableSalary, input.ssnitRates);
   const relief =
     input.countryCode === 'NG' ? calculateNigeriaRentRelief(input.annualRentPaid ?? 0) : 0;
   const taxableIncome = roundCurrency(Math.max(0, grossPay - ssnit.employee - relief));
-  const payeTax = calculatePayeTax(taxableIncome, input.taxBands);
+  const bandTax = calculatePayeTax(taxableIncome, input.taxBands);
+  const payeTax = input.countryCode === 'KE' ? applyKenyaPersonalRelief(bandTax) : bandTax;
 
   const totalDeductions = roundCurrency(ssnit.employee + payeTax + otherDeductions);
   const netPay = roundCurrency(grossPay - totalDeductions);

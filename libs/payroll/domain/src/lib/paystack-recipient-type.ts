@@ -17,5 +17,10 @@ export function resolvePaystackRecipientType(
   if (countryCode === 'NG') {
     return paymentMethodType === 'BANK_ACCOUNT' ? 'nuban' : null;
   }
+  if (countryCode === 'KE') {
+    // Inverse of Nigeria: Paystack Transfers in Kenya only supports mobile
+    // money (M-PESA) - there's no bank-account recipient type for KE.
+    return paymentMethodType === 'MOBILE_MONEY' ? 'mobile_money' : null;
+  }
   return null;
 }

@@ -9,9 +9,13 @@ describe('getDefaultCurrencyForCountry', () => {
     expect(getDefaultCurrencyForCountry('NG')).toBe('NGN');
   });
 
+  it('returns KES for Kenya', () => {
+    expect(getDefaultCurrencyForCountry('KE')).toBe('KES');
+  });
+
   it('throws for a country with no configured currency, rather than guessing', () => {
-    expect(() => getDefaultCurrencyForCountry('KE')).toThrow(
-      'No default currency configured for country "KE"',
+    expect(() => getDefaultCurrencyForCountry('ZA')).toThrow(
+      'No default currency configured for country "ZA"',
     );
   });
 });

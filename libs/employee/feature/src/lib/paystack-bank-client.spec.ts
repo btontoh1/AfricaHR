@@ -18,6 +18,14 @@ describe('LogPaystackBankClient', () => {
     expect(result).toContainEqual({ name: 'Access Bank', code: '044' });
   });
 
+  it('returns the fallback Kenya mobile money list', async () => {
+    const client = new LogPaystackBankClient();
+
+    const result = await client.listBanks({ country: 'kenya', type: 'mobile_money' });
+
+    expect(result).toContainEqual({ name: 'M-PESA', code: 'MPESA' });
+  });
+
   it('returns an empty list for a country/type combination with no fallback data', async () => {
     const client = new LogPaystackBankClient();
 

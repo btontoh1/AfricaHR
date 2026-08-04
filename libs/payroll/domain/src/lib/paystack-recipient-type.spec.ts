@@ -17,7 +17,15 @@ describe('resolvePaystackRecipientType', () => {
     expect(resolvePaystackRecipientType('NG', 'MOBILE_MONEY')).toBeNull();
   });
 
-  it('returns null for an unmapped country', () => {
+  it('maps Kenyan mobile money to mobile_money', () => {
+    expect(resolvePaystackRecipientType('KE', 'MOBILE_MONEY')).toBe('mobile_money');
+  });
+
+  it('returns null for a Kenyan bank account - Paystack Transfers in Kenya is mobile money only', () => {
     expect(resolvePaystackRecipientType('KE', 'BANK_ACCOUNT')).toBeNull();
+  });
+
+  it('returns null for an unmapped country', () => {
+    expect(resolvePaystackRecipientType('ZA', 'BANK_ACCOUNT')).toBeNull();
   });
 });

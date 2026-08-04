@@ -58,6 +58,7 @@ const FALLBACK_BANKS: Record<string, BankOption[]> = {
     { name: 'First Bank of Nigeria', code: '011' },
     { name: 'United Bank for Africa', code: '033' },
   ],
+  'kenya:mobile_money': [{ name: 'M-PESA', code: 'MPESA' }],
 };
 
 @Injectable()

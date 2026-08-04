@@ -21,5 +21,10 @@ export function resolvePaystackBankListParams(
   if (countryCode === 'NG') {
     return paymentMethodType === 'BANK_ACCOUNT' ? { country: 'nigeria' } : null;
   }
+  if (countryCode === 'KE') {
+    // Inverse of Nigeria: Paystack only supports mobile money (M-PESA) in
+    // Kenya - no bank-account recipient type, so no List Banks call for it.
+    return paymentMethodType === 'MOBILE_MONEY' ? { country: 'kenya', type: 'mobile_money' } : null;
+  }
   return null;
 }

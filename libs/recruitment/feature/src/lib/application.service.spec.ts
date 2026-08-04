@@ -101,6 +101,7 @@ describe('ApplicationService', () => {
     requisitions = {
       findById: jest.fn(),
       list: jest.fn().mockResolvedValue([]),
+      update: jest.fn(),
     } as unknown as jest.Mocked<JobRequisitionRepository>;
 
     employees = {
@@ -268,6 +269,67 @@ describe('ApplicationService', () => {
         }),
       );
     });
+
+    it('closes the requisition once enough candidates have reached HIRED to fill every opening', async () => {
+      applications.findById.mockResolvedValue(
+        makeApplication({ stage: 'OFFER', requisitionId: 'req-1' }),
+      );
+      applications.update.mockResolvedValue(makeApplication({ stage: 'HIRED' }));
+      applications.list.mockResolvedValue([makeApplication({ stage: 'HIRED' })]);
+      requisitions.findById.mockResolvedValue(makeRequisition({ status: 'OPEN', openings: 1 }));
+
+      await service.advance('tenant-1', 'app-1', { stage: 'HIRED' } as never, 'hr-1');
+
+      expect(applications.list).toHaveBeenCalledWith('tenant-1', { requisitionId: 'req-1', stage: 'HIRED' });
+      expect(requisitions.update).toHaveBeenCalledWith(
+        'tenant-1',
+        'req-1',
+        expect.objectContaining({ status: 'CLOSED' }),
+      );
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'recruitment.requisition.auto_closed',
+          resourceId: 'req-1',
+          metadata: { openings: 1, hiredCount: 1 },
+        }),
+      );
+    });
+
+    it('does not close the requisition while openings remain unfilled', async () => {
+      applications.findById.mockResolvedValue(
+        makeApplication({ stage: 'OFFER', requisitionId: 'req-1' }),
+      );
+      applications.update.mockResolvedValue(makeApplication({ stage: 'HIRED' }));
+      applications.list.mockResolvedValue([makeApplication({ stage: 'HIRED' })]);
+      requisitions.findById.mockResolvedValue(makeRequisition({ status: 'OPEN', openings: 2 }));
+
+      await service.advance('tenant-1', 'app-1', { stage: 'HIRED' } as never, 'hr-1');
+
+      expect(requisitions.update).not.toHaveBeenCalled();
+    });
+
+    it('does not close a requisition that is not in a status that can transition to CLOSED', async () => {
+      applications.findById.mockResolvedValue(
+        makeApplication({ stage: 'OFFER', requisitionId: 'req-1' }),
+      );
+      applications.update.mockResolvedValue(makeApplication({ stage: 'HIRED' }));
+      applications.list.mockResolvedValue([makeApplication({ stage: 'HIRED' })]);
+      requisitions.findById.mockResolvedValue(makeRequisition({ status: 'DRAFT', openings: 1 }));
+
+      await service.advance('tenant-1', 'app-1', { stage: 'HIRED' } as never, 'hr-1');
+
+      expect(requisitions.update).not.toHaveBeenCalled();
+    });
+
+    it('does not attempt to close the requisition for a non-HIRED transition', async () => {
+      applications.findById.mockResolvedValue(makeApplication({ stage: 'INTERVIEW', requisitionId: 'req-1' }));
+      applications.update.mockResolvedValue(makeApplication({ stage: 'OFFER' }));
+
+      await service.advance('tenant-1', 'app-1', { stage: 'OFFER' } as never, 'hr-1');
+
+      expect(requisitions.findById).not.toHaveBeenCalled();
+      expect(requisitions.update).not.toHaveBeenCalled();
+    });
   });
 
   describe('advanceAsHiringManager', () => {
@@ -400,6 +462,35 @@ describe('ApplicationService', () => {
           actorUserId: 'hr-1',
         }),
       );
+    });
+
+    it('closes the requisition once accepting the offer fills every opening', async () => {
+      applications.findById.mockResolvedValue(
+        makeApplication({ stage: 'OFFER', offerSentAt: new Date(), requisitionId: 'req-1' }),
+      );
+      applications.update.mockResolvedValue(makeApplication({ stage: 'HIRED' }));
+      applications.list.mockResolvedValue([makeApplication({ stage: 'HIRED' })]);
+      requisitions.findById.mockResolvedValue(makeRequisition({ status: 'OPEN', openings: 1 }));
+
+      await service.respondToOffer('tenant-1', 'app-1', { accepted: true }, 'hr-1');
+
+      expect(requisitions.update).toHaveBeenCalledWith(
+        'tenant-1',
+        'req-1',
+        expect.objectContaining({ status: 'CLOSED' }),
+      );
+    });
+
+    it('does not attempt to close the requisition when the offer is declined', async () => {
+      applications.findById.mockResolvedValue(
+        makeApplication({ stage: 'OFFER', offerSentAt: new Date(), requisitionId: 'req-1' }),
+      );
+      applications.update.mockResolvedValue(makeApplication({ stage: 'REJECTED' }));
+
+      await service.respondToOffer('tenant-1', 'app-1', { accepted: false }, 'hr-1');
+
+      expect(requisitions.findById).not.toHaveBeenCalled();
+      expect(requisitions.update).not.toHaveBeenCalled();
     });
   });
 

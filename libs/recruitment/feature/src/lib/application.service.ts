@@ -8,7 +8,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Application, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
-import { canTransitionApplicationStage } from '@africahr/recruitment-domain';
+import { canTransitionApplicationStage, canTransitionRequisitionStatus } from '@africahr/recruitment-domain';
 import {
   ApplicationRepository,
   ApplicationWithRelations,
@@ -262,6 +262,10 @@ export class ApplicationService {
 
     await this.notifyOfStageChange(tenantId, application, dto.stage, actorId);
 
+    if (dto.stage === 'HIRED') {
+      await this.maybeAutoCloseRequisition(tenantId, application.requisitionId, actorId);
+    }
+
     return updated;
   }
 
@@ -339,6 +343,10 @@ export class ApplicationService {
 
     await this.notifyOfStageChange(tenantId, application, nextStage, actorId);
 
+    if (nextStage === 'HIRED') {
+      await this.maybeAutoCloseRequisition(tenantId, application.requisitionId, actorId);
+    }
+
     return updated;
   }
 
@@ -376,6 +384,45 @@ export class ApplicationService {
     });
 
     return updated;
+  }
+
+  /**
+   * Closes the requisition once enough candidates have reached HIRED to
+   * fill every opening - openings is never reconciled anywhere else, so
+   * without this a fully-staffed requisition stays OPEN indefinitely.
+   * Silently does nothing if the requisition is missing or already in a
+   * status that can't move to CLOSED (e.g. still DRAFT, or already
+   * CLOSED/CANCELLED) - this is a side effect of hiring, not a request the
+   * caller made, so it should never surface an error into the hire flow.
+   */
+  private async maybeAutoCloseRequisition(
+    tenantId: string,
+    requisitionId: string,
+    actorId?: string,
+  ): Promise<void> {
+    const requisition = await this.requisitions.findById(tenantId, requisitionId);
+    if (!requisition || !canTransitionRequisitionStatus(requisition.status, 'CLOSED')) {
+      return;
+    }
+
+    const hired = await this.applications.list(tenantId, { requisitionId, stage: 'HIRED' });
+    if (hired.length < requisition.openings) {
+      return;
+    }
+
+    await this.requisitions.update(tenantId, requisitionId, {
+      status: 'CLOSED',
+      updatedBy: actorId,
+    });
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'recruitment.requisition.auto_closed',
+      resourceType: 'JobRequisition',
+      resourceId: requisitionId,
+      metadata: { openings: requisition.openings, hiredCount: hired.length },
+    });
   }
 
   private assertTransition(

@@ -22,6 +22,7 @@ describe('LeaveRequestController', () => {
       findById: jest.fn(),
       approve: jest.fn(),
       reject: jest.fn(),
+      adjustBalance: jest.fn(),
     } as unknown as jest.Mocked<LeaveRequestService>;
 
     controller = new LeaveRequestController(service);
@@ -49,5 +50,13 @@ describe('LeaveRequestController', () => {
     controller.reject('tenant-1', 'req-1', dto, hrManager);
 
     expect(service.reject).toHaveBeenCalledWith('tenant-1', 'req-1', 'Insufficient coverage', 'hr-1');
+  });
+
+  it('delegates adjustBalance with tenant, dto, and actor', () => {
+    const dto = { employeeId: 'emp-1', leaveTypeId: 'lt-1', year: 2026, entitledDays: 25 } as never;
+
+    controller.adjustBalance('tenant-1', dto, hrManager);
+
+    expect(service.adjustBalance).toHaveBeenCalledWith('tenant-1', dto, 'hr-1');
   });
 });

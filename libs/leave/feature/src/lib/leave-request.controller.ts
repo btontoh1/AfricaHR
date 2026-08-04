@@ -13,6 +13,8 @@ import { LeaveRequestStatus } from '@prisma/client';
 import { LeaveRequestService } from './leave-request.service';
 import { RejectLeaveRequestDto } from './dto/reject-leave-request.dto';
 import { LeaveRequestResponseDto } from './dto/leave-request-response.dto';
+import { AdjustLeaveBalanceDto } from './dto/adjust-leave-balance.dto';
+import { LeaveBalanceResponseDto } from './dto/leave-balance-response.dto';
 
 @ApiTags('leave-requests')
 @ApiBearerAuth()
@@ -71,5 +73,22 @@ export class LeaveRequestController {
   ) {
     assertTenantScope(actor, tenantId);
     return this.leaveRequests.reject(tenantId, id, dto.rejectionReason, actor.sub);
+  }
+
+  // No :id path param - LeaveBalance is lazily materialized (see
+  // LeaveRequestService.adjustBalance's doc comment) so there's no
+  // balance id an HR caller could know ahead of time. Targeted instead by
+  // employeeId/leaveTypeId/year in the body, mirroring
+  // EnrollEmployeeDto's "HR-facing arbitrary employee" convention.
+  @Post('adjust-balance')
+  @RequirePermissions(Permission.LEAVE_MANAGE)
+  @ApiOkResponse({ type: LeaveBalanceResponseDto })
+  adjustBalance(
+    @Param('tenantId') tenantId: string,
+    @Body() dto: AdjustLeaveBalanceDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.leaveRequests.adjustBalance(tenantId, dto, actor.sub);
   }
 }

@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
 import type {
+  AdjustLeaveBalanceInput,
   CreateLeaveRequestInput,
   CreateLeaveTypeInput,
   LeaveRequestStatus,
@@ -178,6 +179,25 @@ export function useRejectLeaveRequest(tenantId: string) {
       return data;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: leaveRequestsKey(tenantId) }),
+  });
+}
+
+/** HR-facing: correct or grant an arbitrary employee's leave balance. */
+export function useAdjustLeaveBalance(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: AdjustLeaveBalanceInput) => {
+      const { data, error } = await apiClient.POST(
+        '/api/tenants/{tenantId}/leave-requests/adjust-balance',
+        { params: { path: { tenantId } }, body: input },
+      );
+      if (error) throw error;
+      return data;
+    },
+    // Only affects the adjusted employee's own balances view, which this
+    // HR-facing mutation doesn't have a local cache entry for unless the
+    // caller happens to be adjusting their own - invalidate defensively.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: myLeaveBalancesKey(tenantId) }),
   });
 }
 

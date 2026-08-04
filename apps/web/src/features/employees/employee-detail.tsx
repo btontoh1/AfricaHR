@@ -5,6 +5,8 @@ import { useOrganization, useOrganizationUnits } from '@/features/organizations/
 import { EmploymentStatusBadge } from './employment-status-badge';
 import { StatusChangeControl } from './status-change-control';
 import { UpdateEmployeeForm } from './update-employee-form';
+import { AdjustLeaveBalanceControl } from '@/features/leave/adjust-leave-balance-control';
+import { useSession } from '@/app/(app)/session-provider';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { formatCurrency } from '@/lib/format-currency';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,6 +24,11 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 export function EmployeeDetail({ tenantId, employeeId }: { tenantId: string; employeeId: string }) {
+  const session = useSession();
+  // Mirrors hasLeaveAdminAccess in nav-config.ts - PAYROLL_MANAGER can
+  // reach this page (hasAdminAccess) but doesn't hold LEAVE_MANAGE, so it
+  // shouldn't see an action that would just 403 at the API.
+  const hasLeaveAdminAccess = session.role === 'TENANT_ADMIN' || session.role === 'HR_MANAGER';
   const { data: employee, isLoading, isError, error } = useEmployee(tenantId, employeeId);
   // Employee only carries organizationId/organizationUnitId/managerId -
   // resolve them to display names here rather than showing raw UUIDs in the
@@ -82,6 +89,17 @@ export function EmployeeDetail({ tenantId, employeeId }: { tenantId: string; emp
           <StatusChangeControl tenantId={tenantId} employee={employee} />
         </CardContent>
       </Card>
+
+      {hasLeaveAdminAccess && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Leave balance</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AdjustLeaveBalanceControl tenantId={tenantId} employeeId={employee.id} />
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

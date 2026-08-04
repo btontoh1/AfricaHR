@@ -38,6 +38,24 @@ export interface BenefitEnrollmentCreatedEvent {
   actorUserId: string | null;
 }
 
+/**
+ * Emitted after an enrollment is cancelled. Same recipient shape as
+ * BenefitEnrollmentCreatedEvent (tenant admins/HR managers only, actor
+ * excluded) - cancellation can likewise be self-service or done by
+ * BENEFITS_MANAGE-holding staff on an employee's behalf. Consumed by a
+ * listener living in notifications-feature — see
+ * BenefitEnrollmentCreatedEvent's doc comment for why this event is a
+ * plain string/payload contract rather than a shared type.
+ */
+export const BENEFIT_ENROLLMENT_CANCELLED_EVENT = 'benefits.enrollment.cancelled';
+
+export interface BenefitEnrollmentCancelledEvent {
+  tenantId: string;
+  employeeName: string;
+  planName: string;
+  actorUserId: string | null;
+}
+
 @Injectable()
 export class BenefitEnrollmentService {
   constructor(
@@ -181,7 +199,29 @@ export class BenefitEnrollmentService {
       resourceId: id,
     });
 
+    await this.notifyOfEnrollmentCancelled(tenantId, enrollment, actorId);
+
     return updated;
+  }
+
+  /** Silent no-op if the employee can no longer be found - not an error condition here. */
+  private async notifyOfEnrollmentCancelled(
+    tenantId: string,
+    enrollment: BenefitEnrollmentWithPlan,
+    actorId?: string,
+  ): Promise<void> {
+    const employee = await this.employees.findById(tenantId, enrollment.employeeId);
+    if (!employee) {
+      return;
+    }
+
+    const event: BenefitEnrollmentCancelledEvent = {
+      tenantId,
+      employeeName: `${employee.firstName} ${employee.lastName}`,
+      planName: enrollment.benefitPlan.name,
+      actorUserId: actorId ?? null,
+    };
+    this.eventEmitter.emit(BENEFIT_ENROLLMENT_CANCELLED_EVENT, event);
   }
 
   async getContributionForSelf(

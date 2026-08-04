@@ -48,6 +48,29 @@ export interface RecruitmentApplicationCreatedEvent {
   actorUserId: string | null;
 }
 
+/**
+ * Emitted whenever an application's stage changes - both the hiring-manager
+ * driven advance() path (screening/interview/offer/hired/rejected) and the
+ * candidate-driven respondToOffer() path (offer accepted/declined). Shares
+ * the same recipient shape as RecruitmentApplicationCreatedEvent
+ * (hiringManagerUserId + tenant admins/HR managers) since both stage
+ * transitions matter to whoever is tracking this candidate, not just
+ * whoever triggered them. Consumed by a listener living in
+ * notifications-feature — see RecruitmentApplicationCreatedEvent's doc
+ * comment for why this event is a plain string/payload contract rather
+ * than a shared type.
+ */
+export const RECRUITMENT_APPLICATION_STAGE_CHANGED_EVENT = 'recruitment.application.stage_changed';
+
+export interface RecruitmentApplicationStageChangedEvent {
+  tenantId: string;
+  hiringManagerUserId: string | null;
+  candidateName: string;
+  jobTitle: string;
+  stage: Application['stage'];
+  actorUserId: string | null;
+}
+
 @Injectable()
 export class ApplicationService {
   constructor(
@@ -127,12 +150,7 @@ export class ApplicationService {
       return;
     }
 
-    let hiringManagerUserId: string | null = null;
-    if (application.requisition.hiringManagerId) {
-      const manager = await this.employees.findById(tenantId, application.requisition.hiringManagerId);
-      hiringManagerUserId = manager?.userId ?? null;
-    }
-
+    const hiringManagerUserId = await this.resolveHiringManagerUserId(tenantId, application);
     const event: RecruitmentApplicationCreatedEvent = {
       tenantId,
       hiringManagerUserId,
@@ -141,6 +159,40 @@ export class ApplicationService {
       actorUserId: actorId ?? null,
     };
     this.eventEmitter.emit(RECRUITMENT_APPLICATION_CREATED_EVENT, event);
+  }
+
+  private async resolveHiringManagerUserId(
+    tenantId: string,
+    application: ApplicationWithRelations,
+  ): Promise<string | null> {
+    if (!application.requisition.hiringManagerId) {
+      return null;
+    }
+    const manager = await this.employees.findById(tenantId, application.requisition.hiringManagerId);
+    return manager?.userId ?? null;
+  }
+
+  /**
+   * Takes the pre-transition application (candidate/requisition relations
+   * don't change across a stage move) and the new stage explicitly, rather
+   * than re-fetching - the caller already has both.
+   */
+  private async notifyOfStageChange(
+    tenantId: string,
+    application: ApplicationWithRelations,
+    stage: Application['stage'],
+    actorId?: string,
+  ): Promise<void> {
+    const hiringManagerUserId = await this.resolveHiringManagerUserId(tenantId, application);
+    const event: RecruitmentApplicationStageChangedEvent = {
+      tenantId,
+      hiringManagerUserId,
+      candidateName: `${application.candidate.firstName} ${application.candidate.lastName}`,
+      jobTitle: application.requisition.title,
+      stage,
+      actorUserId: actorId ?? null,
+    };
+    this.eventEmitter.emit(RECRUITMENT_APPLICATION_STAGE_CHANGED_EVENT, event);
   }
 
   async findById(tenantId: string, id: string): Promise<ApplicationWithRelations> {
@@ -207,6 +259,8 @@ export class ApplicationService {
       resourceId: id,
       metadata: { from: application.stage, to: dto.stage },
     });
+
+    await this.notifyOfStageChange(tenantId, application, dto.stage, actorId);
 
     return updated;
   }
@@ -282,6 +336,8 @@ export class ApplicationService {
       resourceType: 'Application',
       resourceId: id,
     });
+
+    await this.notifyOfStageChange(tenantId, application, nextStage, actorId);
 
     return updated;
   }

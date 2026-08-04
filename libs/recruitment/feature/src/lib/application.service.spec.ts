@@ -8,7 +8,11 @@ import {
   JobRequisitionRepository,
   RecruitmentEmployeeRepository,
 } from '@africahr/recruitment-data-access';
-import { ApplicationService, RECRUITMENT_APPLICATION_CREATED_EVENT } from './application.service';
+import {
+  ApplicationService,
+  RECRUITMENT_APPLICATION_CREATED_EVENT,
+  RECRUITMENT_APPLICATION_STAGE_CHANGED_EVENT,
+} from './application.service';
 
 describe('ApplicationService', () => {
   let service: ApplicationService;
@@ -238,6 +242,32 @@ describe('ApplicationService', () => {
         }),
       );
     });
+
+    it('emits a stage-changed notification event on success', async () => {
+      applications.findById.mockResolvedValue(
+        makeApplication({
+          stage: 'APPLIED',
+          candidate: makeCandidate({ firstName: 'Kwame', lastName: 'Asante' }),
+          requisition: makeRequisition({ hiringManagerId: 'mgr-emp-1', title: 'Software Engineer' }),
+        }),
+      );
+      applications.update.mockResolvedValue(makeApplication({ stage: 'SCREENING' }));
+      employees.findById.mockResolvedValue({ id: 'mgr-emp-1', userId: 'mgr-user-1' });
+
+      await service.advance('tenant-1', 'app-1', { stage: 'SCREENING' } as never, 'hr-1');
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        RECRUITMENT_APPLICATION_STAGE_CHANGED_EVENT,
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          hiringManagerUserId: 'mgr-user-1',
+          candidateName: 'Kwame Asante',
+          jobTitle: 'Software Engineer',
+          stage: 'SCREENING',
+          actorUserId: 'hr-1',
+        }),
+      );
+    });
   });
 
   describe('advanceAsHiringManager', () => {
@@ -342,6 +372,33 @@ describe('ApplicationService', () => {
       );
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'recruitment.application.offer_declined' }),
+      );
+    });
+
+    it('emits a stage-changed notification event on success', async () => {
+      applications.findById.mockResolvedValue(
+        makeApplication({
+          stage: 'OFFER',
+          offerSentAt: new Date(),
+          candidate: makeCandidate({ firstName: 'Kwame', lastName: 'Asante' }),
+          requisition: makeRequisition({ hiringManagerId: 'mgr-emp-1', title: 'Software Engineer' }),
+        }),
+      );
+      applications.update.mockResolvedValue(makeApplication({ stage: 'HIRED' }));
+      employees.findById.mockResolvedValue({ id: 'mgr-emp-1', userId: 'mgr-user-1' });
+
+      await service.respondToOffer('tenant-1', 'app-1', { accepted: true }, 'hr-1');
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        RECRUITMENT_APPLICATION_STAGE_CHANGED_EVENT,
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          hiringManagerUserId: 'mgr-user-1',
+          candidateName: 'Kwame Asante',
+          jobTitle: 'Software Engineer',
+          stage: 'HIRED',
+          actorUserId: 'hr-1',
+        }),
       );
     });
   });

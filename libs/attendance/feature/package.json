@@ -8,6 +8,7 @@
   "dependencies": {
     "tslib": "^2.3.0",
     "@nestjs/common": "^11.0.0",
+    "@nestjs/event-emitter": "^3.1.0",
     "@africahr/platform-auth": "0.0.1",
     "@africahr/platform-audit": "0.0.1",
     "@africahr/attendance-data-access": "0.0.1",

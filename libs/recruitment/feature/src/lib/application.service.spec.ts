@@ -11,6 +11,7 @@ import {
 import {
   ApplicationService,
   RECRUITMENT_APPLICATION_CREATED_EVENT,
+  RECRUITMENT_APPLICATION_OFFER_SENT_EVENT,
   RECRUITMENT_APPLICATION_STAGE_CHANGED_EVENT,
 } from './application.service';
 
@@ -388,6 +389,38 @@ describe('ApplicationService', () => {
       );
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'recruitment.application.offer_sent' }),
+      );
+    });
+
+    it('emits an offer-sent notification event on success', async () => {
+      applications.findById.mockResolvedValue(
+        makeApplication({
+          stage: 'OFFER',
+          candidate: makeCandidate({ firstName: 'Kwame', lastName: 'Asante' }),
+          requisition: makeRequisition({ hiringManagerId: 'mgr-emp-1', title: 'Software Engineer' }),
+        }),
+      );
+      applications.update.mockResolvedValue(makeApplication({ stage: 'OFFER' }));
+      employees.findById.mockResolvedValue({ id: 'mgr-emp-1', userId: 'mgr-user-1' });
+
+      await service.sendOffer(
+        'tenant-1',
+        'app-1',
+        { offeredSalary: 3500, offeredStartDate: '2026-08-01' },
+        'hr-1',
+      );
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        RECRUITMENT_APPLICATION_OFFER_SENT_EVENT,
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          hiringManagerUserId: 'mgr-user-1',
+          candidateName: 'Kwame Asante',
+          jobTitle: 'Software Engineer',
+          offeredSalary: 3500,
+          offeredStartDate: '2026-08-01',
+          actorUserId: 'hr-1',
+        }),
       );
     });
   });

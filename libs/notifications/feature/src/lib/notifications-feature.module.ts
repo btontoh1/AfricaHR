@@ -14,6 +14,7 @@ import { PerformanceReviewNotificationListener } from './performance-review-noti
 import { PerformanceReviewCompletedNotificationListener } from './performance-review-completed-notification.listener';
 import { RecruitmentApplicationNotificationListener } from './recruitment-application-notification.listener';
 import { RecruitmentApplicationStageChangedNotificationListener } from './recruitment-application-stage-changed-notification.listener';
+import { RecruitmentApplicationOfferSentNotificationListener } from './recruitment-application-offer-sent-notification.listener';
 import { BenefitEnrollmentNotificationListener } from './benefit-enrollment-notification.listener';
 import { BenefitEnrollmentCancelledNotificationListener } from './benefit-enrollment-cancelled-notification.listener';
 import { PayRunNotificationListener } from './pay-run-notification.listener';
@@ -47,6 +48,7 @@ import {
     PerformanceReviewCompletedNotificationListener,
     RecruitmentApplicationNotificationListener,
     RecruitmentApplicationStageChangedNotificationListener,
+    RecruitmentApplicationOfferSentNotificationListener,
     BenefitEnrollmentNotificationListener,
     BenefitEnrollmentCancelledNotificationListener,
     PayRunNotificationListener,

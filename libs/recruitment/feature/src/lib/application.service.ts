@@ -71,6 +71,28 @@ export interface RecruitmentApplicationStageChangedEvent {
   actorUserId: string | null;
 }
 
+/**
+ * Emitted after sendOffer() records offer details - unlike advance() and
+ * respondToOffer(), sendOffer() doesn't change the application's stage (it's
+ * already OFFER), so it isn't covered by RecruitmentApplicationStageChangedEvent
+ * and needs its own event or the hiring manager/HR would never learn an offer
+ * actually went out. Shares the same recipient shape as the other two events
+ * for the same reason. Consumed by a listener living in notifications-feature
+ * - see RecruitmentApplicationCreatedEvent's doc comment for why this event
+ * is a plain string/payload contract rather than a shared type.
+ */
+export const RECRUITMENT_APPLICATION_OFFER_SENT_EVENT = 'recruitment.application.offer_sent';
+
+export interface RecruitmentApplicationOfferSentEvent {
+  tenantId: string;
+  hiringManagerUserId: string | null;
+  candidateName: string;
+  jobTitle: string;
+  offeredSalary: number;
+  offeredStartDate: string;
+  actorUserId: string | null;
+}
+
 @Injectable()
 export class ApplicationService {
   constructor(
@@ -195,6 +217,25 @@ export class ApplicationService {
     this.eventEmitter.emit(RECRUITMENT_APPLICATION_STAGE_CHANGED_EVENT, event);
   }
 
+  private async notifyOfOfferSent(
+    tenantId: string,
+    application: ApplicationWithRelations,
+    dto: SendOfferDto,
+    actorId?: string,
+  ): Promise<void> {
+    const hiringManagerUserId = await this.resolveHiringManagerUserId(tenantId, application);
+    const event: RecruitmentApplicationOfferSentEvent = {
+      tenantId,
+      hiringManagerUserId,
+      candidateName: `${application.candidate.firstName} ${application.candidate.lastName}`,
+      jobTitle: application.requisition.title,
+      offeredSalary: dto.offeredSalary,
+      offeredStartDate: dto.offeredStartDate,
+      actorUserId: actorId ?? null,
+    };
+    this.eventEmitter.emit(RECRUITMENT_APPLICATION_OFFER_SENT_EVENT, event);
+  }
+
   async findById(tenantId: string, id: string): Promise<ApplicationWithRelations> {
     const application = await this.applications.findById(tenantId, id);
     if (!application) {
@@ -305,6 +346,8 @@ export class ApplicationService {
       resourceType: 'Application',
       resourceId: id,
     });
+
+    await this.notifyOfOfferSent(tenantId, application, dto, actorId);
 
     return updated;
   }

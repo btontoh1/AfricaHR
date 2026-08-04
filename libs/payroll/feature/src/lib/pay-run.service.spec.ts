@@ -8,6 +8,7 @@ import {
   PayrollBenefitEnrollmentRepository,
   PayRunRepository,
   PayrollEmployeeRepository,
+  PayrollLeaveRequestRepository,
   PayslipRepository,
   PayslipWithLineItems,
   StatutoryRateRepository,
@@ -30,6 +31,7 @@ describe('PayRunService', () => {
   let taxBands: jest.Mocked<StatutoryTaxBandRepository>;
   let rates: jest.Mocked<StatutoryRateRepository>;
   let benefitEnrollments: jest.Mocked<PayrollBenefitEnrollmentRepository>;
+  let leaveRequests: jest.Mocked<PayrollLeaveRequestRepository>;
   let audit: jest.Mocked<AuditService>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let paystack: jest.Mocked<PaystackTransferClient>;
@@ -126,6 +128,10 @@ describe('PayRunService', () => {
       listActiveForEmployee: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<PayrollBenefitEnrollmentRepository>;
 
+    leaveRequests = {
+      sumUnpaidDays: jest.fn().mockResolvedValue(0),
+    } as unknown as jest.Mocked<PayrollLeaveRequestRepository>;
+
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
     eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
     paystack = {
@@ -141,6 +147,7 @@ describe('PayRunService', () => {
       taxBands,
       rates,
       benefitEnrollments,
+      leaveRequests,
       audit,
       eventEmitter,
       paystack,
@@ -160,6 +167,7 @@ describe('PayRunService', () => {
           taxBands,
           rates,
           benefitEnrollments,
+          leaveRequests,
           audit,
           eventEmitter,
           paystack,
@@ -391,6 +399,40 @@ describe('PayRunService', () => {
       expect(payslips.upsert).toHaveBeenCalledWith(
         'tenant-1',
         expect.objectContaining({ benefitsEmployeeDeduction: 20, benefitsEmployerCost: 30 }),
+      );
+    });
+
+    it("reduces the employee's basic salary/gross pay for unpaid leave taken within the pay period", async () => {
+      payRuns.findById.mockResolvedValue(
+        makePayRun({ status: 'DRAFT', periodStart: new Date('2026-01-01'), periodEnd: new Date('2026-01-31') }),
+      );
+      employees.listActiveByOrganization.mockResolvedValue([
+        {
+          id: 'emp-1',
+          organizationId: 'org-1',
+          firstName: 'Kwame',
+          lastName: 'Asante',
+          baseSalary: new Prisma.Decimal(2000),
+          currency: 'GHS',
+          annualRentPaid: null,
+          countryCode: 'GH',
+        },
+      ]);
+      // Jan 2026 has 22 working days; 2 unpaid days at 2000 = (2000/22)*2 ≈ 181.82
+      leaveRequests.sumUnpaidDays.mockResolvedValue(2);
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PROCESSING' }));
+
+      await service.process('tenant-1', 'run-1');
+
+      expect(leaveRequests.sumUnpaidDays).toHaveBeenCalledWith(
+        'tenant-1',
+        'emp-1',
+        new Date('2026-01-01'),
+        new Date('2026-01-31'),
+      );
+      expect(payslips.upsert).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ unpaidLeaveDeduction: 181.82, basicSalary: 1818.18 }),
       );
     });
 

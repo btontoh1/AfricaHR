@@ -509,4 +509,56 @@ describe('computePayslip', () => {
     expect(result.benefitsEmployeeDeduction).toBe(0);
     expect(result.benefitsEmployerCost).toBe(0);
   });
+
+  it('reduces basicSalary/grossPay/taxableIncome for unpaid leave, unlike a post-tax deduction', () => {
+    // Feb 2026 has 20 working days; 2 unpaid days at basicSalary 1000 = (1000/20)*2 = 100.
+    const result = computePayslip({
+      countryCode: 'GH',
+      basicSalary: 1000,
+      unpaidLeaveDays: 2,
+      periodStart: new Date('2026-02-01'),
+      periodEnd: new Date('2026-02-28'),
+      lineItems: [],
+      taxBands: bands,
+      ssnitRates,
+    });
+
+    expect(result.unpaidLeaveDeduction).toBe(100);
+    expect(result.basicSalary).toBe(900);
+    expect(result.grossPay).toBe(900);
+    // SSNIT employee = 900 * 0.055 = 49.5; taxable = 900 - 49.5 = 850.5
+    expect(result.ssnitEmployee).toBe(49.5);
+    expect(result.taxableIncome).toBe(850.5);
+    // unpaidLeaveDeduction is NOT added to totalDeductions - it already shrank grossPay.
+    expect(result.totalDeductions).toBe(result.ssnitEmployee + result.payeTax);
+  });
+
+  it('does not let unpaid leave push basicSalary below zero', () => {
+    const result = computePayslip({
+      countryCode: 'GH',
+      basicSalary: 100,
+      unpaidLeaveDays: 25,
+      periodStart: new Date('2026-02-01'),
+      periodEnd: new Date('2026-02-28'),
+      lineItems: [],
+      taxBands: bands,
+      ssnitRates,
+    });
+
+    expect(result.basicSalary).toBe(0);
+    expect(result.grossPay).toBe(0);
+  });
+
+  it('returns zero unpaidLeaveDeduction when unpaidLeaveDays is omitted', () => {
+    const result = computePayslip({
+      countryCode: 'GH',
+      basicSalary: 1000,
+      lineItems: [],
+      taxBands: bands,
+      ssnitRates,
+    });
+
+    expect(result.unpaidLeaveDeduction).toBe(0);
+    expect(result.basicSalary).toBe(1000);
+  });
 });

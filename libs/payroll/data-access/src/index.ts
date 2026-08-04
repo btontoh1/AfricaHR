@@ -7,3 +7,4 @@ export * from './lib/payslip-line-item.repository';
 export * from './lib/payroll-employee.repository';
 export * from './lib/payroll-disbursement.repository';
 export * from './lib/payroll-benefit-enrollment.repository';
+export * from './lib/payroll-leave-request.repository';

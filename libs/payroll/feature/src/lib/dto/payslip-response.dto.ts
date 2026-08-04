@@ -72,6 +72,9 @@ export class PayslipResponseDto {
   @ApiProperty({ description: "Sum of every active benefit-plan employer premium as of the pay date, else \"0\"" })
   benefitsEmployerCost!: string;
 
+  @ApiProperty({ description: 'Value of unpaid-leave days within the pay period at the daily rate, else "0" - already reduced basicSalary/grossPay above, not included in totalDeductions' })
+  unpaidLeaveDeduction!: string;
+
   @ApiProperty()
   totalDeductions!: string;
 

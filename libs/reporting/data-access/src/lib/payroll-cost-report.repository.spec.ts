@@ -26,6 +26,8 @@ describe('PayrollCostReportRepository', () => {
         ssnitEmployer: decimal(390),
         ghanaTier2PensionEmployer: decimal(150),
         kenyaHousingLevyEmployer: decimal(0),
+        nigeriaNsitfEmployer: decimal(0),
+        nigeriaNhisEmployer: decimal(0),
       },
     ]);
 
@@ -43,6 +45,8 @@ describe('PayrollCostReportRepository', () => {
         ssnitEmployer: 390,
         ghanaTier2PensionEmployer: 150,
         kenyaHousingLevyEmployer: 0,
+        nigeriaNsitfEmployer: 0,
+        nigeriaNhisEmployer: 0,
       },
     ]);
   });
@@ -68,6 +72,8 @@ describe('PayrollCostReportRepository', () => {
         ssnitEmployer: true,
         ghanaTier2PensionEmployer: true,
         kenyaHousingLevyEmployer: true,
+        nigeriaNsitfEmployer: true,
+        nigeriaNhisEmployer: true,
       },
     });
   });

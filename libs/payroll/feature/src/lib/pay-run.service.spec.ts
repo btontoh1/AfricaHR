@@ -235,6 +235,7 @@ describe('PayRunService', () => {
       employees.listActiveByOrganization.mockResolvedValue([
         {
           id: 'emp-1',
+          organizationId: 'org-1',
           firstName: 'Kwame',
           lastName: 'Asante',
           baseSalary: new Prisma.Decimal(1000),
@@ -286,6 +287,7 @@ describe('PayRunService', () => {
       employees.listActiveByOrganization.mockResolvedValue([
         {
           id: 'emp-1',
+          organizationId: 'org-1',
           firstName: 'Chidi',
           lastName: 'Okafor',
           baseSalary: new Prisma.Decimal(1000),
@@ -309,6 +311,7 @@ describe('PayRunService', () => {
       employees.listActiveByOrganization.mockResolvedValue([
         {
           id: 'emp-1',
+          organizationId: 'org-1',
           firstName: 'Chidi',
           lastName: 'Okafor',
           baseSalary: new Prisma.Decimal(100_000),
@@ -350,6 +353,7 @@ describe('PayRunService', () => {
       employees.listActiveByOrganization.mockResolvedValue([
         {
           id: 'emp-1',
+          organizationId: 'org-1',
           firstName: 'Kwame',
           lastName: 'Asante',
           baseSalary: new Prisma.Decimal(1000),
@@ -368,6 +372,7 @@ describe('PayRunService', () => {
       employees.listActiveByOrganization.mockResolvedValue([
         {
           id: 'emp-1',
+          organizationId: 'org-1',
           firstName: 'Kwame',
           lastName: 'Asante',
           baseSalary: new Prisma.Decimal(1000),
@@ -396,6 +401,7 @@ describe('PayRunService', () => {
       employees.listActiveByOrganization.mockResolvedValue([
         {
           id: 'emp-1',
+          organizationId: 'org-1',
           firstName: 'Kwame',
           lastName: 'Asante',
           baseSalary: new Prisma.Decimal(1000),
@@ -416,6 +422,7 @@ describe('PayRunService', () => {
       employees.listActiveByOrganization.mockResolvedValue([
         {
           id: 'emp-1',
+          organizationId: 'org-1',
           firstName: 'Amina',
           lastName: 'Wanjiru',
           baseSalary: new Prisma.Decimal(50_000),
@@ -453,6 +460,7 @@ describe('PayRunService', () => {
         employees.listActiveByOrganization.mockResolvedValue([
           {
             id: 'emp-1',
+            organizationId: 'org-1',
             firstName: 'Amina',
             lastName: 'Wanjiru',
             baseSalary: new Prisma.Decimal(50_000),
@@ -474,6 +482,7 @@ describe('PayRunService', () => {
       employees.listActiveByOrganization.mockResolvedValue([
         {
           id: 'emp-1',
+          organizationId: 'org-1',
           firstName: 'Chidi',
           lastName: 'Okafor',
           baseSalary: new Prisma.Decimal(100_000),
@@ -487,6 +496,73 @@ describe('PayRunService', () => {
 
       expect(rates.findEffective).not.toHaveBeenCalledWith('NG', 'GHANA_TIER2_PENSION_EMPLOYER', expect.any(Date));
       expect(rates.findEffective).not.toHaveBeenCalledWith('NG', 'KENYA_SHIF_EMPLOYEE', expect.any(Date));
+    });
+
+    function makeNigerianEmployees(count: number): Array<Record<string, unknown>> {
+      return Array.from({ length: count }, (_unused, i) => ({
+        id: `emp-${i + 1}`,
+        organizationId: 'org-1',
+        firstName: 'Chidi',
+        lastName: 'Okafor',
+        baseSalary: new Prisma.Decimal(100_000),
+        currency: 'NGN',
+        annualRentPaid: null,
+        countryCode: 'NG',
+      }));
+    }
+
+    it("fetches Nigeria's NSITF/NHIS rates and applies them once the organization meets the 5-employee threshold", async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'DRAFT' }));
+      employees.listActiveByOrganization.mockResolvedValue(makeNigerianEmployees(5) as never);
+      rates.findEffective.mockImplementation((_countryCode, code) => {
+        if (code === 'NIGERIA_NSITF_EMPLOYER') return Promise.resolve({ rate: 0.01 } as never);
+        if (code === 'NIGERIA_NHIS_EMPLOYEE') return Promise.resolve({ rate: 0.05 } as never);
+        if (code === 'NIGERIA_NHIS_EMPLOYER') return Promise.resolve({ rate: 0.1 } as never);
+        return Promise.resolve({ rate: 0.08 } as never);
+      });
+
+      await service.process('tenant-1', 'run-1');
+
+      expect(rates.findEffective).toHaveBeenCalledWith('NG', 'NIGERIA_NSITF_EMPLOYER', expect.any(Date));
+      expect(rates.findEffective).toHaveBeenCalledWith('NG', 'NIGERIA_NHIS_EMPLOYEE', expect.any(Date));
+      expect(rates.findEffective).toHaveBeenCalledWith('NG', 'NIGERIA_NHIS_EMPLOYER', expect.any(Date));
+      expect(payslips.upsert).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({
+          employeeId: 'emp-1',
+          nigeriaNsitfEmployer: 1000,
+          nigeriaNhisEmployee: 5000,
+          nigeriaNhisEmployer: 10_000,
+        }),
+      );
+    });
+
+    it("throws ConflictException when Nigeria's NSITF/NHIS rates are missing, even for a small organization", async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'DRAFT' }));
+      employees.listActiveByOrganization.mockResolvedValue(makeNigerianEmployees(2) as never);
+      rates.findEffective.mockImplementation((_countryCode, code) =>
+        Promise.resolve(code === 'NIGERIA_NSITF_EMPLOYER' ? null : ({ rate: 0.08 } as never)),
+      );
+
+      await expect(service.process('tenant-1', 'run-1')).rejects.toThrow(ConflictException);
+    });
+
+    it("does not apply Nigeria's NSITF/NHIS when the organization is under the 5-employee threshold, even though the rates are required and fetched", async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'DRAFT' }));
+      employees.listActiveByOrganization.mockResolvedValue(makeNigerianEmployees(2) as never);
+      rates.findEffective.mockImplementation((_countryCode, code) => {
+        if (code === 'NIGERIA_NSITF_EMPLOYER') return Promise.resolve({ rate: 0.01 } as never);
+        if (code === 'NIGERIA_NHIS_EMPLOYEE') return Promise.resolve({ rate: 0.05 } as never);
+        if (code === 'NIGERIA_NHIS_EMPLOYER') return Promise.resolve({ rate: 0.1 } as never);
+        return Promise.resolve({ rate: 0.08 } as never);
+      });
+
+      await service.process('tenant-1', 'run-1');
+
+      expect(payslips.upsert).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ nigeriaNsitfEmployer: 0, nigeriaNhisEmployee: 0, nigeriaNhisEmployer: 0 }),
+      );
     });
   });
 
@@ -546,6 +622,7 @@ describe('PayRunService', () => {
       });
       employees.findById.mockResolvedValue({
         id: 'emp-1',
+        organizationId: 'org-1',
         firstName: 'Kwame',
         lastName: 'Asante',
         baseSalary: new Prisma.Decimal(1000),
@@ -633,6 +710,7 @@ describe('PayRunService', () => {
       });
       employees.findById.mockResolvedValue({
         id: 'emp-1',
+        organizationId: 'org-1',
         firstName: 'Test',
         lastName: 'Employee',
         baseSalary: new Prisma.Decimal(1000),
@@ -666,6 +744,7 @@ describe('PayRunService', () => {
       });
       employees.findById.mockResolvedValue({
         id: 'emp-1',
+        organizationId: 'org-1',
         firstName: 'Test',
         lastName: 'Employee',
         baseSalary: new Prisma.Decimal(1000),
@@ -700,6 +779,7 @@ describe('PayRunService', () => {
       });
       employees.findById.mockResolvedValue({
         id: 'emp-1',
+        organizationId: 'org-1',
         firstName: 'Test',
         lastName: 'Employee',
         baseSalary: new Prisma.Decimal(1000),

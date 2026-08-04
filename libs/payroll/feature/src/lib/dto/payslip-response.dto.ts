@@ -57,6 +57,15 @@ export class PayslipResponseDto {
   @ApiProperty({ description: 'Kenya only, else "0" - Affordable Housing Levy employer contribution' })
   kenyaHousingLevyEmployer!: string;
 
+  @ApiProperty({ description: 'Nigeria only (and only when the employer has 5+ active employees), else "0" - NSITF employer-only contribution' })
+  nigeriaNsitfEmployer!: string;
+
+  @ApiProperty({ description: 'Nigeria only (employer threshold + employee eligibility met), else "0" - NHIS employee contribution' })
+  nigeriaNhisEmployee!: string;
+
+  @ApiProperty({ description: 'Nigeria only, same gating as nigeriaNhisEmployee, else "0" - NHIS employer contribution' })
+  nigeriaNhisEmployer!: string;
+
   @ApiProperty()
   totalDeductions!: string;
 

@@ -177,6 +177,28 @@ async function seedGhanaStatutoryData(prisma: PrismaClient): Promise<void> {
  *    to avoid renaming the enum/field across the whole payroll module for
  *    a naming-only fix. countryCode already disambiguates which scheme a
  *    row actually represents.
+ *
+ * Also seeds NSITF (NIGERIA_NSITF_EMPLOYER, 1% of basic salary,
+ * employer-only) and NHIS (NIGERIA_NHIS_EMPLOYEE/EMPLOYER, 5%/10% of
+ * basic salary, per the NHIA Act 2022's OPSSHIP scheme) - unlike every
+ * other statutory rate here, whether these actually apply to a given
+ * payslip additionally depends on the employing organization having 5+
+ * active employees (and for NHIS, the employee's own basic salary
+ * clearing NHIS's NGN 30,000 eligibility floor) - both gated in code,
+ * not here as data, see payslip-calculator.ts's
+ * NIGERIA_EMPLOYER_LEVY_THRESHOLD and nigeria-nhis-eligibility.ts.
+ * Whether NHIS's employee share is tax-deductible under the NTA 2025 is
+ * directly disputed across secondary sources; this platform treats it as
+ * NOT reducing taxable income (the safer default - see
+ * payslip-calculator.ts's doc comment for the reasoning). Sourced from
+ * public payroll-compliance summaries, cross-referenced across multiple
+ * sources but NOT confirmed against nsitf.gov.ng/nhia.gov.ng directly
+ * (blocked by this environment's egress policy) - confirm before relying
+ * on these for real payroll, same caveat as everything else here.
+ * ITF (Industrial Training Fund) is deliberately NOT seeded - it's an
+ * annual levy on total organization payroll, filed once a year, not a
+ * per-pay-run per-employee deduction, so it doesn't fit this engine's
+ * model at all; would need a separate annual-filing feature.
  */
 async function seedNigeriaStatutoryData(prisma: PrismaClient): Promise<void> {
   const countryCode = 'NG';
@@ -261,10 +283,28 @@ async function seedNigeriaStatutoryData(prisma: PrismaClient): Promise<void> {
           rate: 0.1,
           effectiveFrom,
         },
+        {
+          countryCode,
+          code: StatutoryRateCode.NIGERIA_NSITF_EMPLOYER,
+          rate: 0.01,
+          effectiveFrom,
+        },
+        {
+          countryCode,
+          code: StatutoryRateCode.NIGERIA_NHIS_EMPLOYEE,
+          rate: 0.05,
+          effectiveFrom,
+        },
+        {
+          countryCode,
+          code: StatutoryRateCode.NIGERIA_NHIS_EMPLOYER,
+          rate: 0.1,
+          effectiveFrom,
+        },
       ],
     });
     console.log(
-      `Seed: created PLACEHOLDER Pension Reform Act rates for "${countryCode}" (stored under the SSNIT_EMPLOYEE/SSNIT_EMPLOYER codes - see this function's doc comment) — confirm against PenCom's current published rates before real payroll runs.`,
+      `Seed: created PLACEHOLDER Pension Reform Act/NSITF/NHIS rates for "${countryCode}" (pension stored under the SSNIT_EMPLOYEE/SSNIT_EMPLOYER codes - see this function's doc comment) — confirm against PenCom's/NSITF's/NHIA's current published rates before real payroll runs.`,
     );
   }
 }

@@ -6,7 +6,11 @@ import { applyGhanaInsurableEarningsCap } from './ghana-ssnit-cap';
 import { applyKenyaPensionableEarningsCap } from './kenya-nssf-cap';
 import { applyKenyaPersonalRelief } from './kenya-personal-relief';
 import { calculateKenyaShif } from './kenya-shif';
+import { isEligibleForNigeriaNhis } from './nigeria-nhis-eligibility';
 import { PayslipLineItemType } from './payslip-line-item-type';
+
+/** NSITF and NHIA's OPSSHIP both apply only once the employing organization has this many active employees - per public payroll-compliance summaries, not otherwise confirmed against nsitf.gov.ng/nhia.gov.ng directly (blocked by this environment's egress policy). */
+const NIGERIA_EMPLOYER_LEVY_THRESHOLD = 5;
 
 export interface PayslipLineItemInput {
   type: PayslipLineItemType;
@@ -26,6 +30,14 @@ export interface ComputePayslipInput {
   kenyaHousingLevyEmployeeRate?: number;
   /** Kenya only - Affordable Housing Levy employer contribution rate (e.g. 0.015). Employer-only; never deducted from the employee's pay. */
   kenyaHousingLevyEmployerRate?: number;
+  /** Nigeria only - the employing organization's active employee count, for NSITF/NHIS's 5+ employee threshold. */
+  organizationEmployeeCount?: number;
+  /** Nigeria only - NSITF contribution rate (e.g. 0.01). Employer-only; never deducted from the employee's pay. Only applies once organizationEmployeeCount meets the threshold. */
+  nigeriaNsitfRate?: number;
+  /** Nigeria only - NHIS (NHIA OPSSHIP) employee contribution rate (e.g. 0.05). Only applies once organizationEmployeeCount meets the threshold AND the employee's own basic salary meets NHIS's eligibility floor - see nigeria-nhis-eligibility.ts. */
+  nigeriaNhisEmployeeRate?: number;
+  /** Nigeria only - NHIS employer contribution rate (e.g. 0.1). Employer-only; same gating as nigeriaNhisEmployeeRate. */
+  nigeriaNhisEmployerRate?: number;
   lineItems: readonly PayslipLineItemInput[];
   taxBands: readonly TaxBand[];
   ssnitRates: SsnitRates;
@@ -46,6 +58,12 @@ export interface ComputedPayslip {
   kenyaHousingLevyEmployee: number;
   /** Kenya only, else 0 - employer-only. Not part of totalDeductions/netPay, same as ssnitEmployer. */
   kenyaHousingLevyEmployer: number;
+  /** Nigeria only, org threshold met, else 0 - employer-only NSITF contribution. Not part of totalDeductions/netPay, same as ssnitEmployer. */
+  nigeriaNsitfEmployer: number;
+  /** Nigeria only, org threshold + employee eligibility met, else 0 - part of totalDeductions/netPay, but does NOT reduce taxable income (see this function's doc comment on the unresolved NHIS tax-treatment conflict). */
+  nigeriaNhisEmployee: number;
+  /** Nigeria only, same gating as nigeriaNhisEmployee, else 0 - employer-only. Not part of totalDeductions/netPay. */
+  nigeriaNhisEmployer: number;
   totalDeductions: number;
   netPay: number;
 }
@@ -85,6 +103,20 @@ export function sumLineItems(
  * deduction too but does NOT reduce taxable income (that relief was
  * repealed in December 2024) - and its employer share, like Ghana Tier 2,
  * is cost-only.
+ *
+ * Nigeria's NSITF and NHIS only apply once the employing organization
+ * clears a 5-employee threshold (see NIGERIA_EMPLOYER_LEVY_THRESHOLD) -
+ * unlike every other country mechanic above, which applies to every
+ * payslip of that country unconditionally. NHIS additionally requires
+ * the individual employee's own basic salary to clear NHIS's own
+ * eligibility floor (see nigeria-nhis-eligibility.ts) - an employee-level
+ * gate this engine has never needed before. NSITF is employer-only, same
+ * shape as Ghana Tier 2. NHIS's employee share reduces netPay but - given
+ * directly conflicting public guidance on whether the 2025 Nigeria Tax
+ * Act made it tax-deductible - is deliberately treated as NOT reducing
+ * taxable income, the safer default: wrongly withholding too much PAYE
+ * is a correctable overpayment, wrongly withholding too little risks the
+ * tenant under-remitting to FIRS.
  */
 export function computePayslip(input: ComputePayslipInput): ComputedPayslip {
   const earnings = sumLineItems(input.lineItems, PayslipLineItemType.EARNING);
@@ -110,6 +142,21 @@ export function computePayslip(input: ComputePayslipInput): ComputedPayslip {
   const kenyaHousingLevyEmployer =
     input.countryCode === 'KE' ? roundCurrency(grossPay * (input.kenyaHousingLevyEmployerRate ?? 0)) : 0;
 
+  const meetsNigeriaEmployerLevyThreshold =
+    (input.organizationEmployeeCount ?? 0) >= NIGERIA_EMPLOYER_LEVY_THRESHOLD;
+  const nigeriaNsitfEmployer =
+    input.countryCode === 'NG' && meetsNigeriaEmployerLevyThreshold
+      ? roundCurrency(basicSalary * (input.nigeriaNsitfRate ?? 0))
+      : 0;
+  const isEligibleForNhis =
+    input.countryCode === 'NG' && meetsNigeriaEmployerLevyThreshold && isEligibleForNigeriaNhis(basicSalary);
+  const nigeriaNhisEmployee = isEligibleForNhis
+    ? roundCurrency(basicSalary * (input.nigeriaNhisEmployeeRate ?? 0))
+    : 0;
+  const nigeriaNhisEmployer = isEligibleForNhis
+    ? roundCurrency(basicSalary * (input.nigeriaNhisEmployerRate ?? 0))
+    : 0;
+
   const relief =
     input.countryCode === 'NG' ? calculateNigeriaRentRelief(input.annualRentPaid ?? 0) : 0;
   const taxableIncome = roundCurrency(
@@ -119,7 +166,12 @@ export function computePayslip(input: ComputePayslipInput): ComputedPayslip {
   const payeTax = input.countryCode === 'KE' ? applyKenyaPersonalRelief(bandTax) : bandTax;
 
   const totalDeductions = roundCurrency(
-    ssnit.employee + payeTax + otherDeductions + kenyaShifEmployee + kenyaHousingLevyEmployee,
+    ssnit.employee +
+      payeTax +
+      otherDeductions +
+      kenyaShifEmployee +
+      kenyaHousingLevyEmployee +
+      nigeriaNhisEmployee,
   );
   const netPay = roundCurrency(grossPay - totalDeductions);
 
@@ -134,6 +186,9 @@ export function computePayslip(input: ComputePayslipInput): ComputedPayslip {
     kenyaShifEmployee,
     kenyaHousingLevyEmployee,
     kenyaHousingLevyEmployer,
+    nigeriaNsitfEmployer,
+    nigeriaNhisEmployee,
+    nigeriaNhisEmployer,
     totalDeductions,
     netPay,
   };

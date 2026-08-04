@@ -42,6 +42,8 @@ export class PayrollCostReportRepository {
           ssnitEmployer: true,
           ghanaTier2PensionEmployer: true,
           kenyaHousingLevyEmployer: true,
+          nigeriaNsitfEmployer: true,
+          nigeriaNhisEmployer: true,
         },
       }),
     );
@@ -54,6 +56,8 @@ export class PayrollCostReportRepository {
       ssnitEmployer: payslip.ssnitEmployer.toNumber(),
       ghanaTier2PensionEmployer: payslip.ghanaTier2PensionEmployer.toNumber(),
       kenyaHousingLevyEmployer: payslip.kenyaHousingLevyEmployer.toNumber(),
+      nigeriaNsitfEmployer: payslip.nigeriaNsitfEmployer.toNumber(),
+      nigeriaNhisEmployer: payslip.nigeriaNhisEmployer.toNumber(),
     }));
   }
 }

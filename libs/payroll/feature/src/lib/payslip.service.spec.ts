@@ -91,9 +91,10 @@ describe('PayslipService', () => {
     } as unknown as jest.Mocked<PayRunRepository>;
 
     employees = {
-      listActiveByOrganization: jest.fn(),
+      listActiveByOrganization: jest.fn().mockResolvedValue([]),
       findById: jest.fn().mockResolvedValue({
         id: 'emp-1',
+        organizationId: 'org-1',
         baseSalary: new Prisma.Decimal(1000),
         currency: 'GHS',
         countryCode: 'GH',
@@ -310,6 +311,59 @@ describe('PayslipService', () => {
           kenyaHousingLevyEmployer: expect.any(Number),
         }),
       );
+    });
+
+    it("fetches Nigeria's NSITF/NHIS rates and the organization's employee count when recomputing a Nigeria payslip", async () => {
+      payslips.findById.mockResolvedValue(makePayslip({ countryCode: 'NG' }));
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'PROCESSING' }));
+      employees.findById.mockResolvedValue({
+        id: 'emp-1',
+        organizationId: 'org-1',
+        baseSalary: new Prisma.Decimal(100_000),
+        currency: 'NGN',
+        countryCode: 'NG',
+      } as never);
+      employees.listActiveByOrganization.mockResolvedValue(
+        Array.from({ length: 5 }, () => ({})) as never,
+      );
+      lineItems.create.mockResolvedValue({ id: 'li-1' } as PayslipLineItem);
+      rates.findEffective.mockImplementation((_countryCode, code) => {
+        if (code === 'NIGERIA_NSITF_EMPLOYER') return Promise.resolve({ rate: 0.01 } as never);
+        if (code === 'NIGERIA_NHIS_EMPLOYEE') return Promise.resolve({ rate: 0.05 } as never);
+        if (code === 'NIGERIA_NHIS_EMPLOYER') return Promise.resolve({ rate: 0.1 } as never);
+        return Promise.resolve({ rate: 0.08 } as never);
+      });
+
+      await service.addLineItem('tenant-1', 'payslip-1', { type: 'EARNING', code: 'BONUS', amount: 0 });
+
+      expect(employees.listActiveByOrganization).toHaveBeenCalledWith('tenant-1', 'org-1');
+      expect(payslips.upsert).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({
+          nigeriaNsitfEmployer: 1000,
+          nigeriaNhisEmployee: 5000,
+          nigeriaNhisEmployer: 10_000,
+        }),
+      );
+    });
+
+    it("throws ConflictException when Nigeria's NSITF/NHIS rates are missing", async () => {
+      payslips.findById.mockResolvedValue(makePayslip({ countryCode: 'NG' }));
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'PROCESSING' }));
+      employees.findById.mockResolvedValue({
+        id: 'emp-1',
+        organizationId: 'org-1',
+        baseSalary: new Prisma.Decimal(100_000),
+        currency: 'NGN',
+        countryCode: 'NG',
+      } as never);
+      rates.findEffective.mockImplementation((_countryCode, code) =>
+        Promise.resolve(code === 'NIGERIA_NSITF_EMPLOYER' ? null : ({ rate: 0.08 } as never)),
+      );
+
+      await expect(
+        service.addLineItem('tenant-1', 'payslip-1', { type: 'EARNING', code: 'BONUS', amount: 0 }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 

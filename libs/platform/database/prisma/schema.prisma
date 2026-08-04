@@ -1087,6 +1087,7 @@ enum PerformanceReviewStatus {
   DRAFT
   SELF_SUBMITTED
   COMPLETED
+  CANCELLED
 }
 
 /// One per employee per cycle, created on-demand (not bulk-generated when

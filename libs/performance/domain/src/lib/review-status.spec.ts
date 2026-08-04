@@ -42,4 +42,37 @@ describe('canTransitionReviewStatus', () => {
       canTransitionReviewStatus(PerformanceReviewStatus.SELF_SUBMITTED, PerformanceReviewStatus.DRAFT),
     ).toBe(false);
   });
+
+  it('allows cancelling from DRAFT or SELF_SUBMITTED', () => {
+    expect(
+      canTransitionReviewStatus(PerformanceReviewStatus.DRAFT, PerformanceReviewStatus.CANCELLED),
+    ).toBe(true);
+    expect(
+      canTransitionReviewStatus(
+        PerformanceReviewStatus.SELF_SUBMITTED,
+        PerformanceReviewStatus.CANCELLED,
+      ),
+    ).toBe(true);
+  });
+
+  it('rejects cancelling a COMPLETED review', () => {
+    expect(
+      canTransitionReviewStatus(PerformanceReviewStatus.COMPLETED, PerformanceReviewStatus.CANCELLED),
+    ).toBe(false);
+  });
+
+  it('treats CANCELLED as terminal', () => {
+    expect(
+      canTransitionReviewStatus(PerformanceReviewStatus.CANCELLED, PerformanceReviewStatus.DRAFT),
+    ).toBe(false);
+    expect(
+      canTransitionReviewStatus(
+        PerformanceReviewStatus.CANCELLED,
+        PerformanceReviewStatus.SELF_SUBMITTED,
+      ),
+    ).toBe(false);
+    expect(
+      canTransitionReviewStatus(PerformanceReviewStatus.CANCELLED, PerformanceReviewStatus.COMPLETED),
+    ).toBe(false);
+  });
 });

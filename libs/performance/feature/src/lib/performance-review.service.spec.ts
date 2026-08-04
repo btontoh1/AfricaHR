@@ -357,6 +357,14 @@ describe('PerformanceReviewService', () => {
       ).rejects.toThrow(ConflictException);
     });
 
+    it('rejects submitting a manager assessment for a CANCELLED review', async () => {
+      reviews.findById.mockResolvedValue(makeReview({ status: 'CANCELLED' }));
+
+      await expect(
+        service.submitManagerAssessment('tenant-1', 'rev-1', { managerRating: 3 }),
+      ).rejects.toThrow(ConflictException);
+    });
+
     it('emits a notification event to the reviewee when they have portal access', async () => {
       reviews.findById.mockResolvedValue(makeReview({ status: 'SELF_SUBMITTED', employeeId: 'emp-1' }));
       reviews.update.mockResolvedValue(makeReview({ status: 'COMPLETED', employeeId: 'emp-1' }));
@@ -392,6 +400,51 @@ describe('PerformanceReviewService', () => {
       await service.submitManagerAssessment('tenant-1', 'rev-1', { managerRating: 3 }, 'mgr-user-1');
 
       expect(eventEmitter.emit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('cancel', () => {
+    it('cancels a DRAFT review and audits', async () => {
+      reviews.findById.mockResolvedValue(makeReview({ status: 'DRAFT' }));
+      reviews.update.mockResolvedValue(makeReview({ status: 'CANCELLED' }));
+
+      await service.cancel('tenant-1', 'rev-1', 'hr-1');
+
+      expect(reviews.update).toHaveBeenCalledWith(
+        'tenant-1',
+        'rev-1',
+        expect.objectContaining({ status: 'CANCELLED' }),
+      );
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'performance.review.cancelled' }),
+      );
+    });
+
+    it('cancels a SELF_SUBMITTED review', async () => {
+      reviews.findById.mockResolvedValue(makeReview({ status: 'SELF_SUBMITTED' }));
+      reviews.update.mockResolvedValue(makeReview({ status: 'CANCELLED' }));
+
+      await service.cancel('tenant-1', 'rev-1', 'hr-1');
+
+      expect(reviews.update).toHaveBeenCalledWith(
+        'tenant-1',
+        'rev-1',
+        expect.objectContaining({ status: 'CANCELLED' }),
+      );
+    });
+
+    it('rejects cancelling an already-COMPLETED review', async () => {
+      reviews.findById.mockResolvedValue(makeReview({ status: 'COMPLETED' }));
+
+      await expect(service.cancel('tenant-1', 'rev-1')).rejects.toThrow(ConflictException);
+      expect(reviews.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects cancelling an already-CANCELLED review', async () => {
+      reviews.findById.mockResolvedValue(makeReview({ status: 'CANCELLED' }));
+
+      await expect(service.cancel('tenant-1', 'rev-1')).rejects.toThrow(ConflictException);
+      expect(reviews.update).not.toHaveBeenCalled();
     });
   });
 });

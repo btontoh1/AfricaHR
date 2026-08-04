@@ -75,4 +75,16 @@ export class PerformanceReviewController {
     assertTenantScope(actor, tenantId);
     return this.reviews.submitManagerAssessment(tenantId, id, dto, actor.sub);
   }
+
+  @Post(':id/cancel')
+  @RequirePermissions(Permission.PERFORMANCE_MANAGE)
+  @ApiOkResponse({ type: PerformanceReviewResponseDto })
+  cancel(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.reviews.cancel(tenantId, id, actor.sub);
+  }
 }

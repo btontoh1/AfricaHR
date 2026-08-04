@@ -1698,6 +1698,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/performance-reviews/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PerformanceReviewController_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/job-requisitions/mine": {
         parameters: {
             query?: never;
@@ -3052,7 +3068,7 @@ export interface components {
             employeeId: string;
             cycleId: string;
             /** @enum {string} */
-            status: "DRAFT" | "SELF_SUBMITTED" | "COMPLETED";
+            status: "DRAFT" | "SELF_SUBMITTED" | "COMPLETED" | "CANCELLED";
             selfRating?: number | null;
             selfComments?: string | null;
             selfSubmittedAt?: string | null;
@@ -3076,7 +3092,7 @@ export interface components {
             employeeId: string;
             cycleId: string;
             /** @enum {string} */
-            status: "DRAFT" | "SELF_SUBMITTED" | "COMPLETED";
+            status: "DRAFT" | "SELF_SUBMITTED" | "COMPLETED" | "CANCELLED";
             selfRating?: number | null;
             selfComments?: string | null;
             selfSubmittedAt?: string | null;
@@ -6657,6 +6673,28 @@ export interface operations {
                 "application/json": components["schemas"]["SubmitManagerAssessmentDto"];
             };
         };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerformanceReviewResponseDto"];
+                };
+            };
+        };
+    };
+    PerformanceReviewController_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {

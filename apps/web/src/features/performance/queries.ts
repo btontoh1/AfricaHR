@@ -5,6 +5,7 @@ import { apiClient } from '@/lib/api-client';
 import type {
   CreatePerformanceGoalInput,
   CreateReviewCycleInput,
+  PerformanceGoalStatus,
   PerformanceReviewStatus,
   StartReviewForEmployeeInput,
   SubmitManagerAssessmentInput,
@@ -15,6 +16,10 @@ import type {
 
 function myGoalsKey(tenantId: string) {
   return ['performance-goals', 'me', tenantId] as const;
+}
+
+function allGoalsKey(tenantId: string) {
+  return ['performance-goals', 'all', tenantId] as const;
 }
 
 function reviewCyclesKey(tenantId: string) {
@@ -315,5 +320,36 @@ export function useCancelReview(tenantId: string, id: string) {
       queryClient.invalidateQueries({ queryKey: allReviewsKey(tenantId) });
       queryClient.invalidateQueries({ queryKey: allReviewKey(tenantId, id) });
     },
+  });
+}
+
+export function useAllGoals(
+  tenantId: string,
+  filters: { employeeId?: string; status?: PerformanceGoalStatus } = {},
+) {
+  return useQuery({
+    queryKey: [...allGoalsKey(tenantId), filters.employeeId ?? '', filters.status ?? ''],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/performance-goals', {
+        params: { path: { tenantId }, query: filters },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useUpdateGoal(tenantId: string, id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UpdatePerformanceGoalInput) => {
+      const { data, error } = await apiClient.PATCH('/api/tenants/{tenantId}/performance-goals/{id}', {
+        params: { path: { tenantId, id } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: allGoalsKey(tenantId) }),
   });
 }

@@ -33,6 +33,26 @@ export interface PerformanceReviewSelfSubmittedEvent {
   cycleName: string;
 }
 
+/**
+ * Emitted after a manager completes their assessment, notifying the
+ * reviewee that their review is done. Unlike
+ * PerformanceReviewSelfSubmittedEvent, there's no actor-exclusion field:
+ * the manager (actor) is never the recipient here since the recipient is
+ * always the employee the review is about, so self-notification can't
+ * happen. Only emitted when the employee has portal access (a linked
+ * User) - see notifyOfReviewCompleted. Consumed by a listener living in
+ * notifications-feature — see PerformanceReviewSelfSubmittedEvent's doc
+ * comment for why this event is a plain string/payload contract rather
+ * than a shared type.
+ */
+export const PERFORMANCE_REVIEW_COMPLETED_EVENT = 'performance.review.completed';
+
+export interface PerformanceReviewCompletedEvent {
+  tenantId: string;
+  employeeUserId: string;
+  cycleName: string;
+}
+
 @Injectable()
 export class PerformanceReviewService {
   constructor(
@@ -275,7 +295,26 @@ export class PerformanceReviewService {
       resourceId: id,
     });
 
+    await this.notifyOfReviewCompleted(tenantId, updated);
+
     return updated;
+  }
+
+  /** Silent no-op if the employee can no longer be found or has no portal access. */
+  private async notifyOfReviewCompleted(tenantId: string, review: PerformanceReview): Promise<void> {
+    const employee = await this.employees.findById(tenantId, review.employeeId);
+    if (!employee?.userId) {
+      return;
+    }
+
+    const cycle = await this.cycles.findById(tenantId, review.cycleId);
+
+    const event: PerformanceReviewCompletedEvent = {
+      tenantId,
+      employeeUserId: employee.userId,
+      cycleName: cycle?.name ?? 'Performance review',
+    };
+    this.eventEmitter.emit(PERFORMANCE_REVIEW_COMPLETED_EVENT, event);
   }
 
   private async assertIsDirectManager(

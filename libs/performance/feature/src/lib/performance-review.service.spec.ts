@@ -8,6 +8,7 @@ import {
   PerformanceReviewRepository,
 } from '@africahr/performance-data-access';
 import {
+  PERFORMANCE_REVIEW_COMPLETED_EVENT,
   PERFORMANCE_REVIEW_SELF_SUBMITTED_EVENT,
   PerformanceReviewService,
 } from './performance-review.service';
@@ -354,6 +355,43 @@ describe('PerformanceReviewService', () => {
       await expect(
         service.submitManagerAssessment('tenant-1', 'rev-1', { managerRating: 3 }),
       ).rejects.toThrow(ConflictException);
+    });
+
+    it('emits a notification event to the reviewee when they have portal access', async () => {
+      reviews.findById.mockResolvedValue(makeReview({ status: 'SELF_SUBMITTED', employeeId: 'emp-1' }));
+      reviews.update.mockResolvedValue(makeReview({ status: 'COMPLETED', employeeId: 'emp-1' }));
+      employees.findById.mockResolvedValue({ id: 'emp-1', userId: 'emp-1-user', managerId: null });
+
+      await service.submitManagerAssessment('tenant-1', 'rev-1', { managerRating: 3 }, 'mgr-user-1');
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        PERFORMANCE_REVIEW_COMPLETED_EVENT,
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          employeeUserId: 'emp-1-user',
+          cycleName: 'Q1 2026 Review',
+        }),
+      );
+    });
+
+    it('does not emit when the reviewee has no portal access', async () => {
+      reviews.findById.mockResolvedValue(makeReview({ status: 'SELF_SUBMITTED', employeeId: 'emp-1' }));
+      reviews.update.mockResolvedValue(makeReview({ status: 'COMPLETED', employeeId: 'emp-1' }));
+      employees.findById.mockResolvedValue({ id: 'emp-1', userId: null, managerId: null });
+
+      await service.submitManagerAssessment('tenant-1', 'rev-1', { managerRating: 3 }, 'mgr-user-1');
+
+      expect(eventEmitter.emit).not.toHaveBeenCalled();
+    });
+
+    it('does not emit when the reviewee can no longer be found', async () => {
+      reviews.findById.mockResolvedValue(makeReview({ status: 'SELF_SUBMITTED', employeeId: 'emp-1' }));
+      reviews.update.mockResolvedValue(makeReview({ status: 'COMPLETED', employeeId: 'emp-1' }));
+      employees.findById.mockResolvedValue(null);
+
+      await service.submitManagerAssessment('tenant-1', 'rev-1', { managerRating: 3 }, 'mgr-user-1');
+
+      expect(eventEmitter.emit).not.toHaveBeenCalled();
     });
   });
 });

@@ -8,7 +8,11 @@ import {
   BenefitPlanRepository,
   BenefitsEmployeeRepository,
 } from '@africahr/benefits-data-access';
-import { BENEFIT_ENROLLMENT_CREATED_EVENT, BenefitEnrollmentService } from './benefit-enrollment.service';
+import {
+  BENEFIT_ENROLLMENT_CANCELLED_EVENT,
+  BENEFIT_ENROLLMENT_CREATED_EVENT,
+  BenefitEnrollmentService,
+} from './benefit-enrollment.service';
 
 describe('BenefitEnrollmentService', () => {
   let service: BenefitEnrollmentService;
@@ -222,6 +226,35 @@ describe('BenefitEnrollmentService', () => {
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'benefits.enrollment.cancelled' }),
       );
+    });
+
+    it('emits a cancellation notification event with the employee, plan, and actor', async () => {
+      enrollments.findById.mockResolvedValue(
+        makeEnrollment({ benefitPlan: makePlan({ name: 'Private Health Insurance' }) }),
+      );
+      enrollments.updateStatus.mockResolvedValue({ id: 'enr-1', status: 'CANCELLED' } as BenefitEnrollment);
+
+      await service.cancel('tenant-1', 'enr-1', 'hr-1');
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        BENEFIT_ENROLLMENT_CANCELLED_EVENT,
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          employeeName: 'Kwame Asante',
+          planName: 'Private Health Insurance',
+          actorUserId: 'hr-1',
+        }),
+      );
+    });
+
+    it('does not emit when the employee can no longer be found', async () => {
+      enrollments.findById.mockResolvedValue(makeEnrollment());
+      enrollments.updateStatus.mockResolvedValue({ id: 'enr-1', status: 'CANCELLED' } as BenefitEnrollment);
+      employees.findById.mockResolvedValue(null);
+
+      await service.cancel('tenant-1', 'enr-1', 'hr-1');
+
+      expect(eventEmitter.emit).not.toHaveBeenCalled();
     });
   });
 

@@ -10,8 +10,11 @@ import { MyNotificationController } from './my-notification.controller';
 import { NotificationController } from './notification.controller';
 import { LeaveRequestNotificationListener } from './leave-request-notification.listener';
 import { PerformanceReviewNotificationListener } from './performance-review-notification.listener';
+import { PerformanceReviewCompletedNotificationListener } from './performance-review-completed-notification.listener';
 import { RecruitmentApplicationNotificationListener } from './recruitment-application-notification.listener';
+import { RecruitmentApplicationStageChangedNotificationListener } from './recruitment-application-stage-changed-notification.listener';
 import { BenefitEnrollmentNotificationListener } from './benefit-enrollment-notification.listener';
+import { BenefitEnrollmentCancelledNotificationListener } from './benefit-enrollment-cancelled-notification.listener';
 import { PayRunNotificationListener } from './pay-run-notification.listener';
 import { JobRequisitionNotificationListener } from './job-requisition-notification.listener';
 import { PayrollDisbursementFailedNotificationListener } from './payroll-disbursement-failed-notification.listener';
@@ -38,8 +41,11 @@ import {
     NotificationService,
     LeaveRequestNotificationListener,
     PerformanceReviewNotificationListener,
+    PerformanceReviewCompletedNotificationListener,
     RecruitmentApplicationNotificationListener,
+    RecruitmentApplicationStageChangedNotificationListener,
     BenefitEnrollmentNotificationListener,
+    BenefitEnrollmentCancelledNotificationListener,
     PayRunNotificationListener,
     JobRequisitionNotificationListener,
     PayrollDisbursementFailedNotificationListener,

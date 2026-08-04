@@ -157,6 +157,9 @@ export function buildNavGroups(user: SessionUser): NavGroup[] {
         ...(isTenantMember
           ? [{ label: 'My Goals', href: '/performance/goals', icon: Target }]
           : []),
+        ...(hasPerformanceAdminAccess
+          ? [{ label: 'All Goals', href: '/performance/goals/all', icon: ClipboardList }]
+          : []),
         ...(isTenantMember
           ? [{ label: 'My Reviews', href: '/performance/reviews', icon: FileText }]
           : []),

@@ -4,6 +4,7 @@ import { CalendarClock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCancelMyLeaveRequest, useLeaveTypes, useMyLeaveRequests } from './queries';
 import { LeaveRequestStatusBadge } from './leave-request-status-badge';
+import { LeaveRequestReasonCell } from './leave-request-reason-cell';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
 import { TableCard } from '@/components/table-card';
@@ -56,6 +57,7 @@ export function MyLeaveRequestsList({ tenantId }: { tenantId: string }) {
             <TableHead>Dates</TableHead>
             <TableHead>Days</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Reason</TableHead>
             <TableHead />
           </TableRow>
         </TableHeader>
@@ -69,6 +71,13 @@ export function MyLeaveRequestsList({ tenantId }: { tenantId: string }) {
               <TableCell>{request.daysRequested}</TableCell>
               <TableCell>
                 <LeaveRequestStatusBadge status={request.status} />
+              </TableCell>
+              <TableCell>
+                <LeaveRequestReasonCell
+                  reason={request.reason}
+                  rejectionReason={request.rejectionReason}
+                  status={request.status}
+                />
               </TableCell>
               <TableCell>
                 {(request.status === 'PENDING' || request.status === 'APPROVED') && (

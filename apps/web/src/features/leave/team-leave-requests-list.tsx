@@ -4,6 +4,7 @@ import { Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApproveTeamLeaveRequest, useLeaveTypes, useTeamLeaveRequests } from './queries';
 import { LeaveRequestStatusBadge } from './leave-request-status-badge';
+import { LeaveRequestReasonCell } from './leave-request-reason-cell';
 import { RejectTeamLeaveRequestDialog } from './reject-team-leave-request-dialog';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
@@ -64,6 +65,7 @@ export function TeamLeaveRequestsList({ tenantId }: { tenantId: string }) {
             <TableHead>Dates</TableHead>
             <TableHead>Days</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Reason</TableHead>
             <TableHead />
           </TableRow>
         </TableHeader>
@@ -78,6 +80,13 @@ export function TeamLeaveRequestsList({ tenantId }: { tenantId: string }) {
               <TableCell>{request.daysRequested}</TableCell>
               <TableCell>
                 <LeaveRequestStatusBadge status={request.status} />
+              </TableCell>
+              <TableCell>
+                <LeaveRequestReasonCell
+                  reason={request.reason}
+                  rejectionReason={request.rejectionReason}
+                  status={request.status}
+                />
               </TableCell>
               <TableCell>
                 {request.status === 'PENDING' && (

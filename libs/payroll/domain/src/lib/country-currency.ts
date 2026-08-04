@@ -8,6 +8,7 @@
 const COUNTRY_CURRENCY: Record<string, string> = {
   GH: 'GHS',
   NG: 'NGN',
+  KE: 'KES',
 };
 
 /**

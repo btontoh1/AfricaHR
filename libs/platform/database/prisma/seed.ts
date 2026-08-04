@@ -255,6 +255,114 @@ async function seedNigeriaStatutoryData(prisma: PrismaClient): Promise<void> {
   }
 }
 
+/**
+ * Kenya PAYE tax bands and NSSF contribution rates, in force since
+ * 1 July 2023 under the Finance Act 2023 (bands unchanged as of July
+ * 2026): 0-24,000 @10%, 24,000-32,333 @25%, 32,333-500,000 @30%,
+ * 500,000-800,000 @32.5%, 800,000+ @35% (monthly KES, already the KRA's
+ * published monthly figures - no annual/12 conversion needed, unlike
+ * Ghana/Nigeria above). Sourced from KRA's own public notice and
+ * cross-referenced against independent payroll-calculator summaries in
+ * August 2026, but NOT confirmed against KRA's PAYE guide PDF directly
+ * (blocked by this environment's egress policy at the time of writing) -
+ * confirm against KRA's gazette before relying on these for real payroll.
+ *
+ * Kenya's resident personal relief (KES 2,400/month, subtracted from the
+ * PAYE bands' output rather than from taxable income) is enforced in
+ * code, not seeded here - see applyKenyaPersonalRelief in payroll-domain,
+ * same reasoning as Ghana's SSNIT cap: it's a step in the calculation,
+ * not a rate to store as data.
+ *
+ * NSSF's Tier I (6% up to the KES 9,000 Lower Earnings Limit) and Tier II
+ * (6% between the LEL and the KES 108,000 Upper Earnings Limit, Year 4
+ * rates effective 1 February 2026) combine to a flat 6% on pensionable
+ * pay capped at the UEL - also enforced in code via
+ * applyKenyaPensionableEarningsCap, same shape as Ghana's insurable
+ * earnings cap, rather than modeled as two separate StatutoryRate rows.
+ *
+ * Scope note: this does not seed SHIF (2.75% of gross) or the Affordable
+ * Housing Levy (1.5% of gross) - neither Ghana nor Nigeria's seed data
+ * models their equivalent levies either (e.g. Ghana's NHIL), so adding
+ * them for Kenya alone would model Kenya more completely than every other
+ * country this platform supports. Deliberately out of scope, not an
+ * oversight.
+ */
+async function seedKenyaStatutoryData(prisma: PrismaClient): Promise<void> {
+  const countryCode = 'KE';
+  const effectiveFrom = new Date('2023-07-01');
+
+  const existingBands = await prisma.statutoryTaxBand.findFirst({ where: { countryCode } });
+  if (existingBands) {
+    console.log(`Seed: statutory tax bands for "${countryCode}" already exist, skipping.`);
+  } else {
+    await prisma.statutoryTaxBand.createMany({
+      data: [
+        { countryCode, order: 1, lowerBound: d('0'), upperBound: d('24000'), rate: d('0.1'), effectiveFrom },
+        {
+          countryCode,
+          order: 2,
+          lowerBound: d('24000'),
+          upperBound: d('32333'),
+          rate: d('0.25'),
+          effectiveFrom,
+        },
+        {
+          countryCode,
+          order: 3,
+          lowerBound: d('32333'),
+          upperBound: d('500000'),
+          rate: d('0.3'),
+          effectiveFrom,
+        },
+        {
+          countryCode,
+          order: 4,
+          lowerBound: d('500000'),
+          upperBound: d('800000'),
+          rate: d('0.325'),
+          effectiveFrom,
+        },
+        {
+          countryCode,
+          order: 5,
+          lowerBound: d('800000'),
+          upperBound: null,
+          rate: d('0.35'),
+          effectiveFrom,
+        },
+      ],
+    });
+    console.log(
+      `Seed: created Finance Act 2023 KRA PAYE tax bands for "${countryCode}" — re-verify against the KRA's gazette before real payroll runs.`,
+    );
+  }
+
+  const existingRates = await prisma.statutoryRate.findFirst({ where: { countryCode } });
+  if (existingRates) {
+    console.log(`Seed: statutory rates for "${countryCode}" already exist, skipping.`);
+  } else {
+    await prisma.statutoryRate.createMany({
+      data: [
+        {
+          countryCode,
+          code: StatutoryRateCode.SSNIT_EMPLOYEE,
+          rate: 0.06,
+          effectiveFrom,
+        },
+        {
+          countryCode,
+          code: StatutoryRateCode.SSNIT_EMPLOYER,
+          rate: 0.06,
+          effectiveFrom,
+        },
+      ],
+    });
+    console.log(
+      `Seed: created NSSF rates for "${countryCode}" (stored under the SSNIT_EMPLOYEE/SSNIT_EMPLOYER codes - see this function's doc comment) — confirm against NSSF's current published rates before real payroll runs.`,
+    );
+  }
+}
+
 async function main(): Promise<void> {
   const databaseUrl = process.env['DATABASE_URL'];
   if (!databaseUrl) {
@@ -267,6 +375,7 @@ async function main(): Promise<void> {
     await seedPlatformAdmin(prisma);
     await seedGhanaStatutoryData(prisma);
     await seedNigeriaStatutoryData(prisma);
+    await seedKenyaStatutoryData(prisma);
   } finally {
     await prisma.$disconnect();
   }

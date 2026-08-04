@@ -20,6 +20,17 @@ const nigeriaBands: TaxBand[] = [
 ];
 const nigeriaRates = { employeeRate: 0.08, employerRate: 0.1 };
 
+// Mirrors the seeded 2026 Kenya PAYE bands (see seed.ts) for the
+// country-specific NSSF-cap/personal-relief tests below.
+const kenyaBands: TaxBand[] = [
+  { order: 1, lowerBound: 0, upperBound: 24000, rate: 0.1 },
+  { order: 2, lowerBound: 24000, upperBound: 32333, rate: 0.25 },
+  { order: 3, lowerBound: 32333, upperBound: 500000, rate: 0.3 },
+  { order: 4, lowerBound: 500000, upperBound: 800000, rate: 0.325 },
+  { order: 5, lowerBound: 800000, upperBound: null, rate: 0.35 },
+];
+const kenyaRates = { employeeRate: 0.06, employerRate: 0.06 };
+
 describe('sumLineItems', () => {
   it('sums only the requested line item type', () => {
     const lineItems = [
@@ -185,5 +196,81 @@ describe('computePayslip', () => {
     // pension computed on the full 80,000 - Ghana's cap never applies here
     expect(result.ssnitEmployee).toBe(80_000 * 0.08);
     expect(result.ssnitEmployer).toBe(80_000 * 0.1);
+  });
+
+  it("subtracts Kenya's flat personal relief from the PAYE bands' output, and caps NSSF at the UEL", () => {
+    const result = computePayslip({
+      countryCode: 'KE',
+      basicSalary: 100_000,
+      lineItems: [],
+      taxBands: kenyaBands,
+      ssnitRates: kenyaRates,
+    });
+
+    // NSSF employee = 100,000 * 0.06 = 6,000 (under the 108,000 UEL, uncapped)
+    expect(result.ssnitEmployee).toBe(6000);
+    expect(result.ssnitEmployer).toBe(6000);
+    // taxable = 100,000 - 6,000 = 94,000
+    expect(result.taxableIncome).toBe(94000);
+    // bands: 24,000*0.10 + 8,333*0.25 + 61,667*0.30 = 2,400 + 2,083.25 + 18,500.10 = 22,983.35
+    // relief: 22,983.35 - 2,400 = 20,583.35
+    expect(result.payeTax).toBe(20583.35);
+    expect(result.totalDeductions).toBe(26583.35);
+    expect(result.netPay).toBe(73416.65);
+  });
+
+  it("floors Kenya's PAYE at zero when the personal relief exceeds the band tax, rather than refunding", () => {
+    const result = computePayslip({
+      countryCode: 'KE',
+      basicSalary: 20_000,
+      lineItems: [],
+      taxBands: kenyaBands,
+      ssnitRates: kenyaRates,
+    });
+
+    // taxable = 20,000 - (20,000*0.06 = 1,200) = 18,800; band tax = 18,800*0.10 = 1,880
+    // relief (2,400) exceeds it, so PAYE floors at 0 rather than -520
+    expect(result.payeTax).toBe(0);
+  });
+
+  it("caps NSSF to Kenya's upper earnings limit, but still taxes the full salary", () => {
+    const result = computePayslip({
+      countryCode: 'KE',
+      basicSalary: 150_000,
+      lineItems: [],
+      taxBands: kenyaBands,
+      ssnitRates: kenyaRates,
+    });
+
+    // NSSF computed on the capped KES 108,000, not the full 150,000
+    expect(result.ssnitEmployee).toBe(108_000 * 0.06);
+    expect(result.ssnitEmployer).toBe(108_000 * 0.06);
+    // taxable income still starts from the full 150,000 gross pay
+    expect(result.taxableIncome).toBe(150_000 - 108_000 * 0.06);
+  });
+
+  it("never applies Kenya's NSSF cap or personal relief to a non-Kenya payslip", () => {
+    const result = computePayslip({
+      countryCode: 'NG',
+      basicSalary: 150_000,
+      lineItems: [],
+      taxBands: nigeriaBands,
+      ssnitRates: nigeriaRates,
+    });
+
+    // pension computed on the full 150,000 - Kenya's NSSF cap never applies here
+    expect(result.ssnitEmployee).toBe(150_000 * 0.08);
+
+    const smallTaxResult = computePayslip({
+      countryCode: 'GH',
+      basicSalary: 600,
+      lineItems: [],
+      taxBands: bands,
+      ssnitRates,
+    });
+
+    // PAYE (13.4) is well under Kenya's 2,400 relief - if that relief leaked
+    // into a non-Kenya payslip, this would floor to 0 instead.
+    expect(smallTaxResult.payeTax).toBe(13.4);
   });
 });

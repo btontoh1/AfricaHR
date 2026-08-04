@@ -8,7 +8,11 @@ import {
   LeaveRequestRepository,
   LeaveTypeRepository,
 } from '@africahr/leave-data-access';
-import { LEAVE_REQUEST_CREATED_EVENT, LeaveRequestService } from './leave-request.service';
+import {
+  LEAVE_REQUEST_CREATED_EVENT,
+  LEAVE_REQUEST_DECIDED_EVENT,
+  LeaveRequestService,
+} from './leave-request.service';
 
 describe('LeaveRequestService', () => {
   let service: LeaveRequestService;
@@ -422,6 +426,66 @@ describe('LeaveRequestService', () => {
 
       expect(balances.decrementUsedDays).not.toHaveBeenCalled();
     });
+
+    it('emits a decision notification event including the actor id', async () => {
+      requests.findById.mockResolvedValue(makeRequest({ status: 'PENDING' }));
+      requests.updateStatus.mockResolvedValue(makeRequest({ status: 'CANCELLED' }));
+      employees.findById.mockResolvedValue({
+        id: 'emp-1',
+        userId: 'emp-1-user',
+        managerId: null,
+        firstName: 'Kwame',
+        lastName: 'Asante',
+      });
+
+      await service.cancel('tenant-1', 'req-1', 'emp-1-user');
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        LEAVE_REQUEST_DECIDED_EVENT,
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          employeeUserId: 'emp-1-user',
+          leaveTypeName: 'Annual Leave',
+          status: 'CANCELLED',
+          actorUserId: 'emp-1-user',
+        }),
+      );
+    });
+
+    it('emits with a null actorUserId when cancelled with no actor', async () => {
+      requests.findById.mockResolvedValue(makeRequest({ status: 'PENDING' }));
+      requests.updateStatus.mockResolvedValue(makeRequest({ status: 'CANCELLED' }));
+      employees.findById.mockResolvedValue({
+        id: 'emp-1',
+        userId: 'emp-1-user',
+        managerId: null,
+        firstName: 'Kwame',
+        lastName: 'Asante',
+      });
+
+      await service.cancel('tenant-1', 'req-1');
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        LEAVE_REQUEST_DECIDED_EVENT,
+        expect.objectContaining({ actorUserId: null }),
+      );
+    });
+
+    it('does not emit a decision event when the employee has no portal access', async () => {
+      requests.findById.mockResolvedValue(makeRequest({ status: 'PENDING' }));
+      requests.updateStatus.mockResolvedValue(makeRequest({ status: 'CANCELLED' }));
+      employees.findById.mockResolvedValue({
+        id: 'emp-1',
+        userId: null,
+        managerId: null,
+        firstName: 'Kwame',
+        lastName: 'Asante',
+      });
+
+      await service.cancel('tenant-1', 'req-1');
+
+      expect(eventEmitter.emit).not.toHaveBeenCalledWith(LEAVE_REQUEST_DECIDED_EVENT, expect.anything());
+    });
   });
 
   describe('approve', () => {
@@ -467,6 +531,50 @@ describe('LeaveRequestService', () => {
       expect(balances.upsertEntitlement).not.toHaveBeenCalled();
       expect(balances.incrementUsedDays).toHaveBeenCalledWith('tenant-1', 'existing-bal', 5, 'hr-1');
     });
+
+    it('emits a decision notification event to the employee', async () => {
+      requests.findById.mockResolvedValue(makeRequest({ status: 'PENDING' }));
+      balances.findByEmployeeAndType.mockResolvedValue(makeBalance({ id: 'existing-bal' }));
+      requests.updateStatus.mockResolvedValue(makeRequest({ status: 'APPROVED' }));
+      employees.findById.mockResolvedValue({
+        id: 'emp-1',
+        userId: 'emp-1-user',
+        managerId: null,
+        firstName: 'Kwame',
+        lastName: 'Asante',
+      });
+
+      await service.approve('tenant-1', 'req-1', 'mgr-user-1');
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        LEAVE_REQUEST_DECIDED_EVENT,
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          employeeUserId: 'emp-1-user',
+          leaveTypeName: 'Annual Leave',
+          status: 'APPROVED',
+          rejectionReason: null,
+          actorUserId: 'mgr-user-1',
+        }),
+      );
+    });
+
+    it('does not emit a decision event when the employee has no portal access', async () => {
+      requests.findById.mockResolvedValue(makeRequest({ status: 'PENDING' }));
+      balances.findByEmployeeAndType.mockResolvedValue(makeBalance({ id: 'existing-bal' }));
+      requests.updateStatus.mockResolvedValue(makeRequest({ status: 'APPROVED' }));
+      employees.findById.mockResolvedValue({
+        id: 'emp-1',
+        userId: null,
+        managerId: null,
+        firstName: 'Kwame',
+        lastName: 'Asante',
+      });
+
+      await service.approve('tenant-1', 'req-1', 'mgr-user-1');
+
+      expect(eventEmitter.emit).not.toHaveBeenCalledWith(LEAVE_REQUEST_DECIDED_EVENT, expect.anything());
+    });
   });
 
   describe('reject', () => {
@@ -491,6 +599,33 @@ describe('LeaveRequestService', () => {
       );
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'leave.request.rejected' }),
+      );
+    });
+
+    it('emits a decision notification event with the rejection reason', async () => {
+      requests.findById.mockResolvedValue(makeRequest({ status: 'PENDING' }));
+      requests.updateStatus.mockResolvedValue(
+        makeRequest({ status: 'REJECTED', rejectionReason: 'Insufficient coverage' }),
+      );
+      employees.findById.mockResolvedValue({
+        id: 'emp-1',
+        userId: 'emp-1-user',
+        managerId: null,
+        firstName: 'Kwame',
+        lastName: 'Asante',
+      });
+
+      await service.reject('tenant-1', 'req-1', 'Insufficient coverage', 'hr-1');
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        LEAVE_REQUEST_DECIDED_EVENT,
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          employeeUserId: 'emp-1-user',
+          status: 'REJECTED',
+          rejectionReason: 'Insufficient coverage',
+          actorUserId: 'hr-1',
+        }),
       );
     });
   });

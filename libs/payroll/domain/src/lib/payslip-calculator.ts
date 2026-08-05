@@ -9,6 +9,7 @@ import { calculateKenyaShif } from './kenya-shif';
 import { isEligibleForNigeriaNhis } from './nigeria-nhis-eligibility';
 import { BenefitEnrollmentContribution, sumBenefitContributions } from './benefit-contribution';
 import { computeUnpaidLeaveDeduction } from './unpaid-leave-deduction';
+import { computeOvertimePay } from './overtime-pay';
 import { PayslipLineItemType } from './payslip-line-item-type';
 
 /** NSITF and NHIA's OPSSHIP both apply only once the employing organization has this many active employees - per public payroll-compliance summaries, not otherwise confirmed against nsitf.gov.ng/nhia.gov.ng directly (blocked by this environment's egress policy). */
@@ -44,9 +45,15 @@ export interface ComputePayslipInput {
   benefitEnrollments?: readonly BenefitEnrollmentContribution[];
   /** Sum of daysRequested for every APPROVED leave request on an unpaid LeaveType falling entirely within the pay period (periodStart/periodEnd below) - see PayrollLeaveRequestRepository. Defaults to 0 (no unpaid leave) when omitted. */
   unpaidLeaveDays?: number;
-  /** The pay run's period bounds - used only to derive unpaidLeaveDays' daily-rate denominator (see unpaid-leave-deduction.ts). Required whenever unpaidLeaveDays is nonzero; ignored otherwise. */
+  /** The pay run's period bounds - used to derive unpaidLeaveDays' and overtimeHours' daily/hourly-rate denominators (see unpaid-leave-deduction.ts / overtime-pay.ts). Required whenever unpaidLeaveDays or overtimeHours is nonzero; ignored otherwise. */
   periodStart?: Date;
   periodEnd?: Date;
+  /** Sum of overtimeHours across every AttendanceRecord falling within the pay period (periodStart/periodEnd above) - see PayrollAttendanceRecordRepository. Defaults to 0 (no overtime) when omitted. */
+  overtimeHours?: number;
+  /** The tenant's AttendancePolicy.standardDailyHours, used with periodStart/periodEnd to derive overtimeHours' implied hourly rate (see overtime-pay.ts). Required whenever overtimeHours is nonzero; ignored otherwise. */
+  standardDailyHours?: number;
+  /** Country-specific overtime premium multiplier (e.g. 1.5 for time-and-a-half) - see OVERTIME_MULTIPLIER in the StatutoryRateCode enum. Required whenever overtimeHours is nonzero; ignored otherwise. */
+  overtimeMultiplier?: number;
   lineItems: readonly PayslipLineItemInput[];
   taxBands: readonly TaxBand[];
   ssnitRates: SsnitRates;
@@ -80,6 +87,8 @@ export interface ComputedPayslip {
   benefitsEmployerCost: number;
   /** Value of unpaidLeaveDays at the pay period's daily rate, else 0. Informational only - unlike benefitsEmployeeDeduction, this is NOT part of totalDeductions; it already reduced basicSalary/grossPay (and therefore taxableIncome) upstream, since it's pay never owed rather than a withholding. See unpaid-leave-deduction.ts. */
   unpaidLeaveDeduction: number;
+  /** Value of overtimeHours at the employee's implied hourly rate times the country's overtime multiplier, else 0. Informational only - unlike benefitsEmployeeDeduction, this is NOT part of totalDeductions; it's extra pay already added into grossPay (and therefore taxableIncome) upstream, not a withholding. See overtime-pay.ts. */
+  overtimePay: number;
   totalDeductions: number;
   netPay: number;
 }
@@ -154,6 +163,15 @@ export function sumLineItems(
  * it, since it already shrank grossPay upstream). unpaidLeaveDeduction is
  * returned purely for display, same reporting-only role as
  * benefitsEmployerCost.
+ *
+ * Overtime pay is the opposite correction: extra pay for hours actually
+ * worked beyond the tenant's standard daily hours (see overtime-pay.ts),
+ * computed off the *contracted* basicSalary (unaffected by any unpaid leave
+ * taken elsewhere in the same period - the two are independent corrections)
+ * and added into grossPay alongside earnings, so it correctly flows through
+ * to taxableIncome/PAYE/every statutory contribution computed off grossPay,
+ * same as an EARNING line item would. overtimePay is returned purely for
+ * display, same reporting-only role as unpaidLeaveDeduction.
  */
 export function computePayslip(input: ComputePayslipInput): ComputedPayslip {
   const earnings = sumLineItems(input.lineItems, PayslipLineItemType.EARNING);
@@ -165,7 +183,18 @@ export function computePayslip(input: ComputePayslipInput): ComputedPayslip {
       ? computeUnpaidLeaveDeduction(contractedBasicSalary, input.unpaidLeaveDays, input.periodStart, input.periodEnd)
       : 0;
   const basicSalary = roundCurrency(Math.max(0, contractedBasicSalary - unpaidLeaveDeduction));
-  const grossPay = roundCurrency(basicSalary + earnings);
+  const overtimePay =
+    input.overtimeHours && input.periodStart && input.periodEnd && input.standardDailyHours
+      ? computeOvertimePay(
+          contractedBasicSalary,
+          input.overtimeHours,
+          input.periodStart,
+          input.periodEnd,
+          input.standardDailyHours,
+          input.overtimeMultiplier ?? 0,
+        )
+      : 0;
+  const grossPay = roundCurrency(basicSalary + earnings + overtimePay);
 
   const insurableSalary =
     input.countryCode === 'GH'
@@ -238,6 +267,7 @@ export function computePayslip(input: ComputePayslipInput): ComputedPayslip {
     benefitsEmployeeDeduction,
     benefitsEmployerCost,
     unpaidLeaveDeduction,
+    overtimePay,
     totalDeductions,
     netPay,
   };

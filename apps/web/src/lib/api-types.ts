@@ -2834,6 +2834,8 @@ export interface components {
             benefitsEmployerCost: string;
             /** @description Value of unpaid-leave days within the pay period at the daily rate, else "0" - already reduced basicSalary/grossPay above, not included in totalDeductions */
             unpaidLeaveDeduction: string;
+            /** @description Pay for overtime hours worked within the pay period, else "0" - already added into grossPay above, not included in totalDeductions */
+            overtimePay: string;
             totalDeductions: string;
             netPay: string;
             currency: string;

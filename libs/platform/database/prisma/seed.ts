@@ -64,6 +64,14 @@ const d = (value: string) => new Prisma.Decimal(value);
  * can't reuse SSNIT_EMPLOYER (see the StatutoryRateCode enum's doc
  * comments). Sourced from public NPRA-summary alerts in August 2026,
  * same confirm-before-real-payroll caveat as the PAYE bands.
+ *
+ * Also seeds a 1.5x (time-and-a-half) OVERTIME_MULTIPLIER, the commonly
+ * cited overtime premium under Ghana's Labour Act 2003 (Act 651) per public
+ * payroll-compliance summaries - not otherwise confirmed against a
+ * government gazette (blocked by this environment's egress policy, same
+ * caveat as NIGERIA_EMPLOYER_LEVY_THRESHOLD in payroll-domain); actual
+ * overtime premiums are often set by sector or collective agreement, so
+ * confirm the applicable rate before relying on this for real payroll.
  */
 async function seedGhanaStatutoryData(prisma: PrismaClient): Promise<void> {
   const countryCode = 'GH';
@@ -141,10 +149,16 @@ async function seedGhanaStatutoryData(prisma: PrismaClient): Promise<void> {
           rate: 0.05,
           effectiveFrom,
         },
+        {
+          countryCode,
+          code: StatutoryRateCode.OVERTIME_MULTIPLIER,
+          rate: 1.5,
+          effectiveFrom,
+        },
       ],
     });
     console.log(
-      `Seed: created SSNIT Tier 1 + Tier 2 rates for "${countryCode}" (unchanged for 2026) — re-verify against SSNIT's/NPRA's current published rates before real payroll runs.`,
+      `Seed: created SSNIT Tier 1 + Tier 2 + overtime multiplier rates for "${countryCode}" (unchanged for 2026) — re-verify against SSNIT's/NPRA's current published rates before real payroll runs.`,
     );
   }
 }
@@ -301,10 +315,16 @@ async function seedNigeriaStatutoryData(prisma: PrismaClient): Promise<void> {
           rate: 0.1,
           effectiveFrom,
         },
+        {
+          countryCode,
+          code: StatutoryRateCode.OVERTIME_MULTIPLIER,
+          rate: 1.5,
+          effectiveFrom,
+        },
       ],
     });
     console.log(
-      `Seed: created PLACEHOLDER Pension Reform Act/NSITF/NHIS rates for "${countryCode}" (pension stored under the SSNIT_EMPLOYEE/SSNIT_EMPLOYER codes - see this function's doc comment) — confirm against PenCom's/NSITF's/NHIA's current published rates before real payroll runs.`,
+      `Seed: created PLACEHOLDER Pension Reform Act/NSITF/NHIS/overtime multiplier rates for "${countryCode}" (pension stored under the SSNIT_EMPLOYEE/SSNIT_EMPLOYER codes - see this function's doc comment) — confirm against PenCom's/NSITF's/NHIA's current published rates before real payroll runs.`,
     );
   }
 }
@@ -341,6 +361,13 @@ async function seedNigeriaStatutoryData(prisma: PrismaClient): Promise<void> {
  * unmodeled to avoid getting ahead of Ghana/Nigeria's own statutory
  * coverage; both are now modeled here, in the same pass that added
  * Ghana's Tier 2 pension.
+ *
+ * Also seeds a flat 1.5x OVERTIME_MULTIPLIER - the Employment Act 2007
+ * s.28 actually mandates 1.5x for weekday overtime but 2x for rest-day/
+ * public-holiday work, a distinction this engine's per-pay-period
+ * (not per-shift) overtime model doesn't capture; same country-wide
+ * flat-rate simplification as Ghana/Nigeria's OVERTIME_MULTIPLIER, and
+ * same confirm-before-real-payroll caveat.
  */
 async function seedKenyaStatutoryData(prisma: PrismaClient): Promise<void> {
   const countryCode = 'KE';
@@ -428,10 +455,16 @@ async function seedKenyaStatutoryData(prisma: PrismaClient): Promise<void> {
           rate: 0.015,
           effectiveFrom,
         },
+        {
+          countryCode,
+          code: StatutoryRateCode.OVERTIME_MULTIPLIER,
+          rate: 1.5,
+          effectiveFrom,
+        },
       ],
     });
     console.log(
-      `Seed: created NSSF/SHIF/Housing Levy rates for "${countryCode}" (NSSF stored under the SSNIT_EMPLOYEE/SSNIT_EMPLOYER codes - see this function's doc comment) — confirm against NSSF's/SHA's/KRA's current published rates before real payroll runs.`,
+      `Seed: created NSSF/SHIF/Housing Levy/overtime multiplier rates for "${countryCode}" (NSSF stored under the SSNIT_EMPLOYEE/SSNIT_EMPLOYER codes - see this function's doc comment) — confirm against NSSF's/SHA's/KRA's current published rates before real payroll runs.`,
     );
   }
 }

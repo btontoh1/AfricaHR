@@ -8,3 +8,4 @@ export * from './lib/payroll-employee.repository';
 export * from './lib/payroll-disbursement.repository';
 export * from './lib/payroll-benefit-enrollment.repository';
 export * from './lib/payroll-leave-request.repository';
+export * from './lib/payroll-attendance-record.repository';

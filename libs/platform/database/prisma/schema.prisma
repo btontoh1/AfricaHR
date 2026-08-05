@@ -600,6 +600,8 @@ enum StatutoryRateCode {
   NIGERIA_NHIS_EMPLOYEE
   /// Nigeria NHIA-mandated health insurance (OPSSHIP) - employer share, same gating as NIGERIA_NHIS_EMPLOYEE.
   NIGERIA_NHIS_EMPLOYER
+  /// Statutory overtime pay premium multiplier (e.g. 1.5 for time-and-a-half), applied to the employee's implied hourly rate. Country-specific like every other code above, not tenant-configurable - see overtime-pay.ts (payroll-domain).
+  OVERTIME_MULTIPLIER
 }
 
 /// SSNIT contribution rates, applied to basic salary. Same platform-root,
@@ -724,6 +726,9 @@ model Payslip {
 
   /// Value of unpaid-leave days within the pay period at the daily rate, else 0. Informational only - already baked into basicSalary/grossPay above, NOT part of totalDeductions (that would double-count it). See payslip-calculator.ts (payroll-domain).
   unpaidLeaveDeduction Decimal @default(0) @map("unpaid_leave_deduction")
+
+  /// Pay for overtime hours worked within the pay period (attendance records' overtimeHours), at the employee's implied hourly rate times the country's OVERTIME_MULTIPLIER statutory rate, else 0. Already added into grossPay/taxableIncome above - not part of totalDeductions (it's extra pay, not a withholding). See overtime-pay.ts (payroll-domain).
+  overtimePay Decimal @default(0) @map("overtime_pay")
 
   totalDeductions Decimal @map("total_deductions")
   netPay          Decimal @map("net_pay")

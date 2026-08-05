@@ -24,6 +24,7 @@ export interface UpsertPayslipInput {
   benefitsEmployeeDeduction: Prisma.Decimal | number;
   benefitsEmployerCost: Prisma.Decimal | number;
   unpaidLeaveDeduction: Prisma.Decimal | number;
+  overtimePay: Prisma.Decimal | number;
   totalDeductions: Prisma.Decimal | number;
   netPay: Prisma.Decimal | number;
   currency: string;
@@ -67,6 +68,7 @@ export class PayslipRepository {
           benefitsEmployeeDeduction: input.benefitsEmployeeDeduction,
           benefitsEmployerCost: input.benefitsEmployerCost,
           unpaidLeaveDeduction: input.unpaidLeaveDeduction,
+          overtimePay: input.overtimePay,
           totalDeductions: input.totalDeductions,
           netPay: input.netPay,
           currency: input.currency,
@@ -91,6 +93,7 @@ export class PayslipRepository {
           benefitsEmployeeDeduction: input.benefitsEmployeeDeduction,
           benefitsEmployerCost: input.benefitsEmployerCost,
           unpaidLeaveDeduction: input.unpaidLeaveDeduction,
+          overtimePay: input.overtimePay,
           totalDeductions: input.totalDeductions,
           netPay: input.netPay,
           currency: input.currency,

@@ -4,6 +4,7 @@ import { TenantRepository } from './tenant.repository';
 import { OrganizationRepository } from './organization.repository';
 import { OrganizationUnitRepository } from './organization-unit.repository';
 import { OrganizationVerificationDocumentRepository } from './organization-verification-document.repository';
+import { AuditLogRepository } from './audit-log.repository';
 
 @Module({
   imports: [PrismaModule],
@@ -12,12 +13,14 @@ import { OrganizationVerificationDocumentRepository } from './organization-verif
     OrganizationRepository,
     OrganizationUnitRepository,
     OrganizationVerificationDocumentRepository,
+    AuditLogRepository,
   ],
   exports: [
     TenantRepository,
     OrganizationRepository,
     OrganizationUnitRepository,
     OrganizationVerificationDocumentRepository,
+    AuditLogRepository,
   ],
 })
 export class TenancyDataAccessModule {}

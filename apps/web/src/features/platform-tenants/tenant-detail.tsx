@@ -45,9 +45,12 @@ export function TenantDetail({ tenantId }: { tenantId: string }) {
   }
 
   async function handleStatusChange(status: TenantStatus) {
+    const wasClosed = tenant?.status === 'CLOSED';
     try {
       await updateStatus.mutateAsync(status);
-      toast.success(`Tenant marked ${TENANT_STATUS_LABEL[status].toLowerCase()}`);
+      toast.success(
+        wasClosed && status === 'TRIAL' ? 'Tenant reopened' : `Tenant marked ${TENANT_STATUS_LABEL[status].toLowerCase()}`,
+      );
     } catch (statusError) {
       toast.error(getApiErrorMessage(statusError, 'Failed to update tenant status'));
     }
@@ -78,24 +81,22 @@ export function TenantDetail({ tenantId }: { tenantId: string }) {
           <CardTitle>Status</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap items-center gap-3">
-          {allowedNextStatuses(tenant.status).length === 0 ? (
-            <>
-              <p className="text-sm text-muted-foreground">This tenant is closed — no further status changes.</p>
-              <DeleteTenantDialog tenantId={tenantId} tenantName={tenant.name} />
-            </>
-          ) : (
-            allowedNextStatuses(tenant.status).map((status) => (
-              <Button
-                key={status}
-                variant={DESTRUCTIVE_STATUSES.includes(status) ? 'destructive' : 'default'}
-                size="sm"
-                disabled={updateStatus.isPending}
-                onClick={() => handleStatusChange(status)}
-              >
-                Mark {TENANT_STATUS_LABEL[status].toLowerCase()}
-              </Button>
-            ))
-          )}
+          {allowedNextStatuses(tenant.status).map((status) => (
+            <Button
+              key={status}
+              variant={DESTRUCTIVE_STATUSES.includes(status) ? 'destructive' : 'default'}
+              size="sm"
+              disabled={updateStatus.isPending}
+              onClick={() => handleStatusChange(status)}
+            >
+              {/* CLOSED -> TRIAL is reopening a cancelled tenant, not a routine
+                  forward transition - "Mark trial" would read oddly here. */}
+              {tenant.status === 'CLOSED' && status === 'TRIAL'
+                ? 'Reopen tenant'
+                : `Mark ${TENANT_STATUS_LABEL[status].toLowerCase()}`}
+            </Button>
+          ))}
+          {tenant.status === 'CLOSED' && <DeleteTenantDialog tenantId={tenantId} tenantName={tenant.name} />}
         </CardContent>
       </Card>
 

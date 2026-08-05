@@ -8,6 +8,8 @@ import { NotificationTemplateController } from './notification-template.controll
 import { NotificationService } from './notification.service';
 import { MyNotificationController } from './my-notification.controller';
 import { NotificationController } from './notification.controller';
+import { PlatformNotificationService } from './platform-notification.service';
+import { PlatformNotificationController } from './platform-notification.controller';
 import { LeaveRequestNotificationListener } from './leave-request-notification.listener';
 import { LeaveRequestDecidedNotificationListener } from './leave-request-decided-notification.listener';
 import { PerformanceReviewNotificationListener } from './performance-review-notification.listener';
@@ -33,15 +35,18 @@ import {
   // Literal-path controllers ("/me") must be registered before their
   // sibling dynamic-path controllers ("/:id") so Nest's router matches the
   // literal segment first (same gotcha as every self-service module since
-  // Module 5).
+  // Module 5). PlatformNotificationController (platform-admin/notifications)
+  // has a distinct first segment too, so no ordering concern there.
   controllers: [
     NotificationTemplateController,
     MyNotificationController,
     NotificationController,
+    PlatformNotificationController,
   ],
   providers: [
     NotificationTemplateService,
     NotificationService,
+    PlatformNotificationService,
     LeaveRequestNotificationListener,
     LeaveRequestDecidedNotificationListener,
     PerformanceReviewNotificationListener,

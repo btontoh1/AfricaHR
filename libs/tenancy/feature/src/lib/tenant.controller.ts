@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
   CurrentUser,
@@ -46,5 +46,11 @@ export class TenantController {
     @CurrentUser() actor: RequestUser,
   ) {
     return this.tenants.updateStatus(id, dto.status, actor.sub);
+  }
+
+  /** Offboarding - only reachable once the tenant is already CLOSED, see TenantService.softDelete's own doc comment. */
+  @Delete(':id')
+  softDelete(@Param('id') id: string, @CurrentUser() actor: RequestUser) {
+    return this.tenants.softDelete(id, actor.sub);
   }
 }

@@ -70,6 +70,12 @@ export const Permission = {
   // transfers run through. No tenant-level counterpart, same reasoning as
   // PLATFORM_AUDIT_READ/PLATFORM_ORGANIZATION_VERIFY.
   PLATFORM_DISBURSEMENT_READ: 'platform:disbursement:read',
+  // Platform-admin only: whether outbound email is actually being
+  // delivered spans every tenant's notifications at once, and it's the
+  // platform admin - not the tenant - who owns the SendGrid integration
+  // those emails go through. No tenant-level counterpart, same reasoning
+  // as PLATFORM_AUDIT_READ/PLATFORM_DISBURSEMENT_READ.
+  PLATFORM_NOTIFICATION_READ: 'platform:notification:read',
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
@@ -103,6 +109,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.PLATFORM_BILLING_MANAGE,
     Permission.PLATFORM_AUDIT_READ,
     Permission.PLATFORM_DISBURSEMENT_READ,
+    Permission.PLATFORM_NOTIFICATION_READ,
   ],
   [SystemRole.TENANT_ADMIN]: [
     Permission.TENANT_BRANDING_MANAGE,

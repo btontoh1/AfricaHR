@@ -5,6 +5,7 @@ import { useTenant, useUpdateTenantStatus } from './queries';
 import { TenantStatusBadge } from './tenant-status-badge';
 import { allowedNextStatuses, TENANT_STATUS_LABEL } from './tenant-status';
 import { AddTenantUserDialog } from './add-tenant-user-dialog';
+import { DeleteTenantDialog } from './delete-tenant-dialog';
 import { TenantUsersTable } from './tenant-users-table';
 import type { TenantStatus } from './types';
 import { useSubscription } from '@/features/billing/queries';
@@ -78,7 +79,10 @@ export function TenantDetail({ tenantId }: { tenantId: string }) {
         </CardHeader>
         <CardContent className="flex flex-wrap items-center gap-3">
           {allowedNextStatuses(tenant.status).length === 0 ? (
-            <p className="text-sm text-muted-foreground">This tenant is closed — no further status changes.</p>
+            <>
+              <p className="text-sm text-muted-foreground">This tenant is closed — no further status changes.</p>
+              <DeleteTenantDialog tenantId={tenantId} tenantName={tenant.name} />
+            </>
           ) : (
             allowedNextStatuses(tenant.status).map((status) => (
               <Button

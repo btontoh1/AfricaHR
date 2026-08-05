@@ -72,11 +72,17 @@ export function buildDisbursementFailedEvent(
   };
 }
 
-/** A transfer stuck this long without a webhook is worth double-checking directly against Paystack, rather than waiting indefinitely. */
-const STALE_PENDING_THRESHOLD_MS = 30 * 60 * 1000;
+/**
+ * A transfer stuck this long without a webhook is worth double-checking
+ * directly against Paystack, rather than waiting indefinitely. Exported
+ * so PlatformDisbursementService can classify the same rows this sweep
+ * itself queries for, without a second, differently-tuned definition of
+ * "stale" living in two places.
+ */
+export const STALE_PENDING_THRESHOLD_MS = 30 * 60 * 1000;
 
-/** Past this point, repeated 15-minute sweeps have already had many chances to resolve it via Paystack - worth alerting a human instead of trusting the next sweep. */
-const CRITICAL_STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
+/** Past this point, repeated 15-minute sweeps have already had many chances to resolve it via Paystack - worth alerting a human instead of trusting the next sweep. Exported for the same reason as STALE_PENDING_THRESHOLD_MS above. */
+export const CRITICAL_STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
 function mapVerifiedStatus(
   paystackStatus: string,

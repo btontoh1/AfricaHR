@@ -14,6 +14,23 @@ export interface StalePendingDisbursement {
   paystackTransferReference: string;
 }
 
+export interface DisbursementNeedingAttention {
+  id: string;
+  tenantId: string;
+  tenantName: string | null;
+  employeeId: string;
+  employeeFirstName: string;
+  employeeLastName: string;
+  payRunId: string;
+  periodStart: Date;
+  periodEnd: Date;
+  currency: string;
+  netPay: number;
+  disbursementStatus: PayslipDisbursementStatus;
+  paystackTransferReference: string | null;
+  updatedAt: Date;
+}
+
 interface RawPayslipDisbursementRow {
   id: string;
   tenantId: string;
@@ -24,6 +41,10 @@ interface RawStalePendingDisbursementRow {
   id: string;
   tenantId: string;
   paystackTransferReference: string;
+}
+
+interface RawDisbursementNeedingAttentionRow extends Omit<DisbursementNeedingAttention, 'netPay'> {
+  netPay: string;
 }
 
 /**
@@ -54,5 +75,19 @@ export class PayrollDisbursementRepository {
     return this.prisma.$queryRaw<
       RawStalePendingDisbursementRow[]
     >`SELECT * FROM find_stale_pending_payslip_disbursements(${olderThan})`;
+  }
+
+  /**
+   * Every payslip disbursement needing a human's attention across every
+   * tenant - FAILED (any age) plus PENDING older than
+   * stalePendingBefore - joined with tenant/employee/pay-run context for
+   * the platform-admin dashboard. Same cross-tenant SECURITY DEFINER
+   * reasoning as listStalePendingDisbursements.
+   */
+  async listDisbursementsNeedingAttention(stalePendingBefore: Date): Promise<DisbursementNeedingAttention[]> {
+    const rows = await this.prisma.$queryRaw<
+      RawDisbursementNeedingAttentionRow[]
+    >`SELECT * FROM platform_list_disbursements_needing_attention(${stalePendingBefore})`;
+    return rows.map((row) => ({ ...row, netPay: Number(row.netPay) }));
   }
 }

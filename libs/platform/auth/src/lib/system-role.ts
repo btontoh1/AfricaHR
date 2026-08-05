@@ -64,6 +64,12 @@ export const Permission = {
   // self-serve on its own rows - deliberately not paired with a
   // tenant-level counterpart, same reasoning as PLATFORM_ORGANIZATION_VERIFY.
   PLATFORM_AUDIT_READ: 'platform:audit:read',
+  // Platform-admin only: visibility into stuck/failed Paystack transfers
+  // spans every tenant's payslips at once, and it's the platform admin -
+  // not the tenant - who owns and operates the Paystack integration those
+  // transfers run through. No tenant-level counterpart, same reasoning as
+  // PLATFORM_AUDIT_READ/PLATFORM_ORGANIZATION_VERIFY.
+  PLATFORM_DISBURSEMENT_READ: 'platform:disbursement:read',
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
@@ -96,6 +102,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.NOTIFICATIONS_READ,
     Permission.PLATFORM_BILLING_MANAGE,
     Permission.PLATFORM_AUDIT_READ,
+    Permission.PLATFORM_DISBURSEMENT_READ,
   ],
   [SystemRole.TENANT_ADMIN]: [
     Permission.TENANT_BRANDING_MANAGE,

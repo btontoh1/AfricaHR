@@ -286,6 +286,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/platform-admin/disbursements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cross-tenant payslip disbursements needing attention (stuck PENDING or FAILED) */
+        get: operations["PlatformDisbursementController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organizations/verification-queue": {
         parameters: {
             query?: never;
@@ -2468,6 +2485,40 @@ export interface components {
             items: components["schemas"]["AuditLogEntryDto"][];
             /** @description Total rows matching the current filters, across all pages */
             totalCount: number;
+        };
+        DisbursementNeedingAttentionDto: {
+            id: string;
+            tenantId: string;
+            tenantName?: string | null;
+            employeeId: string;
+            employeeFirstName: string;
+            employeeLastName: string;
+            payRunId: string;
+            /** Format: date-time */
+            periodStart: string;
+            /** Format: date-time */
+            periodEnd: string;
+            currency: string;
+            netPay: number;
+            /** @enum {string} */
+            disbursementStatus: "PENDING" | "FAILED";
+            paystackTransferReference?: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+            /**
+             * @description STALE: PENDING past the 30-minute reconciliation threshold. CRITICAL: PENDING past the 24-hour threshold the reconciliation sweep alerts on. FAILED: the transfer resolved to failed/reversed and needs manual retry.
+             * @enum {string}
+             */
+            severity: "STALE" | "CRITICAL" | "FAILED";
+        };
+        DisbursementAttentionCountsDto: {
+            stale: number;
+            critical: number;
+            failed: number;
+        };
+        DisbursementAttentionResponseDto: {
+            items: components["schemas"]["DisbursementNeedingAttentionDto"][];
+            counts: components["schemas"]["DisbursementAttentionCountsDto"];
         };
         OrganizationResponseDto: {
             id: string;
@@ -4899,6 +4950,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditLogPageResponseDto"];
+                };
+            };
+        };
+    };
+    PlatformDisbursementController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisbursementAttentionResponseDto"];
                 };
             };
         };

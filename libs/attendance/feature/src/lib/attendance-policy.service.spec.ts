@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { AttendancePolicy, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import { AttendancePolicyRepository } from '@africahr/attendance-data-access';
@@ -38,6 +38,45 @@ describe('AttendancePolicyService', () => {
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'attendance.policy.upserted', resourceId: policy.id }),
       );
+    });
+
+    it('clears geofencing when all three fields are omitted', async () => {
+      policies.upsert.mockResolvedValue(makePolicy());
+
+      await service.upsert('tenant-1', { standardDailyHours: 8 }, 'hr-1');
+
+      expect(policies.upsert).toHaveBeenCalledWith('tenant-1', {
+        standardDailyHours: 8,
+        geofenceLatitude: null,
+        geofenceLongitude: null,
+        geofenceRadiusMeters: null,
+        actorId: 'hr-1',
+      });
+    });
+
+    it('sets geofencing when all three fields are given', async () => {
+      policies.upsert.mockResolvedValue(makePolicy());
+
+      await service.upsert(
+        'tenant-1',
+        { standardDailyHours: 8, geofenceLatitude: 5.6, geofenceLongitude: -0.19, geofenceRadiusMeters: 150 },
+        'hr-1',
+      );
+
+      expect(policies.upsert).toHaveBeenCalledWith('tenant-1', {
+        standardDailyHours: 8,
+        geofenceLatitude: 5.6,
+        geofenceLongitude: -0.19,
+        geofenceRadiusMeters: 150,
+        actorId: 'hr-1',
+      });
+    });
+
+    it('rejects when only some geofence fields are given', async () => {
+      await expect(
+        service.upsert('tenant-1', { standardDailyHours: 8, geofenceLatitude: 5.6 }, 'hr-1'),
+      ).rejects.toThrow(BadRequestException);
+      expect(policies.upsert).not.toHaveBeenCalled();
     });
   });
 

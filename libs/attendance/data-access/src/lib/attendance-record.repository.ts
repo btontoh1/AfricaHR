@@ -10,6 +10,14 @@ export interface CreateAttendanceRecordInput {
   hoursWorked?: Prisma.Decimal | number | null;
   overtimeHours?: Prisma.Decimal | number | null;
   notes?: string | null;
+  clockInLatitude?: Prisma.Decimal | number | null;
+  clockInLongitude?: Prisma.Decimal | number | null;
+  clockInDistanceMeters?: number | null;
+  clockInOutsideGeofence?: boolean | null;
+  clockOutLatitude?: Prisma.Decimal | number | null;
+  clockOutLongitude?: Prisma.Decimal | number | null;
+  clockOutDistanceMeters?: number | null;
+  clockOutOutsideGeofence?: boolean | null;
   createdBy?: string;
 }
 
@@ -19,6 +27,14 @@ export interface UpdateAttendanceRecordInput {
   hoursWorked?: Prisma.Decimal | number | null;
   overtimeHours?: Prisma.Decimal | number | null;
   notes?: string | null;
+  clockInLatitude?: Prisma.Decimal | number | null;
+  clockInLongitude?: Prisma.Decimal | number | null;
+  clockInDistanceMeters?: number | null;
+  clockInOutsideGeofence?: boolean | null;
+  clockOutLatitude?: Prisma.Decimal | number | null;
+  clockOutLongitude?: Prisma.Decimal | number | null;
+  clockOutDistanceMeters?: number | null;
+  clockOutOutsideGeofence?: boolean | null;
   updatedBy?: string;
 }
 
@@ -44,6 +60,14 @@ export class AttendanceRecordRepository {
           hoursWorked: input.hoursWorked,
           overtimeHours: input.overtimeHours,
           notes: input.notes,
+          clockInLatitude: input.clockInLatitude,
+          clockInLongitude: input.clockInLongitude,
+          clockInDistanceMeters: input.clockInDistanceMeters,
+          clockInOutsideGeofence: input.clockInOutsideGeofence,
+          clockOutLatitude: input.clockOutLatitude,
+          clockOutLongitude: input.clockOutLongitude,
+          clockOutDistanceMeters: input.clockOutDistanceMeters,
+          clockOutOutsideGeofence: input.clockOutOutsideGeofence,
           createdBy: input.createdBy,
           updatedBy: input.createdBy,
         },
@@ -100,6 +124,14 @@ export class AttendanceRecordRepository {
           hoursWorked: input.hoursWorked,
           overtimeHours: input.overtimeHours,
           notes: input.notes,
+          clockInLatitude: input.clockInLatitude,
+          clockInLongitude: input.clockInLongitude,
+          clockInDistanceMeters: input.clockInDistanceMeters,
+          clockInOutsideGeofence: input.clockInOutsideGeofence,
+          clockOutLatitude: input.clockOutLatitude,
+          clockOutLongitude: input.clockOutLongitude,
+          clockOutDistanceMeters: input.clockOutDistanceMeters,
+          clockOutOutsideGeofence: input.clockOutOutsideGeofence,
           updatedBy: input.updatedBy,
         },
       }),

@@ -3097,11 +3097,23 @@ export interface components {
              * @example 8
              */
             standardDailyHours: number;
+            /** @description Work-site geofence center latitude — set together with geofenceLongitude and geofenceRadiusMeters, or leave all three unset to disable geofencing */
+            geofenceLatitude?: number;
+            /** @description Work-site geofence center longitude */
+            geofenceLongitude?: number;
+            /**
+             * @description Radius in meters around the geofence center within which a clock-in/out is not flagged
+             * @example 150
+             */
+            geofenceRadiusMeters?: number;
         };
         AttendancePolicyResponseDto: {
             id: string;
             tenantId: string;
             standardDailyHours: string;
+            geofenceLatitude?: string | null;
+            geofenceLongitude?: string | null;
+            geofenceRadiusMeters?: number | null;
             createdAt: string;
             updatedAt: string;
         };
@@ -3115,8 +3127,20 @@ export interface components {
             hoursWorked?: string | null;
             overtimeHours?: string | null;
             notes?: string | null;
+            clockInLatitude?: string | null;
+            clockInLongitude?: string | null;
+            clockInDistanceMeters?: number | null;
+            clockInOutsideGeofence?: boolean | null;
+            clockOutLatitude?: string | null;
+            clockOutLongitude?: string | null;
+            clockOutDistanceMeters?: number | null;
+            clockOutOutsideGeofence?: boolean | null;
             createdAt: string;
             updatedAt: string;
+        };
+        ClockPositionDto: {
+            latitude?: number;
+            longitude?: number;
         };
         CreateAttendanceRecordDto: {
             employeeId: string;
@@ -6133,7 +6157,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClockPositionDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -6154,7 +6182,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClockPositionDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {

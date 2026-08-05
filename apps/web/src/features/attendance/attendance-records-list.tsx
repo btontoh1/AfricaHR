@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { CalendarDays, Plus } from 'lucide-react';
+import { CalendarDays, MapPinOff, Plus } from 'lucide-react';
 import { useAttendanceRecords } from './queries';
 import { useEmployees } from '@/features/employees/queries';
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -106,25 +106,37 @@ export function AttendanceRecordsList({ tenantId }: { tenantId: string }) {
                 <TableHead>Clock out</TableHead>
                 <TableHead>Hours worked</TableHead>
                 <TableHead>Overtime</TableHead>
+                <TableHead>Location</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {records.map((record) => (
-                <TableRow key={record.id}>
-                  <TableCell className="font-medium">{employeeName(record.employeeId)}</TableCell>
-                  <TableCell>{record.date.slice(0, 10)}</TableCell>
-                  <TableCell>{formatTime(record.clockIn)}</TableCell>
-                  <TableCell>{formatTime(record.clockOut)}</TableCell>
-                  <TableCell>{record.hoursWorked ?? '—'}</TableCell>
-                  <TableCell>{record.overtimeHours ?? '—'}</TableCell>
-                  <TableCell>
-                    <Link href={`/attendance/records/${record.id}`} className="text-sm text-primary hover:underline">
-                      View
-                    </Link>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {records.map((record) => {
+                const outsideGeofence = record.clockInOutsideGeofence || record.clockOutOutsideGeofence;
+                return (
+                  <TableRow key={record.id}>
+                    <TableCell className="font-medium">{employeeName(record.employeeId)}</TableCell>
+                    <TableCell>{record.date.slice(0, 10)}</TableCell>
+                    <TableCell>{formatTime(record.clockIn)}</TableCell>
+                    <TableCell>{formatTime(record.clockOut)}</TableCell>
+                    <TableCell>{record.hoursWorked ?? '—'}</TableCell>
+                    <TableCell>{record.overtimeHours ?? '—'}</TableCell>
+                    <TableCell>
+                      {outsideGeofence && (
+                        <span className="inline-flex items-center gap-1 text-sm text-amber-600 dark:text-amber-500">
+                          <MapPinOff className="size-3.5" />
+                          Outside geofence
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Link href={`/attendance/records/${record.id}`} className="text-sm text-primary hover:underline">
+                        View
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </TableCard>

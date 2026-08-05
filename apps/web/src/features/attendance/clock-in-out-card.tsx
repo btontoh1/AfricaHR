@@ -17,8 +17,12 @@ export function ClockInOutCard({ tenantId }: { tenantId: string }) {
 
   async function handleClockIn() {
     try {
-      await clockIn.mutateAsync();
-      toast.success('Clocked in');
+      const record = await clockIn.mutateAsync();
+      if (record?.clockInOutsideGeofence) {
+        toast.warning('Clocked in — you appear to be outside the work-site location');
+      } else {
+        toast.success('Clocked in');
+      }
     } catch (error) {
       toast.error(getApiErrorMessage(error, 'Failed to clock in'));
     }
@@ -26,8 +30,12 @@ export function ClockInOutCard({ tenantId }: { tenantId: string }) {
 
   async function handleClockOut() {
     try {
-      await clockOut.mutateAsync();
-      toast.success('Clocked out');
+      const record = await clockOut.mutateAsync();
+      if (record?.clockOutOutsideGeofence) {
+        toast.warning('Clocked out — you appear to be outside the work-site location');
+      } else {
+        toast.success('Clocked out');
+      }
     } catch (error) {
       toast.error(getApiErrorMessage(error, 'Failed to clock out'));
     }

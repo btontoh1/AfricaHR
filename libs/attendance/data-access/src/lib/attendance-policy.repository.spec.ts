@@ -27,4 +27,46 @@ describe('AttendancePolicyRepository', () => {
 
     expect(tx.attendancePolicy.findUnique).toHaveBeenCalledWith({ where: { tenantId: 'tenant-1' } });
   });
+
+  it('persists geofence fields on upsert', async () => {
+    await repository.upsert('tenant-1', {
+      standardDailyHours: 8,
+      geofenceLatitude: 5.6,
+      geofenceLongitude: -0.19,
+      geofenceRadiusMeters: 150,
+      actorId: 'hr-1',
+    });
+
+    expect(tx.attendancePolicy.upsert).toHaveBeenCalledWith({
+      where: { tenantId: 'tenant-1' },
+      create: expect.objectContaining({
+        geofenceLatitude: 5.6,
+        geofenceLongitude: -0.19,
+        geofenceRadiusMeters: 150,
+      }),
+      update: expect.objectContaining({
+        geofenceLatitude: 5.6,
+        geofenceLongitude: -0.19,
+        geofenceRadiusMeters: 150,
+      }),
+    });
+  });
+
+  it('clears geofence fields when omitted (undefined)', async () => {
+    await repository.upsert('tenant-1', { standardDailyHours: 8, actorId: 'hr-1' });
+
+    expect(tx.attendancePolicy.upsert).toHaveBeenCalledWith({
+      where: { tenantId: 'tenant-1' },
+      create: expect.objectContaining({
+        geofenceLatitude: undefined,
+        geofenceLongitude: undefined,
+        geofenceRadiusMeters: undefined,
+      }),
+      update: expect.objectContaining({
+        geofenceLatitude: undefined,
+        geofenceLongitude: undefined,
+        geofenceRadiusMeters: undefined,
+      }),
+    });
+  });
 });

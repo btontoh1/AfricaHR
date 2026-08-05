@@ -18,6 +18,24 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+function formatLocation(
+  latitude?: string | null,
+  longitude?: string | null,
+  outsideGeofence?: boolean | null,
+  distanceMeters?: number | null,
+): string | undefined {
+  if (!latitude || !longitude) {
+    return undefined;
+  }
+  const coordinates = `${Number(latitude).toFixed(5)}, ${Number(longitude).toFixed(5)}`;
+  if (outsideGeofence == null) {
+    return coordinates;
+  }
+  return outsideGeofence
+    ? `${coordinates} — ${distanceMeters}m outside the work-site geofence`
+    : `${coordinates} — within the work-site geofence`;
+}
+
 export function AttendanceRecordDetail({
   tenantId,
   recordId,
@@ -53,6 +71,8 @@ export function AttendanceRecordDetail({
           <Field label="Hours worked" value={record.hoursWorked} />
           <Field label="Overtime" value={record.overtimeHours} />
           <Field label="Notes" value={record.notes} />
+          <Field label="Clock-in location" value={formatLocation(record.clockInLatitude, record.clockInLongitude, record.clockInOutsideGeofence, record.clockInDistanceMeters)} />
+          <Field label="Clock-out location" value={formatLocation(record.clockOutLatitude, record.clockOutLongitude, record.clockOutOutsideGeofence, record.clockOutDistanceMeters)} />
         </CardContent>
       </Card>
 

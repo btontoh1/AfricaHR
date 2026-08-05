@@ -33,6 +33,7 @@ export class AttendancePolicyService {
       geofenceLatitude: dto.geofenceLatitude ?? null,
       geofenceLongitude: dto.geofenceLongitude ?? null,
       geofenceRadiusMeters: dto.geofenceRadiusMeters ?? null,
+      geofenceLocationName: dto.geofenceLocationName ?? null,
       actorId,
     });
 

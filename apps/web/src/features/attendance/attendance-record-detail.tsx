@@ -1,6 +1,6 @@
 'use client';
 
-import { useAttendanceRecord } from './queries';
+import { useAttendancePolicy, useAttendanceRecord } from './queries';
 import { useEmployee } from '@/features/employees/queries';
 import { UpdateAttendanceRecordForm } from './update-attendance-record-form';
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -23,17 +23,19 @@ function formatLocation(
   longitude?: string | null,
   outsideGeofence?: boolean | null,
   distanceMeters?: number | null,
+  locationName?: string | null,
 ): string | undefined {
   if (!latitude || !longitude) {
     return undefined;
   }
   const coordinates = `${Number(latitude).toFixed(5)}, ${Number(longitude).toFixed(5)}`;
+  const prefix = locationName ? `${locationName} — ` : '';
   if (outsideGeofence == null) {
-    return coordinates;
+    return `${prefix}${coordinates}`;
   }
   return outsideGeofence
-    ? `${coordinates} — ${distanceMeters}m outside the work-site geofence`
-    : `${coordinates} — within the work-site geofence`;
+    ? `${prefix}${coordinates} — ${distanceMeters}m outside the work-site geofence`
+    : `${prefix}${coordinates} — within the work-site geofence`;
 }
 
 export function AttendanceRecordDetail({
@@ -45,6 +47,7 @@ export function AttendanceRecordDetail({
 }) {
   const { data: record, isLoading, isError, error } = useAttendanceRecord(tenantId, recordId);
   const { data: employee } = useEmployee(tenantId, record?.employeeId ?? '');
+  const { data: policy } = useAttendancePolicy(tenantId);
 
   if (isLoading) {
     return <CardSkeleton />;
@@ -71,8 +74,8 @@ export function AttendanceRecordDetail({
           <Field label="Hours worked" value={record.hoursWorked} />
           <Field label="Overtime" value={record.overtimeHours} />
           <Field label="Notes" value={record.notes} />
-          <Field label="Clock-in location" value={formatLocation(record.clockInLatitude, record.clockInLongitude, record.clockInOutsideGeofence, record.clockInDistanceMeters)} />
-          <Field label="Clock-out location" value={formatLocation(record.clockOutLatitude, record.clockOutLongitude, record.clockOutOutsideGeofence, record.clockOutDistanceMeters)} />
+          <Field label="Clock-in location" value={formatLocation(record.clockInLatitude, record.clockInLongitude, record.clockInOutsideGeofence, record.clockInDistanceMeters, policy?.geofenceLocationName)} />
+          <Field label="Clock-out location" value={formatLocation(record.clockOutLatitude, record.clockOutLongitude, record.clockOutOutsideGeofence, record.clockOutDistanceMeters, policy?.geofenceLocationName)} />
         </CardContent>
       </Card>
 

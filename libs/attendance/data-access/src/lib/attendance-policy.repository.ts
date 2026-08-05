@@ -8,6 +8,8 @@ export interface UpsertAttendancePolicyInput {
   geofenceLatitude?: Prisma.Decimal | number | null;
   geofenceLongitude?: Prisma.Decimal | number | null;
   geofenceRadiusMeters?: number | null;
+  /** Cosmetic label for the geofence, independent of the coordinates above. */
+  geofenceLocationName?: string | null;
   actorId?: string;
 }
 
@@ -26,6 +28,7 @@ export class AttendancePolicyRepository {
           geofenceLatitude: input.geofenceLatitude,
           geofenceLongitude: input.geofenceLongitude,
           geofenceRadiusMeters: input.geofenceRadiusMeters,
+          geofenceLocationName: input.geofenceLocationName,
           createdBy: input.actorId,
           updatedBy: input.actorId,
         },
@@ -34,6 +37,7 @@ export class AttendancePolicyRepository {
           geofenceLatitude: input.geofenceLatitude,
           geofenceLongitude: input.geofenceLongitude,
           geofenceRadiusMeters: input.geofenceRadiusMeters,
+          geofenceLocationName: input.geofenceLocationName,
           updatedBy: input.actorId,
         },
       }),

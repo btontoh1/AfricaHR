@@ -915,6 +915,12 @@ model AttendancePolicy {
   geofenceLatitude     Decimal? @map("geofence_latitude")
   geofenceLongitude    Decimal? @map("geofence_longitude")
   geofenceRadiusMeters Int?     @map("geofence_radius_meters")
+  /// Human-readable label for the geofence (e.g. "East Legon Office"), shown
+  /// on the attendance dashboard next to flagged/unflagged punches. Purely
+  /// cosmetic — never used in the haversine distance check itself — so it's
+  /// independent of the three fields above rather than part of their
+  /// all-or-nothing validation (see AttendancePolicyService.upsert).
+  geofenceLocationName String? @map("geofence_location_name")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

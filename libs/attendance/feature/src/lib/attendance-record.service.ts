@@ -7,13 +7,28 @@ import {
   AttendancePolicyRepository,
   AttendanceRecordRepository,
 } from '@africahr/attendance-data-access';
-import { computeHoursWorked, computeOvertimeHours, roundHours, toCalendarDay } from '@africahr/attendance-domain';
+import {
+  computeHoursWorked,
+  computeOvertimeHours,
+  GeoPoint,
+  haversineDistanceMeters,
+  isOutsideGeofence,
+  roundHours,
+  toCalendarDay,
+} from '@africahr/attendance-domain';
 import { CreateAttendanceRecordDto } from './dto/create-attendance-record.dto';
 import { UpdateAttendanceRecordDto } from './dto/update-attendance-record.dto';
 
 interface ComputedHours {
   hoursWorked?: number;
   overtimeHours?: number;
+}
+
+interface GeofenceEvaluation {
+  latitude?: number;
+  longitude?: number;
+  distanceMeters?: number;
+  outsideGeofence?: boolean;
 }
 
 function translateReferenceError(error: unknown, employeeId: string): never {
@@ -64,12 +79,17 @@ export class AttendanceRecordService {
     return employee.id;
   }
 
-  async clockInForSelf(tenantId: string, userId: string): Promise<AttendanceRecord> {
+  async clockInForSelf(tenantId: string, userId: string, position?: GeoPoint): Promise<AttendanceRecord> {
     const employeeId = await this.resolveOwnEmployeeId(tenantId, userId);
-    return this.clockIn(tenantId, employeeId, userId);
+    return this.clockIn(tenantId, employeeId, userId, position);
   }
 
-  async clockIn(tenantId: string, employeeId: string, actorId?: string): Promise<AttendanceRecord> {
+  async clockIn(
+    tenantId: string,
+    employeeId: string,
+    actorId?: string,
+    position?: GeoPoint,
+  ): Promise<AttendanceRecord> {
     const now = new Date();
     const date = toCalendarDay(now);
 
@@ -78,9 +98,20 @@ export class AttendanceRecordService {
       throw new ConflictException('Already clocked in — clock out before starting a new shift');
     }
 
+    const geofence = await this.evaluateGeofence(tenantId, position);
+
     let record: AttendanceRecord;
     try {
-      record = await this.records.create(tenantId, { employeeId, date, clockIn: now, createdBy: actorId });
+      record = await this.records.create(tenantId, {
+        employeeId,
+        date,
+        clockIn: now,
+        clockInLatitude: geofence.latitude,
+        clockInLongitude: geofence.longitude,
+        clockInDistanceMeters: geofence.distanceMeters,
+        clockInOutsideGeofence: geofence.outsideGeofence,
+        createdBy: actorId,
+      });
     } catch (error) {
       translateReferenceError(error, employeeId);
     }
@@ -91,17 +122,23 @@ export class AttendanceRecordService {
       action: 'attendance.clocked_in',
       resourceType: 'AttendanceRecord',
       resourceId: record.id,
+      metadata: geofence.outsideGeofence !== undefined ? { outsideGeofence: geofence.outsideGeofence } : undefined,
     });
 
     return record;
   }
 
-  async clockOutForSelf(tenantId: string, userId: string): Promise<AttendanceRecord> {
+  async clockOutForSelf(tenantId: string, userId: string, position?: GeoPoint): Promise<AttendanceRecord> {
     const employeeId = await this.resolveOwnEmployeeId(tenantId, userId);
-    return this.clockOut(tenantId, employeeId, userId);
+    return this.clockOut(tenantId, employeeId, userId, position);
   }
 
-  async clockOut(tenantId: string, employeeId: string, actorId?: string): Promise<AttendanceRecord> {
+  async clockOut(
+    tenantId: string,
+    employeeId: string,
+    actorId?: string,
+    position?: GeoPoint,
+  ): Promise<AttendanceRecord> {
     const now = new Date();
 
     const existing = await this.records.findOpenByEmployee(tenantId, employeeId);
@@ -118,10 +155,16 @@ export class AttendanceRecordService {
       existing.id,
     );
 
+    const geofence = await this.evaluateGeofence(tenantId, position);
+
     const updated = await this.records.update(tenantId, existing.id, {
       clockOut: now,
       hoursWorked,
       overtimeHours,
+      clockOutLatitude: geofence.latitude,
+      clockOutLongitude: geofence.longitude,
+      clockOutDistanceMeters: geofence.distanceMeters,
+      clockOutOutsideGeofence: geofence.outsideGeofence,
       updatedBy: actorId,
     });
 
@@ -131,10 +174,44 @@ export class AttendanceRecordService {
       action: 'attendance.clocked_out',
       resourceType: 'AttendanceRecord',
       resourceId: existing.id,
-      metadata: { hoursWorked, overtimeHours },
+      metadata: {
+        hoursWorked,
+        overtimeHours,
+        ...(geofence.outsideGeofence !== undefined ? { outsideGeofence: geofence.outsideGeofence } : {}),
+      },
     });
 
     return updated;
+  }
+
+  /**
+   * Captures whatever GPS position the client sent, and - only if the
+   * tenant has a geofence configured - judges it against that geofence.
+   * Deliberately flag-only: an out-of-range result is never used to reject
+   * the clock-in/out (see AttendancePolicy.geofenceLatitude doc comment),
+   * so this never throws.
+   */
+  private async evaluateGeofence(tenantId: string, position?: GeoPoint): Promise<GeofenceEvaluation> {
+    if (!position) {
+      return {};
+    }
+
+    const policy = await this.policies.find(tenantId);
+    if (!policy || policy.geofenceLatitude == null || policy.geofenceLongitude == null || policy.geofenceRadiusMeters == null) {
+      return { latitude: position.latitude, longitude: position.longitude };
+    }
+
+    const distanceMeters = haversineDistanceMeters(position, {
+      latitude: Number(policy.geofenceLatitude),
+      longitude: Number(policy.geofenceLongitude),
+    });
+
+    return {
+      latitude: position.latitude,
+      longitude: position.longitude,
+      distanceMeters,
+      outsideGeofence: isOutsideGeofence(distanceMeters, policy.geofenceRadiusMeters),
+    };
   }
 
   async findById(tenantId: string, id: string): Promise<AttendanceRecord> {

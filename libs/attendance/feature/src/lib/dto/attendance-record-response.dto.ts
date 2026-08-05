@@ -10,6 +10,14 @@ export class AttendanceRecordResponseDto {
   @ApiPropertyOptional({ nullable: true }) hoursWorked?: string | null;
   @ApiPropertyOptional({ nullable: true }) overtimeHours?: string | null;
   @ApiPropertyOptional({ nullable: true }) notes?: string | null;
+  @ApiPropertyOptional({ nullable: true }) clockInLatitude?: string | null;
+  @ApiPropertyOptional({ nullable: true }) clockInLongitude?: string | null;
+  @ApiPropertyOptional({ nullable: true }) clockInDistanceMeters?: number | null;
+  @ApiPropertyOptional({ nullable: true }) clockInOutsideGeofence?: boolean | null;
+  @ApiPropertyOptional({ nullable: true }) clockOutLatitude?: string | null;
+  @ApiPropertyOptional({ nullable: true }) clockOutLongitude?: string | null;
+  @ApiPropertyOptional({ nullable: true }) clockOutDistanceMeters?: number | null;
+  @ApiPropertyOptional({ nullable: true }) clockOutOutsideGeofence?: boolean | null;
   @ApiProperty() createdAt!: string;
   @ApiProperty() updatedAt!: string;
 }

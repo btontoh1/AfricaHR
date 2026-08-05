@@ -130,6 +130,80 @@ describe('AttendanceRecordService', () => {
         expect.objectContaining({ action: 'attendance.clocked_in' }),
       );
     });
+
+    it('does not record a location when no position is given', async () => {
+      records.create.mockResolvedValue(makeRecord({ clockIn: now }));
+
+      await service.clockIn('tenant-1', 'emp-1', 'emp-1-user');
+
+      expect(records.create).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({
+          clockInLatitude: undefined,
+          clockInLongitude: undefined,
+          clockInDistanceMeters: undefined,
+          clockInOutsideGeofence: undefined,
+        }),
+      );
+      expect(policies.find).not.toHaveBeenCalled();
+    });
+
+    it('captures the position but skips the geofence check when the tenant has none configured', async () => {
+      policies.find.mockResolvedValue(makePolicy());
+      records.create.mockResolvedValue(makeRecord({ clockIn: now }));
+
+      await service.clockIn('tenant-1', 'emp-1', 'emp-1-user', { latitude: 5.6, longitude: -0.19 });
+
+      expect(records.create).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({
+          clockInLatitude: 5.6,
+          clockInLongitude: -0.19,
+          clockInDistanceMeters: undefined,
+          clockInOutsideGeofence: undefined,
+        }),
+      );
+    });
+
+    it('flags a clock-in outside the configured geofence, but still allows it', async () => {
+      policies.find.mockResolvedValue(
+        makePolicy({
+          geofenceLatitude: new Prisma.Decimal(0),
+          geofenceLongitude: new Prisma.Decimal(0),
+          geofenceRadiusMeters: 100,
+        }),
+      );
+      records.create.mockResolvedValue(makeRecord({ clockIn: now }));
+
+      // 1 degree of latitude away from the geofence center is ~111km, well outside a 100m radius
+      await service.clockIn('tenant-1', 'emp-1', 'emp-1-user', { latitude: 1, longitude: 0 });
+
+      expect(records.create).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ clockInDistanceMeters: 111195, clockInOutsideGeofence: true }),
+      );
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'attendance.clocked_in', metadata: { outsideGeofence: true } }),
+      );
+    });
+
+    it('does not flag a clock-in within the configured geofence', async () => {
+      policies.find.mockResolvedValue(
+        makePolicy({
+          geofenceLatitude: new Prisma.Decimal(5.6),
+          geofenceLongitude: new Prisma.Decimal(-0.19),
+          geofenceRadiusMeters: 100,
+        }),
+      );
+      records.create.mockResolvedValue(makeRecord({ clockIn: now }));
+
+      await service.clockIn('tenant-1', 'emp-1', 'emp-1-user', { latitude: 5.6, longitude: -0.19 });
+
+      expect(records.create).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ clockInDistanceMeters: 0, clockInOutsideGeofence: false }),
+      );
+    });
   });
 
   describe('clockOut', () => {
@@ -195,6 +269,34 @@ describe('AttendanceRecordService', () => {
         'tenant-1',
         'rec-2',
         expect.objectContaining({ clockOut: now, hoursWorked: 3.5, overtimeHours: 0.5 }),
+      );
+    });
+
+    it('flags a clock-out outside the configured geofence, but still allows it', async () => {
+      policies.find.mockResolvedValue(
+        makePolicy({
+          geofenceLatitude: new Prisma.Decimal(0),
+          geofenceLongitude: new Prisma.Decimal(0),
+          geofenceRadiusMeters: 100,
+        }),
+      );
+      records.findOpenByEmployee.mockResolvedValue(
+        makeRecord({ clockIn: new Date('2026-02-02T08:00:00Z') }),
+      );
+      records.update.mockResolvedValue(makeRecord({ clockOut: now }));
+
+      await service.clockOut('tenant-1', 'emp-1', 'emp-1-user', { latitude: 1, longitude: 0 });
+
+      expect(records.update).toHaveBeenCalledWith(
+        'tenant-1',
+        'rec-1',
+        expect.objectContaining({ clockOutDistanceMeters: 111195, clockOutOutsideGeofence: true }),
+      );
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'attendance.clocked_out',
+          metadata: expect.objectContaining({ outsideGeofence: true }),
+        }),
       );
     });
 

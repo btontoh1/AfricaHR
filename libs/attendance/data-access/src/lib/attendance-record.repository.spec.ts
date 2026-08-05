@@ -87,4 +87,45 @@ describe('AttendanceRecordRepository', () => {
       data: expect.objectContaining({ clockOut, hoursWorked: 9, overtimeHours: 1 }),
     });
   });
+
+  it('persists clock-in geofence fields on create', async () => {
+    await repository.create('tenant-1', {
+      employeeId: 'emp-1',
+      date: new Date('2026-02-02'),
+      clockIn: new Date('2026-02-02T08:00:00Z'),
+      clockInLatitude: 5.6,
+      clockInLongitude: -0.19,
+      clockInDistanceMeters: 340,
+      clockInOutsideGeofence: true,
+    });
+
+    expect(tx.attendanceRecord.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        clockInLatitude: 5.6,
+        clockInLongitude: -0.19,
+        clockInDistanceMeters: 340,
+        clockInOutsideGeofence: true,
+      }),
+    });
+  });
+
+  it('persists clock-out geofence fields on update', async () => {
+    await repository.update('tenant-1', 'rec-1', {
+      clockOut: new Date('2026-02-02T17:00:00Z'),
+      clockOutLatitude: 5.61,
+      clockOutLongitude: -0.2,
+      clockOutDistanceMeters: 20,
+      clockOutOutsideGeofence: false,
+    });
+
+    expect(tx.attendanceRecord.update).toHaveBeenCalledWith({
+      where: { id: 'rec-1' },
+      data: expect.objectContaining({
+        clockOutLatitude: 5.61,
+        clockOutLongitude: -0.2,
+        clockOutDistanceMeters: 20,
+        clockOutOutsideGeofence: false,
+      }),
+    });
+  });
 });

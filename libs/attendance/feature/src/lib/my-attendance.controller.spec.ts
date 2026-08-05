@@ -35,16 +35,40 @@ describe('MyAttendanceController', () => {
     });
   });
 
-  it('clocks in the caller via their user id', () => {
+  it('clocks in the caller via their user id, without a position when none is given', () => {
     controller.clockIn('tenant-1', employee);
 
-    expect(service.clockInForSelf).toHaveBeenCalledWith('tenant-1', 'emp-user-1');
+    expect(service.clockInForSelf).toHaveBeenCalledWith('tenant-1', 'emp-user-1', undefined);
   });
 
-  it('clocks out the caller via their user id', () => {
+  it('clocks in with the device position when both coordinates are present', () => {
+    controller.clockIn('tenant-1', employee, { latitude: 5.6, longitude: -0.19 });
+
+    expect(service.clockInForSelf).toHaveBeenCalledWith('tenant-1', 'emp-user-1', {
+      latitude: 5.6,
+      longitude: -0.19,
+    });
+  });
+
+  it('clocks in without a position when only one coordinate is present', () => {
+    controller.clockIn('tenant-1', employee, { latitude: 5.6 });
+
+    expect(service.clockInForSelf).toHaveBeenCalledWith('tenant-1', 'emp-user-1', undefined);
+  });
+
+  it('clocks out the caller via their user id, without a position when none is given', () => {
     controller.clockOut('tenant-1', employee);
 
-    expect(service.clockOutForSelf).toHaveBeenCalledWith('tenant-1', 'emp-user-1');
+    expect(service.clockOutForSelf).toHaveBeenCalledWith('tenant-1', 'emp-user-1', undefined);
+  });
+
+  it('clocks out with the device position when both coordinates are present', () => {
+    controller.clockOut('tenant-1', employee, { latitude: 5.6, longitude: -0.19 });
+
+    expect(service.clockOutForSelf).toHaveBeenCalledWith('tenant-1', 'emp-user-1', {
+      latitude: 5.6,
+      longitude: -0.19,
+    });
   });
 
   it('rejects an actor acting on a different tenant even for self-service routes', () => {

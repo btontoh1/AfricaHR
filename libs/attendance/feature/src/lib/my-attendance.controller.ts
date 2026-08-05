@@ -1,8 +1,16 @@
-import { Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { assertTenantScope, CurrentUser, JwtAuthGuard, PermissionsGuard, RequestUser } from '@africahr/platform-auth';
+import { GeoPoint } from '@africahr/attendance-domain';
 import { AttendanceRecordService } from './attendance-record.service';
 import { AttendanceRecordResponseDto } from './dto/attendance-record-response.dto';
+import { ClockPositionDto } from './dto/clock-position.dto';
+
+/** Only forwarded once both coordinates are present - a lone latitude or longitude isn't a usable position. */
+function toGeoPoint(position?: ClockPositionDto): GeoPoint | undefined {
+  const { latitude, longitude } = position ?? {};
+  return latitude !== undefined && longitude !== undefined ? { latitude, longitude } : undefined;
+}
 
 /**
  * Self-service: no @RequirePermissions on this controller — any
@@ -36,15 +44,23 @@ export class MyAttendanceController {
 
   @Post('clock-in')
   @ApiOkResponse({ type: AttendanceRecordResponseDto })
-  clockIn(@Param('tenantId') tenantId: string, @CurrentUser() actor: RequestUser) {
+  clockIn(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() actor: RequestUser,
+    @Body() position?: ClockPositionDto,
+  ) {
     assertTenantScope(actor, tenantId);
-    return this.attendance.clockInForSelf(tenantId, actor.sub);
+    return this.attendance.clockInForSelf(tenantId, actor.sub, toGeoPoint(position));
   }
 
   @Post('clock-out')
   @ApiOkResponse({ type: AttendanceRecordResponseDto })
-  clockOut(@Param('tenantId') tenantId: string, @CurrentUser() actor: RequestUser) {
+  clockOut(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() actor: RequestUser,
+    @Body() position?: ClockPositionDto,
+  ) {
     assertTenantScope(actor, tenantId);
-    return this.attendance.clockOutForSelf(tenantId, actor.sub);
+    return this.attendance.clockOutForSelf(tenantId, actor.sub, toGeoPoint(position));
   }
 }

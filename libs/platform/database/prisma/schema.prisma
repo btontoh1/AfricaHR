@@ -906,6 +906,16 @@ model AttendancePolicy {
   tenantId           String  @unique @map("tenant_id")
   standardDailyHours Decimal @map("standard_daily_hours")
 
+  /// Optional single work-site geofence: when all three are set, clock-in/
+  /// out events are checked against this center point + radius. Absent by
+  /// default — geofencing is opt-in per tenant. Deliberately flag-only, not
+  /// enforced (see AttendanceRecord fields below) — device GPS commonly
+  /// drifts 20-50m+ indoors/urban, so hard-blocking on it would just
+  /// generate false-positive support tickets instead of catching anything.
+  geofenceLatitude     Decimal? @map("geofence_latitude")
+  geofenceLongitude    Decimal? @map("geofence_longitude")
+  geofenceRadiusMeters Int?     @map("geofence_radius_meters")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   createdBy String?  @map("created_by")
@@ -931,6 +941,23 @@ model AttendanceRecord {
   hoursWorked   Decimal?  @map("hours_worked")
   overtimeHours Decimal?  @map("overtime_hours")
   notes         String?
+
+  /// Device-reported GPS position captured at the moment of the punch, plus
+  /// the resulting check against the tenant's AttendancePolicy geofence (if
+  /// one is configured). Both null when the browser didn't provide a
+  /// location (permission denied, no GPS) — clocking in/out is never
+  /// blocked on this. *OutsideGeofence is further null (distinct from
+  /// false) when a location was captured but the tenant has no geofence
+  /// configured to judge it against - see AttendanceRecordService.
+  clockInLatitude        Decimal? @map("clock_in_latitude")
+  clockInLongitude       Decimal? @map("clock_in_longitude")
+  clockInDistanceMeters  Int?     @map("clock_in_distance_meters")
+  clockInOutsideGeofence Boolean? @map("clock_in_outside_geofence")
+
+  clockOutLatitude        Decimal? @map("clock_out_latitude")
+  clockOutLongitude       Decimal? @map("clock_out_longitude")
+  clockOutDistanceMeters  Int?     @map("clock_out_distance_meters")
+  clockOutOutsideGeofence Boolean? @map("clock_out_outside_geofence")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")

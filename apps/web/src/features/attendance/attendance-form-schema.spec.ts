@@ -45,4 +45,35 @@ describe('attendancePolicyFormSchema', () => {
   it('rejects an empty value', () => {
     expect(attendancePolicyFormSchema.safeParse({ standardDailyHours: '' }).success).toBe(false);
   });
+
+  it('accepts geofence fields left entirely blank', () => {
+    expect(
+      attendancePolicyFormSchema.safeParse({
+        standardDailyHours: '8',
+        geofenceLatitude: '',
+        geofenceLongitude: '',
+        geofenceRadiusMeters: '',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('accepts geofence fields all set together', () => {
+    expect(
+      attendancePolicyFormSchema.safeParse({
+        standardDailyHours: '8',
+        geofenceLatitude: '5.6',
+        geofenceLongitude: '-0.19',
+        geofenceRadiusMeters: '150',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects a partially-filled geofence', () => {
+    expect(
+      attendancePolicyFormSchema.safeParse({
+        standardDailyHours: '8',
+        geofenceLatitude: '5.6',
+      }).success,
+    ).toBe(false);
+  });
 });

@@ -39,13 +39,28 @@ export function useMyAttendance(tenantId: string, filters: { from?: string; to?:
   });
 }
 
+/** Best-effort device position - resolves to undefined (not rejected) on denial, timeout, or an unsupported browser, since clock-in/out must never block on it. */
+function getCurrentPosition(): Promise<{ latitude: number; longitude: number } | undefined> {
+  if (!('geolocation' in navigator)) {
+    return Promise.resolve(undefined);
+  }
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude }),
+      () => resolve(undefined),
+      { timeout: 5000 },
+    );
+  });
+}
+
 export function useClockIn(tenantId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
+      const position = await getCurrentPosition();
       const { data, error } = await apiClient.POST(
         '/api/tenants/{tenantId}/attendance/me/clock-in',
-        { params: { path: { tenantId } } },
+        { params: { path: { tenantId } }, body: position ?? {} },
       );
       if (error) throw error;
       return data;
@@ -58,9 +73,10 @@ export function useClockOut(tenantId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
+      const position = await getCurrentPosition();
       const { data, error } = await apiClient.POST(
         '/api/tenants/{tenantId}/attendance/me/clock-out',
-        { params: { path: { tenantId } } },
+        { params: { path: { tenantId } }, body: position ?? {} },
       );
       if (error) throw error;
       return data;

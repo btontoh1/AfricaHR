@@ -97,7 +97,7 @@ describe('MFA', () => {
     expect(backupCodes).toHaveLength(10);
 
     const statusRes = await asUser(initial.accessToken).get('/api/users/me/mfa/status');
-    expect(statusRes.data).toEqual({ enabled: true });
+    expect(statusRes.data).toEqual({ enabled: true, method: 'TOTP' });
   });
 
   it('login now returns an MFA challenge instead of a token pair', async () => {

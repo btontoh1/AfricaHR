@@ -2,6 +2,7 @@ import { ConflictException, ForbiddenException, Injectable, NotFoundException } 
 import { PayRun, Payslip, PayslipLineItem } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import {
+  PayrollAttendanceRecordRepository,
   PayrollBenefitEnrollmentRepository,
   PayRunRepository,
   PayrollEmployeeRepository,
@@ -46,6 +47,7 @@ export class PayslipService {
     private readonly rates: StatutoryRateRepository,
     private readonly benefitEnrollments: PayrollBenefitEnrollmentRepository,
     private readonly leaveRequests: PayrollLeaveRequestRepository,
+    private readonly attendanceRecords: PayrollAttendanceRecordRepository,
     private readonly audit: AuditService,
   ) {}
 
@@ -198,10 +200,11 @@ export class PayslipService {
     const bands = await this.taxBands.findEffective(employee.countryCode, asOf);
     const employeeRate = await this.rates.findEffective(employee.countryCode, 'SSNIT_EMPLOYEE', asOf);
     const employerRate = await this.rates.findEffective(employee.countryCode, 'SSNIT_EMPLOYER', asOf);
+    const overtimeMultiplierRate = await this.rates.findEffective(employee.countryCode, 'OVERTIME_MULTIPLIER', asOf);
 
-    if (bands.length === 0 || !employeeRate || !employerRate) {
+    if (bands.length === 0 || !employeeRate || !employerRate || !overtimeMultiplierRate) {
       throw new ConflictException(
-        `No effective statutory tax/SSNIT configuration for country "${employee.countryCode}" as of ${asOf.toISOString()}`,
+        `No effective statutory tax/SSNIT/overtime configuration for country "${employee.countryCode}" as of ${asOf.toISOString()}`,
       );
     }
 
@@ -215,6 +218,13 @@ export class PayslipService {
       payRun.periodStart,
       payRun.periodEnd,
     );
+    const overtimeHours = await this.attendanceRecords.sumOvertimeHours(
+      tenantId,
+      employee.id,
+      payRun.periodStart,
+      payRun.periodEnd,
+    );
+    const standardDailyHours = await this.attendanceRecords.findStandardDailyHours(tenantId);
 
     const currentLineItems = await this.lineItems.listByPayslip(tenantId, payslip.id);
 
@@ -228,6 +238,9 @@ export class PayslipService {
       unpaidLeaveDays,
       periodStart: payRun.periodStart,
       periodEnd: payRun.periodEnd,
+      overtimeHours,
+      standardDailyHours: standardDailyHours ?? undefined,
+      overtimeMultiplier: Number(overtimeMultiplierRate.rate),
       lineItems: currentLineItems.map((item) => ({ type: item.type, amount: Number(item.amount) })),
       taxBands: bands.map((band) => ({
         order: band.order,

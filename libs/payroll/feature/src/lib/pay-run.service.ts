@@ -11,6 +11,7 @@ import {
 import { AppConfigService, decryptAesGcm, deriveEncryptionKey } from '@africahr/platform-core';
 import { AuditService } from '@africahr/platform-audit';
 import {
+  PayrollAttendanceRecordRepository,
   PayrollBenefitEnrollmentRepository,
   PayrollEligibleEmployee,
   PayrollEmployeePaymentMethod,
@@ -94,6 +95,7 @@ export class PayRunService {
     private readonly rates: StatutoryRateRepository,
     private readonly benefitEnrollments: PayrollBenefitEnrollmentRepository,
     private readonly leaveRequests: PayrollLeaveRequestRepository,
+    private readonly attendanceRecords: PayrollAttendanceRecordRepository,
     private readonly audit: AuditService,
     private readonly eventEmitter: EventEmitter2,
     private readonly paystack: PaystackTransferClient,
@@ -172,6 +174,7 @@ export class PayRunService {
       tenantId,
       payRun.organizationId,
     );
+    const standardDailyHours = await this.attendanceRecords.findStandardDailyHours(tenantId);
 
     for (const employee of eligibleEmployees) {
       const basicSalary = employee.baseSalary ? Number(employee.baseSalary) : 0;
@@ -181,16 +184,23 @@ export class PayRunService {
       const bands = await this.taxBands.findEffective(employee.countryCode, asOf);
       const employeeRate = await this.rates.findEffective(employee.countryCode, 'SSNIT_EMPLOYEE', asOf);
       const employerRate = await this.rates.findEffective(employee.countryCode, 'SSNIT_EMPLOYER', asOf);
+      const overtimeMultiplierRate = await this.rates.findEffective(employee.countryCode, 'OVERTIME_MULTIPLIER', asOf);
 
-      if (bands.length === 0 || !employeeRate || !employerRate) {
+      if (bands.length === 0 || !employeeRate || !employerRate || !overtimeMultiplierRate) {
         throw new ConflictException(
-          `No effective statutory tax/SSNIT configuration for country "${employee.countryCode}" as of ${asOf.toISOString()} — add StatutoryTaxBand/StatutoryRate records before processing this run`,
+          `No effective statutory tax/SSNIT/overtime configuration for country "${employee.countryCode}" as of ${asOf.toISOString()} — add StatutoryTaxBand/StatutoryRate records before processing this run`,
         );
       }
 
       const extraRates = await this.fetchExtraStatutoryRates(employee.countryCode, asOf);
       const benefitEnrollments = await this.fetchBenefitEnrollments(tenantId, employee.id, asOf);
       const unpaidLeaveDays = await this.leaveRequests.sumUnpaidDays(
+        tenantId,
+        employee.id,
+        payRun.periodStart,
+        payRun.periodEnd,
+      );
+      const overtimeHours = await this.attendanceRecords.sumOvertimeHours(
         tenantId,
         employee.id,
         payRun.periodStart,
@@ -213,6 +223,9 @@ export class PayRunService {
         unpaidLeaveDays,
         periodStart: payRun.periodStart,
         periodEnd: payRun.periodEnd,
+        overtimeHours,
+        standardDailyHours: standardDailyHours ?? undefined,
+        overtimeMultiplier: Number(overtimeMultiplierRate.rate),
         lineItems: lineItemInputs,
         taxBands: bands.map((band) => ({
           order: band.order,

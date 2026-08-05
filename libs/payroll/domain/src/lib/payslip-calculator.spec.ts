@@ -561,4 +561,65 @@ describe('computePayslip', () => {
     expect(result.unpaidLeaveDeduction).toBe(0);
     expect(result.basicSalary).toBe(1000);
   });
+
+  it('adds overtime pay into grossPay/taxableIncome, unlike a line item', () => {
+    // Feb 2026 has 20 working days; hourly rate = 4000 / (20*8) = 25;
+    // overtime = 25 * 1.5 * 4 hours = 150.
+    const result = computePayslip({
+      countryCode: 'GH',
+      basicSalary: 4000,
+      overtimeHours: 4,
+      standardDailyHours: 8,
+      overtimeMultiplier: 1.5,
+      periodStart: new Date('2026-02-01'),
+      periodEnd: new Date('2026-02-28'),
+      lineItems: [],
+      taxBands: bands,
+      ssnitRates,
+    });
+
+    expect(result.overtimePay).toBe(150);
+    expect(result.basicSalary).toBe(4000);
+    expect(result.grossPay).toBe(4150);
+    // SSNIT employee is computed off basicSalary, not grossPay - unaffected by overtime.
+    expect(result.ssnitEmployee).toBe(220); // 4000 * 0.055
+    expect(result.taxableIncome).toBe(3930); // 4150 - 220
+    // overtimePay is NOT added to totalDeductions - it's extra pay, not a withholding.
+    expect(result.totalDeductions).toBe(result.ssnitEmployee + result.payeTax);
+  });
+
+  it('computes overtime pay off the contracted salary, independent of unpaid leave taken in the same period', () => {
+    const result = computePayslip({
+      countryCode: 'GH',
+      basicSalary: 4000,
+      unpaidLeaveDays: 2,
+      overtimeHours: 4,
+      standardDailyHours: 8,
+      overtimeMultiplier: 1.5,
+      periodStart: new Date('2026-02-01'),
+      periodEnd: new Date('2026-02-28'),
+      lineItems: [],
+      taxBands: bands,
+      ssnitRates,
+    });
+
+    // unpaidLeaveDeduction = (4000/20)*2 = 400; overtimePay still 150 (based on the contracted 4000, not the post-deduction 3600).
+    expect(result.unpaidLeaveDeduction).toBe(400);
+    expect(result.overtimePay).toBe(150);
+    expect(result.basicSalary).toBe(3600);
+    expect(result.grossPay).toBe(3750);
+  });
+
+  it('returns zero overtimePay when overtimeHours is omitted', () => {
+    const result = computePayslip({
+      countryCode: 'GH',
+      basicSalary: 1000,
+      lineItems: [],
+      taxBands: bands,
+      ssnitRates,
+    });
+
+    expect(result.overtimePay).toBe(0);
+    expect(result.grossPay).toBe(1000);
+  });
 });

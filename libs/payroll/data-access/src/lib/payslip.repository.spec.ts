@@ -35,6 +35,7 @@ describe('PayslipRepository', () => {
       benefitsEmployeeDeduction: 0,
       benefitsEmployerCost: 0,
       unpaidLeaveDeduction: 0,
+      overtimePay: 0,
       totalDeductions: 144,
       netPay: 856,
       currency: 'GHS',

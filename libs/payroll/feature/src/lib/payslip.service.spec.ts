@@ -3,6 +3,7 @@ import { PayRun, PayslipLineItem, Prisma } from '@prisma/client';
 import { PayslipWithLineItems } from '@africahr/payroll-data-access';
 import { AuditService } from '@africahr/platform-audit';
 import {
+  PayrollAttendanceRecordRepository,
   PayrollBenefitEnrollmentRepository,
   PayRunRepository,
   PayrollEmployeeRepository,
@@ -24,6 +25,7 @@ describe('PayslipService', () => {
   let rates: jest.Mocked<StatutoryRateRepository>;
   let benefitEnrollments: jest.Mocked<PayrollBenefitEnrollmentRepository>;
   let leaveRequests: jest.Mocked<PayrollLeaveRequestRepository>;
+  let attendanceRecords: jest.Mocked<PayrollAttendanceRecordRepository>;
   let audit: jest.Mocked<AuditService>;
 
   function makePayslip(overrides: Partial<PayslipWithLineItems> = {}): PayslipWithLineItems {
@@ -122,6 +124,11 @@ describe('PayslipService', () => {
       sumUnpaidDays: jest.fn().mockResolvedValue(0),
     } as unknown as jest.Mocked<PayrollLeaveRequestRepository>;
 
+    attendanceRecords = {
+      sumOvertimeHours: jest.fn().mockResolvedValue(0),
+      findStandardDailyHours: jest.fn().mockResolvedValue(8),
+    } as unknown as jest.Mocked<PayrollAttendanceRecordRepository>;
+
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
 
     service = new PayslipService(
@@ -133,6 +140,7 @@ describe('PayslipService', () => {
       rates,
       benefitEnrollments,
       leaveRequests,
+      attendanceRecords,
       audit,
     );
   });
@@ -441,6 +449,51 @@ describe('PayslipService', () => {
         'tenant-1',
         expect.objectContaining({ unpaidLeaveDeduction: 181.82, basicSalary: 1818.18 }),
       );
+    });
+
+    it("pays overtime hours worked within the pay period at the employee's implied hourly rate in the recompute", async () => {
+      payslips.findById.mockResolvedValue(makePayslip());
+      payRuns.findById.mockResolvedValue(
+        makePayRun({ status: 'PROCESSING', periodStart: new Date('2026-02-01'), periodEnd: new Date('2026-02-28') }),
+      );
+      lineItems.create.mockResolvedValue({ id: 'li-1' } as PayslipLineItem);
+      employees.findById.mockResolvedValue({
+        id: 'emp-1',
+        organizationId: 'org-1',
+        baseSalary: new Prisma.Decimal(4000),
+        currency: 'GHS',
+        countryCode: 'GH',
+      } as never);
+      // Feb 2026 has 20 working days; hourly rate = 4000/(20*8) = 25; overtime = 25 * 1.5 * 4 = 150.
+      attendanceRecords.sumOvertimeHours.mockResolvedValue(4);
+      rates.findEffective.mockImplementation((_countryCode, code) =>
+        Promise.resolve(code === 'OVERTIME_MULTIPLIER' ? ({ rate: 1.5 } as never) : ({ rate: 0.055 } as never)),
+      );
+
+      await service.addLineItem('tenant-1', 'payslip-1', { type: 'EARNING', code: 'BONUS', amount: 0 });
+
+      expect(attendanceRecords.sumOvertimeHours).toHaveBeenCalledWith(
+        'tenant-1',
+        'emp-1',
+        new Date('2026-02-01'),
+        new Date('2026-02-28'),
+      );
+      expect(payslips.upsert).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ overtimePay: 150 }),
+      );
+    });
+
+    it('throws ConflictException when the OVERTIME_MULTIPLIER rate is missing', async () => {
+      payslips.findById.mockResolvedValue(makePayslip());
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'PROCESSING' }));
+      rates.findEffective.mockImplementation((_countryCode, code) =>
+        Promise.resolve(code === 'OVERTIME_MULTIPLIER' ? null : ({ rate: 0.055 } as never)),
+      );
+
+      await expect(
+        service.addLineItem('tenant-1', 'payslip-1', { type: 'EARNING', code: 'BONUS', amount: 0 }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 

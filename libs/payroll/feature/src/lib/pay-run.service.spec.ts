@@ -5,6 +5,7 @@ import { PayRun, Prisma } from '@prisma/client';
 import { AppConfigService, encryptAesGcm } from '@africahr/platform-core';
 import { AuditService } from '@africahr/platform-audit';
 import {
+  PayrollAttendanceRecordRepository,
   PayrollBenefitEnrollmentRepository,
   PayRunRepository,
   PayrollEmployeeRepository,
@@ -32,6 +33,7 @@ describe('PayRunService', () => {
   let rates: jest.Mocked<StatutoryRateRepository>;
   let benefitEnrollments: jest.Mocked<PayrollBenefitEnrollmentRepository>;
   let leaveRequests: jest.Mocked<PayrollLeaveRequestRepository>;
+  let attendanceRecords: jest.Mocked<PayrollAttendanceRecordRepository>;
   let audit: jest.Mocked<AuditService>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let paystack: jest.Mocked<PaystackTransferClient>;
@@ -132,6 +134,11 @@ describe('PayRunService', () => {
       sumUnpaidDays: jest.fn().mockResolvedValue(0),
     } as unknown as jest.Mocked<PayrollLeaveRequestRepository>;
 
+    attendanceRecords = {
+      sumOvertimeHours: jest.fn().mockResolvedValue(0),
+      findStandardDailyHours: jest.fn().mockResolvedValue(8),
+    } as unknown as jest.Mocked<PayrollAttendanceRecordRepository>;
+
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
     eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
     paystack = {
@@ -148,6 +155,7 @@ describe('PayRunService', () => {
       rates,
       benefitEnrollments,
       leaveRequests,
+      attendanceRecords,
       audit,
       eventEmitter,
       paystack,
@@ -168,6 +176,7 @@ describe('PayRunService', () => {
           rates,
           benefitEnrollments,
           leaveRequests,
+          attendanceRecords,
           audit,
           eventEmitter,
           paystack,
@@ -434,6 +443,64 @@ describe('PayRunService', () => {
         'tenant-1',
         expect.objectContaining({ unpaidLeaveDeduction: 181.82, basicSalary: 1818.18 }),
       );
+    });
+
+    it("pays overtime hours worked within the pay period at the employee's implied hourly rate times the country multiplier", async () => {
+      payRuns.findById.mockResolvedValue(
+        makePayRun({ status: 'DRAFT', periodStart: new Date('2026-02-01'), periodEnd: new Date('2026-02-28') }),
+      );
+      employees.listActiveByOrganization.mockResolvedValue([
+        {
+          id: 'emp-1',
+          organizationId: 'org-1',
+          firstName: 'Kwame',
+          lastName: 'Asante',
+          baseSalary: new Prisma.Decimal(4000),
+          currency: 'GHS',
+          annualRentPaid: null,
+          countryCode: 'GH',
+        },
+      ]);
+      // Feb 2026 has 20 working days; hourly rate = 4000/(20*8) = 25; overtime = 25 * 1.5 * 4 = 150.
+      attendanceRecords.sumOvertimeHours.mockResolvedValue(4);
+      rates.findEffective.mockImplementation((_countryCode, code) =>
+        Promise.resolve(code === 'OVERTIME_MULTIPLIER' ? ({ rate: 1.5 } as never) : ({ rate: 0.055 } as never)),
+      );
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PROCESSING' }));
+
+      await service.process('tenant-1', 'run-1');
+
+      expect(attendanceRecords.sumOvertimeHours).toHaveBeenCalledWith(
+        'tenant-1',
+        'emp-1',
+        new Date('2026-02-01'),
+        new Date('2026-02-28'),
+      );
+      expect(payslips.upsert).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ overtimePay: 150, grossPay: 4150 }),
+      );
+    });
+
+    it('throws ConflictException when the OVERTIME_MULTIPLIER rate is missing', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'DRAFT' }));
+      employees.listActiveByOrganization.mockResolvedValue([
+        {
+          id: 'emp-1',
+          organizationId: 'org-1',
+          firstName: 'Kwame',
+          lastName: 'Asante',
+          baseSalary: new Prisma.Decimal(1000),
+          currency: 'GHS',
+          annualRentPaid: null,
+          countryCode: 'GH',
+        },
+      ]);
+      rates.findEffective.mockImplementation((_countryCode, code) =>
+        Promise.resolve(code === 'OVERTIME_MULTIPLIER' ? null : ({ rate: 0.055 } as never)),
+      );
+
+      await expect(service.process('tenant-1', 'run-1')).rejects.toThrow(ConflictException);
     });
 
     it('does not re-transition status when reprocessing an already-PROCESSING run', async () => {

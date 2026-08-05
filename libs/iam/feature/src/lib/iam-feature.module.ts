@@ -11,6 +11,7 @@ import { UserController } from './user.controller';
 import { MyMfaController } from './my-mfa.controller';
 import { MyPasswordController } from './my-password.controller';
 import { PlatformTenantUsersController } from './platform-tenant-users.controller';
+import { LogSmsDispatcher, SmsDispatcher } from './sms-dispatcher';
 
 @Module({
   imports: [IamDataAccessModule, PlatformAuthModule, AuditModule, AppConfigModule],
@@ -29,7 +30,14 @@ import { PlatformTenantUsersController } from './platform-tenant-users.controlle
     UserController,
     PlatformTenantUsersController,
   ],
-  providers: [AuthService, UserService, MfaService],
+  providers: [
+    AuthService,
+    UserService,
+    MfaService,
+    // No real SMS provider wired up yet - see sms-dispatcher.ts's doc
+    // comment for how to swap one in (Twilio/Africa's Talking/Termii/...).
+    { provide: SmsDispatcher, useClass: LogSmsDispatcher },
+  ],
   exports: [AuthService, UserService, MfaService],
 })
 export class IamFeatureModule {}

@@ -36,7 +36,7 @@ export function MfaSecurityCard() {
         </CardTitle>
         <CardDescription>
           {status.enabled
-            ? 'Your account is protected with an authenticator app.'
+            ? `Your account is protected with ${status.method === 'SMS' ? 'text message codes' : 'an authenticator app'}.`
             : 'Not enabled on your account yet.'}
         </CardDescription>
       </CardHeader>

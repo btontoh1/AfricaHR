@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { toast } from 'sonner';
 import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -39,6 +40,9 @@ export function LoginForm({ tenantSlug, tenantName }: LoginFormProps = {}) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [challengeToken, setChallengeToken] = useState<string | null>(null);
+  const [mfaMethod, setMfaMethod] = useState<'TOTP' | 'SMS' | null>(null);
+  const [phoneLast4, setPhoneLast4] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -77,10 +81,33 @@ export function LoginForm({ tenantSlug, tenantName }: LoginFormProps = {}) {
 
     if (body?.mfaRequired) {
       setChallengeToken(body.challengeToken);
+      setMfaMethod(body.mfaMethod ?? 'TOTP');
+      setPhoneLast4(body.phoneLast4 ?? null);
       return;
     }
 
     redirectAfterLogin();
+  }
+
+  async function handleResendSms() {
+    if (!challengeToken || resending) {
+      return;
+    }
+    setResending(true);
+    try {
+      const response = await fetch('/api/auth/mfa/resend-sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ challengeToken }),
+      });
+      if (response.ok) {
+        toast.success('Code resent');
+      } else {
+        toast.error('Failed to resend code');
+      }
+    } finally {
+      setResending(false);
+    }
   }
 
   async function onSubmitMfa(values: MfaFormValues) {
@@ -103,6 +130,8 @@ export function LoginForm({ tenantSlug, tenantName }: LoginFormProps = {}) {
 
   function backToSignIn() {
     setChallengeToken(null);
+    setMfaMethod(null);
+    setPhoneLast4(null);
     setServerError(null);
     mfaForm.reset();
   }
@@ -193,7 +222,9 @@ export function LoginForm({ tenantSlug, tenantName }: LoginFormProps = {}) {
         <div className="mb-8 space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Two-factor authentication</h1>
           <p className="text-sm text-muted-foreground">
-            Enter the 6-digit code from your authenticator app, or one of your backup codes.
+            {mfaMethod === 'SMS'
+              ? `We texted a code to your phone${phoneLast4 ? ` ending in ${phoneLast4}` : ''}. Enter it below, or one of your backup codes.`
+              : 'Enter the 6-digit code from your authenticator app, or one of your backup codes.'}
           </p>
         </div>
         <Form {...mfaForm}>
@@ -236,13 +267,25 @@ export function LoginForm({ tenantSlug, tenantName }: LoginFormProps = {}) {
             <Button type="submit" className="w-full" disabled={mfaForm.formState.isSubmitting}>
               {mfaForm.formState.isSubmitting ? 'Verifying…' : 'Verify'}
             </Button>
-            <button
-              type="button"
-              onClick={backToSignIn}
-              className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-            >
-              Back to sign in
-            </button>
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={backToSignIn}
+                className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+              >
+                Back to sign in
+              </button>
+              {mfaMethod === 'SMS' && (
+                <button
+                  type="button"
+                  onClick={handleResendSms}
+                  disabled={resending}
+                  className="text-sm text-muted-foreground underline-offset-4 hover:underline disabled:opacity-50"
+                >
+                  {resending ? 'Resending…' : 'Resend code'}
+                </button>
+              )}
+            </div>
           </form>
         </Form>
       </div>

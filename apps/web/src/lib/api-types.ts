@@ -562,6 +562,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/mfa/resend-sms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Re-send the login SMS code for an in-progress SMS-method MFA challenge */
+        post: operations["AuthController_resendMfaSms"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/refresh": {
         parameters: {
             query?: never;
@@ -638,6 +655,38 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["MyMfaController_confirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/me/mfa/setup-sms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MyMfaController_setupSms"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/me/mfa/confirm-sms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MyMfaController_confirmSms"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2670,6 +2719,13 @@ export interface components {
             mfaRequired: true;
             /** @description Short-lived (5 min) - present this plus a code to /auth/mfa/verify */
             challengeToken: string;
+            /**
+             * @description Which method to prompt for - TOTP shows a plain code field, SMS shows "we texted you a code" plus a resend option
+             * @enum {string}
+             */
+            mfaMethod: "TOTP" | "SMS";
+            /** @description Last 4 digits of the phone number a code was just sent to, when mfaMethod is SMS */
+            phoneLast4?: string;
         };
         LoginDto: {
             /** @example admin@africahr.com */
@@ -2687,12 +2743,21 @@ export interface components {
             /** @description Skip the MFA challenge on this device for 30 days - a deviceToken is returned when true */
             rememberDevice?: boolean;
         };
+        ResendMfaSmsDto: {
+            /** @description The challengeToken returned from login when MFA is required */
+            challengeToken: string;
+        };
         RefreshTokenDto: {
             refreshToken: string;
         };
         MfaStatusResponseDto: {
             /** @description Whether MFA is currently enabled on this account */
             enabled: boolean;
+            /**
+             * @description Which method is active, when enabled
+             * @enum {string}
+             */
+            method?: "TOTP" | "SMS";
         };
         MfaSetupResponseDto: {
             /** @description Base32 secret, for manual entry if the QR code can't be scanned */
@@ -2710,6 +2775,13 @@ export interface components {
         MfaConfirmResponseDto: {
             /** @description One-time recovery codes, shown only once - store them somewhere safe */
             backupCodes: string[];
+        };
+        SetupSmsMfaDto: {
+            /**
+             * @description E.164 format (leading +, country code, no spaces or punctuation)
+             * @example +233201234567
+             */
+            phoneNumber: string;
         };
         DisableMfaDto: {
             /** @description The account's current password, required to disable MFA */
@@ -4656,6 +4728,27 @@ export interface operations {
             };
         };
     };
+    AuthController_resendMfaSms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResendMfaSmsDto"];
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AuthController_refresh: {
         parameters: {
             query?: never;
@@ -4739,6 +4832,50 @@ export interface operations {
         };
     };
     MyMfaController_confirm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmMfaDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MfaConfirmResponseDto"];
+                };
+            };
+        };
+    };
+    MyMfaController_setupSms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetupSmsMfaDto"];
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    MyMfaController_confirmSms: {
         parameters: {
             query?: never;
             header?: never;

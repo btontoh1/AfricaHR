@@ -13,3 +13,12 @@ export const mfaDisableFormSchema = z.object({
 });
 
 export type MfaDisableFormValues = z.infer<typeof mfaDisableFormSchema>;
+
+// Mirrors SetupSmsMfaDto (libs/iam/feature/src/lib/dto/setup-sms-mfa.dto.ts).
+export const mfaSmsSetupFormSchema = z.object({
+  phoneNumber: z
+    .string()
+    .regex(/^\+[1-9]\d{7,14}$/, 'Enter a phone number in E.164 format, e.g. +233201234567'),
+});
+
+export type MfaSmsSetupFormValues = z.infer<typeof mfaSmsSetupFormSchema>;

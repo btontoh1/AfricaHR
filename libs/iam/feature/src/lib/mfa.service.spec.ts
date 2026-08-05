@@ -1,19 +1,21 @@
 import { randomBytes } from 'node:crypto';
 import { TOTP, Secret } from 'otpauth';
-import { BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { User } from '@prisma/client';
 import { RequestUser, SystemRole, TokenRevocationService } from '@africahr/platform-auth';
 import { AppConfigService } from '@africahr/platform-core';
 import { AuditService } from '@africahr/platform-audit';
+import { RedisService } from '@africahr/platform-redis';
 import {
   MfaBackupCodeRepository,
   MfaTrustedDeviceRepository,
   RefreshTokenRepository,
   UserRepository,
 } from '@africahr/iam-data-access';
-import { encryptMfaSecret, generateTotpSecret, hashBackupCode, hashDeviceToken } from '@africahr/iam-domain';
+import { encryptMfaSecret, generateTotpSecret, hashBackupCode, hashDeviceToken, hashSmsOtp } from '@africahr/iam-domain';
 import { MfaService } from './mfa.service';
+import { SmsDispatcher } from './sms-dispatcher';
 
 jest.mock('argon2');
 
@@ -31,6 +33,9 @@ describe('MfaService', () => {
   let refreshTokens: jest.Mocked<RefreshTokenRepository>;
   let revocation: jest.Mocked<TokenRevocationService>;
   let audit: jest.Mocked<AuditService>;
+  let redis: jest.Mocked<RedisService>;
+  let redisClient: { set: jest.Mock; get: jest.Mock; del: jest.Mock };
+  let sms: jest.Mocked<SmsDispatcher>;
 
   const actor: RequestUser = {
     sub: 'user-1',
@@ -55,6 +60,9 @@ describe('MfaService', () => {
       mfaEnabled: false,
       mfaSecretEncrypted: null,
       mfaEnabledAt: null,
+      mfaMethod: null,
+      phoneNumber: null,
+      phoneNumberVerifiedAt: null,
       createdAt: new Date(),
       updatedAt: new Date(),
       deletedAt: null,
@@ -70,6 +78,8 @@ describe('MfaService', () => {
       setPendingMfaSecret: jest.fn(),
       enableMfa: jest.fn(),
       clearMfa: jest.fn(),
+      setPendingPhoneNumber: jest.fn(),
+      enablePhoneMfa: jest.fn(),
     } as unknown as jest.Mocked<UserRepository>;
 
     backupCodes = {
@@ -95,9 +105,14 @@ describe('MfaService', () => {
 
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
 
+    redisClient = { set: jest.fn(), get: jest.fn(), del: jest.fn() };
+    redis = { getClient: jest.fn().mockReturnValue(redisClient) } as unknown as jest.Mocked<RedisService>;
+
+    sms = { sendSms: jest.fn().mockResolvedValue({ success: true }) } as unknown as jest.Mocked<SmsDispatcher>;
+
     const config = { mfaEncryptionKey: validEncryptionKey } as unknown as AppConfigService;
 
-    service = new MfaService(users, backupCodes, trustedDevices, refreshTokens, revocation, audit, config);
+    service = new MfaService(users, backupCodes, trustedDevices, refreshTokens, revocation, audit, redis, sms, config);
 
     jest.mocked(argon2.verify).mockReset();
   });
@@ -107,7 +122,8 @@ describe('MfaService', () => {
       const badConfig = { mfaEncryptionKey: undefined } as unknown as AppConfigService;
 
       expect(
-        () => new MfaService(users, backupCodes, trustedDevices, refreshTokens, revocation, audit, badConfig),
+        () =>
+          new MfaService(users, backupCodes, trustedDevices, refreshTokens, revocation, audit, redis, sms, badConfig),
       ).toThrow(/MFA_ENCRYPTION_KEY must be set/);
     });
   });
@@ -183,6 +199,85 @@ describe('MfaService', () => {
       users.findById.mockResolvedValue(makeUser({ mfaEnabled: true }));
 
       await expect(service.confirm(actor, '123456')).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('setupSms', () => {
+    it('stores the pending phone number and texts a code', async () => {
+      users.findById.mockResolvedValue(makeUser());
+
+      await service.setupSms(actor, '+233201234567');
+
+      expect(users.setPendingPhoneNumber).toHaveBeenCalledWith('tenant-1', 'user-1', '+233201234567');
+      expect(redisClient.set).toHaveBeenCalledWith(
+        'mfa:sms-otp:setup:user-1',
+        expect.any(String),
+        'EX',
+        300,
+      );
+      expect(sms.sendSms).toHaveBeenCalledWith('+233201234567', expect.stringContaining('verification code'));
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'mfa.setup_initiated', metadata: { method: 'sms' } }),
+      );
+    });
+
+    it('rejects an invalid phone number without storing anything', async () => {
+      users.findById.mockResolvedValue(makeUser());
+
+      await expect(service.setupSms(actor, '0201234567')).rejects.toThrow(BadRequestException);
+      expect(users.setPendingPhoneNumber).not.toHaveBeenCalled();
+      expect(sms.sendSms).not.toHaveBeenCalled();
+    });
+
+    it('rejects setup when MFA is already enabled', async () => {
+      users.findById.mockResolvedValue(makeUser({ mfaEnabled: true }));
+
+      await expect(service.setupSms(actor, '+233201234567')).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('confirmSms', () => {
+    it('enables SMS MFA and returns backup codes when the code is correct', async () => {
+      users.findById.mockResolvedValue(makeUser({ phoneNumber: '+233201234567' }));
+      redisClient.get.mockResolvedValue(hashSmsOtp('123456'));
+
+      const result = await service.confirmSms(actor, '123456');
+
+      expect(result.backupCodes).toHaveLength(10);
+      expect(backupCodes.createMany).toHaveBeenCalledWith('tenant-1', 'user-1', expect.any(Array));
+      expect(users.enablePhoneMfa).toHaveBeenCalledWith('tenant-1', 'user-1');
+      expect(redisClient.del).toHaveBeenCalledWith('mfa:sms-otp:setup:user-1');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'mfa.enabled', metadata: { method: 'sms' } }),
+      );
+    });
+
+    it('rejects an incorrect code without enabling MFA', async () => {
+      users.findById.mockResolvedValue(makeUser({ phoneNumber: '+233201234567' }));
+      redisClient.get.mockResolvedValue(hashSmsOtp('123456'));
+
+      await expect(service.confirmSms(actor, '000000')).rejects.toThrow(UnauthorizedException);
+      expect(users.enablePhoneMfa).not.toHaveBeenCalled();
+      expect(backupCodes.createMany).not.toHaveBeenCalled();
+    });
+
+    it('rejects an expired (no longer stored) code', async () => {
+      users.findById.mockResolvedValue(makeUser({ phoneNumber: '+233201234567' }));
+      redisClient.get.mockResolvedValue(null);
+
+      await expect(service.confirmSms(actor, '123456')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('rejects confirm-sms when setup-sms was never called', async () => {
+      users.findById.mockResolvedValue(makeUser({ phoneNumber: null }));
+
+      await expect(service.confirmSms(actor, '123456')).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects confirm-sms when MFA is already enabled', async () => {
+      users.findById.mockResolvedValue(makeUser({ mfaEnabled: true }));
+
+      await expect(service.confirmSms(actor, '123456')).rejects.toThrow(ConflictException);
     });
   });
 
@@ -264,6 +359,74 @@ describe('MfaService', () => {
 
       expect(result).toBe(false);
       expect(backupCodes.markUsed).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('sendLoginSmsCode', () => {
+    it('stores the hashed code with a 5-minute expiry and texts it', async () => {
+      await service.sendLoginSmsCode('user-1', '+233201234567');
+
+      expect(redisClient.set).toHaveBeenCalledWith('mfa:sms-otp:login:user-1', expect.any(String), 'EX', 300);
+      expect(sms.sendSms).toHaveBeenCalledWith('+233201234567', expect.stringContaining('verification code'));
+    });
+
+    it('throws if Redis is unavailable, rather than silently failing to protect the login', async () => {
+      redisClient.set.mockRejectedValue(new Error('connection refused'));
+
+      await expect(service.sendLoginSmsCode('user-1', '+233201234567')).rejects.toThrow(
+        ServiceUnavailableException,
+      );
+      expect(sms.sendSms).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('verifySmsLoginCode', () => {
+    it('accepts a valid code and consumes it so it cannot be replayed', async () => {
+      redisClient.get.mockResolvedValue(hashSmsOtp('123456'));
+
+      const result = await service.verifySmsLoginCode('tenant-1', 'user-1', '123456');
+
+      expect(result).toBe(true);
+      expect(redisClient.del).toHaveBeenCalledWith('mfa:sms-otp:login:user-1');
+      expect(backupCodes.findUnused).not.toHaveBeenCalled();
+    });
+
+    it('falls back to an unused backup code when the texted code is wrong', async () => {
+      redisClient.get.mockResolvedValue(hashSmsOtp('123456'));
+      backupCodes.findUnused.mockResolvedValue({ id: 'code-1' });
+
+      const result = await service.verifySmsLoginCode('tenant-1', 'user-1', 'ABCDE-12345');
+
+      expect(result).toBe(true);
+      expect(backupCodes.findUnused).toHaveBeenCalledWith('tenant-1', 'user-1', hashBackupCode('ABCDE-12345'));
+      expect(backupCodes.markUsed).toHaveBeenCalledWith('tenant-1', 'code-1');
+    });
+
+    it('rejects when neither the texted code nor any backup code matches', async () => {
+      redisClient.get.mockResolvedValue(hashSmsOtp('123456'));
+      backupCodes.findUnused.mockResolvedValue(null);
+
+      const result = await service.verifySmsLoginCode('tenant-1', 'user-1', 'WRONG-CODE1');
+
+      expect(result).toBe(false);
+      expect(backupCodes.markUsed).not.toHaveBeenCalled();
+    });
+
+    it('rejects (falling back to backup codes) when the code has already expired', async () => {
+      redisClient.get.mockResolvedValue(null);
+      backupCodes.findUnused.mockResolvedValue(null);
+
+      const result = await service.verifySmsLoginCode('tenant-1', 'user-1', '123456');
+
+      expect(result).toBe(false);
+    });
+
+    it('throws if Redis is unavailable, rather than falling back to "not verified"', async () => {
+      redisClient.get.mockRejectedValue(new Error('connection refused'));
+
+      await expect(service.verifySmsLoginCode('tenant-1', 'user-1', '123456')).rejects.toThrow(
+        ServiceUnavailableException,
+      );
     });
   });
 

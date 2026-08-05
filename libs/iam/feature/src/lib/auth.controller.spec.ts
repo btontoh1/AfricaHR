@@ -16,6 +16,7 @@ describe('AuthController', () => {
       refresh: jest.fn().mockResolvedValue({ accessToken: 'a2', refreshToken: 'r2' }),
       logout: jest.fn().mockResolvedValue(undefined),
       verifyMfa: jest.fn().mockResolvedValue({ accessToken: 'a3', refreshToken: 'r3' }),
+      resendMfaSms: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<AuthService>;
 
     controller = new AuthController(auth);
@@ -78,5 +79,11 @@ describe('AuthController', () => {
     await controller.verifyMfa({ challengeToken: 'ct', code: '123456', rememberDevice: true }, req);
 
     expect(auth.verifyMfa).toHaveBeenCalledWith('ct', '123456', expect.any(Object), true);
+  });
+
+  it('delegates resendMfaSms with the submitted challengeToken', async () => {
+    await controller.resendMfaSms({ challengeToken: 'ct' });
+
+    expect(auth.resendMfaSms).toHaveBeenCalledWith('ct');
   });
 });

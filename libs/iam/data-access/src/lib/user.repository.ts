@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { SystemRole, User } from '@prisma/client';
+import { MfaMethod, SystemRole, User } from '@prisma/client';
 import { PrismaService } from '@africahr/platform-database';
 import { withScope } from './tenant-scoped';
 
@@ -23,6 +23,8 @@ export interface UserForLogin {
   role: SystemRole;
   isActive: boolean;
   mfaEnabled: boolean;
+  mfaMethod: MfaMethod | null;
+  phoneNumber: string | null;
 }
 
 @Injectable()
@@ -138,7 +140,32 @@ export class UserRepository {
     return withScope(this.prisma, tenantId, (client) =>
       client.user.update({
         where: { id },
-        data: { mfaEnabled: true, mfaEnabledAt: new Date() },
+        data: { mfaEnabled: true, mfaEnabledAt: new Date(), mfaMethod: MfaMethod.TOTP },
+      }),
+    );
+  }
+
+  /**
+   * Stores a newly-submitted phone number without enabling MFA yet - same
+   * "pending before proof" shape as setPendingMfaSecret. phoneNumberVerifiedAt
+   * only gets set once MfaService.confirmSms() verifies a real code sent to it.
+   */
+  setPendingPhoneNumber(tenantId: string | null, id: string, phoneNumber: string): Promise<User> {
+    return withScope(this.prisma, tenantId, (client) =>
+      client.user.update({ where: { id }, data: { phoneNumber } }),
+    );
+  }
+
+  enablePhoneMfa(tenantId: string | null, id: string): Promise<User> {
+    return withScope(this.prisma, tenantId, (client) =>
+      client.user.update({
+        where: { id },
+        data: {
+          mfaEnabled: true,
+          mfaEnabledAt: new Date(),
+          mfaMethod: MfaMethod.SMS,
+          phoneNumberVerifiedAt: new Date(),
+        },
       }),
     );
   }
@@ -149,11 +176,23 @@ export class UserRepository {
     );
   }
 
+  /**
+   * Fully resets MFA state regardless of which method (TOTP or SMS) was
+   * active - a disable() that only cleared TOTP fields would leave a
+   * dangling phoneNumber/phoneNumberVerifiedAt behind for an SMS user.
+   */
   clearMfa(tenantId: string | null, id: string): Promise<User> {
     return withScope(this.prisma, tenantId, (client) =>
       client.user.update({
         where: { id },
-        data: { mfaEnabled: false, mfaSecretEncrypted: null, mfaEnabledAt: null },
+        data: {
+          mfaEnabled: false,
+          mfaSecretEncrypted: null,
+          mfaEnabledAt: null,
+          mfaMethod: null,
+          phoneNumber: null,
+          phoneNumberVerifiedAt: null,
+        },
       }),
     );
   }

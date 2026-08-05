@@ -43,6 +43,26 @@ export function useMfaConfirm() {
   });
 }
 
+export function useMfaSetupSms() {
+  return useMutation({
+    mutationFn: async (phoneNumber: string) => {
+      const { error } = await apiClient.POST('/api/users/me/mfa/setup-sms', { body: { phoneNumber } });
+      if (error) throw error;
+    },
+  });
+}
+
+// Same "don't invalidate mfa-status yet" reasoning as useMfaConfirm above.
+export function useMfaConfirmSms() {
+  return useMutation({
+    mutationFn: async (code: string) => {
+      const { data, error } = await apiClient.POST('/api/users/me/mfa/confirm-sms', { body: { code } });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
 export function useMfaDisable() {
   const queryClient = useQueryClient();
   return useMutation({

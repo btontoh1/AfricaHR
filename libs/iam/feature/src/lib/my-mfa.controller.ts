@@ -1,9 +1,11 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiNoContentResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { CurrentUser, JwtAuthGuard, RequestUser } from '@africahr/platform-auth';
 import { MfaService } from './mfa.service';
 import { ConfirmMfaDto } from './dto/confirm-mfa.dto';
 import { DisableMfaDto } from './dto/disable-mfa.dto';
+import { SetupSmsMfaDto } from './dto/setup-sms-mfa.dto';
 import { MfaStatusResponseDto } from './dto/mfa-status-response.dto';
 import { MfaSetupResponseDto } from './dto/mfa-setup-response.dto';
 import { MfaConfirmResponseDto } from './dto/mfa-confirm-response.dto';
@@ -37,6 +39,26 @@ export class MyMfaController {
   @ApiOkResponse({ type: MfaConfirmResponseDto })
   confirm(@Body() dto: ConfirmMfaDto, @CurrentUser() actor: RequestUser) {
     return this.mfa.confirm(actor, dto.code);
+  }
+
+  /**
+   * Throttled unlike setup()/confirm() above - this one triggers a real
+   * SMS send (cost + abuse surface), same posture as AuthController's
+   * login-adjacent endpoints.
+   */
+  @Post('setup-sms')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @ApiNoContentResponse()
+  async setupSms(@Body() dto: SetupSmsMfaDto, @CurrentUser() actor: RequestUser): Promise<void> {
+    await this.mfa.setupSms(actor, dto.phoneNumber);
+  }
+
+  @Post('confirm-sms')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @ApiOkResponse({ type: MfaConfirmResponseDto })
+  confirmSms(@Body() dto: ConfirmMfaDto, @CurrentUser() actor: RequestUser) {
+    return this.mfa.confirmSms(actor, dto.code);
   }
 
   @Post('disable')

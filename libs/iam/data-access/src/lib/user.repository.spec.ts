@@ -1,4 +1,4 @@
-import { SystemRole } from '@prisma/client';
+import { MfaMethod, SystemRole } from '@prisma/client';
 import { PrismaService } from '@africahr/platform-database';
 import { UserRepository } from './user.repository';
 
@@ -169,21 +169,51 @@ describe('UserRepository', () => {
       });
     });
 
-    it('enableMfa flips mfaEnabled and stamps mfaEnabledAt', async () => {
+    it('enableMfa flips mfaEnabled, stamps mfaEnabledAt, and sets the method to TOTP', async () => {
       await repository.enableMfa('tenant-1', 'user-1');
 
       expect(userDelegate.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
-        data: { mfaEnabled: true, mfaEnabledAt: expect.any(Date) },
+        data: { mfaEnabled: true, mfaEnabledAt: expect.any(Date), mfaMethod: MfaMethod.TOTP },
       });
     });
 
-    it('clearMfa resets all three MFA fields', async () => {
+    it('setPendingPhoneNumber stores the phone number without enabling MFA', async () => {
+      await repository.setPendingPhoneNumber('tenant-1', 'user-1', '+233201234567');
+
+      expect(userDelegate.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { phoneNumber: '+233201234567' },
+      });
+    });
+
+    it('enablePhoneMfa flips mfaEnabled, sets the method to SMS, and stamps both verification timestamps', async () => {
+      await repository.enablePhoneMfa('tenant-1', 'user-1');
+
+      expect(userDelegate.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: {
+          mfaEnabled: true,
+          mfaEnabledAt: expect.any(Date),
+          mfaMethod: MfaMethod.SMS,
+          phoneNumberVerifiedAt: expect.any(Date),
+        },
+      });
+    });
+
+    it('clearMfa resets every MFA field regardless of which method was active', async () => {
       await repository.clearMfa('tenant-1', 'user-1');
 
       expect(userDelegate.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
-        data: { mfaEnabled: false, mfaSecretEncrypted: null, mfaEnabledAt: null },
+        data: {
+          mfaEnabled: false,
+          mfaSecretEncrypted: null,
+          mfaEnabledAt: null,
+          mfaMethod: null,
+          phoneNumber: null,
+          phoneNumberVerifiedAt: null,
+        },
       });
     });
 

@@ -27,6 +27,7 @@ export const attendancePolicyFormSchema = z
     geofenceLatitude: z.string().optional().or(z.literal('')),
     geofenceLongitude: z.string().optional().or(z.literal('')),
     geofenceRadiusMeters: z.string().optional().or(z.literal('')),
+    geofenceLocationName: z.string().max(200).optional().or(z.literal('')),
   })
   .refine(
     (values) => {

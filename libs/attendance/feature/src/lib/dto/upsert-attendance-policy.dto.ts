@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsLatitude, IsLongitude, IsNumber, IsOptional, Min } from 'class-validator';
+import { IsInt, IsLatitude, IsLongitude, IsNumber, IsOptional, IsString, Length, Min } from 'class-validator';
 
 export class UpsertAttendancePolicyDto {
   @ApiProperty({ example: 8, description: 'Standard working hours per day, beyond which time counts as overtime' })
@@ -28,4 +28,13 @@ export class UpsertAttendancePolicyDto {
   @IsInt()
   @Min(1)
   geofenceRadiusMeters?: number;
+
+  @ApiPropertyOptional({
+    example: 'East Legon Office',
+    description: 'Human-readable label for the geofence, shown on the attendance dashboard. Independent of the three fields above — purely cosmetic.',
+  })
+  @IsOptional()
+  @IsString()
+  @Length(1, 200)
+  geofenceLocationName?: string;
 }

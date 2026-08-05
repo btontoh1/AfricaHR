@@ -3106,6 +3106,11 @@ export interface components {
              * @example 150
              */
             geofenceRadiusMeters?: number;
+            /**
+             * @description Human-readable label for the geofence, shown on the attendance dashboard. Independent of the three fields above — purely cosmetic.
+             * @example East Legon Office
+             */
+            geofenceLocationName?: string;
         };
         AttendancePolicyResponseDto: {
             id: string;
@@ -3114,6 +3119,7 @@ export interface components {
             geofenceLatitude?: string | null;
             geofenceLongitude?: string | null;
             geofenceRadiusMeters?: number | null;
+            geofenceLocationName?: string | null;
             createdAt: string;
             updatedAt: string;
         };

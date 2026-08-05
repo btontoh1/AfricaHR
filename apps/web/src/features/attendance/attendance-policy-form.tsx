@@ -40,6 +40,7 @@ function PolicyForm({
         geofenceLatitude: values.geofenceLatitude ? Number(values.geofenceLatitude) : undefined,
         geofenceLongitude: values.geofenceLongitude ? Number(values.geofenceLongitude) : undefined,
         geofenceRadiusMeters: values.geofenceRadiusMeters ? Number(values.geofenceRadiusMeters) : undefined,
+        geofenceLocationName: values.geofenceLocationName || undefined,
       });
       toast.success('Attendance policy saved');
     } catch (error) {
@@ -99,6 +100,19 @@ function PolicyForm({
                 </p>
               </div>
               <div className="flex flex-wrap items-end gap-3">
+                <FormField
+                  control={form.control}
+                  name="geofenceLocationName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Location name</FormLabel>
+                      <FormControl>
+                        <Input type="text" placeholder="East Legon Office" className="w-48" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="geofenceLatitude"
@@ -161,6 +175,7 @@ function defaultValuesFromPolicy(policy?: AttendancePolicy): AttendancePolicyFor
     geofenceLatitude: policy?.geofenceLatitude ?? '',
     geofenceLongitude: policy?.geofenceLongitude ?? '',
     geofenceRadiusMeters: policy?.geofenceRadiusMeters != null ? String(policy.geofenceRadiusMeters) : '',
+    geofenceLocationName: policy?.geofenceLocationName ?? '',
   };
 }
 

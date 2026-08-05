@@ -50,6 +50,7 @@ describe('AttendancePolicyService', () => {
         geofenceLatitude: null,
         geofenceLongitude: null,
         geofenceRadiusMeters: null,
+        geofenceLocationName: null,
         actorId: 'hr-1',
       });
     });
@@ -68,6 +69,26 @@ describe('AttendancePolicyService', () => {
         geofenceLatitude: 5.6,
         geofenceLongitude: -0.19,
         geofenceRadiusMeters: 150,
+        geofenceLocationName: null,
+        actorId: 'hr-1',
+      });
+    });
+
+    it('passes the location name through independently of the geofence fields', async () => {
+      policies.upsert.mockResolvedValue(makePolicy());
+
+      await service.upsert(
+        'tenant-1',
+        { standardDailyHours: 8, geofenceLocationName: 'East Legon Office' },
+        'hr-1',
+      );
+
+      expect(policies.upsert).toHaveBeenCalledWith('tenant-1', {
+        standardDailyHours: 8,
+        geofenceLatitude: null,
+        geofenceLongitude: null,
+        geofenceRadiusMeters: null,
+        geofenceLocationName: 'East Legon Office',
         actorId: 'hr-1',
       });
     });

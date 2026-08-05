@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { CalendarDays, MapPinOff, Plus } from 'lucide-react';
-import { useAttendanceRecords } from './queries';
+import { useAttendancePolicy, useAttendanceRecords } from './queries';
 import { useEmployees } from '@/features/employees/queries';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,9 @@ export function AttendanceRecordsList({ tenantId }: { tenantId: string }) {
   const [to, setTo] = useState('');
 
   const { data: employees } = useEmployees(tenantId);
+  // isError intentionally unused - no policy configured yet just means no
+  // location name to show, not a page-level failure.
+  const { data: policy } = useAttendancePolicy(tenantId);
   const { data: records, isLoading, isError, error } = useAttendanceRecords(tenantId, {
     employeeId: employeeId === ALL_EMPLOYEES ? undefined : employeeId,
     from: from || undefined,
@@ -122,12 +125,17 @@ export function AttendanceRecordsList({ tenantId }: { tenantId: string }) {
                     <TableCell>{record.hoursWorked ?? '—'}</TableCell>
                     <TableCell>{record.overtimeHours ?? '—'}</TableCell>
                     <TableCell>
-                      {outsideGeofence && (
-                        <span className="inline-flex items-center gap-1 text-sm text-amber-600 dark:text-amber-500">
-                          <MapPinOff className="size-3.5" />
-                          Outside geofence
-                        </span>
-                      )}
+                      <div className="flex flex-col gap-0.5">
+                        {policy?.geofenceLocationName && (
+                          <span className="text-sm">{policy.geofenceLocationName}</span>
+                        )}
+                        {outsideGeofence && (
+                          <span className="inline-flex items-center gap-1 text-sm text-amber-600 dark:text-amber-500">
+                            <MapPinOff className="size-3.5" />
+                            Outside geofence
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Link href={`/attendance/records/${record.id}`} className="text-sm text-primary hover:underline">

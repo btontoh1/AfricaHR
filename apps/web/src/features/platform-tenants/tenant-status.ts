@@ -8,7 +8,7 @@ const ALLOWED_TRANSITIONS: Record<TenantStatus, TenantStatus[]> = {
   TRIAL: ['ACTIVE', 'CLOSED'],
   ACTIVE: ['SUSPENDED', 'CLOSED'],
   SUSPENDED: ['ACTIVE', 'CLOSED'],
-  CLOSED: [],
+  CLOSED: ['TRIAL'],
 };
 
 export function allowedNextStatuses(status: TenantStatus): TenantStatus[] {

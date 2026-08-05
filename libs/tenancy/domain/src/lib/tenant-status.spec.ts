@@ -11,9 +11,14 @@ describe('tenant status transitions', () => {
     [TenantStatus.SUSPENDED, TenantStatus.ACTIVE, true],
     [TenantStatus.SUSPENDED, TenantStatus.CLOSED, true],
     [TenantStatus.CLOSED, TenantStatus.ACTIVE, false],
-    [TenantStatus.CLOSED, TenantStatus.TRIAL, false],
+    [TenantStatus.CLOSED, TenantStatus.TRIAL, true],
   ])('%s -> %s allowed = %s', (from, to, expected) => {
     expect(canTransitionTenantStatus(from, to)).toBe(expected);
+  });
+
+  it('allows reopening a CLOSED tenant back to TRIAL, but not straight to ACTIVE', () => {
+    expect(canTransitionTenantStatus(TenantStatus.CLOSED, TenantStatus.TRIAL)).toBe(true);
+    expect(canTransitionTenantStatus(TenantStatus.CLOSED, TenantStatus.ACTIVE)).toBe(false);
   });
 
   it('rejects a transition to the same status', () => {

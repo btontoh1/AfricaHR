@@ -59,6 +59,11 @@ export const Permission = {
   // the platform admin in v1 (no tenant self-serve checkout - see project
   // scoping decision), so there is no tenant-level counterpart yet.
   PLATFORM_BILLING_MANAGE: 'platform:billing:manage',
+  // Platform-admin only: the audit trail spans every tenant, so reading it
+  // back is an ops/security capability, not something a tenant gets to
+  // self-serve on its own rows - deliberately not paired with a
+  // tenant-level counterpart, same reasoning as PLATFORM_ORGANIZATION_VERIFY.
+  PLATFORM_AUDIT_READ: 'platform:audit:read',
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
@@ -90,6 +95,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.NOTIFICATIONS_MANAGE,
     Permission.NOTIFICATIONS_READ,
     Permission.PLATFORM_BILLING_MANAGE,
+    Permission.PLATFORM_AUDIT_READ,
   ],
   [SystemRole.TENANT_ADMIN]: [
     Permission.TENANT_BRANDING_MANAGE,

@@ -10,6 +10,7 @@ import { OrganizationService } from './organization.service';
 import { OrganizationUnitService } from './organization-unit.service';
 import { OrganizationVerificationDocumentService } from './organization-verification-document.service';
 import { PlatformDashboardService } from './platform-dashboard.service';
+import { PlatformAuditLogService } from './platform-audit-log.service';
 import { TenantController } from './tenant.controller';
 import { TenantPublicController } from './tenant-public.controller';
 import { TenantMeController } from './tenant-me.controller';
@@ -17,6 +18,7 @@ import { OrganizationController } from './organization.controller';
 import { OrganizationUnitController } from './organization-unit.controller';
 import { OrganizationVerificationController } from './organization-verification.controller';
 import { PlatformDashboardController } from './platform-dashboard.controller';
+import { PlatformAuditLogController } from './platform-audit-log.controller';
 
 @Module({
   imports: [TenancyDataAccessModule, PlatformAuthModule, AuditModule, StorageModule, PrismaModule, RedisModule],
@@ -32,8 +34,9 @@ import { PlatformDashboardController } from './platform-dashboard.controller';
   // to disambiguate — they don't actually overlap (different first
   // segment), but this keeps the "more specific/platform routes first"
   // convention used elsewhere in this codebase (see recruitment-feature.module.ts).
-  // PlatformDashboardController (platform-admin/dashboard) has a distinct
-  // first segment too, so no ordering concern there either.
+  // PlatformDashboardController (platform-admin/dashboard) and
+  // PlatformAuditLogController (platform-admin/audit-logs) both have
+  // distinct first segments too, so no ordering concern there either.
   controllers: [
     TenantPublicController,
     TenantMeController,
@@ -42,6 +45,7 @@ import { PlatformDashboardController } from './platform-dashboard.controller';
     OrganizationController,
     OrganizationUnitController,
     PlatformDashboardController,
+    PlatformAuditLogController,
   ],
   providers: [
     TenantService,
@@ -49,6 +53,7 @@ import { PlatformDashboardController } from './platform-dashboard.controller';
     OrganizationUnitService,
     OrganizationVerificationDocumentService,
     PlatformDashboardService,
+    PlatformAuditLogService,
   ],
   exports: [TenantService, OrganizationService, OrganizationUnitService, OrganizationVerificationDocumentService],
 })

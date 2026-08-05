@@ -213,4 +213,12 @@ describe('hasPermission', () => {
     expect(hasPermission(SystemRole.HR_MANAGER, Permission.PLATFORM_BILLING_MANAGE)).toBe(false);
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.PLATFORM_BILLING_MANAGE)).toBe(false);
   });
+
+  it('restricts audit log reads to platform admins', () => {
+    expect(hasPermission(SystemRole.PLATFORM_ADMIN, Permission.PLATFORM_AUDIT_READ)).toBe(true);
+    expect(hasPermission(SystemRole.TENANT_ADMIN, Permission.PLATFORM_AUDIT_READ)).toBe(false);
+    expect(hasPermission(SystemRole.HR_MANAGER, Permission.PLATFORM_AUDIT_READ)).toBe(false);
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.PLATFORM_AUDIT_READ)).toBe(false);
+    expect(hasPermission(SystemRole.EMPLOYEE, Permission.PLATFORM_AUDIT_READ)).toBe(false);
+  });
 });

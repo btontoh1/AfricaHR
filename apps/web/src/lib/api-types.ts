@@ -269,6 +269,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/platform-admin/audit-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cross-tenant audit trail for the platform admin dashboard */
+        get: operations["PlatformAuditLogController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organizations/verification-queue": {
         parameters: {
             query?: never;
@@ -2426,6 +2443,31 @@ export interface components {
                 database: boolean;
                 redis: boolean;
             };
+        };
+        AuditLogEntryDto: {
+            id: string;
+            /** @description null for platform-admin-initiated actions */
+            tenantId?: string | null;
+            tenantName?: string | null;
+            /** @description null for system-initiated actions */
+            actorUserId?: string | null;
+            actorEmail?: string | null;
+            actorFirstName?: string | null;
+            actorLastName?: string | null;
+            /** @description e.g. "tenant.created", "user.role_changed" */
+            action: string;
+            resourceType: string;
+            resourceId?: string | null;
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AuditLogPageResponseDto: {
+            items: components["schemas"]["AuditLogEntryDto"][];
+            /** @description Total rows matching the current filters, across all pages */
+            totalCount: number;
         };
         OrganizationResponseDto: {
             id: string;
@@ -4823,6 +4865,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlatformDashboardSummaryDto"];
+                };
+            };
+        };
+    };
+    PlatformAuditLogController_list: {
+        parameters: {
+            query?: {
+                tenantId?: string;
+                actorUserId?: string;
+                /** @description Partial match, e.g. "role_changed" */
+                action?: string;
+                /** @description Partial match */
+                resourceType?: string;
+                /** @description ISO 8601 timestamp, inclusive */
+                from?: string;
+                /** @description ISO 8601 timestamp, inclusive */
+                to?: string;
+                /** @description Default 50, max 200 */
+                limit?: string;
+                /** @description Default 0 */
+                offset?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditLogPageResponseDto"];
                 };
             };
         };

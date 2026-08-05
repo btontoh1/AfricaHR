@@ -76,6 +76,23 @@ describe('InvoiceRepository', () => {
     });
   });
 
+  it('finds the pending invoice for a tenant, if any', async () => {
+    tx.invoice.findFirst.mockResolvedValue({ id: 'inv-1', status: 'PENDING' });
+
+    const result = await repository.findPendingForTenant('tenant-1');
+
+    expect(result).toEqual({ id: 'inv-1', status: 'PENDING' });
+    expect(tx.invoice.findFirst).toHaveBeenCalledWith({
+      where: { tenantId: 'tenant-1', status: 'PENDING' },
+    });
+  });
+
+  it('returns null when there is no pending invoice for a tenant', async () => {
+    tx.invoice.findFirst.mockResolvedValue(null);
+
+    await expect(repository.findPendingForTenant('tenant-1')).resolves.toBeNull();
+  });
+
   it('updates an invoice', async () => {
     tx.invoice.update.mockResolvedValue({ id: 'inv-1', status: 'PAID' });
 

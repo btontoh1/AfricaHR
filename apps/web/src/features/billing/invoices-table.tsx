@@ -3,6 +3,7 @@
 import { toast } from 'sonner';
 import { FileText, ExternalLink } from 'lucide-react';
 import { useGenerateInvoice, useInvoices, useMarkInvoicePaid } from './queries';
+import { CancelInvoiceDialog } from './cancel-invoice-dialog';
 import { InvoiceStatusBadge } from './invoice-status-badge';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { formatCurrency } from '@/lib/format-currency';
@@ -24,6 +25,10 @@ export function InvoicesTable({
   const { data: invoices, isLoading, isError, error } = useInvoices(tenantId);
   const generateInvoice = useGenerateInvoice(tenantId);
   const markPaid = useMarkInvoicePaid(tenantId);
+  // The backend rejects generate() while a PENDING invoice exists (see
+  // InvoiceService.generate) - checked here too so the button explains why
+  // it's disabled instead of the user finding out from an error toast.
+  const hasPendingInvoice = invoices?.some((invoice) => invoice.status === 'PENDING') ?? false;
 
   async function handleGenerate() {
     try {
@@ -46,7 +51,8 @@ export function InvoicesTable({
   const generateButton = (
     <Button
       size="sm"
-      disabled={!canGenerate || generateInvoice.isPending}
+      disabled={!canGenerate || hasPendingInvoice || generateInvoice.isPending}
+      title={hasPendingInvoice ? 'Cancel the pending invoice below before generating another' : undefined}
       onClick={handleGenerate}
     >
       {generateInvoice.isPending ? 'Generating…' : 'Generate invoice'}
@@ -120,6 +126,9 @@ export function InvoicesTable({
                     >
                       Mark paid
                     </Button>
+                  )}
+                  {invoice.status === 'PENDING' && (
+                    <CancelInvoiceDialog tenantId={tenantId} invoiceId={invoice.id} />
                   )}
                 </TableCell>
               </TableRow>

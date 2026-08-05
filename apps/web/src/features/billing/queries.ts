@@ -118,6 +118,22 @@ export function useMarkInvoicePaid(tenantId: string) {
   });
 }
 
+export function useCancelInvoice(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await apiClient.PATCH('/api/tenants/{tenantId}/invoices/{id}/cancel', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: invoicesKey(tenantId) });
+    },
+  });
+}
+
 export function usePlatformBillingSummary() {
   return useQuery({
     queryKey: platformBillingSummaryKey(),

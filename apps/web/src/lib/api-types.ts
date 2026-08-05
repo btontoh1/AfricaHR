@@ -2314,6 +2314,23 @@ export interface paths {
         patch: operations["InvoiceController_markPaid"];
         trace?: never;
     };
+    "/api/tenants/{tenantId}/invoices/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Cancel a mistakenly-generated PENDING invoice (e.g. a duplicate) */
+        patch: operations["InvoiceController_cancel"];
+        trace?: never;
+    };
     "/api/platform-admin/billing/summary": {
         parameters: {
             query?: never;
@@ -8020,6 +8037,28 @@ export interface operations {
         };
     };
     InvoiceController_markPaid: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceResponseDto"];
+                };
+            };
+        };
+    };
+    InvoiceController_cancel: {
         parameters: {
             query?: never;
             header?: never;

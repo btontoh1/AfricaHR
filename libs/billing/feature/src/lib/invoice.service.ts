@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -71,6 +72,18 @@ export class InvoiceService {
       throw new BadRequestException(`Tenant "${tenantId}" has no active subscription to invoice`);
     }
 
+    // A tenant's billing period only advances once its invoice is paid
+    // (see advanceSubscriptionPeriod), so a second generate() call before
+    // that happens would otherwise create a second invoice for the exact
+    // same period - checked before the Paystack call so a duplicate click
+    // doesn't also mint a second checkout transaction.
+    const existingPending = await this.invoices.findPendingForTenant(tenantId);
+    if (existingPending) {
+      throw new ConflictException(
+        `Tenant "${tenantId}" already has a pending invoice (${existingPending.id}) - cancel it before generating another`,
+      );
+    }
+
     const employeeCount = await this.employeeCounts.countActive(tenantId);
     const amount = calculateInvoiceAmount(subscription.pricePerEmployee.toNumber(), employeeCount);
     const adminEmail = await this.tenantContacts.findAdminEmail(tenantId);
@@ -114,6 +127,38 @@ export class InvoiceService {
 
   listForTenant(tenantId: string): Promise<Invoice[]> {
     return this.invoices.listByTenant(tenantId);
+  }
+
+  /**
+   * Voids a mistakenly-generated invoice (e.g. a duplicate from clicking
+   * generate twice) so it stops appearing as something the tenant owes.
+   * Only PENDING invoices can be cancelled - a PAID one already collected
+   * real money and needs an actual refund, not a status flip, and a
+   * CANCELLED one is already cancelled.
+   */
+  async cancel(tenantId: string, invoiceId: string, actorId?: string): Promise<Invoice> {
+    const invoice = await this.invoices.findById(tenantId, invoiceId);
+    if (!invoice) {
+      throw new NotFoundException(`Invoice "${invoiceId}" not found`);
+    }
+    if (invoice.status !== 'PENDING') {
+      throw new ConflictException(`Cannot cancel a ${invoice.status} invoice`);
+    }
+
+    const cancelled = await this.invoices.update(tenantId, invoiceId, {
+      status: 'CANCELLED',
+      updatedBy: actorId,
+    });
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'billing.invoice.cancelled',
+      resourceType: 'Invoice',
+      resourceId: invoiceId,
+    });
+
+    return cancelled;
   }
 
   /** Manual fallback for reconciling a payment collected outside Paystack (e.g. bank transfer), not the primary path. */

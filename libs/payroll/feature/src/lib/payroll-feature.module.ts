@@ -16,17 +16,28 @@ import {
   RealPaystackTransferClient,
 } from './paystack-transfer-client';
 import { PayrollTransferWebhookListener } from './payroll-transfer-webhook.listener';
+import { PlatformDisbursementService } from './platform-disbursement.service';
+import { PlatformDisbursementController } from './platform-disbursement.controller';
 
 @Module({
   imports: [PayrollDataAccessModule, PlatformAuthModule, AuditModule, AppConfigModule],
   // MyPayslipController must be registered before PayslipController - see
   // that controller's own doc comment for why route order matters here.
-  controllers: [StatutoryController, PayRunController, MyPayslipController, PayslipController],
+  // PlatformDisbursementController (platform-admin/disbursements) has a
+  // distinct first segment, so no ordering concern there.
+  controllers: [
+    StatutoryController,
+    PayRunController,
+    MyPayslipController,
+    PayslipController,
+    PlatformDisbursementController,
+  ],
   providers: [
     StatutoryDataService,
     PayRunService,
     PayslipService,
     PayrollTransferWebhookListener,
+    PlatformDisbursementService,
     {
       provide: PaystackTransferClient,
       inject: [AppConfigService],

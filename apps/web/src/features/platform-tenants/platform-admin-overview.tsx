@@ -5,6 +5,7 @@ import { Building2, Database, HardDrive, Activity } from 'lucide-react';
 import { usePlatformDashboard } from './queries';
 import { TenantStatusBadge } from './tenant-status-badge';
 import { PlatformBillingSummary } from '@/features/billing/platform-billing-summary';
+import { PlatformDisbursementSummary } from '@/features/platform-disbursements/platform-disbursement-summary';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -83,6 +84,8 @@ export function PlatformAdminOverview() {
       </Card>
 
       <PlatformBillingSummary />
+
+      <PlatformDisbursementSummary />
 
       <Card>
         <CardHeader>

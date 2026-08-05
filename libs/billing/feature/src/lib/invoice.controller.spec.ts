@@ -20,6 +20,7 @@ describe('InvoiceController', () => {
       listForTenant: jest.fn(),
       generate: jest.fn(),
       markPaidManually: jest.fn(),
+      cancel: jest.fn(),
     } as unknown as jest.Mocked<InvoiceService>;
 
     controller = new InvoiceController(service);
@@ -41,5 +42,11 @@ describe('InvoiceController', () => {
     controller.markPaid('tenant-9', 'inv-1', actor);
 
     expect(service.markPaidManually).toHaveBeenCalledWith('tenant-9', 'inv-1', 'ops-1');
+  });
+
+  it('delegates cancel with the tenant id, invoice id, and actor id', () => {
+    controller.cancel('tenant-9', 'inv-1', actor);
+
+    expect(service.cancel).toHaveBeenCalledWith('tenant-9', 'inv-1', 'ops-1');
   });
 });

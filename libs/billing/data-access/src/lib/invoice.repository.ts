@@ -67,6 +67,13 @@ export class InvoiceRepository {
     );
   }
 
+  /** A tenant should never have more than one outstanding invoice at a time - used by InvoiceService.generate() to reject creating a duplicate. */
+  findPendingForTenant(tenantId: string): Promise<Invoice | null> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.invoice.findFirst({ where: { tenantId, status: 'PENDING' } }),
+    );
+  }
+
   update(tenantId: string, id: string, input: UpdateInvoiceInput): Promise<Invoice> {
     return this.prisma.withTenantContext(tenantId, (tx) =>
       tx.invoice.update({ where: { id }, data: input }),

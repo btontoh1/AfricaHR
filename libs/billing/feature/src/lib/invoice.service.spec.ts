@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Invoice, Prisma, Subscription } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
@@ -64,6 +64,7 @@ describe('InvoiceService', () => {
       create: jest.fn(),
       listByTenant: jest.fn(),
       findById: jest.fn(),
+      findPendingForTenant: jest.fn(),
       update: jest.fn(),
     } as unknown as jest.Mocked<InvoiceRepository>;
 
@@ -99,6 +100,7 @@ describe('InvoiceService', () => {
   describe('generate', () => {
     it('creates a Paystack checkout and an invoice for the current headcount', async () => {
       subscriptions.findByTenant.mockResolvedValue(activeSubscription);
+      invoices.findPendingForTenant.mockResolvedValue(null);
       employeeCounts.countActive.mockResolvedValue(20);
       tenantContacts.findAdminEmail.mockResolvedValue('admin@acme.com');
       paystack.initializeTransaction.mockResolvedValue({
@@ -136,11 +138,60 @@ describe('InvoiceService', () => {
 
     it('rejects generating an invoice when the tenant has no active admin to bill', async () => {
       subscriptions.findByTenant.mockResolvedValue(activeSubscription);
+      invoices.findPendingForTenant.mockResolvedValue(null);
       employeeCounts.countActive.mockResolvedValue(20);
       tenantContacts.findAdminEmail.mockResolvedValue(null);
 
       await expect(service.generate('tenant-1')).rejects.toThrow(BadRequestException);
       expect(paystack.initializeTransaction).not.toHaveBeenCalled();
+    });
+
+    it('rejects generating a second invoice while one is already pending', async () => {
+      subscriptions.findByTenant.mockResolvedValue(activeSubscription);
+      invoices.findPendingForTenant.mockResolvedValue(baseInvoice);
+
+      await expect(service.generate('tenant-1')).rejects.toThrow(ConflictException);
+      expect(paystack.initializeTransaction).not.toHaveBeenCalled();
+      expect(invoices.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('cancel', () => {
+    it('cancels a PENDING invoice and audits it', async () => {
+      invoices.findById.mockResolvedValue(baseInvoice);
+      invoices.update.mockResolvedValue({ ...baseInvoice, status: 'CANCELLED' });
+
+      const result = await service.cancel('tenant-1', 'inv-1', 'admin-1');
+
+      expect(invoices.update).toHaveBeenCalledWith('tenant-1', 'inv-1', {
+        status: 'CANCELLED',
+        updatedBy: 'admin-1',
+      });
+      expect(result.status).toBe('CANCELLED');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'billing.invoice.cancelled', resourceId: 'inv-1' }),
+      );
+    });
+
+    it('throws when the invoice does not exist', async () => {
+      invoices.findById.mockResolvedValue(null);
+
+      await expect(service.cancel('tenant-1', 'missing')).rejects.toThrow(NotFoundException);
+      expect(invoices.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects cancelling an already-PAID invoice', async () => {
+      invoices.findById.mockResolvedValue({ ...baseInvoice, status: 'PAID' });
+
+      await expect(service.cancel('tenant-1', 'inv-1')).rejects.toThrow(ConflictException);
+      expect(invoices.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects cancelling an already-CANCELLED invoice', async () => {
+      invoices.findById.mockResolvedValue({ ...baseInvoice, status: 'CANCELLED' });
+
+      await expect(service.cancel('tenant-1', 'inv-1')).rejects.toThrow(ConflictException);
+      expect(invoices.update).not.toHaveBeenCalled();
     });
   });
 

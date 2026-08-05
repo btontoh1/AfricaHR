@@ -44,4 +44,15 @@ export class InvoiceController {
   ) {
     return this.invoices.markPaidManually(tenantId, id, actor.sub);
   }
+
+  @Patch(':id/cancel')
+  @ApiOperation({ summary: 'Cancel a mistakenly-generated PENDING invoice (e.g. a duplicate)' })
+  @ApiOkResponse({ type: InvoiceResponseDto })
+  cancel(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    return this.invoices.cancel(tenantId, id, actor.sub);
+  }
 }

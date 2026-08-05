@@ -120,6 +120,20 @@ export function useUpdateTenantUserActive(tenantId: string) {
   });
 }
 
+export function useDeleteTenant(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await apiClient.DELETE('/api/tenants/{id}', { params: { path: { id } } });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: tenantsKey() });
+      queryClient.removeQueries({ queryKey: tenantKey(id) });
+    },
+  });
+}
+
 export function usePlatformDashboard() {
   return useQuery({
     queryKey: ['platform-admin-dashboard'] as const,

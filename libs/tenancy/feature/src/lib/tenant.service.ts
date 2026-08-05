@@ -110,8 +110,23 @@ export class TenantService {
     return updated;
   }
 
+  /**
+   * Offboarding is a terminal step, not an alternative to updateStatus -
+   * only reachable once a tenant is already CLOSED (the end of
+   * ALLOWED_TRANSITIONS, same status the "no further status changes" UI
+   * state already gates on). Un-gating this would let a single click
+   * permanently hide an ACTIVE tenant with real users out from under it;
+   * requiring CLOSED-first forces going through updateStatus's own
+   * transition checks and audit trail before deletion is even possible.
+   */
   async softDelete(id: string, actorId?: string): Promise<Tenant> {
-    await this.findById(id);
+    const tenant = await this.findById(id);
+    if (tenant.status !== TenantStatus.CLOSED) {
+      throw new ConflictException(
+        `Tenant must be closed before it can be deleted (currently ${tenant.status})`,
+      );
+    }
+
     const deleted = await this.tenants.softDelete(id, actorId);
 
     await this.audit.record({

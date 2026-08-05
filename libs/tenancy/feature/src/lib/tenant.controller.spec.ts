@@ -22,6 +22,7 @@ describe('TenantController', () => {
       list: jest.fn(),
       findById: jest.fn(),
       updateStatus: jest.fn(),
+      softDelete: jest.fn(),
     } as unknown as jest.Mocked<TenantService>;
 
     controller = new TenantController(tenants);
@@ -39,5 +40,11 @@ describe('TenantController', () => {
     controller.updateStatus('tenant-1', { status: TenantStatus.ACTIVE }, actor);
 
     expect(tenants.updateStatus).toHaveBeenCalledWith('tenant-1', TenantStatus.ACTIVE, 'ops-1');
+  });
+
+  it('passes the actor id as updatedBy on delete', () => {
+    controller.softDelete('tenant-1', actor);
+
+    expect(tenants.softDelete).toHaveBeenCalledWith('tenant-1', 'ops-1');
   });
 });

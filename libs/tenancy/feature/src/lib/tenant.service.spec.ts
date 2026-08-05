@@ -162,6 +162,27 @@ describe('TenantService', () => {
       await expect(service.softDelete('missing')).rejects.toThrow(NotFoundException);
       expect(repo.softDelete).not.toHaveBeenCalled();
     });
+
+    it('throws ConflictException if the tenant is not already CLOSED', async () => {
+      repo.findById.mockResolvedValue({ ...baseTenant, status: TenantStatus.ACTIVE });
+
+      await expect(service.softDelete('tenant-1')).rejects.toThrow(ConflictException);
+      expect(repo.softDelete).not.toHaveBeenCalled();
+    });
+
+    it('deletes and audits a CLOSED tenant', async () => {
+      const closedTenant = { ...baseTenant, status: TenantStatus.CLOSED };
+      repo.findById.mockResolvedValue(closedTenant);
+      repo.softDelete.mockResolvedValue({ ...closedTenant, deletedAt: new Date() });
+
+      const result = await service.softDelete('tenant-1', 'user-1');
+
+      expect(repo.softDelete).toHaveBeenCalledWith('tenant-1', 'user-1');
+      expect(result.deletedAt).not.toBeNull();
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'tenant.deleted', tenantId: 'tenant-1', actorUserId: 'user-1' }),
+      );
+    });
   });
 
   describe('requestLogoUpload', () => {

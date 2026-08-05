@@ -20,6 +20,8 @@ describe('MyMfaController', () => {
       getStatus: jest.fn(),
       setup: jest.fn(),
       confirm: jest.fn(),
+      setupSms: jest.fn(),
+      confirmSms: jest.fn(),
       disable: jest.fn(),
       forgetAllDevices: jest.fn(),
     } as unknown as jest.Mocked<MfaService>;
@@ -43,6 +45,18 @@ describe('MyMfaController', () => {
     controller.confirm({ code: '123456' }, actor);
 
     expect(service.confirm).toHaveBeenCalledWith(actor, '123456');
+  });
+
+  it('delegates setup-sms with the submitted phone number', async () => {
+    await controller.setupSms({ phoneNumber: '+233201234567' }, actor);
+
+    expect(service.setupSms).toHaveBeenCalledWith(actor, '+233201234567');
+  });
+
+  it('delegates confirm-sms with the submitted code', () => {
+    controller.confirmSms({ code: '123456' }, actor);
+
+    expect(service.confirmSms).toHaveBeenCalledWith(actor, '123456');
   });
 
   it('delegates disable with the submitted password', async () => {

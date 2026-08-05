@@ -256,6 +256,11 @@ enum SystemRole {
   EMPLOYEE
 }
 
+enum MfaMethod {
+  TOTP
+  SMS
+}
+
 /// tenantId is nullable: null identifies a platform admin, who isn't scoped
 /// to any tenant (tenants are ops-provisioned by platform admins, not
 /// self-serve). email is globally unique (not per-tenant) so login can
@@ -285,6 +290,18 @@ model User {
   mfaEnabled         Boolean   @default(false) @map("mfa_enabled")
   mfaSecretEncrypted String?   @map("mfa_secret_encrypted")
   mfaEnabledAt       DateTime? @map("mfa_enabled_at")
+  /// Which second factor is active once mfaEnabled is true - null while
+  /// disabled. Set by MfaService.confirm()/confirmSms(), not user-chosen
+  /// after the fact (switching methods means disabling and re-enrolling).
+  mfaMethod MfaMethod? @map("mfa_method")
+
+  /// Set (pending, unverified) as soon as setupSms() is called, same
+  /// "pending before proof" shape as mfaSecretEncrypted above.
+  /// phoneNumberVerifiedAt only gets set once confirmSms() verifies a real
+  /// code sent to it - deliberately independent of Employee.phone, which is
+  /// unverified HR data, not an authentication credential.
+  phoneNumber           String?   @map("phone_number")
+  phoneNumberVerifiedAt DateTime? @map("phone_number_verified_at")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")

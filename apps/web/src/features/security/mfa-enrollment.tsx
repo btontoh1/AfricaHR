@@ -4,10 +4,15 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
-import { Check, Copy } from 'lucide-react';
+import { Check, Copy, MessageSquare, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
-import { mfaStatusKey, useMfaConfirm, useMfaSetup } from './queries';
-import { mfaConfirmFormSchema, type MfaConfirmFormValues } from './mfa-form-schema';
+import { mfaStatusKey, useMfaConfirm, useMfaConfirmSms, useMfaSetup, useMfaSetupSms } from './queries';
+import {
+  mfaConfirmFormSchema,
+  mfaSmsSetupFormSchema,
+  type MfaConfirmFormValues,
+  type MfaSmsSetupFormValues,
+} from './mfa-form-schema';
 import { QrCode } from './qr-code';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
@@ -16,9 +21,39 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 
 type Step =
+  | { name: 'choose-method' }
   | { name: 'start' }
   | { name: 'confirm'; secret: string; otpauthUri: string }
+  | { name: 'sms-phone' }
+  | { name: 'sms-confirm'; phoneNumber: string }
   | { name: 'backup-codes'; codes: string[] };
+
+function ChooseMethodStep({
+  onChooseTotp,
+  onChooseSms,
+}: {
+  onChooseTotp: () => void;
+  onChooseSms: () => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Add an extra layer of security to your account. Choose how you&apos;d like to receive your
+        sign-in codes.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" onClick={onChooseTotp}>
+          <ShieldCheck className="size-4" />
+          Authenticator app
+        </Button>
+        <Button type="button" variant="outline" onClick={onChooseSms}>
+          <MessageSquare className="size-4" />
+          Text message (SMS)
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 function StartStep({ onStarted }: { onStarted: (secret: string, otpauthUri: string) => void }) {
   const setup = useMfaSetup();
@@ -35,11 +70,11 @@ function StartStep({ onStarted }: { onStarted: (secret: string, otpauthUri: stri
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Add an extra layer of security to your account. Once enabled, you&apos;ll need a code from an
-        authenticator app (like Google Authenticator or Authy) to sign in.
+        You&apos;ll need a code from an authenticator app (like Google Authenticator or Authy) to sign
+        in from now on.
       </p>
       <Button type="button" onClick={handleStart} disabled={setup.isPending}>
-        {setup.isPending ? 'Starting…' : 'Enable two-factor authentication'}
+        {setup.isPending ? 'Starting…' : 'Continue'}
       </Button>
     </div>
   );
@@ -129,6 +164,111 @@ function ConfirmStep({
   );
 }
 
+function SmsPhoneStep({ onSent }: { onSent: (phoneNumber: string) => void }) {
+  const setupSms = useMfaSetupSms();
+
+  const form = useForm<MfaSmsSetupFormValues>({
+    resolver: zodResolver(mfaSmsSetupFormSchema),
+    defaultValues: { phoneNumber: '' },
+  });
+
+  async function onSubmit(values: MfaSmsSetupFormValues) {
+    try {
+      await setupSms.mutateAsync(values.phoneNumber);
+      onSent(values.phoneNumber);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Failed to send verification code'));
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Enter your phone number in international format. We&apos;ll text you a verification code.
+      </p>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="max-w-xs space-y-4">
+          <FormField
+            control={form.control}
+            name="phoneNumber"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Phone number</FormLabel>
+                <FormControl>
+                  <Input type="tel" autoComplete="tel" placeholder="+233201234567" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <Button type="submit" disabled={form.formState.isSubmitting}>
+            {form.formState.isSubmitting ? 'Sending…' : 'Send code'}
+          </Button>
+        </form>
+      </Form>
+    </div>
+  );
+}
+
+function SmsConfirmStep({
+  phoneNumber,
+  onConfirmed,
+}: {
+  phoneNumber: string;
+  onConfirmed: (codes: string[]) => void;
+}) {
+  const confirmSms = useMfaConfirmSms();
+
+  const form = useForm<MfaConfirmFormValues>({
+    resolver: zodResolver(mfaConfirmFormSchema),
+    defaultValues: { code: '' },
+  });
+
+  async function onSubmit(values: MfaConfirmFormValues) {
+    try {
+      const result = await confirmSms.mutateAsync(values.code);
+      onConfirmed(result.backupCodes);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Invalid code'));
+      form.setValue('code', '');
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Enter the 6-digit code we texted to {phoneNumber}.
+      </p>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="max-w-xs space-y-4">
+          <FormField
+            control={form.control}
+            name="code"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Verification code</FormLabel>
+                <FormControl>
+                  <Input
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder="123456"
+                    maxLength={6}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <Button type="submit" disabled={form.formState.isSubmitting}>
+            {form.formState.isSubmitting ? 'Verifying…' : 'Verify and enable'}
+          </Button>
+        </form>
+      </Form>
+    </div>
+  );
+}
+
 function BackupCodesStep({ codes, onDone }: { codes: string[]; onDone: () => void }) {
   const [copied, setCopied] = useState(false);
 
@@ -185,8 +325,23 @@ function BackupCodesStep({ codes, onDone }: { codes: string[]; onDone: () => voi
 }
 
 export function MfaEnrollment() {
-  const [step, setStep] = useState<Step>({ name: 'start' });
+  const [step, setStep] = useState<Step>({ name: 'choose-method' });
   const queryClient = useQueryClient();
+
+  function handleDone() {
+    setStep({ name: 'choose-method' });
+    queryClient.invalidateQueries({ queryKey: mfaStatusKey() });
+    toast.success('Two-factor authentication enabled');
+  }
+
+  if (step.name === 'choose-method') {
+    return (
+      <ChooseMethodStep
+        onChooseTotp={() => setStep({ name: 'start' })}
+        onChooseSms={() => setStep({ name: 'sms-phone' })}
+      />
+    );
+  }
 
   if (step.name === 'start') {
     return <StartStep onStarted={(secret, otpauthUri) => setStep({ name: 'confirm', secret, otpauthUri })} />;
@@ -202,14 +357,18 @@ export function MfaEnrollment() {
     );
   }
 
-  return (
-    <BackupCodesStep
-      codes={step.codes}
-      onDone={() => {
-        setStep({ name: 'start' });
-        queryClient.invalidateQueries({ queryKey: mfaStatusKey() });
-        toast.success('Two-factor authentication enabled');
-      }}
-    />
-  );
+  if (step.name === 'sms-phone') {
+    return <SmsPhoneStep onSent={(phoneNumber) => setStep({ name: 'sms-confirm', phoneNumber })} />;
+  }
+
+  if (step.name === 'sms-confirm') {
+    return (
+      <SmsConfirmStep
+        phoneNumber={step.phoneNumber}
+        onConfirmed={(codes) => setStep({ name: 'backup-codes', codes })}
+      />
+    );
+  }
+
+  return <BackupCodesStep codes={step.codes} onDone={handleDone} />;
 }

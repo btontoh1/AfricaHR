@@ -1,6 +1,6 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import * as argon2 from 'argon2';
-import { User, RefreshToken } from '@prisma/client';
+import { User, RefreshToken, MfaMethod } from '@prisma/client';
 import { JwtTokenService, SystemRole } from '@africahr/platform-auth';
 import { AuditService } from '@africahr/platform-audit';
 import { RefreshTokenRepository, UserRepository } from '@africahr/iam-data-access';
@@ -30,6 +30,9 @@ describe('AuthService', () => {
     mfaEnabled: false,
     mfaSecretEncrypted: null,
     mfaEnabledAt: null,
+    mfaMethod: null,
+    phoneNumber: null,
+    phoneNumberVerifiedAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
@@ -59,6 +62,8 @@ describe('AuthService', () => {
 
     mfa = {
       verifyLoginCode: jest.fn(),
+      verifySmsLoginCode: jest.fn(),
+      sendLoginSmsCode: jest.fn().mockResolvedValue(undefined),
       isDeviceTrusted: jest.fn().mockResolvedValue(false),
       rememberDevice: jest.fn(),
     } as unknown as jest.Mocked<MfaService>;
@@ -119,7 +124,7 @@ describe('AuthService', () => {
 
       const result = await service.login({ email: user.email, password: 'correct' });
 
-      expect(result).toEqual({ mfaRequired: true, challengeToken: 'challenge-token' });
+      expect(result).toEqual({ mfaRequired: true, challengeToken: 'challenge-token', mfaMethod: MfaMethod.TOTP });
       expect(tokens.signMfaChallengeToken).toHaveBeenCalledWith({ sub: user.id, tenantId: user.tenantId });
       expect(users.updateLastLogin).not.toHaveBeenCalled();
       expect(refreshTokens.create).not.toHaveBeenCalled();
@@ -156,7 +161,27 @@ describe('AuthService', () => {
 
       const result = await service.login({ email: user.email, password: 'correct' }, {}, 'bad-device-token');
 
-      expect(result).toEqual({ mfaRequired: true, challengeToken: 'challenge-token' });
+      expect(result).toEqual({ mfaRequired: true, challengeToken: 'challenge-token', mfaMethod: MfaMethod.TOTP });
+    });
+
+    it('texts a login code and returns the phone last-4 for an SMS-method account', async () => {
+      users.findByEmail.mockResolvedValue({
+        ...user,
+        mfaEnabled: true,
+        mfaMethod: MfaMethod.SMS,
+        phoneNumber: '+233201234567',
+      });
+      (argon2.verify as jest.Mock).mockResolvedValue(true);
+
+      const result = await service.login({ email: user.email, password: 'correct' });
+
+      expect(mfa.sendLoginSmsCode).toHaveBeenCalledWith(user.id, '+233201234567');
+      expect(result).toEqual({
+        mfaRequired: true,
+        challengeToken: 'challenge-token',
+        mfaMethod: MfaMethod.SMS,
+        phoneLast4: '4567',
+      });
     });
   });
 
@@ -289,6 +314,62 @@ describe('AuthService', () => {
 
       expect(mfa.rememberDevice).toHaveBeenCalledWith('tenant-1', 'user-1');
       expect(result.deviceToken).toBe('raw-device-token');
+    });
+
+    it('verifies against verifySmsLoginCode (not verifyLoginCode) for an SMS-method account', async () => {
+      const smsUser: User = { ...user, mfaEnabled: true, mfaMethod: MfaMethod.SMS, phoneNumber: '+233201234567' };
+      tokens.verifyMfaChallengeToken.mockReturnValue({ sub: 'user-1', tenantId: 'tenant-1', iat: 1, exp: 2 });
+      users.findById.mockResolvedValue(smsUser);
+      mfa.verifySmsLoginCode.mockResolvedValue(true);
+      users.updateLastLogin.mockResolvedValue(smsUser);
+      refreshTokens.create.mockResolvedValue({} as RefreshToken);
+
+      const result = await service.verifyMfa('challenge-token', '123456');
+
+      expect(mfa.verifySmsLoginCode).toHaveBeenCalledWith('tenant-1', 'user-1', '123456');
+      expect(mfa.verifyLoginCode).not.toHaveBeenCalled();
+      expect(result.accessToken).toBe('access-token');
+    });
+
+    it('rejects an SMS-method account with no mfaSecretEncrypted (there is none to check)', async () => {
+      const smsUser: User = { ...user, mfaEnabled: true, mfaMethod: MfaMethod.SMS, phoneNumber: '+233201234567' };
+      tokens.verifyMfaChallengeToken.mockReturnValue({ sub: 'user-1', tenantId: 'tenant-1', iat: 1, exp: 2 });
+      users.findById.mockResolvedValue(smsUser);
+      mfa.verifySmsLoginCode.mockResolvedValue(false);
+
+      await expect(service.verifyMfa('challenge-token', '000000')).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  describe('resendMfaSms', () => {
+    it('re-sends the login code for an SMS-method account', async () => {
+      tokens.verifyMfaChallengeToken.mockReturnValue({ sub: 'user-1', tenantId: 'tenant-1', iat: 1, exp: 2 });
+      users.findById.mockResolvedValue({
+        ...user,
+        mfaEnabled: true,
+        mfaMethod: MfaMethod.SMS,
+        phoneNumber: '+233201234567',
+      });
+
+      await service.resendMfaSms('challenge-token');
+
+      expect(mfa.sendLoginSmsCode).toHaveBeenCalledWith('user-1', '+233201234567');
+    });
+
+    it('rejects a TOTP-method account - there is nothing to resend', async () => {
+      tokens.verifyMfaChallengeToken.mockReturnValue({ sub: 'user-1', tenantId: 'tenant-1', iat: 1, exp: 2 });
+      users.findById.mockResolvedValue({ ...user, mfaEnabled: true, mfaMethod: MfaMethod.TOTP });
+
+      await expect(service.resendMfaSms('challenge-token')).rejects.toThrow(BadRequestException);
+      expect(mfa.sendLoginSmsCode).not.toHaveBeenCalled();
+    });
+
+    it('rejects an invalid or expired challenge token', async () => {
+      tokens.verifyMfaChallengeToken.mockImplementation(() => {
+        throw new UnauthorizedException('Invalid or expired MFA challenge');
+      });
+
+      await expect(service.resendMfaSms('bad-token')).rejects.toThrow(UnauthorizedException);
     });
   });
 

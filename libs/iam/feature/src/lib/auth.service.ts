@@ -1,9 +1,11 @@
 import { randomBytes, createHash } from 'node:crypto';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import * as argon2 from 'argon2';
+import { MfaMethod } from '@prisma/client';
 import { JwtTokenService, SystemRole } from '@africahr/platform-auth';
 import { AuditService } from '@africahr/platform-audit';
 import { RefreshTokenRepository, UserRepository } from '@africahr/iam-data-access';
+import { phoneNumberLast4 } from '@africahr/iam-domain';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
 import { MfaChallengeResponseDto } from './dto/mfa-challenge-response.dto';
@@ -26,6 +28,8 @@ interface AuthenticatableUser {
   role: SystemRole;
   isActive: boolean;
   mfaEnabled: boolean;
+  mfaMethod: MfaMethod | null;
+  phoneNumber: string | null;
 }
 
 @Injectable()
@@ -81,11 +85,17 @@ export class AuthService {
     const claims = this.tokens.verifyMfaChallengeToken(challengeToken);
     const user = await this.users.findById(claims.tenantId, claims.sub);
 
-    if (!user || !user.isActive || !user.mfaEnabled || !user.mfaSecretEncrypted) {
+    if (!user || !user.isActive || !user.mfaEnabled) {
+      throw new UnauthorizedException('Invalid or expired MFA challenge');
+    }
+    if (user.mfaMethod !== MfaMethod.SMS && !user.mfaSecretEncrypted) {
       throw new UnauthorizedException('Invalid or expired MFA challenge');
     }
 
-    const valid = await this.mfa.verifyLoginCode(user.tenantId, user.id, user.mfaSecretEncrypted, code);
+    const valid =
+      user.mfaMethod === MfaMethod.SMS
+        ? await this.mfa.verifySmsLoginCode(user.tenantId, user.id, code)
+        : await this.mfa.verifyLoginCode(user.tenantId, user.id, user.mfaSecretEncrypted as string, code);
     if (!valid) {
       throw new UnauthorizedException('Invalid code');
     }
@@ -113,6 +123,27 @@ export class AuthService {
     return response;
   }
 
+  /**
+   * Re-sends the login SMS code for an in-progress SMS-method challenge -
+   * the code is only valid for 5 minutes (see MfaService.SMS_OTP_TTL_SECONDS),
+   * so a slow-arriving or lost text shouldn't force restarting the whole
+   * login. Meaningless for TOTP (nothing to (re)send), so that's rejected
+   * outright rather than silently doing nothing.
+   */
+  async resendMfaSms(challengeToken: string): Promise<void> {
+    const claims = this.tokens.verifyMfaChallengeToken(challengeToken);
+    const user = await this.users.findById(claims.tenantId, claims.sub);
+
+    if (!user || !user.isActive || !user.mfaEnabled) {
+      throw new UnauthorizedException('Invalid or expired MFA challenge');
+    }
+    if (user.mfaMethod !== MfaMethod.SMS || !user.phoneNumber) {
+      throw new BadRequestException('This account is not using SMS-based MFA');
+    }
+
+    await this.mfa.sendLoginSmsCode(user.id, user.phoneNumber);
+  }
+
   private async authenticate(
     user: AuthenticatableUser | null,
     password: string,
@@ -133,6 +164,11 @@ export class AuthService {
 
       if (!trusted) {
         const challengeToken = this.tokens.signMfaChallengeToken({ sub: user.id, tenantId: user.tenantId });
+        const mfaMethod = user.mfaMethod ?? MfaMethod.TOTP;
+
+        if (mfaMethod === MfaMethod.SMS && user.phoneNumber) {
+          await this.mfa.sendLoginSmsCode(user.id, user.phoneNumber);
+        }
 
         await this.audit.record({
           tenantId: user.tenantId,
@@ -142,7 +178,14 @@ export class AuthService {
           resourceId: user.id,
         });
 
-        return { mfaRequired: true, challengeToken };
+        return {
+          mfaRequired: true,
+          challengeToken,
+          mfaMethod,
+          ...(mfaMethod === MfaMethod.SMS && user.phoneNumber
+            ? { phoneLast4: phoneNumberLast4(user.phoneNumber) }
+            : {}),
+        };
       }
     }
 

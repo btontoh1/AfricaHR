@@ -25,8 +25,8 @@ export default async function TenantLoginPage({ params }: { params: Promise<{ sl
   const tenant = await getTenantBySlug(slug);
 
   return (
-    <div className="flex min-h-screen">
-      <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-primary p-10 text-primary-foreground lg:flex">
+    <div className="flex min-h-screen flex-col lg:flex-row">
+      <div className="relative flex flex-col justify-between overflow-hidden bg-primary p-8 text-primary-foreground lg:w-1/2 lg:p-10">
         <div
           className="pointer-events-none absolute inset-0 opacity-20"
           style={{
@@ -40,7 +40,7 @@ export default async function TenantLoginPage({ params }: { params: Promise<{ sl
           <Logo className="size-9 rounded-lg" />
           <span className="text-xl font-semibold tracking-tight">ParotHR</span>
         </div>
-        <div className="relative space-y-8">
+        <div className="relative space-y-8 py-8 lg:py-0">
           <h2 className="text-3xl leading-tight font-semibold text-balance">
             HR &amp; payroll built for how African businesses actually work.
           </h2>
@@ -60,7 +60,7 @@ export default async function TenantLoginPage({ params }: { params: Promise<{ sl
         </p>
       </div>
 
-      <div className="flex w-full flex-col items-center justify-center bg-background p-6 lg:w-1/2">
+      <div className="flex w-full flex-1 flex-col items-center justify-center bg-background p-6 lg:w-1/2">
         {tenant ? (
           <LoginForm tenantSlug={tenant.slug} tenantName={tenant.name} />
         ) : (

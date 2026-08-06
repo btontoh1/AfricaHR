@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import {
   assertTenantScope,
@@ -12,6 +12,7 @@ import {
 import { OrganizationService } from './organization.service';
 import { OrganizationVerificationDocumentService } from './organization-verification-document.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
+import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { OrganizationResponseDto } from './dto/organization-response.dto';
 import { RequestVerificationDocumentUploadDto } from './dto/request-verification-document-upload.dto';
 import { RequestVerificationDocumentUploadResponseDto } from './dto/request-verification-document-upload-response.dto';
@@ -58,6 +59,19 @@ export class OrganizationController {
   ) {
     assertTenantScope(actor, tenantId);
     return this.organizations.findById(tenantId, id);
+  }
+
+  @Patch(':id')
+  @RequirePermissions(Permission.ORGANIZATION_MANAGE)
+  @ApiOkResponse({ type: OrganizationResponseDto })
+  update(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateOrganizationDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.organizations.update(tenantId, id, dto, actor.sub);
   }
 
   @Post(':id/submit-verification')

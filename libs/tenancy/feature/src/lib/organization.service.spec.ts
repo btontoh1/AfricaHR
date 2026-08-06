@@ -52,6 +52,7 @@ describe('OrganizationService', () => {
       create: jest.fn(),
       findById: jest.fn(),
       listByTenant: jest.fn(),
+      update: jest.fn(),
       softDelete: jest.fn(),
       submitForVerification: jest.fn(),
       verify: jest.fn(),
@@ -107,6 +108,42 @@ describe('OrganizationService', () => {
       organizations.findById.mockResolvedValue(null);
 
       await expect(service.findById('tenant-1', 'missing')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('update', () => {
+    it('throws NotFoundException when the organization does not exist', async () => {
+      organizations.findById.mockResolvedValue(null);
+
+      await expect(
+        service.update('tenant-1', 'missing', { legalName: 'New Name' }),
+      ).rejects.toThrow(NotFoundException);
+      expect(organizations.update).not.toHaveBeenCalled();
+    });
+
+    it('updates the organization and records an audit entry', async () => {
+      organizations.findById.mockResolvedValue(organization);
+      const updated = { ...organization, legalName: 'Acme Kenya Ltd', countryCode: 'KE' };
+      organizations.update.mockResolvedValue(updated);
+
+      const result = await service.update(
+        'tenant-1',
+        'org-1',
+        { legalName: 'Acme Kenya Ltd', countryCode: 'KE' },
+        'user-1',
+      );
+
+      expect(result).toEqual(updated);
+      expect(organizations.update).toHaveBeenCalledWith('tenant-1', 'org-1', {
+        legalName: 'Acme Kenya Ltd',
+        tradingName: undefined,
+        countryCode: 'KE',
+        registrationNumber: undefined,
+        taxIdentificationNumber: undefined,
+        metadata: undefined,
+        updatedBy: 'user-1',
+      });
+      expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'organization.updated' }));
     });
   });
 

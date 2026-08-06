@@ -6,6 +6,7 @@ import type {
   CreateOrganizationInput,
   CreateOrganizationUnitInput,
   RequestVerificationDocumentUploadInput,
+  UpdateOrganizationInput,
 } from './types';
 
 function organizationsKey(tenantId: string) {
@@ -63,6 +64,24 @@ export function useCreateOrganization(tenantId: string) {
       return data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: organizationsKey(tenantId) });
+    },
+  });
+}
+
+export function useUpdateOrganization(tenantId: string, id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UpdateOrganizationInput) => {
+      const { data, error } = await apiClient.PATCH('/api/tenants/{tenantId}/organizations/{id}', {
+        params: { path: { tenantId, id } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: organizationKey(tenantId, id) });
       queryClient.invalidateQueries({ queryKey: organizationsKey(tenantId) });
     },
   });

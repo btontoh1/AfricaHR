@@ -23,6 +23,7 @@ describe('OrganizationController', () => {
       create: jest.fn(),
       listByTenant: jest.fn(),
       findById: jest.fn(),
+      update: jest.fn(),
       submitForVerification: jest.fn(),
     } as unknown as jest.Mocked<OrganizationService>;
 
@@ -48,6 +49,21 @@ describe('OrganizationController', () => {
 
     expect(() => controller.create('tenant-2', dto, tenantAdmin)).toThrow(ForbiddenException);
     expect(organizations.create).not.toHaveBeenCalled();
+  });
+
+  it('updates within the route tenant when the actor matches', () => {
+    const dto = { legalName: 'Acme Kenya Ltd' };
+
+    controller.update('tenant-1', 'org-1', dto, tenantAdmin);
+
+    expect(organizations.update).toHaveBeenCalledWith('tenant-1', 'org-1', dto, 'admin-1');
+  });
+
+  it('rejects updating on a different tenant', () => {
+    const dto = { legalName: 'Acme Kenya Ltd' };
+
+    expect(() => controller.update('tenant-2', 'org-1', dto, tenantAdmin)).toThrow(ForbiddenException);
+    expect(organizations.update).not.toHaveBeenCalled();
   });
 
   it('submits an organization for verification within the route tenant', () => {

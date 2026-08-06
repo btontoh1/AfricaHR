@@ -36,6 +36,7 @@ describe('TenantService', () => {
       list: jest.fn(),
       listRecent: jest.fn(),
       count: jest.fn(),
+      update: jest.fn(),
       updateStatus: jest.fn(),
       softDelete: jest.fn(),
       updateLogo: jest.fn(),
@@ -133,6 +134,54 @@ describe('TenantService', () => {
         );
       },
     );
+  });
+
+  describe('update', () => {
+    it('updates fields and records an audit entry when the slug is unchanged', async () => {
+      repo.findById.mockResolvedValue(baseTenant);
+      const updated = { ...baseTenant, name: 'Acme Kenya Ltd', country: 'KE' };
+      repo.update.mockResolvedValue(updated);
+
+      const result = await service.update('tenant-1', { name: 'Acme Kenya Ltd', country: 'KE' }, 'ops-user-1');
+
+      expect(result).toEqual(updated);
+      expect(repo.findBySlug).not.toHaveBeenCalled();
+      expect(repo.update).toHaveBeenCalledWith('tenant-1', {
+        name: 'Acme Kenya Ltd',
+        slug: undefined,
+        country: 'KE',
+        currency: undefined,
+        timezone: undefined,
+        updatedBy: 'ops-user-1',
+      });
+      expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'tenant.updated' }));
+    });
+
+    it('validates and checks uniqueness when the slug changes', async () => {
+      repo.findById.mockResolvedValue(baseTenant);
+      repo.findBySlug.mockResolvedValue(null);
+      repo.update.mockResolvedValue({ ...baseTenant, slug: 'acme-kenya' });
+
+      await service.update('tenant-1', { slug: 'acme-kenya' }, 'ops-user-1');
+
+      expect(repo.findBySlug).toHaveBeenCalledWith('acme-kenya');
+      expect(repo.update).toHaveBeenCalled();
+    });
+
+    it('rejects a new slug that is already in use by another tenant', async () => {
+      repo.findById.mockResolvedValue(baseTenant);
+      repo.findBySlug.mockResolvedValue({ ...baseTenant, id: 'tenant-2', slug: 'acme-kenya' });
+
+      await expect(service.update('tenant-1', { slug: 'acme-kenya' })).rejects.toThrow(ConflictException);
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when the tenant does not exist', async () => {
+      repo.findById.mockResolvedValue(null);
+
+      await expect(service.update('missing', { name: 'New name' })).rejects.toThrow(NotFoundException);
+      expect(repo.update).not.toHaveBeenCalled();
+    });
   });
 
   describe('updateStatus', () => {

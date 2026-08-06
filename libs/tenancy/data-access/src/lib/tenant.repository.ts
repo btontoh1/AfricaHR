@@ -11,6 +11,15 @@ export interface CreateTenantInput {
   createdBy?: string;
 }
 
+export interface UpdateTenantInput {
+  name?: string;
+  slug?: string;
+  country?: string;
+  currency?: string;
+  timezone?: string;
+  updatedBy?: string;
+}
+
 @Injectable()
 export class TenantRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -57,6 +66,20 @@ export class TenantRepository {
 
   count(): Promise<number> {
     return this.prisma.tenant.count({ where: { deletedAt: null } });
+  }
+
+  update(id: string, input: UpdateTenantInput): Promise<Tenant> {
+    return this.prisma.tenant.update({
+      where: { id },
+      data: {
+        name: input.name,
+        slug: input.slug,
+        country: input.country,
+        currency: input.currency,
+        timezone: input.timezone,
+        updatedBy: input.updatedBy,
+      },
+    });
   }
 
   updateStatus(id: string, status: TenantStatus, updatedBy?: string): Promise<Tenant> {

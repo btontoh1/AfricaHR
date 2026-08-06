@@ -186,7 +186,7 @@ export interface paths {
         delete: operations["TenantController_softDelete"];
         options?: never;
         head?: never;
-        patch?: never;
+        patch: operations["TenantController_update"];
         trace?: never;
     };
     "/api/tenants/{id}/status": {
@@ -2500,6 +2500,30 @@ export interface components {
              */
             timezone: string;
         };
+        UpdateTenantDto: {
+            /** @example Acme Ghana Ltd */
+            name?: string;
+            /**
+             * @description URL-safe identifier used in tenant-scoped sign-in links.
+             * @example acme-ghana
+             */
+            slug?: string;
+            /**
+             * @description ISO 3166-1 alpha-2 country code
+             * @example GH
+             */
+            country?: string;
+            /**
+             * @description ISO 4217 currency code
+             * @example GHS
+             */
+            currency?: string;
+            /**
+             * @description IANA timezone identifier
+             * @example Africa/Accra
+             */
+            timezone?: string;
+        };
         UpdateTenantStatusDto: {
             /** @enum {string} */
             status: "TRIAL" | "ACTIVE" | "SUSPENDED" | "CLOSED";
@@ -4305,6 +4329,31 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tenant"];
+                };
+            };
+        };
+    };
+    TenantController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTenantDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {

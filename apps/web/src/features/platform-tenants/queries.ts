@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
 import type { SystemRole } from '@/features/iam/types';
-import type { CreateTenantInput, UpdateTenantStatusInput } from './types';
+import type { CreateTenantInput, UpdateTenantInput, UpdateTenantStatusInput } from './types';
 
 function tenantsKey() {
   return ['platform-tenants'] as const;
@@ -49,6 +49,24 @@ export function useCreateTenant() {
       return data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: tenantsKey() });
+    },
+  });
+}
+
+export function useUpdateTenant(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UpdateTenantInput) => {
+      const { data, error } = await apiClient.PATCH('/api/tenants/{id}', {
+        params: { path: { id } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: tenantKey(id) });
       queryClient.invalidateQueries({ queryKey: tenantsKey() });
     },
   });

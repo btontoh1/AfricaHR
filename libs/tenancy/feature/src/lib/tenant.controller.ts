@@ -10,6 +10,7 @@ import {
 } from '@africahr/platform-auth';
 import { TenantService } from './tenant.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
+import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { UpdateTenantStatusDto } from './dto/update-tenant-status.dto';
 
 /**
@@ -37,6 +38,15 @@ export class TenantController {
   @Get(':id')
   findById(@Param('id') id: string) {
     return this.tenants.findById(id);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateTenantDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    return this.tenants.update(id, dto, actor.sub);
   }
 
   @Patch(':id/status')

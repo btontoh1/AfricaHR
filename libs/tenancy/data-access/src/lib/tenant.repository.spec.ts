@@ -63,6 +63,15 @@ describe('TenantRepository', () => {
     });
   });
 
+  it('updates tenant fields', async () => {
+    await repository.update('tenant-1', { name: 'Acme Kenya', country: 'KE', updatedBy: 'ops-user-1' });
+
+    expect(prisma.tenant.update).toHaveBeenCalledWith({
+      where: { id: 'tenant-1' },
+      data: expect.objectContaining({ name: 'Acme Kenya', country: 'KE', updatedBy: 'ops-user-1' }),
+    });
+  });
+
   it('updates status', async () => {
     await repository.updateStatus('tenant-1', TenantStatus.ACTIVE, 'ops-user-1');
 

@@ -6,6 +6,7 @@ import { StorageService } from '@africahr/platform-storage';
 import { TenantRepository } from '@africahr/tenancy-data-access';
 import { canTransitionTenantStatus, isValidSlug, slugify, TenantStatus } from '@africahr/tenancy-domain';
 import { CreateTenantDto } from './dto/create-tenant.dto';
+import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { RequestTenantLogoUploadDto } from './dto/request-tenant-logo-upload.dto';
 
 export interface RequestLogoUploadResult {
@@ -87,6 +88,39 @@ export class TenantService {
       throw new NotFoundException(`Tenant "${slug}" not found`);
     }
     return tenant;
+  }
+
+  async update(id: string, dto: UpdateTenantDto, actorId?: string): Promise<Tenant> {
+    const tenant = await this.findById(id);
+
+    if (dto.slug && dto.slug !== tenant.slug) {
+      if (!isValidSlug(dto.slug)) {
+        throw new ConflictException(`"${dto.slug}" is not a valid tenant slug`);
+      }
+      const existing = await this.tenants.findBySlug(dto.slug);
+      if (existing) {
+        throw new ConflictException(`Tenant slug "${dto.slug}" is already in use`);
+      }
+    }
+
+    const updated = await this.tenants.update(id, {
+      name: dto.name,
+      slug: dto.slug,
+      country: dto.country,
+      currency: dto.currency,
+      timezone: dto.timezone,
+      updatedBy: actorId,
+    });
+
+    await this.audit.record({
+      tenantId: id,
+      actorUserId: actorId ?? null,
+      action: 'tenant.updated',
+      resourceType: 'Tenant',
+      resourceId: id,
+    });
+
+    return updated;
   }
 
   async updateStatus(id: string, status: TenantStatus, actorId?: string): Promise<Tenant> {

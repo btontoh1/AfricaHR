@@ -21,6 +21,7 @@ describe('TenantController', () => {
       create: jest.fn(),
       list: jest.fn(),
       findById: jest.fn(),
+      update: jest.fn(),
       updateStatus: jest.fn(),
       softDelete: jest.fn(),
     } as unknown as jest.Mocked<TenantService>;
@@ -34,6 +35,14 @@ describe('TenantController', () => {
     controller.create(dto, actor);
 
     expect(tenants.create).toHaveBeenCalledWith(dto, 'ops-1');
+  });
+
+  it('passes the actor id as updatedBy on update', () => {
+    const dto = { name: 'Acme Kenya Ltd' };
+
+    controller.update('tenant-1', dto, actor);
+
+    expect(tenants.update).toHaveBeenCalledWith('tenant-1', dto, 'ops-1');
   });
 
   it('passes the actor id as updatedBy on status update', () => {

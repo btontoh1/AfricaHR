@@ -6,6 +6,7 @@ import { TenantStatusBadge } from './tenant-status-badge';
 import { allowedNextStatuses, TENANT_STATUS_LABEL } from './tenant-status';
 import { AddTenantUserDialog } from './add-tenant-user-dialog';
 import { DeleteTenantDialog } from './delete-tenant-dialog';
+import { EditTenantDialog } from './edit-tenant-dialog';
 import { TenantUsersTable } from './tenant-users-table';
 import type { TenantStatus } from './types';
 import { useSubscription } from '@/features/billing/queries';
@@ -61,7 +62,12 @@ export function TenantDetail({ tenantId }: { tenantId: string }) {
       <PageHeader
         title={tenant.name}
         description={`Sign-in slug: ${tenant.slug}`}
-        action={<TenantStatusBadge status={tenant.status} />}
+        action={
+          <div className="flex items-center gap-2">
+            <TenantStatusBadge status={tenant.status} />
+            <EditTenantDialog tenant={tenant} />
+          </div>
+        }
       />
 
       <Card>

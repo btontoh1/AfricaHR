@@ -11,6 +11,8 @@ import {
 import { UserService } from './user.service';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 import { UpdateUserActiveDto } from './dto/update-user-active.dto';
+import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
+import { AdminResetPasswordDto } from './dto/admin-reset-password.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 
 /**
@@ -32,6 +34,28 @@ export class PlatformTenantUsersController {
   @ApiOkResponse({ type: UserResponseDto, isArray: true })
   list(@Param('tenantId') tenantId: string) {
     return this.users.listForTenant(tenantId);
+  }
+
+  @Patch(':id/profile')
+  @ApiOkResponse({ type: UserResponseDto })
+  updateProfile(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateUserProfileDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    return this.users.updateProfileForTenant(tenantId, id, dto, actor.sub);
+  }
+
+  @Patch(':id/password')
+  @ApiOkResponse({ type: UserResponseDto })
+  resetPassword(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: AdminResetPasswordDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    return this.users.adminResetPasswordForTenant(tenantId, id, dto.newPassword, actor.sub);
   }
 
   @Patch(':id/role')

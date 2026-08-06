@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import { useSetUserActive, useUpdateUserRole, useUsers } from './queries';
 import { ASSIGNABLE_ROLE_OPTIONS } from './team-members-form-schema';
 import type { SystemRole } from './types';
+import { EditUserProfileDialog } from './edit-user-profile-dialog';
+import { ResetUserPasswordDialog } from './reset-user-password-dialog';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -130,8 +132,12 @@ export function TeamMembersList({ canManage }: { canManage: boolean }) {
                 </Badge>
               </TableCell>
               <TableCell>
-                {canManage && user.role !== 'PLATFORM_ADMIN' && (
-                  <ActiveControl id={user.id} isActive={user.isActive} />
+                {canManage && (
+                  <div className="flex items-center gap-2">
+                    <EditUserProfileDialog user={user} />
+                    <ResetUserPasswordDialog user={user} />
+                    {user.role !== 'PLATFORM_ADMIN' && <ActiveControl id={user.id} isActive={user.isActive} />}
+                  </div>
                 )}
               </TableCell>
             </TableRow>

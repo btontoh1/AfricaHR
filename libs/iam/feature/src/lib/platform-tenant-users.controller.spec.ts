@@ -19,6 +19,8 @@ describe('PlatformTenantUsersController', () => {
     userService = {
       listForTenant: jest.fn(),
       updateRoleForTenant: jest.fn(),
+      updateProfileForTenant: jest.fn(),
+      adminResetPasswordForTenant: jest.fn(),
       setActiveForTenant: jest.fn(),
     } as unknown as jest.Mocked<UserService>;
 
@@ -46,5 +48,24 @@ describe('PlatformTenantUsersController', () => {
     controller.setActive('tenant-9', 'user-2', { isActive: false }, actor);
 
     expect(userService.setActiveForTenant).toHaveBeenCalledWith('tenant-9', 'user-2', false, 'ops-1');
+  });
+
+  it('delegates updateProfile with the tenant id, user id, dto, and actor id', () => {
+    const dto = { firstName: 'Kwame' };
+
+    controller.updateProfile('tenant-9', 'user-2', dto, actor);
+
+    expect(userService.updateProfileForTenant).toHaveBeenCalledWith('tenant-9', 'user-2', dto, 'ops-1');
+  });
+
+  it('delegates resetPassword with the tenant id, user id, new password, and actor id', () => {
+    controller.resetPassword('tenant-9', 'user-2', { newPassword: 'NewSecurePass9' }, actor);
+
+    expect(userService.adminResetPasswordForTenant).toHaveBeenCalledWith(
+      'tenant-9',
+      'user-2',
+      'NewSecurePass9',
+      'ops-1',
+    );
   });
 });

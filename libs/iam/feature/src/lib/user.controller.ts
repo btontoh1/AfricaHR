@@ -12,6 +12,8 @@ import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 import { UpdateUserActiveDto } from './dto/update-user-active.dto';
+import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
+import { AdminResetPasswordDto } from './dto/admin-reset-password.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 
 @ApiTags('users')
@@ -40,6 +42,28 @@ export class UserController {
   @ApiOkResponse({ type: UserResponseDto })
   findById(@Param('id') id: string, @CurrentUser() actor: RequestUser) {
     return this.users.findById(actor, id);
+  }
+
+  @Patch(':id/profile')
+  @RequirePermissions(Permission.USER_MANAGE)
+  @ApiOkResponse({ type: UserResponseDto })
+  updateProfile(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserProfileDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    return this.users.updateProfile(actor, id, dto);
+  }
+
+  @Patch(':id/password')
+  @RequirePermissions(Permission.USER_MANAGE)
+  @ApiOkResponse({ type: UserResponseDto })
+  resetPassword(
+    @Param('id') id: string,
+    @Body() dto: AdminResetPasswordDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    return this.users.adminResetPassword(actor, id, dto.newPassword);
   }
 
   @Patch(':id/role')

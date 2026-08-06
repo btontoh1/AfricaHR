@@ -54,6 +54,7 @@ describe('UserService', () => {
       listByTenant: jest.fn(),
       create: jest.fn(),
       updateRole: jest.fn(),
+      updateProfile: jest.fn(),
       setActive: jest.fn(),
       softDelete: jest.fn(),
       updatePassword: jest.fn(),
@@ -162,6 +163,80 @@ describe('UserService', () => {
     });
   });
 
+  describe('updateProfile', () => {
+    it('rejects a new email already in use by another user', async () => {
+      users.findById.mockResolvedValue({ id: 'user-2' } as User);
+      users.findByEmail.mockResolvedValue({ id: 'someone-else' } as User);
+
+      await expect(
+        service.updateProfile(tenantAdmin, 'user-2', { email: 'taken@acme.com' }),
+      ).rejects.toThrow(ConflictException);
+      expect(users.updateProfile).not.toHaveBeenCalled();
+    });
+
+    it('allows keeping the same email (no conflict with self)', async () => {
+      users.findById.mockResolvedValue({ id: 'user-2' } as User);
+      users.findByEmail.mockResolvedValue({ id: 'user-2' } as User);
+      users.updateProfile.mockResolvedValue({ id: 'user-2' } as User);
+
+      await service.updateProfile(tenantAdmin, 'user-2', { email: 'user-2@acme.com' });
+
+      expect(users.updateProfile).toHaveBeenCalled();
+    });
+
+    it('updates the profile and records an audit entry', async () => {
+      users.findById.mockResolvedValue({ id: 'user-2' } as User);
+      users.updateProfile.mockResolvedValue({ id: 'user-2', firstName: 'Kwame' } as User);
+
+      await service.updateProfile(tenantAdmin, 'user-2', { firstName: 'Kwame' });
+
+      expect(users.updateProfile).toHaveBeenCalledWith(
+        'tenant-1',
+        'user-2',
+        { firstName: 'Kwame' },
+        'actor-1',
+      );
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'user.profile_updated', resourceId: 'user-2' }),
+      );
+    });
+  });
+
+  describe('adminResetPassword', () => {
+    it('rejects a weak new password', async () => {
+      users.findById.mockResolvedValue({ id: 'user-2' } as User);
+
+      await expect(service.adminResetPassword(tenantAdmin, 'user-2', 'weak')).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(users.updatePassword).not.toHaveBeenCalled();
+    });
+
+    it('does not require the current password (unlike self-service change)', async () => {
+      users.findById.mockResolvedValue({ id: 'user-2' } as User);
+      users.updatePassword.mockResolvedValue({ id: 'user-2' } as User);
+
+      await expect(
+        service.adminResetPassword(tenantAdmin, 'user-2', validPassword),
+      ).resolves.toBeDefined();
+      expect(argon2.verify).not.toHaveBeenCalled();
+    });
+
+    it('updates the password, revokes every session for the target user, and records an audit entry', async () => {
+      users.findById.mockResolvedValue({ id: 'user-2' } as User);
+      users.updatePassword.mockResolvedValue({ id: 'user-2' } as User);
+
+      await service.adminResetPassword(tenantAdmin, 'user-2', validPassword);
+
+      expect(users.updatePassword).toHaveBeenCalledWith('tenant-1', 'user-2', 'hashed-password');
+      expect(refreshTokens.revokeAllForUser).toHaveBeenCalledWith('tenant-1', 'user-2');
+      expect(revocation.revokeAllForUser).toHaveBeenCalledWith('user-2');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'user.password_reset_by_admin', resourceId: 'user-2' }),
+      );
+    });
+  });
+
   describe('changePassword', () => {
     const dto = { currentPassword: 'OldPassword9', newPassword: validPassword };
 
@@ -250,6 +325,63 @@ describe('UserService', () => {
       expect(users.updateRole).toHaveBeenCalledWith('tenant-9', 'user-2', SystemRole.HR_MANAGER, 'actor-2');
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'user.role_changed', tenantId: 'tenant-9', resourceId: 'user-2' }),
+      );
+    });
+  });
+
+  describe('updateProfileForTenant', () => {
+    it('throws NotFoundException when the user does not exist in that tenant', async () => {
+      users.findById.mockResolvedValue(null);
+
+      await expect(
+        service.updateProfileForTenant('tenant-9', 'missing', { firstName: 'Kwame' }),
+      ).rejects.toThrow(NotFoundException);
+      expect(users.updateProfile).not.toHaveBeenCalled();
+    });
+
+    it('updates the profile and records an audit entry', async () => {
+      users.findById.mockResolvedValue({ id: 'user-2' } as User);
+      users.updateProfile.mockResolvedValue({ id: 'user-2', firstName: 'Kwame' } as User);
+
+      await service.updateProfileForTenant('tenant-9', 'user-2', { firstName: 'Kwame' }, 'actor-2');
+
+      expect(users.updateProfile).toHaveBeenCalledWith(
+        'tenant-9',
+        'user-2',
+        { firstName: 'Kwame' },
+        'actor-2',
+      );
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'user.profile_updated', tenantId: 'tenant-9', resourceId: 'user-2' }),
+      );
+    });
+  });
+
+  describe('adminResetPasswordForTenant', () => {
+    it('throws NotFoundException when the user does not exist in that tenant', async () => {
+      users.findById.mockResolvedValue(null);
+
+      await expect(
+        service.adminResetPasswordForTenant('tenant-9', 'missing', validPassword),
+      ).rejects.toThrow(NotFoundException);
+      expect(users.updatePassword).not.toHaveBeenCalled();
+    });
+
+    it('updates the password, revokes every session, and records an audit entry', async () => {
+      users.findById.mockResolvedValue({ id: 'user-2' } as User);
+      users.updatePassword.mockResolvedValue({ id: 'user-2' } as User);
+
+      await service.adminResetPasswordForTenant('tenant-9', 'user-2', validPassword, 'actor-2');
+
+      expect(users.updatePassword).toHaveBeenCalledWith('tenant-9', 'user-2', 'hashed-password');
+      expect(refreshTokens.revokeAllForUser).toHaveBeenCalledWith('tenant-9', 'user-2');
+      expect(revocation.revokeAllForUser).toHaveBeenCalledWith('user-2');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'user.password_reset_by_admin',
+          tenantId: 'tenant-9',
+          resourceId: 'user-2',
+        }),
       );
     });
   });

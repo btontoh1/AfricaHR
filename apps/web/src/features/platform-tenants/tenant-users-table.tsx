@@ -3,6 +3,8 @@
 import { toast } from 'sonner';
 import { Users } from 'lucide-react';
 import { useTenantUsers, useUpdateTenantUserActive, useUpdateTenantUserRole } from './queries';
+import { EditTenantUserProfileDialog } from './edit-tenant-user-profile-dialog';
+import { ResetTenantUserPasswordDialog } from './reset-tenant-user-password-dialog';
 import type { SystemRole } from '@/features/iam/types';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Badge } from '@/components/ui/badge';
@@ -101,9 +103,13 @@ export function TenantUsersTable({ tenantId }: { tenantId: string }) {
                 <Badge variant={user.isActive ? 'success' : 'outline'}>{user.isActive ? 'Active' : 'Inactive'}</Badge>
               </TableCell>
               <TableCell>
-                <Button variant="outline" size="sm" onClick={() => handleActiveToggle(user.id, user.isActive)}>
-                  {user.isActive ? 'Deactivate' : 'Activate'}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <EditTenantUserProfileDialog tenantId={tenantId} user={user} />
+                  <ResetTenantUserPasswordDialog tenantId={tenantId} user={user} />
+                  <Button variant="outline" size="sm" onClick={() => handleActiveToggle(user.id, user.isActive)}>
+                    {user.isActive ? 'Deactivate' : 'Activate'}
+                  </Button>
+                </div>
               </TableCell>
             </TableRow>
           ))}

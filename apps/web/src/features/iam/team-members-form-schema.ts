@@ -17,3 +17,20 @@ export const createUserFormSchema = z.object({
 export type CreateUserFormValues = z.infer<typeof createUserFormSchema>;
 
 export const ASSIGNABLE_ROLE_OPTIONS = ASSIGNABLE_ROLES;
+
+// Mirrors UpdateUserProfileDto (libs/iam/feature/src/lib/dto/update-user-profile.dto.ts).
+export const updateUserProfileFormSchema = z.object({
+  firstName: z.string().min(1, 'First name is required').max(100),
+  lastName: z.string().min(1, 'Last name is required').max(100),
+  email: z.string().email('Enter a valid email'),
+});
+
+export type UpdateUserProfileFormValues = z.infer<typeof updateUserProfileFormSchema>;
+
+// Mirrors AdminResetPasswordDto - password strength is enforced server-side
+// only (same convention as create-tenant-form-schema.ts's adminPassword).
+export const resetUserPasswordFormSchema = z.object({
+  newPassword: z.string().min(1, 'Password is required'),
+});
+
+export type ResetUserPasswordFormValues = z.infer<typeof resetUserPasswordFormSchema>;

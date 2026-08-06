@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
-import type { SystemRole } from '@/features/iam/types';
+import type { AdminResetPasswordInput, SystemRole, UpdateUserProfileInput } from '@/features/iam/types';
 import type { CreateTenantInput, UpdateTenantInput, UpdateTenantStatusInput } from './types';
 
 function tenantsKey() {
@@ -117,6 +117,36 @@ export function useUpdateTenantUserRole(tenantId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: tenantUsersKey(tenantId) });
+    },
+  });
+}
+
+export function useUpdateTenantUserProfile(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...profile }: { id: string } & UpdateUserProfileInput) => {
+      const { data, error } = await apiClient.PATCH('/api/tenants/{tenantId}/users/{id}/profile', {
+        params: { path: { tenantId, id } },
+        body: profile,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: tenantUsersKey(tenantId) });
+    },
+  });
+}
+
+export function useAdminResetTenantUserPassword(tenantId: string) {
+  return useMutation({
+    mutationFn: async ({ id, ...body }: { id: string } & AdminResetPasswordInput) => {
+      const { data, error } = await apiClient.PATCH('/api/tenants/{tenantId}/users/{id}/password', {
+        params: { path: { tenantId, id } },
+        body,
+      });
+      if (error) throw error;
+      return data;
     },
   });
 }

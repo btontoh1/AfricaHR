@@ -13,6 +13,12 @@ export interface CreateUserInput {
   createdBy?: string;
 }
 
+export interface UpdateUserProfileInput {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+}
+
 export interface UserForLogin {
   id: string;
   tenantId: string | null;
@@ -115,6 +121,25 @@ export class UserRepository {
   ): Promise<User> {
     return withScope(this.prisma, tenantId, (client) =>
       client.user.update({ where: { id }, data: { isActive, updatedBy } }),
+    );
+  }
+
+  updateProfile(
+    tenantId: string | null,
+    id: string,
+    input: UpdateUserProfileInput,
+    updatedBy?: string,
+  ): Promise<User> {
+    return withScope(this.prisma, tenantId, (client) =>
+      client.user.update({
+        where: { id },
+        data: {
+          firstName: input.firstName,
+          lastName: input.lastName,
+          email: input.email,
+          updatedBy,
+        },
+      }),
     );
   }
 

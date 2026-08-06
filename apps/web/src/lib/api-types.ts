@@ -237,6 +237,38 @@ export interface paths {
         patch: operations["PlatformTenantUsersController_updateRole"];
         trace?: never;
     };
+    "/api/tenants/{tenantId}/users/{id}/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["PlatformTenantUsersController_updateProfile"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/users/{id}/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["PlatformTenantUsersController_resetPassword"];
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/users/{id}/active": {
         parameters: {
             query?: never;
@@ -771,6 +803,38 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["UserController_updateRole"];
+        trace?: never;
+    };
+    "/api/users/{id}/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["UserController_updateProfile"];
+        trace?: never;
+    };
+    "/api/users/{id}/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["UserController_resetPassword"];
         trace?: never;
     };
     "/api/users/{id}/active": {
@@ -2864,6 +2928,16 @@ export interface components {
         };
         UpdateUserActiveDto: {
             isActive: boolean;
+        };
+        UpdateUserProfileDto: {
+            firstName?: string;
+            lastName?: string;
+            /** @example hr@acme.com */
+            email?: string;
+        };
+        AdminResetPasswordDto: {
+            /** @description Must meet the platform password requirements. */
+            newPassword: string;
         };
         CreateEmployeeDto: {
             organizationId: string;
@@ -5167,6 +5241,56 @@ export interface operations {
             };
         };
     };
+    UserController_updateProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUserProfileDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponseDto"];
+                };
+            };
+        };
+    };
+    UserController_resetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminResetPasswordDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponseDto"];
+                };
+            };
+        };
+    };
     PlatformTenantUsersController_list: {
         parameters: {
             query?: never;
@@ -5227,6 +5351,58 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["UpdateUserActiveDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponseDto"];
+                };
+            };
+        };
+    };
+    PlatformTenantUsersController_updateProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUserProfileDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponseDto"];
+                };
+            };
+        };
+    };
+    PlatformTenantUsersController_resetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminResetPasswordDto"];
             };
         };
         responses: {

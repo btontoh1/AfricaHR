@@ -159,6 +159,18 @@ describe('UserRepository', () => {
     });
   });
 
+  describe('updateProfile', () => {
+    it('updates the provided profile fields', async () => {
+      await repository.updateProfile('tenant-1', 'user-1', { firstName: 'Kwame' }, 'actor-1');
+
+      expect(withTenantContext).toHaveBeenCalledWith('tenant-1', expect.any(Function));
+      expect(userDelegate.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { firstName: 'Kwame', lastName: undefined, email: undefined, updatedBy: 'actor-1' },
+      });
+    });
+  });
+
   describe('MFA state transitions', () => {
     it('setPendingMfaSecret stores the encrypted secret without enabling MFA', async () => {
       await repository.setPendingMfaSecret('tenant-1', 'user-1', 'encrypted-blob');

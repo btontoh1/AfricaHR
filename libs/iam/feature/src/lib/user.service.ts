@@ -13,6 +13,7 @@ import { RefreshTokenRepository, UserRepository } from '@africahr/iam-data-acces
 import { getPasswordRequirementErrors } from '@africahr/iam-domain';
 import { CreateUserDto } from './dto/create-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 
 @Injectable()
 export class UserService {
@@ -90,6 +91,60 @@ export class UserService {
       resourceType: 'User',
       resourceId: id,
       metadata: { role },
+    });
+
+    return user;
+  }
+
+  async updateProfile(actor: RequestUser, id: string, dto: UpdateUserProfileDto): Promise<User> {
+    const tenantId = this.requireTenantScope(actor);
+    await this.findById(actor, id);
+
+    if (dto.email) {
+      await this.assertEmailAvailable(dto.email, id);
+    }
+
+    const user = await this.users.updateProfile(tenantId, id, dto, actor.sub);
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actor.sub,
+      action: 'user.profile_updated',
+      resourceType: 'User',
+      resourceId: id,
+    });
+
+    return user;
+  }
+
+  /**
+   * Admin-initiated reset for a user who lost/forgot their password - unlike
+   * changePassword() above, no currentPassword is required (the whole point
+   * is the account holder can't provide one), but the same
+   * revoke-everywhere posture applies: a stale session on the old password
+   * shouldn't keep working after an admin has issued a new one.
+   */
+  async adminResetPassword(actor: RequestUser, id: string, newPassword: string): Promise<User> {
+    const tenantId = this.requireTenantScope(actor);
+    await this.findById(actor, id);
+
+    const passwordErrors = getPasswordRequirementErrors(newPassword);
+    if (passwordErrors.length > 0) {
+      throw new BadRequestException(passwordErrors);
+    }
+
+    const passwordHash = await argon2.hash(newPassword);
+    const user = await this.users.updatePassword(tenantId, id, passwordHash);
+
+    await this.refreshTokens.revokeAllForUser(tenantId, id);
+    await this.revocation.revokeAllForUser(id);
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actor.sub,
+      action: 'user.password_reset_by_admin',
+      resourceType: 'User',
+      resourceId: id,
     });
 
     return user;
@@ -181,6 +236,66 @@ export class UserService {
     return this.users.listByTenant(tenantId);
   }
 
+  async updateProfileForTenant(
+    tenantId: string,
+    id: string,
+    dto: UpdateUserProfileDto,
+    actorId?: string,
+  ): Promise<User> {
+    const existing = await this.users.findById(tenantId, id);
+    if (!existing) {
+      throw new NotFoundException(`User "${id}" not found`);
+    }
+    if (dto.email) {
+      await this.assertEmailAvailable(dto.email, id);
+    }
+
+    const user = await this.users.updateProfile(tenantId, id, dto, actorId);
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'user.profile_updated',
+      resourceType: 'User',
+      resourceId: id,
+    });
+
+    return user;
+  }
+
+  async adminResetPasswordForTenant(
+    tenantId: string,
+    id: string,
+    newPassword: string,
+    actorId?: string,
+  ): Promise<User> {
+    const existing = await this.users.findById(tenantId, id);
+    if (!existing) {
+      throw new NotFoundException(`User "${id}" not found`);
+    }
+
+    const passwordErrors = getPasswordRequirementErrors(newPassword);
+    if (passwordErrors.length > 0) {
+      throw new BadRequestException(passwordErrors);
+    }
+
+    const passwordHash = await argon2.hash(newPassword);
+    const user = await this.users.updatePassword(tenantId, id, passwordHash);
+
+    await this.refreshTokens.revokeAllForUser(tenantId, id);
+    await this.revocation.revokeAllForUser(id);
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'user.password_reset_by_admin',
+      resourceType: 'User',
+      resourceId: id,
+    });
+
+    return user;
+  }
+
   async updateRoleForTenant(tenantId: string, id: string, role: SystemRole, actorId?: string): Promise<User> {
     const existing = await this.users.findById(tenantId, id);
     if (!existing) {
@@ -246,6 +361,18 @@ export class UserService {
     }
 
     return this.requireTenantScope(actor);
+  }
+
+  /**
+   * findByEmail() is global (not tenant-scoped, see UserRepository's own
+   * doc comment), same lookup create() already uses - a changed email must
+   * be unique platform-wide, not just within the acting tenant.
+   */
+  private async assertEmailAvailable(email: string, id: string): Promise<void> {
+    const existing = await this.users.findByEmail(email);
+    if (existing && existing.id !== id) {
+      throw new ConflictException(`Email "${email}" is already in use`);
+    }
   }
 
   /**

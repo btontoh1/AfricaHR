@@ -21,6 +21,8 @@ describe('UserController', () => {
       list: jest.fn(),
       findById: jest.fn(),
       updateRole: jest.fn(),
+      updateProfile: jest.fn(),
+      adminResetPassword: jest.fn(),
       setActive: jest.fn(),
       softDelete: jest.fn(),
     } as unknown as jest.Mocked<UserService>;
@@ -52,5 +54,19 @@ describe('UserController', () => {
     controller.setActive('user-2', { isActive: false }, actor);
 
     expect(userService.setActive).toHaveBeenCalledWith(actor, 'user-2', false);
+  });
+
+  it('delegates updateProfile with the id, dto, and actor', () => {
+    const dto = { firstName: 'Kwame' };
+
+    controller.updateProfile('user-2', dto, actor);
+
+    expect(userService.updateProfile).toHaveBeenCalledWith(actor, 'user-2', dto);
+  });
+
+  it('delegates resetPassword with the id, new password, and actor', () => {
+    controller.resetPassword('user-2', { newPassword: 'NewSecurePass9' }, actor);
+
+    expect(userService.adminResetPassword).toHaveBeenCalledWith(actor, 'user-2', 'NewSecurePass9');
   });
 });

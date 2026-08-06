@@ -63,6 +63,16 @@ describe('OrganizationRepository', () => {
     });
   });
 
+  it('updates an organization within the tenant context', async () => {
+    await repository.update('tenant-1', 'org-1', { legalName: 'Acme Kenya Ltd', updatedBy: 'user-1' });
+
+    expect(prisma.withTenantContext).toHaveBeenCalledWith('tenant-1', expect.any(Function));
+    expect(tx.organization.update).toHaveBeenCalledWith({
+      where: { id: 'org-1' },
+      data: expect.objectContaining({ legalName: 'Acme Kenya Ltd', updatedBy: 'user-1' }),
+    });
+  });
+
   describe('verification', () => {
     it('submitForVerification moves the org to PENDING_REVIEW and clears any prior note', async () => {
       await repository.submitForVerification('tenant-1', 'org-1', 'user-1');

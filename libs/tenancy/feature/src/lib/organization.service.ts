@@ -4,6 +4,7 @@ import { AuditService } from '@africahr/platform-audit';
 import { canTransitionOrganizationVerificationStatus, OrganizationVerificationStatus } from '@africahr/tenancy-domain';
 import { OrganizationRepository, TenantRepository } from '@africahr/tenancy-data-access';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
+import { UpdateOrganizationDto } from './dto/update-organization.dto';
 
 @Injectable()
 export class OrganizationService {
@@ -54,6 +55,35 @@ export class OrganizationService {
 
   listByTenant(tenantId: string): Promise<Organization[]> {
     return this.organizations.listByTenant(tenantId);
+  }
+
+  async update(
+    tenantId: string,
+    id: string,
+    dto: UpdateOrganizationDto,
+    actorId?: string,
+  ): Promise<Organization> {
+    await this.findById(tenantId, id);
+
+    const updated = await this.organizations.update(tenantId, id, {
+      legalName: dto.legalName,
+      tradingName: dto.tradingName,
+      countryCode: dto.countryCode,
+      registrationNumber: dto.registrationNumber,
+      taxIdentificationNumber: dto.taxIdentificationNumber,
+      metadata: dto.metadata as Prisma.InputJsonValue | undefined,
+      updatedBy: actorId,
+    });
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'organization.updated',
+      resourceType: 'Organization',
+      resourceId: id,
+    });
+
+    return updated;
   }
 
   async softDelete(tenantId: string, id: string, actorId?: string): Promise<Organization> {

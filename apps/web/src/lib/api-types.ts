@@ -429,7 +429,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        patch: operations["OrganizationController_update"];
         trace?: never;
     };
     "/api/tenants/{tenantId}/organizations/{id}/submit-verification": {
@@ -2679,6 +2679,28 @@ export interface components {
              */
             metadata?: Record<string, never>;
         };
+        UpdateOrganizationDto: {
+            /** @example Acme Ghana Ltd */
+            legalName?: string;
+            /** @example Acme */
+            tradingName?: string;
+            /**
+             * @description ISO 3166-1 alpha-2 country code
+             * @example GH
+             */
+            countryCode?: string;
+            /** @example BN-12345 */
+            registrationNumber?: string;
+            /** @example C0012345678 */
+            taxIdentificationNumber?: string;
+            /**
+             * @description Country-specific registration fields without a dedicated column
+             * @example {
+             *       "ssnitEmployerNumber": "SS123456"
+             *     }
+             */
+            metadata?: Record<string, never>;
+        };
         RequestVerificationDocumentUploadDto: {
             /** @enum {string} */
             documentType: "CERTIFICATE_OF_INCORPORATION" | "TAX_CLEARANCE_CERTIFICATE" | "OTHER";
@@ -4502,6 +4524,32 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationResponseDto"];
+                };
+            };
+        };
+    };
+    OrganizationController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOrganizationDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {

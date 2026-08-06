@@ -12,6 +12,16 @@ export interface CreateOrganizationInput {
   createdBy?: string;
 }
 
+export interface UpdateOrganizationInput {
+  legalName?: string;
+  tradingName?: string;
+  countryCode?: string;
+  registrationNumber?: string;
+  taxIdentificationNumber?: string;
+  metadata?: Prisma.InputJsonValue;
+  updatedBy?: string;
+}
+
 @Injectable()
 export class OrganizationRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -45,6 +55,23 @@ export class OrganizationRepository {
       tx.organization.findMany({
         where: { tenantId, deletedAt: null },
         orderBy: { createdAt: 'asc' },
+      }),
+    );
+  }
+
+  update(tenantId: string, id: string, input: UpdateOrganizationInput): Promise<Organization> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.organization.update({
+        where: { id },
+        data: {
+          legalName: input.legalName,
+          tradingName: input.tradingName,
+          countryCode: input.countryCode,
+          registrationNumber: input.registrationNumber,
+          taxIdentificationNumber: input.taxIdentificationNumber,
+          metadata: input.metadata,
+          updatedBy: input.updatedBy,
+        },
       }),
     );
   }

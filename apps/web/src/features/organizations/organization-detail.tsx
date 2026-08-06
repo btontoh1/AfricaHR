@@ -2,8 +2,10 @@
 
 import { Building2, FileText } from 'lucide-react';
 import { toast } from 'sonner';
+import { useSession } from '@/app/(app)/session-provider';
 import { useOrganization, useOrganizationUnits, useSubmitForVerification, useVerificationDocuments } from './queries';
 import { CreateOrganizationUnitForm } from './create-organization-unit-form';
+import { EditOrganizationDialog } from './edit-organization-dialog';
 import { OrganizationVerificationStatusBadge } from './organization-verification-status-badge';
 import { UploadVerificationDocumentForm } from './upload-verification-document-form';
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -53,10 +55,12 @@ export function OrganizationDetail({
   tenantId: string;
   organizationId: string;
 }) {
+  const session = useSession();
   const { data: organization, isLoading, isError, error } = useOrganization(tenantId, organizationId);
   const { data: units } = useOrganizationUnits(tenantId, organizationId);
   const { data: documents } = useVerificationDocuments(tenantId, organizationId);
   const submitForVerification = useSubmitForVerification(tenantId);
+  const canEdit = session.role === 'TENANT_ADMIN' || session.role === 'PLATFORM_ADMIN';
 
   if (isLoading) {
     return <CardSkeleton />;
@@ -94,7 +98,12 @@ export function OrganizationDetail({
       <PageHeader
         title={organization.legalName}
         description={organization.tradingName ? `Trading as ${organization.tradingName}` : undefined}
-        action={<OrganizationVerificationStatusBadge status={organization.verificationStatus} />}
+        action={
+          <div className="flex items-center gap-2">
+            <OrganizationVerificationStatusBadge status={organization.verificationStatus} />
+            {canEdit && <EditOrganizationDialog tenantId={tenantId} organization={organization} />}
+          </div>
+        }
       />
 
       {organization.verificationStatus === 'REJECTED' && organization.verificationNote && (

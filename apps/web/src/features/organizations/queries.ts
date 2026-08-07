@@ -7,6 +7,7 @@ import type {
   CreateOrganizationUnitInput,
   RequestVerificationDocumentUploadInput,
   UpdateOrganizationInput,
+  UpdateOrganizationUnitInput,
 } from './types';
 
 function organizationsKey(tenantId: string) {
@@ -132,6 +133,38 @@ export function useCreateOrganizationUnit(tenantId: string, organizationId: stri
       });
       if (error) throw error;
       return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: organizationUnitsKey(tenantId, organizationId) });
+    },
+  });
+}
+
+export function useUpdateOrganizationUnit(tenantId: string, organizationId: string, id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UpdateOrganizationUnitInput) => {
+      const { data, error } = await apiClient.PATCH('/api/tenants/{tenantId}/organization-units/{id}', {
+        params: { path: { tenantId, id } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: organizationUnitsKey(tenantId, organizationId) });
+    },
+  });
+}
+
+export function useDeleteOrganizationUnit(tenantId: string, organizationId: string, id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await apiClient.DELETE('/api/tenants/{tenantId}/organization-units/{id}', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: organizationUnitsKey(tenantId, organizationId) });

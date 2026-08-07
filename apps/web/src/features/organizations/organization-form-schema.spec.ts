@@ -1,4 +1,8 @@
-import { organizationFormSchema, organizationUnitFormSchema } from './organization-form-schema';
+import {
+  editOrganizationUnitFormSchema,
+  organizationFormSchema,
+  organizationUnitFormSchema,
+} from './organization-form-schema';
 
 describe('organizationFormSchema', () => {
   const validInput = {
@@ -46,6 +50,23 @@ describe('organizationUnitFormSchema', () => {
       code: 'HR',
       parentId: 'not-a-uuid',
     });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('editOrganizationUnitFormSchema', () => {
+  it('accepts a valid rename', () => {
+    const result = editOrganizationUnitFormSchema.safeParse({ name: 'Payroll', code: 'PAY' });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects an empty name', () => {
+    const result = editOrganizationUnitFormSchema.safeParse({ name: '', code: 'PAY' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an empty code', () => {
+    const result = editOrganizationUnitFormSchema.safeParse({ name: 'Payroll', code: '' });
     expect(result.success).toBe(false);
   });
 });

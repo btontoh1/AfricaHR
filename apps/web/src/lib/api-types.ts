@@ -205,153 +205,6 @@ export interface paths {
         patch: operations["TenantController_updateStatus"];
         trace?: never;
     };
-    "/api/tenants/{tenantId}/users": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["PlatformTenantUsersController_list"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/users/{id}/role": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: operations["PlatformTenantUsersController_updateRole"];
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/users/{id}/profile": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: operations["PlatformTenantUsersController_updateProfile"];
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/users/{id}/password": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: operations["PlatformTenantUsersController_resetPassword"];
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/users/{id}/active": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: operations["PlatformTenantUsersController_setActive"];
-        trace?: never;
-    };
-    "/api/platform-admin/dashboard": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["PlatformDashboardController_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/platform-admin/audit-logs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Cross-tenant audit trail for the platform admin dashboard */
-        get: operations["PlatformAuditLogController_list"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/platform-admin/disbursements": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Cross-tenant payslip disbursements needing attention (stuck PENDING or FAILED) */
-        get: operations["PlatformDisbursementController_list"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/platform-admin/notifications": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Cross-tenant email delivery health for the platform admin dashboard */
-        get: operations["PlatformNotificationController_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/organizations/verification-queue": {
         parameters: {
             query?: never;
@@ -560,6 +413,56 @@ export interface paths {
         patch: operations["OrganizationUnitController_updateParent"];
         trace?: never;
     };
+    "/api/tenants/{tenantId}/organization-units/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["OrganizationUnitController_remove"];
+        options?: never;
+        head?: never;
+        patch: operations["OrganizationUnitController_update"];
+        trace?: never;
+    };
+    "/api/platform-admin/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Operational overview for the platform admin dashboard */
+        get: operations["PlatformDashboardController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform-admin/audit-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cross-tenant audit trail for the platform admin dashboard */
+        get: operations["PlatformAuditLogController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/login": {
         parameters: {
             query?: never;
@@ -757,6 +660,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/users/me/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["MyPasswordController_change"];
+        trace?: never;
+    };
     "/api/users": {
         parameters: {
             query?: never;
@@ -787,22 +706,6 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
-        trace?: never;
-    };
-    "/api/users/{id}/role": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: operations["UserController_updateRole"];
         trace?: never;
     };
     "/api/users/{id}/profile": {
@@ -837,6 +740,22 @@ export interface paths {
         patch: operations["UserController_resetPassword"];
         trace?: never;
     };
+    "/api/users/{id}/role": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["UserController_updateRole"];
+        trace?: never;
+    };
     "/api/users/{id}/active": {
         parameters: {
             query?: never;
@@ -851,6 +770,86 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["UserController_setActive"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PlatformTenantUsersController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/users/{id}/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["PlatformTenantUsersController_updateProfile"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/users/{id}/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["PlatformTenantUsersController_resetPassword"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/users/{id}/role": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["PlatformTenantUsersController_updateRole"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/users/{id}/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["PlatformTenantUsersController_setActive"];
         trace?: never;
     };
     "/api/tenants/{slug}/login": {
@@ -1201,6 +1200,39 @@ export interface paths {
         put?: never;
         post?: never;
         delete: operations["PayslipController_removeLineItem"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/payslips/{id}/retry-disbursement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PayslipController_retryDisbursement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform-admin/disbursements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cross-tenant payslip disbursements needing attention (stuck PENDING or FAILED) */
+        get: operations["PlatformDisbursementController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2358,6 +2390,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/platform-admin/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cross-tenant email delivery health for the platform admin dashboard */
+        get: operations["PlatformNotificationController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/subscription": {
         parameters: {
             query?: never;
@@ -2461,22 +2510,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/me/password": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: operations["MyPasswordController_change"];
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2528,7 +2561,7 @@ export interface components {
             /** @example acme-ghana-ltd */
             slug: string;
             /** @description Signed view URL for the uploaded business logo, or null if none set */
-            logoUrl?: string | null;
+            logoUrl?: string;
         };
         RequestTenantLogoUploadDto: {
             /** @example logo.png */
@@ -2564,6 +2597,22 @@ export interface components {
              */
             timezone: string;
         };
+        TenantResponseDto: {
+            id: string;
+            name: string;
+            slug: string;
+            /** @enum {string} */
+            status: "TRIAL" | "ACTIVE" | "SUSPENDED" | "CLOSED";
+            country: string;
+            currency: string;
+            timezone: string;
+            logoStorageKey?: string | null;
+            createdAt: string;
+            updatedAt: string;
+            deletedAt?: string | null;
+            createdBy?: string | null;
+            updatedBy?: string | null;
+        };
         UpdateTenantDto: {
             /** @example Acme Ghana Ltd */
             name?: string;
@@ -2591,127 +2640,6 @@ export interface components {
         UpdateTenantStatusDto: {
             /** @enum {string} */
             status: "TRIAL" | "ACTIVE" | "SUSPENDED" | "CLOSED";
-        };
-        Tenant: {
-            id: string;
-            name: string;
-            slug: string;
-            /** @enum {string} */
-            status: "TRIAL" | "ACTIVE" | "SUSPENDED" | "CLOSED";
-            country: string;
-            currency: string;
-            timezone: string;
-            logoStorageKey: string | null;
-            createdAt: string;
-            updatedAt: string;
-            deletedAt: string | null;
-            createdBy: string | null;
-            updatedBy: string | null;
-        };
-        PlatformDashboardSummaryDto: {
-            recentTenants: {
-                id: string;
-                name: string;
-                slug: string;
-                /** @enum {string} */
-                status: "TRIAL" | "ACTIVE" | "SUSPENDED" | "CLOSED";
-                createdAt: string;
-            }[];
-            totalTenants: number;
-            /** @description null if the storage check failed */
-            storage: {
-                usedBytes: number;
-                objectCount: number;
-            } | null;
-            /** @description null if the database size check failed */
-            databaseSizeBytes?: number | null;
-            health: {
-                /** @description Always true - reaching this endpoint proves the API process is up */
-                api: boolean;
-                database: boolean;
-                redis: boolean;
-            };
-        };
-        AuditLogEntryDto: {
-            id: string;
-            /** @description null for platform-admin-initiated actions */
-            tenantId?: string | null;
-            tenantName?: string | null;
-            /** @description null for system-initiated actions */
-            actorUserId?: string | null;
-            actorEmail?: string | null;
-            actorFirstName?: string | null;
-            actorLastName?: string | null;
-            /** @description e.g. "tenant.created", "user.role_changed" */
-            action: string;
-            resourceType: string;
-            resourceId?: string | null;
-            metadata?: {
-                [key: string]: unknown;
-            } | null;
-            /** Format: date-time */
-            createdAt: string;
-        };
-        AuditLogPageResponseDto: {
-            items: components["schemas"]["AuditLogEntryDto"][];
-            /** @description Total rows matching the current filters, across all pages */
-            totalCount: number;
-        };
-        DisbursementNeedingAttentionDto: {
-            id: string;
-            tenantId: string;
-            tenantName?: string | null;
-            employeeId: string;
-            employeeFirstName: string;
-            employeeLastName: string;
-            payRunId: string;
-            /** Format: date-time */
-            periodStart: string;
-            /** Format: date-time */
-            periodEnd: string;
-            currency: string;
-            netPay: number;
-            /** @enum {string} */
-            disbursementStatus: "PENDING" | "FAILED";
-            paystackTransferReference?: string | null;
-            /** Format: date-time */
-            updatedAt: string;
-            /**
-             * @description STALE: PENDING past the 30-minute reconciliation threshold. CRITICAL: PENDING past the 24-hour threshold the reconciliation sweep alerts on. FAILED: the transfer resolved to failed/reversed and needs manual retry.
-             * @enum {string}
-             */
-            severity: "STALE" | "CRITICAL" | "FAILED";
-        };
-        DisbursementAttentionCountsDto: {
-            stale: number;
-            critical: number;
-            failed: number;
-        };
-        DisbursementAttentionResponseDto: {
-            items: components["schemas"]["DisbursementNeedingAttentionDto"][];
-            counts: components["schemas"]["DisbursementAttentionCountsDto"];
-        };
-        NotificationDeliveryCountsDto: {
-            sent: number;
-            failed: number;
-            pending: number;
-        };
-        FailedNotificationDto: {
-            id: string;
-            tenantId: string;
-            tenantName?: string | null;
-            userId: string;
-            userEmail: string;
-            userFirstName: string;
-            userLastName: string;
-            subject: string;
-            failureReason?: string | null;
-            /** Format: date-time */
-            createdAt: string;
-        };
-        NotificationDeliveryResponseDto: {
-            counts: components["schemas"]["NotificationDeliveryCountsDto"];
-            failed: components["schemas"]["FailedNotificationDto"][];
         };
         OrganizationResponseDto: {
             id: string;
@@ -2824,6 +2752,64 @@ export interface components {
             /** @description New parent unit id. Omit/null to make it a root unit. */
             parentId?: string | null;
         };
+        UpdateOrganizationUnitDto: {
+            /** @example Human Resources */
+            name?: string;
+            /** @example HR */
+            code?: string;
+        };
+        PlatformDashboardTenantDto: {
+            id: string;
+            name: string;
+            slug: string;
+            /** @enum {string} */
+            status: "TRIAL" | "ACTIVE" | "SUSPENDED" | "CLOSED";
+            createdAt: string;
+        };
+        PlatformDashboardStorageDto: {
+            usedBytes: number;
+            objectCount: number;
+        };
+        PlatformDashboardHealthDto: {
+            /** @description Always true - reaching this endpoint proves the API process is up */
+            api: boolean;
+            database: boolean;
+            redis: boolean;
+        };
+        PlatformDashboardSummaryDto: {
+            recentTenants: components["schemas"]["PlatformDashboardTenantDto"][];
+            totalTenants: number;
+            /** @description null if the storage check failed */
+            storage?: components["schemas"]["PlatformDashboardStorageDto"] | null;
+            /** @description null if the database size check failed */
+            databaseSizeBytes?: number | null;
+            health: components["schemas"]["PlatformDashboardHealthDto"];
+        };
+        AuditLogEntryDto: {
+            id: string;
+            /** @description null for platform-admin-initiated actions */
+            tenantId?: string | null;
+            tenantName?: string | null;
+            /** @description null for system-initiated actions */
+            actorUserId?: string | null;
+            actorEmail?: string | null;
+            actorFirstName?: string | null;
+            actorLastName?: string | null;
+            /** @description e.g. "tenant.created", "user.role_changed" */
+            action: string;
+            resourceType: string;
+            resourceId?: string | null;
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AuditLogPageResponseDto: {
+            items: components["schemas"]["AuditLogEntryDto"][];
+            /** @description Total rows matching the current filters, across all pages */
+            totalCount: number;
+        };
         MfaChallengeResponseDto: {
             /** @enum {boolean} */
             mfaRequired: true;
@@ -2897,6 +2883,12 @@ export interface components {
             /** @description The account's current password, required to disable MFA */
             password: string;
         };
+        ChangePasswordDto: {
+            /** @description The account's current password */
+            currentPassword: string;
+            /** @description The new password to set. Must meet the platform password requirements. */
+            newPassword: string;
+        };
         CreateUserDto: {
             /** @description Required when the actor is a platform admin (which tenant to create the user in). Ignored for tenant-admin actors, who can only create users in their own tenant. */
             tenantId?: string;
@@ -2922,13 +2914,6 @@ export interface components {
             createdAt: string;
             updatedAt: string;
         };
-        UpdateUserRoleDto: {
-            /** @enum {string} */
-            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "EMPLOYEE";
-        };
-        UpdateUserActiveDto: {
-            isActive: boolean;
-        };
         UpdateUserProfileDto: {
             firstName?: string;
             lastName?: string;
@@ -2938,6 +2923,13 @@ export interface components {
         AdminResetPasswordDto: {
             /** @description Must meet the platform password requirements. */
             newPassword: string;
+        };
+        UpdateUserRoleDto: {
+            /** @enum {string} */
+            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "EMPLOYEE";
+        };
+        UpdateUserActiveDto: {
+            isActive: boolean;
         };
         CreateEmployeeDto: {
             organizationId: string;
@@ -3098,7 +3090,7 @@ export interface components {
              */
             countryCode: string;
             /** @enum {string} */
-            code: "SSNIT_EMPLOYEE" | "SSNIT_EMPLOYER";
+            code: "SSNIT_EMPLOYEE" | "SSNIT_EMPLOYER" | "GHANA_TIER2_PENSION_EMPLOYER" | "KENYA_SHIF_EMPLOYEE" | "KENYA_HOUSING_LEVY_EMPLOYEE" | "KENYA_HOUSING_LEVY_EMPLOYER" | "NIGERIA_NSITF_EMPLOYER" | "NIGERIA_NHIS_EMPLOYEE" | "NIGERIA_NHIS_EMPLOYER" | "OVERTIME_MULTIPLIER";
             /**
              * @description Fraction, e.g. 0.055 for 5.5%
              * @example 0.055
@@ -3180,6 +3172,10 @@ export interface components {
             totalDeductions: string;
             netPay: string;
             currency: string;
+            /** @enum {string} */
+            disbursementStatus: "NOT_INITIATED" | "PENDING" | "SUCCESS" | "FAILED";
+            /** @description When the Paystack transfer settled (success or failure) */
+            disbursedAt?: string;
             lineItems: components["schemas"]["PayslipLineItemResponseDto"][];
             createdAt: string;
             updatedAt: string;
@@ -3193,6 +3189,40 @@ export interface components {
             description?: string;
             /** @example 150 */
             amount: number;
+        };
+        DisbursementNeedingAttentionDto: {
+            id: string;
+            tenantId: string;
+            tenantName?: string | null;
+            employeeId: string;
+            employeeFirstName: string;
+            employeeLastName: string;
+            payRunId: string;
+            /** Format: date-time */
+            periodStart: string;
+            /** Format: date-time */
+            periodEnd: string;
+            currency: string;
+            netPay: number;
+            /** @enum {string} */
+            disbursementStatus: "PENDING" | "FAILED";
+            paystackTransferReference?: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+            /**
+             * @description STALE: PENDING past the 30-minute reconciliation threshold. CRITICAL: PENDING past the 24-hour threshold the reconciliation sweep alerts on. FAILED: the transfer resolved to failed/reversed and needs manual retry.
+             * @enum {string}
+             */
+            severity: "STALE" | "CRITICAL" | "FAILED";
+        };
+        DisbursementAttentionCountsDto: {
+            stale: number;
+            critical: number;
+            failed: number;
+        };
+        DisbursementAttentionResponseDto: {
+            items: components["schemas"]["DisbursementNeedingAttentionDto"][];
+            counts: components["schemas"]["DisbursementAttentionCountsDto"];
         };
         CreateLeaveTypeDto: {
             /** @example Annual Leave */
@@ -3239,6 +3269,20 @@ export interface components {
             createdAt: string;
             updatedAt: string;
         };
+        CreateLeaveRequestDto: {
+            leaveTypeId: string;
+            startDate: string;
+            endDate: string;
+            reason?: string;
+        };
+        LeaveBalanceResponseDto: {
+            leaveTypeId: string;
+            leaveTypeName: string;
+            entitledDays: number;
+            usedDays: number;
+            remainingDays: number;
+            year: number;
+        };
         TeamLeaveRequestResponseDto: {
             id: string;
             employeeId: string;
@@ -3256,19 +3300,9 @@ export interface components {
             updatedAt: string;
             employeeName: string;
         };
-        CreateLeaveRequestDto: {
-            leaveTypeId: string;
-            startDate: string;
-            endDate: string;
-            reason?: string;
-        };
-        LeaveBalanceResponseDto: {
-            leaveTypeId: string;
-            leaveTypeName: string;
-            entitledDays: number;
-            usedDays: number;
-            remainingDays: number;
-            year: number;
+        RejectLeaveRequestDto: {
+            /** @example Insufficient team coverage for the requested dates */
+            rejectionReason: string;
         };
         AdjustLeaveBalanceDto: {
             employeeId: string;
@@ -3278,10 +3312,6 @@ export interface components {
             entitledDays?: number;
             /** @description Absolute value, not a delta. Omit to leave unchanged. */
             usedDays?: number;
-        };
-        RejectLeaveRequestDto: {
-            /** @example Insufficient team coverage for the requested dates */
-            rejectionReason: string;
         };
         UpsertAttendancePolicyDto: {
             /**
@@ -3790,6 +3820,28 @@ export interface components {
                 [key: string]: string;
             };
         };
+        NotificationDeliveryCountsDto: {
+            sent: number;
+            failed: number;
+            pending: number;
+        };
+        FailedNotificationDto: {
+            id: string;
+            tenantId: string;
+            tenantName?: string | null;
+            userId: string;
+            userEmail: string;
+            userFirstName: string;
+            userLastName: string;
+            subject: string;
+            failureReason?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        NotificationDeliveryResponseDto: {
+            counts: components["schemas"]["NotificationDeliveryCountsDto"];
+            failed: components["schemas"]["FailedNotificationDto"][];
+        };
         SubscriptionResponseDto: {
             id: string;
             tenantId: string;
@@ -3859,12 +3911,6 @@ export interface components {
             /** @description All-time paid invoice total, grouped by currency */
             platformRevenue: components["schemas"]["RevenueByCurrencyResponseDto"][];
             expiringSubscriptions: components["schemas"]["ExpiringSubscriptionResponseDto"][];
-        };
-        ChangePasswordDto: {
-            /** @description The account's current password */
-            currentPassword: string;
-            /** @description The new password to set. Must meet the platform password requirements. */
-            newPassword: string;
         };
     };
     responses: never;
@@ -4365,7 +4411,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Tenant"][];
+                    "application/json": components["schemas"]["TenantResponseDto"][];
                 };
             };
         };
@@ -4383,12 +4429,12 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Tenant"];
+                    "application/json": components["schemas"]["TenantResponseDto"];
                 };
             };
         };
@@ -4409,7 +4455,28 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Tenant"];
+                    "application/json": components["schemas"]["TenantResponseDto"];
+                };
+            };
+        };
+    };
+    TenantController_softDelete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantResponseDto"];
                 };
             };
         };
@@ -4434,27 +4501,8 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Tenant"];
+                    "application/json": components["schemas"]["TenantResponseDto"];
                 };
-            };
-        };
-    };
-    TenantController_softDelete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -4478,7 +4526,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Tenant"];
+                    "application/json": components["schemas"]["TenantResponseDto"];
                 };
             };
         };
@@ -4850,6 +4898,107 @@ export interface operations {
             };
         };
     };
+    OrganizationUnitController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationUnitResponseDto"];
+                };
+            };
+        };
+    };
+    OrganizationUnitController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOrganizationUnitDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationUnitResponseDto"];
+                };
+            };
+        };
+    };
+    PlatformDashboardController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformDashboardSummaryDto"];
+                };
+            };
+        };
+    };
+    PlatformAuditLogController_list: {
+        parameters: {
+            query?: {
+                tenantId?: string;
+                actorUserId?: string;
+                /** @description Partial match, e.g. "role_changed" */
+                action?: string;
+                /** @description Partial match */
+                resourceType?: string;
+                /** @description ISO 8601 timestamp, inclusive */
+                from?: string;
+                /** @description ISO 8601 timestamp, inclusive */
+                to?: string;
+                /** @description Default 50, max 200 */
+                limit?: string;
+                /** @description Default 0 */
+                offset?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditLogPageResponseDto"];
+                };
+            };
+        };
+    };
     AuthController_login: {
         parameters: {
             query?: never;
@@ -5107,6 +5256,27 @@ export interface operations {
             };
         };
     };
+    MyPasswordController_change: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordDto"];
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     UserController_list: {
         parameters: {
             query?: never;
@@ -5191,56 +5361,6 @@ export interface operations {
             };
         };
     };
-    UserController_updateRole: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateUserRoleDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserResponseDto"];
-                };
-            };
-        };
-    };
-    UserController_setActive: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateUserActiveDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserResponseDto"];
-                };
-            };
-        };
-    };
     UserController_updateProfile: {
         parameters: {
             query?: never;
@@ -5291,33 +5411,11 @@ export interface operations {
             };
         };
     };
-    PlatformTenantUsersController_list: {
+    UserController_updateRole: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                tenantId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserResponseDto"][];
-                };
-            };
-        };
-    };
-    PlatformTenantUsersController_updateRole: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
                 id: string;
             };
             cookie?: never;
@@ -5338,12 +5436,11 @@ export interface operations {
             };
         };
     };
-    PlatformTenantUsersController_setActive: {
+    UserController_setActive: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                tenantId: string;
                 id: string;
             };
             cookie?: never;
@@ -5360,6 +5457,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserResponseDto"];
+                };
+            };
+        };
+    };
+    PlatformTenantUsersController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponseDto"][];
                 };
             };
         };
@@ -5416,93 +5534,54 @@ export interface operations {
             };
         };
     };
-    PlatformDashboardController_get: {
+    PlatformTenantUsersController_updateRole: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUserRoleDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PlatformDashboardSummaryDto"];
+                    "application/json": components["schemas"]["UserResponseDto"];
                 };
             };
         };
     };
-    PlatformAuditLogController_list: {
-        parameters: {
-            query?: {
-                tenantId?: string;
-                actorUserId?: string;
-                /** @description Partial match, e.g. "role_changed" */
-                action?: string;
-                /** @description Partial match */
-                resourceType?: string;
-                /** @description ISO 8601 timestamp, inclusive */
-                from?: string;
-                /** @description ISO 8601 timestamp, inclusive */
-                to?: string;
-                /** @description Default 50, max 200 */
-                limit?: string;
-                /** @description Default 0 */
-                offset?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AuditLogPageResponseDto"];
-                };
-            };
-        };
-    };
-    PlatformDisbursementController_list: {
+    PlatformTenantUsersController_setActive: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
             cookie?: never;
         };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DisbursementAttentionResponseDto"];
-                };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUserActiveDto"];
             };
         };
-    };
-    PlatformNotificationController_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
         responses: {
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotificationDeliveryResponseDto"];
+                    "application/json": components["schemas"]["UserResponseDto"];
                 };
             };
         };
@@ -5727,7 +5806,7 @@ export interface operations {
     MyPaymentMethodController_listBanks: {
         parameters: {
             query: {
-                type: components["schemas"]["UpsertPaymentMethodDto"]["type"];
+                type: "BANK_ACCOUNT" | "MOBILE_MONEY";
             };
             header?: never;
             path: {
@@ -6143,6 +6222,45 @@ export interface operations {
             };
         };
     };
+    PayslipController_retryDisbursement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PlatformDisbursementController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisbursementAttentionResponseDto"];
+                };
+            };
+        };
+    };
     LeaveTypeController_list: {
         parameters: {
             query?: {
@@ -6285,6 +6403,96 @@ export interface operations {
             };
         };
     };
+    MyLeaveBalanceController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaveBalanceResponseDto"][];
+                };
+            };
+        };
+    };
+    TeamLeaveRequestController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamLeaveRequestResponseDto"][];
+                };
+            };
+        };
+    };
+    TeamLeaveRequestController_approve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaveRequestResponseDto"];
+                };
+            };
+        };
+    };
+    TeamLeaveRequestController_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectLeaveRequestDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaveRequestResponseDto"];
+                };
+            };
+        };
+    };
     LeaveRequestController_list: {
         parameters: {
             query?: {
@@ -6400,96 +6608,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LeaveBalanceResponseDto"];
-                };
-            };
-        };
-    };
-    MyLeaveBalanceController_list: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LeaveBalanceResponseDto"][];
-                };
-            };
-        };
-    };
-    TeamLeaveRequestController_list: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TeamLeaveRequestResponseDto"][];
-                };
-            };
-        };
-    };
-    TeamLeaveRequestController_approve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LeaveRequestResponseDto"];
-                };
-            };
-        };
-    };
-    TeamLeaveRequestController_reject: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RejectLeaveRequestDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LeaveRequestResponseDto"];
                 };
             };
         };
@@ -8379,6 +8497,25 @@ export interface operations {
             };
         };
     };
+    PlatformNotificationController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationDeliveryResponseDto"];
+                };
+            };
+        };
+    };
     SubscriptionController_get: {
         parameters: {
             query?: never;
@@ -8544,27 +8681,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PlatformBillingSummaryResponseDto"];
                 };
-            };
-        };
-    };
-    MyPasswordController_change: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ChangePasswordDto"];
-            };
-        };
-        responses: {
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };

@@ -21,6 +21,8 @@ describe('OrganizationUnitController', () => {
       create: jest.fn(),
       listByOrganization: jest.fn(),
       updateParent: jest.fn(),
+      update: jest.fn(),
+      remove: jest.fn(),
     } as unknown as jest.Mocked<OrganizationUnitService>;
 
     controller = new OrganizationUnitController(units);
@@ -36,5 +38,27 @@ describe('OrganizationUnitController', () => {
     expect(() =>
       controller.updateParent('tenant-2', 'unit-1', { parentId: null }, tenantAdmin),
     ).toThrow(ForbiddenException);
+  });
+
+  it('delegates update within the route tenant', () => {
+    controller.update('tenant-1', 'unit-1', { name: 'Payroll' }, tenantAdmin);
+
+    expect(units.update).toHaveBeenCalledWith('tenant-1', 'unit-1', { name: 'Payroll' }, 'admin-1');
+  });
+
+  it('rejects update for a tenant admin acting on a different tenant', () => {
+    expect(() => controller.update('tenant-2', 'unit-1', { name: 'Payroll' }, tenantAdmin)).toThrow(
+      ForbiddenException,
+    );
+  });
+
+  it('delegates remove within the route tenant', () => {
+    controller.remove('tenant-1', 'unit-1', tenantAdmin);
+
+    expect(units.remove).toHaveBeenCalledWith('tenant-1', 'unit-1', 'admin-1');
+  });
+
+  it('rejects remove for a tenant admin acting on a different tenant', () => {
+    expect(() => controller.remove('tenant-2', 'unit-1', tenantAdmin)).toThrow(ForbiddenException);
   });
 });

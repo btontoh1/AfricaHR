@@ -6,6 +6,8 @@ import { useSession } from '@/app/(app)/session-provider';
 import { useOrganization, useOrganizationUnits, useSubmitForVerification, useVerificationDocuments } from './queries';
 import { CreateOrganizationUnitForm } from './create-organization-unit-form';
 import { EditOrganizationDialog } from './edit-organization-dialog';
+import { EditOrganizationUnitDialog } from './edit-organization-unit-dialog';
+import { RemoveOrganizationUnitDialog } from './remove-organization-unit-dialog';
 import { OrganizationVerificationStatusBadge } from './organization-verification-status-badge';
 import { UploadVerificationDocumentForm } from './upload-verification-document-form';
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -26,18 +28,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-
-/** Shows a shortened id with the full value available on hover, rather than the full UUID inline. */
-function IdCell({ id }: { id?: string | null }) {
-  if (!id) {
-    return <span className="text-muted-foreground">—</span>;
-  }
-  return (
-    <span title={id} className="cursor-help">
-      {id.slice(0, 8)}…
-    </span>
-  );
-}
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -181,23 +171,38 @@ export function OrganizationDetail({
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Code</TableHead>
-                    <TableHead>ID</TableHead>
                     <TableHead>Parent</TableHead>
+                    {canEdit && <TableHead />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {units.map((unit) => (
-                    <TableRow key={unit.id}>
-                      <TableCell>{unit.name}</TableCell>
-                      <TableCell>{unit.code}</TableCell>
-                      <TableCell className="font-mono text-xs">
-                        <IdCell id={unit.id} />
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        <IdCell id={unit.parentId} />
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {units.map((unit) => {
+                    const parent = units.find((candidate) => candidate.id === unit.parentId);
+                    return (
+                      <TableRow key={unit.id}>
+                        <TableCell>{unit.name}</TableCell>
+                        <TableCell className="text-muted-foreground">{unit.code}</TableCell>
+                        <TableCell>{parent ? parent.name : <span className="text-muted-foreground">—</span>}</TableCell>
+                        {canEdit && (
+                          <TableCell>
+                            <div className="flex justify-end gap-2">
+                              <EditOrganizationUnitDialog
+                                tenantId={tenantId}
+                                organizationId={organizationId}
+                                unit={unit}
+                              />
+                              <RemoveOrganizationUnitDialog
+                                tenantId={tenantId}
+                                organizationId={organizationId}
+                                unitId={unit.id}
+                                unitName={unit.name}
+                              />
+                            </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </TableCard>

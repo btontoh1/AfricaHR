@@ -19,3 +19,11 @@ export const organizationUnitFormSchema = z.object({
 });
 
 export type OrganizationUnitFormValues = z.infer<typeof organizationUnitFormSchema>;
+
+// Mirrors UpdateOrganizationUnitDto (libs/tenancy/feature/src/lib/dto/update-organization-unit.dto.ts).
+export const editOrganizationUnitFormSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(200),
+  code: z.string().min(1, 'Code is required').max(20),
+});
+
+export type EditOrganizationUnitFormValues = z.infer<typeof editOrganizationUnitFormSchema>;

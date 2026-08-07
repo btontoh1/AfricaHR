@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
   assertTenantScope,
@@ -12,6 +12,7 @@ import {
 import { OrganizationUnitService } from './organization-unit.service';
 import { CreateOrganizationUnitDto } from './dto/create-organization-unit.dto';
 import { UpdateOrganizationUnitParentDto } from './dto/update-organization-unit-parent.dto';
+import { UpdateOrganizationUnitDto } from './dto/update-organization-unit.dto';
 import { OrganizationUnitResponseDto } from './dto/organization-unit-response.dto';
 
 @ApiTags('organization-units')
@@ -57,5 +58,30 @@ export class OrganizationUnitController {
   ) {
     assertTenantScope(actor, tenantId);
     return this.units.updateParent(tenantId, id, dto.parentId, actor.sub);
+  }
+
+  @Patch(':id')
+  @RequirePermissions(Permission.ORGANIZATION_MANAGE)
+  @ApiOkResponse({ type: OrganizationUnitResponseDto })
+  update(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateOrganizationUnitDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.units.update(tenantId, id, dto, actor.sub);
+  }
+
+  @Delete(':id')
+  @RequirePermissions(Permission.ORGANIZATION_MANAGE)
+  @ApiOkResponse({ type: OrganizationUnitResponseDto })
+  remove(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.units.remove(tenantId, id, actor.sub);
   }
 }

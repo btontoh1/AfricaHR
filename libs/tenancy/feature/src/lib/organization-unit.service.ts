@@ -4,6 +4,7 @@ import { wouldCreateCycle } from '@africahr/platform-core';
 import { AuditService } from '@africahr/platform-audit';
 import { OrganizationRepository, OrganizationUnitRepository } from '@africahr/tenancy-data-access';
 import { CreateOrganizationUnitDto } from './dto/create-organization-unit.dto';
+import { UpdateOrganizationUnitDto } from './dto/update-organization-unit.dto';
 
 @Injectable()
 export class OrganizationUnitService {
@@ -98,5 +99,61 @@ export class OrganizationUnitService {
     });
 
     return updated;
+  }
+
+  async update(
+    tenantId: string,
+    id: string,
+    dto: UpdateOrganizationUnitDto,
+    actorId?: string,
+  ): Promise<OrganizationUnit> {
+    await this.findById(tenantId, id);
+
+    const updated = await this.units.update(
+      tenantId,
+      id,
+      { name: dto.name, code: dto.code },
+      actorId,
+    );
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'organization_unit.updated',
+      resourceType: 'OrganizationUnit',
+      resourceId: id,
+    });
+
+    return updated;
+  }
+
+  async remove(tenantId: string, id: string, actorId?: string): Promise<OrganizationUnit> {
+    await this.findById(tenantId, id);
+
+    const childCount = await this.units.countChildren(tenantId, id);
+    if (childCount > 0) {
+      throw new BadRequestException(
+        `Cannot remove this unit: reassign or remove its ${childCount} child unit(s) first`,
+      );
+    }
+
+    const employeeCount = await this.units.countEmployees(tenantId, id);
+    if (employeeCount > 0) {
+      throw new BadRequestException(
+        `Cannot remove this unit: ${employeeCount} employee(s) are still assigned to it`,
+      );
+    }
+
+    const removed = await this.units.softDelete(tenantId, id, actorId);
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'organization_unit.removed',
+      resourceType: 'OrganizationUnit',
+      resourceId: id,
+    });
+
+    return removed;
   }
 }

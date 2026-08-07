@@ -35,6 +35,9 @@ describe('OrganizationUnitService', () => {
       findById: jest.fn(),
       listByOrganization: jest.fn(),
       updateParent: jest.fn(),
+      update: jest.fn(),
+      countChildren: jest.fn(),
+      countEmployees: jest.fn(),
       softDelete: jest.fn(),
     } as unknown as jest.Mocked<OrganizationUnitRepository>;
 
@@ -121,6 +124,66 @@ describe('OrganizationUnitService', () => {
       await service.updateParent('tenant-1', 'b', 'a', 'ops-user-1');
 
       expect(units.updateParent).toHaveBeenCalledWith('tenant-1', 'b', 'a', 'ops-user-1');
+    });
+  });
+
+  describe('update', () => {
+    it('throws NotFoundException when the unit does not exist', async () => {
+      units.findById.mockResolvedValue(null);
+
+      await expect(
+        service.update('tenant-1', 'missing', { name: 'Payroll' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('updates name and code', async () => {
+      units.findById.mockResolvedValue(makeUnit({}));
+      units.update.mockResolvedValue(makeUnit({ name: 'Payroll', code: 'PAY' }));
+
+      await service.update('tenant-1', 'unit-1', { name: 'Payroll', code: 'PAY' }, 'ops-user-1');
+
+      expect(units.update).toHaveBeenCalledWith(
+        'tenant-1',
+        'unit-1',
+        { name: 'Payroll', code: 'PAY' },
+        'ops-user-1',
+      );
+    });
+  });
+
+  describe('remove', () => {
+    it('throws NotFoundException when the unit does not exist', async () => {
+      units.findById.mockResolvedValue(null);
+
+      await expect(service.remove('tenant-1', 'missing')).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects removal when child units exist', async () => {
+      units.findById.mockResolvedValue(makeUnit({}));
+      units.countChildren.mockResolvedValue(2);
+
+      await expect(service.remove('tenant-1', 'unit-1')).rejects.toThrow(BadRequestException);
+      expect(units.softDelete).not.toHaveBeenCalled();
+    });
+
+    it('rejects removal when employees are still assigned', async () => {
+      units.findById.mockResolvedValue(makeUnit({}));
+      units.countChildren.mockResolvedValue(0);
+      units.countEmployees.mockResolvedValue(1);
+
+      await expect(service.remove('tenant-1', 'unit-1')).rejects.toThrow(BadRequestException);
+      expect(units.softDelete).not.toHaveBeenCalled();
+    });
+
+    it('soft-deletes when there are no children or employees', async () => {
+      units.findById.mockResolvedValue(makeUnit({}));
+      units.countChildren.mockResolvedValue(0);
+      units.countEmployees.mockResolvedValue(0);
+      units.softDelete.mockResolvedValue(makeUnit({ deletedAt: new Date() }));
+
+      await service.remove('tenant-1', 'unit-1', 'ops-user-1');
+
+      expect(units.softDelete).toHaveBeenCalledWith('tenant-1', 'unit-1', 'ops-user-1');
     });
   });
 });

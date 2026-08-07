@@ -8,6 +8,7 @@ import {
   organizationUnitFormSchema,
   type OrganizationUnitFormValues,
 } from './organization-form-schema';
+import { OrganizationUnitPicker } from './organization-unit-picker';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -76,9 +77,16 @@ export function CreateOrganizationUnitForm({
           name="parentId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Parent unit ID (optional)</FormLabel>
+              <FormLabel>Parent unit (optional)</FormLabel>
               <FormControl>
-                <Input placeholder="Unit UUID" className="w-56" {...field} />
+                <div className="w-56">
+                  <OrganizationUnitPicker
+                    tenantId={tenantId}
+                    organizationId={organizationId}
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                  />
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>

@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import {
   CurrentUser,
   JwtAuthGuard,
@@ -12,6 +12,7 @@ import { TenantService } from './tenant.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { UpdateTenantStatusDto } from './dto/update-tenant-status.dto';
+import { TenantResponseDto } from './dto/tenant-response.dto';
 
 /**
  * Platform-admin only: tenant onboarding is ops-provisioned, not self-serve
@@ -26,21 +27,25 @@ export class TenantController {
   constructor(private readonly tenants: TenantService) {}
 
   @Post()
+  @ApiOkResponse({ type: TenantResponseDto })
   create(@Body() dto: CreateTenantDto, @CurrentUser() actor: RequestUser) {
     return this.tenants.create(dto, actor.sub);
   }
 
   @Get()
+  @ApiOkResponse({ type: TenantResponseDto, isArray: true })
   list() {
     return this.tenants.list();
   }
 
   @Get(':id')
+  @ApiOkResponse({ type: TenantResponseDto })
   findById(@Param('id') id: string) {
     return this.tenants.findById(id);
   }
 
   @Patch(':id')
+  @ApiOkResponse({ type: TenantResponseDto })
   update(
     @Param('id') id: string,
     @Body() dto: UpdateTenantDto,
@@ -50,6 +55,7 @@ export class TenantController {
   }
 
   @Patch(':id/status')
+  @ApiOkResponse({ type: TenantResponseDto })
   updateStatus(
     @Param('id') id: string,
     @Body() dto: UpdateTenantStatusDto,
@@ -60,6 +66,7 @@ export class TenantController {
 
   /** Offboarding - only reachable once the tenant is already CLOSED, see TenantService.softDelete's own doc comment. */
   @Delete(':id')
+  @ApiOkResponse({ type: TenantResponseDto })
   softDelete(@Param('id') id: string, @CurrentUser() actor: RequestUser) {
     return this.tenants.softDelete(id, actor.sub);
   }

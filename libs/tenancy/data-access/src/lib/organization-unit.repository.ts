@@ -59,6 +59,32 @@ export class OrganizationUnitRepository {
     );
   }
 
+  update(
+    tenantId: string,
+    id: string,
+    data: { name?: string; code?: string },
+    updatedBy?: string,
+  ): Promise<OrganizationUnit> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.organizationUnit.update({
+        where: { id },
+        data: { ...data, updatedBy },
+      }),
+    );
+  }
+
+  countChildren(tenantId: string, id: string): Promise<number> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.organizationUnit.count({ where: { tenantId, parentId: id, deletedAt: null } }),
+    );
+  }
+
+  countEmployees(tenantId: string, id: string): Promise<number> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.employee.count({ where: { tenantId, organizationUnitId: id, deletedAt: null } }),
+    );
+  }
+
   softDelete(tenantId: string, id: string, updatedBy?: string): Promise<OrganizationUnit> {
     return this.prisma.withTenantContext(tenantId, (tx) =>
       tx.organizationUnit.update({

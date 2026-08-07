@@ -18,9 +18,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PASSWORD_REQUIREMENTS_TEXT } from '@/lib/password-schema';
 
 const ROLE_LABEL: Record<AddTenantUserFormValues['role'], string> = {
   TENANT_ADMIN: 'Tenant Admin',
@@ -119,6 +120,7 @@ export function AddTenantUserDialog({ tenantId }: { tenantId: string }) {
                   <FormControl>
                     <Input type="password" autoComplete="new-password" {...field} />
                   </FormControl>
+                  <FormDescription>{PASSWORD_REQUIREMENTS_TEXT}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

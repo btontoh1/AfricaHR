@@ -7,11 +7,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Building2, UserCog, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Logo } from '@/components/logo';
 import { getApiErrorMessage } from '@/lib/api-error';
+import { PASSWORD_REQUIREMENTS_TEXT } from '@/lib/password-schema';
 import { setupFormSchema, type SetupFormValues } from './setup-form-schema';
 
 function SectionHeading({ icon: Icon, title }: { icon: typeof Building2; title: string }) {
@@ -200,6 +201,7 @@ export function SetupWizardForm() {
                         {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                       </button>
                     </div>
+                    <FormDescription>{PASSWORD_REQUIREMENTS_TEXT}</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

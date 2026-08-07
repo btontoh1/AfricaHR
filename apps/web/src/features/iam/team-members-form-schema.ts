@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { newPasswordSchema } from '@/lib/password-schema';
 
 // Excludes PLATFORM_ADMIN — only a platform admin can grant PLATFORM_ADMIN
 // (the backend 400s a tenant-scoped actor attempting it either at creation
@@ -8,7 +9,7 @@ const ASSIGNABLE_ROLES = ['TENANT_ADMIN', 'HR_MANAGER', 'PAYROLL_MANAGER', 'EMPL
 // Mirrors CreateUserDto (libs/iam/feature/src/lib/dto/create-user.dto.ts).
 export const createUserFormSchema = z.object({
   email: z.string().email('Enter a valid email'),
-  password: z.string().min(1, 'Password is required'),
+  password: newPasswordSchema,
   firstName: z.string().min(1, 'First name is required').max(100),
   lastName: z.string().min(1, 'Last name is required').max(100),
   role: z.enum(ASSIGNABLE_ROLES),
@@ -27,10 +28,9 @@ export const updateUserProfileFormSchema = z.object({
 
 export type UpdateUserProfileFormValues = z.infer<typeof updateUserProfileFormSchema>;
 
-// Mirrors AdminResetPasswordDto - password strength is enforced server-side
-// only (same convention as create-tenant-form-schema.ts's adminPassword).
+// Mirrors AdminResetPasswordDto.
 export const resetUserPasswordFormSchema = z.object({
-  newPassword: z.string().min(1, 'Password is required'),
+  newPassword: newPasswordSchema,
 });
 
 export type ResetUserPasswordFormValues = z.infer<typeof resetUserPasswordFormSchema>;

@@ -18,8 +18,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { PASSWORD_REQUIREMENTS_TEXT } from '@/lib/password-schema';
 
 export function ResetUserPasswordDialog({ user }: { user: User }) {
   const [open, setOpen] = useState(false);
@@ -73,6 +74,7 @@ export function ResetUserPasswordDialog({ user }: { user: User }) {
                   <FormControl>
                     <Input type="password" autoComplete="new-password" {...field} />
                   </FormControl>
+                  <FormDescription>{PASSWORD_REQUIREMENTS_TEXT}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

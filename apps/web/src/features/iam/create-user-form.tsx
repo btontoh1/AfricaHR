@@ -11,7 +11,7 @@ import {
 } from './team-members-form-schema';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { PASSWORD_REQUIREMENTS_TEXT } from '@/lib/password-schema';
 
 export function CreateUserForm() {
   const createUser = useCreateUser();
@@ -90,6 +91,7 @@ export function CreateUserForm() {
               <FormControl>
                 <Input type="text" className="w-44" {...field} />
               </FormControl>
+              <FormDescription className="w-44">{PASSWORD_REQUIREMENTS_TEXT}</FormDescription>
               <FormMessage />
             </FormItem>
           )}

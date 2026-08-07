@@ -1,11 +1,9 @@
 import { z } from 'zod';
+import { newPasswordSchema } from '@/lib/password-schema';
 
 // Mirrors CreateTenantDto (libs/tenancy/feature/src/lib/dto/create-tenant.dto.ts)
 // for the tenant fields, and CreateUserDto (libs/iam/feature/src/lib/dto/create-user.dto.ts)
 // for the admin fields - role is fixed to TENANT_ADMIN, not user-editable.
-// Password strength is enforced server-side only (same convention as
-// setup-form-schema.ts) - the backend 400s with the specific requirement(s)
-// that failed.
 export const createTenantFormSchema = z.object({
   name: z.string().min(2, 'Company name is required').max(200),
   slug: z
@@ -21,7 +19,7 @@ export const createTenantFormSchema = z.object({
   adminFirstName: z.string().min(1, 'First name is required').max(100),
   adminLastName: z.string().min(1, 'Last name is required').max(100),
   adminEmail: z.string().email('Enter a valid email address'),
-  adminPassword: z.string().min(1, 'Password is required'),
+  adminPassword: newPasswordSchema,
 });
 
 export type CreateTenantFormValues = z.infer<typeof createTenantFormSchema>;

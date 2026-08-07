@@ -13,9 +13,10 @@ import { AFRICAN_COUNTRIES, AFRICAN_CURRENCIES } from '@/lib/african-countries';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PASSWORD_REQUIREMENTS_TEXT } from '@/lib/password-schema';
 
 function SectionHeading({ icon: Icon, title }: { icon: typeof Building2; title: string }) {
   return (
@@ -268,6 +269,7 @@ export function CreateTenantForm() {
                       {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                     </button>
                   </div>
+                  <FormDescription>{PASSWORD_REQUIREMENTS_TEXT}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { EmploymentType } from '@prisma/client';
+import { Type } from 'class-transformer';
 import {
+  IsArray,
   IsDateString,
   IsEmail,
   IsEnum,
@@ -12,7 +14,9 @@ import {
   Length,
   Matches,
   Min,
+  ValidateNested,
 } from 'class-validator';
+import { FamilyMemberDto } from './family-member.dto';
 
 export class CreateEmployeeDto {
   @ApiProperty()
@@ -79,6 +83,16 @@ export class CreateEmployeeDto {
   @IsOptional()
   @IsEmail()
   personalEmail?: string;
+
+  @ApiPropertyOptional({
+    type: [FamilyMemberDto],
+    description: 'Parents and children recorded on the employee profile',
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => FamilyMemberDto)
+  familyMembers?: FamilyMemberDto[];
 
   @ApiProperty({ example: 'Software Engineer' })
   @IsString()

@@ -4,6 +4,7 @@ import { AuditService } from '@africahr/platform-audit';
 import {
   EmployeeRepository,
   EmploymentHistoryRepository,
+  FamilyMemberRepository,
   UserAccessRepository,
 } from '@africahr/employee-data-access';
 import { EmploymentStatus } from '@africahr/employee-domain';
@@ -14,6 +15,7 @@ describe('EmployeeService', () => {
   let service: EmployeeService;
   let employees: jest.Mocked<EmployeeRepository>;
   let history: jest.Mocked<EmploymentHistoryRepository>;
+  let familyMembers: jest.Mocked<FamilyMemberRepository>;
   let userAccess: jest.Mocked<UserAccessRepository>;
   let audit: jest.Mocked<AuditService>;
 
@@ -82,13 +84,18 @@ describe('EmployeeService', () => {
       listByEmployee: jest.fn(),
     } as unknown as jest.Mocked<EmploymentHistoryRepository>;
 
+    familyMembers = {
+      listByEmployee: jest.fn().mockResolvedValue([]),
+      replaceForEmployee: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<FamilyMemberRepository>;
+
     userAccess = {
       deactivate: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<UserAccessRepository>;
 
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
 
-    service = new EmployeeService(employees, history, userAccess, audit);
+    service = new EmployeeService(employees, history, familyMembers, userAccess, audit);
   });
 
   describe('create', () => {
@@ -134,6 +141,35 @@ describe('EmployeeService', () => {
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'employee.created', resourceId: created.id }),
       );
+    });
+
+    it('saves parents/children when provided and attaches them to the result', async () => {
+      employees.count.mockResolvedValue(0);
+      const created = makeEmployee();
+      employees.create.mockResolvedValue(created);
+      familyMembers.replaceForEmployee.mockResolvedValue([
+        { id: 'fm-1', tenantId: 'tenant-1', employeeId: created.id, relationship: 'PARENT', name: 'Kofi Owusu', dateOfBirth: new Date('1970-01-01'), createdAt: new Date(), updatedAt: new Date() },
+      ]);
+
+      const result = await service.create(
+        'tenant-1',
+        makeDto({ familyMembers: [{ relationship: 'PARENT', name: 'Kofi Owusu', dateOfBirth: '1970-01-01' }] }),
+      );
+
+      expect(familyMembers.replaceForEmployee).toHaveBeenCalledWith('tenant-1', created.id, [
+        { relationship: 'PARENT', name: 'Kofi Owusu', dateOfBirth: new Date('1970-01-01') },
+      ]);
+      expect(result.familyMembers).toHaveLength(1);
+    });
+
+    it('leaves family members empty when none are provided', async () => {
+      employees.count.mockResolvedValue(0);
+      employees.create.mockResolvedValue(makeEmployee());
+
+      const result = await service.create('tenant-1', makeDto());
+
+      expect(familyMembers.replaceForEmployee).not.toHaveBeenCalled();
+      expect(result.familyMembers).toEqual([]);
     });
   });
 
@@ -245,6 +281,30 @@ describe('EmployeeService', () => {
         'emp-1',
         expect.objectContaining({ dateOfBirth: null }),
       );
+    });
+
+    it('replaces family members when the update includes them', async () => {
+      employees.findById.mockResolvedValue(makeEmployee({}));
+      employees.update.mockResolvedValue(makeEmployee({}));
+
+      await service.update('tenant-1', 'emp-1', {
+        familyMembers: [{ relationship: 'CHILD', name: 'Yaw Owusu' }],
+      });
+
+      expect(familyMembers.replaceForEmployee).toHaveBeenCalledWith('tenant-1', 'emp-1', [
+        { relationship: 'CHILD', name: 'Yaw Owusu', dateOfBirth: undefined },
+      ]);
+      expect(familyMembers.listByEmployee).not.toHaveBeenCalled();
+    });
+
+    it('leaves existing family members untouched when the update omits the field', async () => {
+      employees.findById.mockResolvedValue(makeEmployee({}));
+      employees.update.mockResolvedValue(makeEmployee({}));
+
+      await service.update('tenant-1', 'emp-1', { jobTitle: 'Senior Engineer' });
+
+      expect(familyMembers.replaceForEmployee).not.toHaveBeenCalled();
+      expect(familyMembers.listByEmployee).toHaveBeenCalledWith('tenant-1', 'emp-1');
     });
   });
 

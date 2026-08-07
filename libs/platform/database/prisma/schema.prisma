@@ -484,6 +484,7 @@ model Employee {
   hiringRequisitions JobRequisition[]         @relation("JobRequisitionHiringManager")
   hiredApplications  Application[]            @relation("ApplicationHiredEmployee")
   paymentMethod      EmployeePaymentMethod?
+  familyMembers      EmployeeFamilyMember[]
 
   @@unique([tenantId, employeeNumber])
   @@index([tenantId])
@@ -491,6 +492,35 @@ model Employee {
   @@index([organizationUnitId])
   @@index([managerId])
   @@map("employees")
+}
+
+enum FamilyMemberRelationship {
+  PARENT
+  CHILD
+}
+
+/// Optional parent/child dependents recorded on the employee's Personal
+/// Information, editable by tenant admins. A list rather than fixed
+/// mother/father columns since an employee may have one parent, two, a
+/// guardian, or any number of children - each row is just one dependent,
+/// disambiguated by `relationship`. Replaced wholesale on every employee
+/// update (see EmployeeService) rather than diffed, since there's no
+/// history/audit requirement for this data, unlike EmploymentHistoryEntry.
+model EmployeeFamilyMember {
+  id           String                    @id @default(uuid())
+  tenantId     String                    @map("tenant_id")
+  employeeId   String                    @map("employee_id")
+  relationship FamilyMemberRelationship
+  name         String
+  dateOfBirth  DateTime?                 @map("date_of_birth")
+  createdAt    DateTime                  @default(now()) @map("created_at")
+  updatedAt    DateTime                  @updatedAt @map("updated_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([employeeId])
+  @@map("employee_family_members")
 }
 
 enum PaymentMethodType {

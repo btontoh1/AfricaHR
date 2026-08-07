@@ -4,6 +4,12 @@ const EMPLOYMENT_TYPES = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERN'] as con
 const GENDERS = ['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY'] as const;
 const PAY_FREQUENCIES = ['MONTHLY', 'BIWEEKLY', 'WEEKLY', 'ANNUALLY'] as const;
 
+// Mirrors FamilyMemberDto (libs/employee/feature/src/lib/dto/family-member.dto.ts).
+const familyMemberFormSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(200),
+  dateOfBirth: z.string().optional().or(z.literal('')),
+});
+
 // Mirrors CreateEmployeeDto's validation rules (libs/employee/feature/src/lib/dto/create-employee.dto.ts).
 export const employeeFormSchema = z.object({
   organizationId: z.string().uuid('Enter a valid organization ID'),
@@ -21,6 +27,8 @@ export const employeeFormSchema = z.object({
   nationality: z.string().optional().or(z.literal('')),
   phone: z.string().optional().or(z.literal('')),
   personalEmail: z.string().email('Enter a valid email').optional().or(z.literal('')),
+  parents: z.array(familyMemberFormSchema),
+  children: z.array(familyMemberFormSchema),
   jobTitle: z.string().min(1, 'Job title is required').max(200),
   employmentType: z.enum(EMPLOYMENT_TYPES),
   hireDate: z.string().min(1, 'Hire date is required'),

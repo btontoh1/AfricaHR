@@ -1,5 +1,19 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { EmploymentStatus, EmploymentType } from '@prisma/client';
+import { EmploymentStatus, EmploymentType, FamilyMemberRelationship } from '@prisma/client';
+
+export class FamilyMemberResponseDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty({ enum: Object.values(FamilyMemberRelationship) })
+  relationship!: FamilyMemberRelationship;
+
+  @ApiProperty()
+  name!: string;
+
+  @ApiPropertyOptional()
+  dateOfBirth?: string | null;
+}
 
 // Documents the response shape for Swagger/OpenAPI-client codegen only —
 // EmployeeService returns the Prisma entity directly (no serialization
@@ -45,6 +59,9 @@ export class EmployeeResponseDto {
 
   @ApiPropertyOptional()
   personalEmail?: string | null;
+
+  @ApiPropertyOptional({ type: [FamilyMemberResponseDto] })
+  familyMembers?: FamilyMemberResponseDto[];
 
   @ApiProperty()
   jobTitle!: string;

@@ -14,6 +14,8 @@ describe('employeeFormSchema', () => {
     nationality: '',
     phone: '',
     personalEmail: '',
+    parents: [],
+    children: [],
     jobTitle: 'Engineer',
     employmentType: 'FULL_TIME' as const,
     hireDate: '2026-01-01',
@@ -46,6 +48,23 @@ describe('employeeFormSchema', () => {
     const result = employeeFormSchema.safeParse({ ...validInput, employeeNumber: 'EMP-0001' });
     expect(result.success).toBe(true);
   });
+
+  it('accepts parents and children with a name and optional date of birth', () => {
+    const result = employeeFormSchema.safeParse({
+      ...validInput,
+      parents: [{ name: 'Kofi Asante', dateOfBirth: '1970-01-01' }],
+      children: [{ name: 'Ama Asante', dateOfBirth: '' }],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a parent row with a blank name', () => {
+    const result = employeeFormSchema.safeParse({
+      ...validInput,
+      parents: [{ name: '', dateOfBirth: '' }],
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe('updateEmployeeFormSchema', () => {
@@ -60,6 +79,8 @@ describe('updateEmployeeFormSchema', () => {
     nationality: '',
     phone: '',
     personalEmail: '',
+    parents: [],
+    children: [],
     jobTitle: 'Senior Engineer',
     employmentType: 'FULL_TIME' as const,
     hireDate: '2026-01-01',

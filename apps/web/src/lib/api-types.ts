@@ -2931,6 +2931,12 @@ export interface components {
         UpdateUserActiveDto: {
             isActive: boolean;
         };
+        FamilyMemberDto: {
+            /** @enum {string} */
+            relationship: "PARENT" | "CHILD";
+            name: string;
+            dateOfBirth?: string;
+        };
         CreateEmployeeDto: {
             organizationId: string;
             organizationUnitId?: string;
@@ -2950,6 +2956,8 @@ export interface components {
             nationality?: string;
             phone?: string;
             personalEmail?: string;
+            /** @description Parents and children recorded on the employee profile */
+            familyMembers?: components["schemas"]["FamilyMemberDto"][];
             /** @example Software Engineer */
             jobTitle: string;
             /** @enum {string} */
@@ -2971,6 +2979,13 @@ export interface components {
              */
             metadata?: Record<string, never>;
         };
+        FamilyMemberResponseDto: {
+            id: string;
+            /** @enum {string} */
+            relationship: "PARENT" | "CHILD";
+            name: string;
+            dateOfBirth?: string;
+        };
         EmployeeResponseDto: {
             id: string;
             organizationId: string;
@@ -2985,6 +3000,7 @@ export interface components {
             nationality?: string;
             phone?: string;
             personalEmail?: string;
+            familyMembers?: components["schemas"]["FamilyMemberResponseDto"][];
             jobTitle: string;
             /** @enum {string} */
             employmentType: "FULL_TIME" | "PART_TIME" | "CONTRACT" | "INTERN";
@@ -3010,6 +3026,8 @@ export interface components {
             nationality?: string | null;
             phone?: string | null;
             personalEmail?: string | null;
+            /** @description Parents and children recorded on the employee profile. Replaces the full existing list when provided (including an empty array, which clears it) - omit to leave unchanged. */
+            familyMembers?: components["schemas"]["FamilyMemberDto"][];
             /** @enum {string} */
             employmentType?: "FULL_TIME" | "PART_TIME" | "CONTRACT" | "INTERN";
             hireDate?: string;

@@ -3,6 +3,12 @@ import { z } from 'zod';
 const EMPLOYMENT_TYPES = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERN'] as const;
 const GENDERS = ['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY'] as const;
 
+// Mirrors FamilyMemberDto (libs/employee/feature/src/lib/dto/family-member.dto.ts).
+const familyMemberFormSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(200),
+  dateOfBirth: z.string().optional().or(z.literal('')),
+});
+
 // Mirrors UpdateEmployeeDto (libs/employee/feature/src/lib/dto/update-employee.dto.ts).
 export const updateEmployeeFormSchema = z.object({
   organizationUnitId: z.string().uuid('Enter a valid unit ID').optional().or(z.literal('')),
@@ -15,6 +21,8 @@ export const updateEmployeeFormSchema = z.object({
   nationality: z.string().optional().or(z.literal('')),
   phone: z.string().optional().or(z.literal('')),
   personalEmail: z.string().email('Enter a valid email').optional().or(z.literal('')),
+  parents: z.array(familyMemberFormSchema),
+  children: z.array(familyMemberFormSchema),
   jobTitle: z.string().min(1, 'Job title is required').max(200),
   employmentType: z.enum(EMPLOYMENT_TYPES),
   hireDate: z.string().min(1, 'Hire date is required'),

@@ -1,10 +1,12 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { Employee, Prisma } from '@prisma/client';
+import { Employee, EmployeeFamilyMember, Prisma } from '@prisma/client';
 import { wouldCreateCycle } from '@africahr/platform-core';
 import { AuditService } from '@africahr/platform-audit';
 import {
   EmployeeRepository,
   EmploymentHistoryRepository,
+  FamilyMemberInput,
+  FamilyMemberRepository,
   UserAccessRepository,
 } from '@africahr/employee-data-access';
 import {
@@ -15,6 +17,17 @@ import {
 } from '@africahr/employee-domain';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
+import { FamilyMemberDto } from './dto/family-member.dto';
+
+export type EmployeeWithFamilyMembers = Employee & { familyMembers: EmployeeFamilyMember[] };
+
+function toFamilyMemberInput(dto: FamilyMemberDto): FamilyMemberInput {
+  return {
+    relationship: dto.relationship,
+    name: dto.name,
+    dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
+  };
+}
 
 /**
  * Employee references organizationId/organizationUnitId (owned by the
@@ -56,11 +69,16 @@ export class EmployeeService {
   constructor(
     private readonly employees: EmployeeRepository,
     private readonly history: EmploymentHistoryRepository,
+    private readonly familyMembers: FamilyMemberRepository,
     private readonly userAccess: UserAccessRepository,
     private readonly audit: AuditService,
   ) {}
 
-  async create(tenantId: string, dto: CreateEmployeeDto, actorId?: string): Promise<Employee> {
+  async create(
+    tenantId: string,
+    dto: CreateEmployeeDto,
+    actorId?: string,
+  ): Promise<EmployeeWithFamilyMembers> {
     const employeeNumber = dto.employeeNumber ?? (await this.generateEmployeeNumber(tenantId));
     if (!isValidEmployeeNumber(employeeNumber)) {
       throw new BadRequestException(`"${employeeNumber}" is not a valid employee number`);
@@ -96,6 +114,10 @@ export class EmployeeService {
       translateReferenceError(error, dto);
     }
 
+    const familyMembers = dto.familyMembers?.length
+      ? await this.familyMembers.replaceForEmployee(tenantId, employee.id, dto.familyMembers.map(toFamilyMemberInput))
+      : [];
+
     await this.audit.record({
       tenantId,
       actorUserId: actorId ?? null,
@@ -104,10 +126,17 @@ export class EmployeeService {
       resourceId: employee.id,
     });
 
-    return employee;
+    return { ...employee, familyMembers };
   }
 
-  async findById(tenantId: string, id: string): Promise<Employee> {
+  async findById(tenantId: string, id: string): Promise<EmployeeWithFamilyMembers> {
+    const employee = await this.findEmployeeOrThrow(tenantId, id);
+    const familyMembers = await this.familyMembers.listByEmployee(tenantId, id);
+    return { ...employee, familyMembers };
+  }
+
+  /** Internal lookup for callers that only need the Employee row itself, not its family members. */
+  private async findEmployeeOrThrow(tenantId: string, id: string): Promise<Employee> {
     const employee = await this.employees.findById(tenantId, id);
     if (!employee) {
       throw new NotFoundException(`Employee "${id}" not found`);
@@ -123,7 +152,7 @@ export class EmployeeService {
   }
 
   async getHistory(tenantId: string, id: string) {
-    await this.findById(tenantId, id);
+    await this.findEmployeeOrThrow(tenantId, id);
     return this.history.listByEmployee(tenantId, id);
   }
 
@@ -132,8 +161,8 @@ export class EmployeeService {
     id: string,
     dto: UpdateEmployeeDto,
     actorId?: string,
-  ): Promise<Employee> {
-    const existing = await this.findById(tenantId, id);
+  ): Promise<EmployeeWithFamilyMembers> {
+    const existing = await this.findEmployeeOrThrow(tenantId, id);
 
     if (dto.managerId !== undefined && dto.managerId !== null) {
       if (dto.managerId === id) {
@@ -172,6 +201,10 @@ export class EmployeeService {
       translateReferenceError(error, dto);
     }
 
+    const familyMembers = dto.familyMembers
+      ? await this.familyMembers.replaceForEmployee(tenantId, id, dto.familyMembers.map(toFamilyMemberInput))
+      : await this.familyMembers.listByEmployee(tenantId, id);
+
     await this.recordFieldChange(tenantId, id, 'jobTitle', existing.jobTitle, dto.jobTitle, actorId);
     await this.recordFieldChange(
       tenantId,
@@ -191,7 +224,7 @@ export class EmployeeService {
       resourceId: id,
     });
 
-    return updated;
+    return { ...updated, familyMembers };
   }
 
   async updateStatus(
@@ -201,7 +234,7 @@ export class EmployeeService {
     terminationDate?: string,
     actorId?: string,
   ): Promise<Employee> {
-    const existing = await this.findById(tenantId, id);
+    const existing = await this.findEmployeeOrThrow(tenantId, id);
 
     if (!canTransitionEmploymentStatus(existing.employmentStatus, status)) {
       throw new ConflictException(
@@ -264,7 +297,7 @@ export class EmployeeService {
   }
 
   async softDelete(tenantId: string, id: string, actorId?: string): Promise<Employee> {
-    await this.findById(tenantId, id);
+    await this.findEmployeeOrThrow(tenantId, id);
     const deleted = await this.employees.softDelete(tenantId, id, actorId);
 
     await this.audit.record({

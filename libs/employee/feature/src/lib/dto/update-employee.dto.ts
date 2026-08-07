@@ -1,6 +1,8 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { EmploymentType } from '@prisma/client';
+import { Type } from 'class-transformer';
 import {
+  IsArray,
   IsDateString,
   IsEmail,
   IsEnum,
@@ -11,7 +13,9 @@ import {
   Length,
   Matches,
   Min,
+  ValidateNested,
 } from 'class-validator';
+import { FamilyMemberDto } from './family-member.dto';
 
 export class UpdateEmployeeDto {
   @ApiPropertyOptional({ description: 'Set to null to unassign the department', nullable: true })
@@ -55,6 +59,17 @@ export class UpdateEmployeeDto {
   @IsOptional()
   @IsEmail()
   personalEmail?: string | null;
+
+  @ApiPropertyOptional({
+    type: [FamilyMemberDto],
+    description:
+      'Parents and children recorded on the employee profile. Replaces the full existing list when provided (including an empty array, which clears it) - omit to leave unchanged.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => FamilyMemberDto)
+  familyMembers?: FamilyMemberDto[];
 
   @ApiPropertyOptional({ enum: Object.values(EmploymentType) })
   @IsOptional()

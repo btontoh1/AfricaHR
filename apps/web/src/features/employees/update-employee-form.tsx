@@ -1,6 +1,6 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { useUpdateEmployee } from './queries';
@@ -47,6 +47,12 @@ export function UpdateEmployeeForm({ tenantId, employee }: { tenantId: string; e
       nationality: employee.nationality ?? '',
       phone: employee.phone ?? '',
       personalEmail: employee.personalEmail ?? '',
+      parents: (employee.familyMembers ?? [])
+        .filter((member) => member.relationship === 'PARENT')
+        .map((member) => ({ name: member.name, dateOfBirth: member.dateOfBirth?.slice(0, 10) ?? '' })),
+      children: (employee.familyMembers ?? [])
+        .filter((member) => member.relationship === 'CHILD')
+        .map((member) => ({ name: member.name, dateOfBirth: member.dateOfBirth?.slice(0, 10) ?? '' })),
       jobTitle: employee.jobTitle,
       employmentType: employee.employmentType,
       hireDate: employee.hireDate?.slice(0, 10) ?? '',
@@ -56,6 +62,9 @@ export function UpdateEmployeeForm({ tenantId, employee }: { tenantId: string; e
       countryCode: employee.countryCode,
     },
   });
+
+  const parentFields = useFieldArray({ control: form.control, name: 'parents' });
+  const childFields = useFieldArray({ control: form.control, name: 'children' });
 
   async function onSubmit(values: UpdateEmployeeFormValues) {
     try {
@@ -70,6 +79,18 @@ export function UpdateEmployeeForm({ tenantId, employee }: { tenantId: string; e
         nationality: toOptional(values.nationality) ?? null,
         phone: toOptional(values.phone) ?? null,
         personalEmail: toOptional(values.personalEmail) ?? null,
+        familyMembers: [
+          ...values.parents.map((parent) => ({
+            relationship: 'PARENT' as const,
+            name: parent.name,
+            dateOfBirth: toOptional(parent.dateOfBirth),
+          })),
+          ...values.children.map((child) => ({
+            relationship: 'CHILD' as const,
+            name: child.name,
+            dateOfBirth: toOptional(child.dateOfBirth),
+          })),
+        ],
         jobTitle: values.jobTitle,
         employmentType: values.employmentType,
         hireDate: values.hireDate,
@@ -189,6 +210,93 @@ export function UpdateEmployeeForm({ tenantId, employee }: { tenantId: string; e
             </FormItem>
           )}
         />
+        <div className="sm:col-span-2 space-y-6">
+          <div className="space-y-2">
+            <FormLabel>Parents</FormLabel>
+            {parentFields.fields.map((field, index) => (
+              <div key={field.id} className="flex flex-wrap items-end gap-2">
+                <FormField
+                  control={form.control}
+                  name={`parents.${index}.name`}
+                  render={({ field: nameField }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Input placeholder="Name" className="w-48" {...nameField} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name={`parents.${index}.dateOfBirth`}
+                  render={({ field: dobField }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Input type="date" className="w-40" {...dobField} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button type="button" variant="outline" size="sm" onClick={() => parentFields.remove(index)}>
+                  Remove
+                </Button>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => parentFields.append({ name: '', dateOfBirth: '' })}
+            >
+              Add parent
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            <FormLabel>Children</FormLabel>
+            {childFields.fields.map((field, index) => (
+              <div key={field.id} className="flex flex-wrap items-end gap-2">
+                <FormField
+                  control={form.control}
+                  name={`children.${index}.name`}
+                  render={({ field: nameField }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Input placeholder="Name" className="w-48" {...nameField} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name={`children.${index}.dateOfBirth`}
+                  render={({ field: dobField }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Input type="date" className="w-40" {...dobField} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button type="button" variant="outline" size="sm" onClick={() => childFields.remove(index)}>
+                  Remove
+                </Button>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => childFields.append({ name: '', dateOfBirth: '' })}
+            >
+              Add child
+            </Button>
+          </div>
+        </div>
         <FormField
           control={form.control}
           name="jobTitle"

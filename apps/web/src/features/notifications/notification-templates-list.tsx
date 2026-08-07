@@ -3,6 +3,7 @@
 import { FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNotificationTemplates, useUpdateNotificationTemplate } from './queries';
+import { EditNotificationTemplateDialog } from './edit-notification-template-dialog';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -77,7 +78,10 @@ export function NotificationTemplatesList({ tenantId }: { tenantId: string }) {
                 </Badge>
               </TableCell>
               <TableCell>
-                <ToggleActiveButton tenantId={tenantId} id={template.id} isActive={template.isActive} />
+                <div className="flex justify-end gap-2">
+                  <EditNotificationTemplateDialog tenantId={tenantId} template={template} />
+                  <ToggleActiveButton tenantId={tenantId} id={template.id} isActive={template.isActive} />
+                </div>
               </TableCell>
             </TableRow>
           ))}

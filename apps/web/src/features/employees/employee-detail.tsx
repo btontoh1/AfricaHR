@@ -78,6 +78,8 @@ export function EmployeeDetail({ tenantId, employeeId }: { tenantId: string; emp
           <Field label="Phone" value={employee.phone} />
           <Field label="Personal email" value={employee.personalEmail} />
           <Field label="Nationality" value={employee.nationality} />
+          <Field label="Date of birth" value={employee.dateOfBirth?.slice(0, 10)} />
+          <Field label="Gender" value={employee.gender} />
         </CardContent>
       </Card>
 

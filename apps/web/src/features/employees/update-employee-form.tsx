@@ -5,6 +5,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { useUpdateEmployee } from './queries';
 import {
+  UPDATE_EMPLOYMENT_TYPE_OPTIONS,
+  UPDATE_GENDER_OPTIONS,
   updateEmployeeFormSchema,
   type UpdateEmployeeFormValues,
 } from './update-employee-form-schema';
@@ -38,10 +40,20 @@ export function UpdateEmployeeForm({ tenantId, employee }: { tenantId: string; e
       organizationUnitId: employee.organizationUnitId ?? '',
       managerId: employee.managerId ?? '',
       userId: employee.userId ?? '',
+      firstName: employee.firstName,
+      lastName: employee.lastName,
+      dateOfBirth: employee.dateOfBirth?.slice(0, 10) ?? '',
+      gender: (employee.gender as UpdateEmployeeFormValues['gender']) ?? '',
+      nationality: employee.nationality ?? '',
+      phone: employee.phone ?? '',
+      personalEmail: employee.personalEmail ?? '',
       jobTitle: employee.jobTitle,
+      employmentType: employee.employmentType,
+      hireDate: employee.hireDate?.slice(0, 10) ?? '',
       baseSalary: employee.baseSalary ?? '',
       payFrequency: employee.payFrequency ?? '',
       annualRentPaid: employee.annualRentPaid ?? '',
+      countryCode: employee.countryCode,
     },
   });
 
@@ -51,10 +63,20 @@ export function UpdateEmployeeForm({ tenantId, employee }: { tenantId: string; e
         organizationUnitId: toOptional(values.organizationUnitId) ?? null,
         managerId: toOptional(values.managerId) ?? null,
         userId: toOptional(values.userId) ?? null,
+        firstName: values.firstName,
+        lastName: values.lastName,
+        dateOfBirth: toOptional(values.dateOfBirth) ?? null,
+        gender: toOptional(values.gender) ?? null,
+        nationality: toOptional(values.nationality) ?? null,
+        phone: toOptional(values.phone) ?? null,
+        personalEmail: toOptional(values.personalEmail) ?? null,
         jobTitle: values.jobTitle,
+        employmentType: values.employmentType,
+        hireDate: values.hireDate,
         baseSalary: values.baseSalary ? Number(values.baseSalary) : null,
         payFrequency: toOptional(values.payFrequency) ?? null,
         annualRentPaid: values.annualRentPaid ? Number(values.annualRentPaid) : null,
+        countryCode: values.countryCode,
       });
       toast.success('Employee updated');
     } catch (error) {
@@ -67,12 +89,164 @@ export function UpdateEmployeeForm({ tenantId, employee }: { tenantId: string; e
       <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="grid gap-4 sm:grid-cols-2">
         <FormField
           control={form.control}
+          name="firstName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>First name</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="lastName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Last name</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="dateOfBirth"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Date of birth</FormLabel>
+              <FormControl>
+                <Input type="date" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="gender"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Gender</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {UPDATE_GENDER_OPTIONS.map((gender) => (
+                    <SelectItem key={gender} value={gender}>
+                      {gender.replace(/_/g, ' ')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="nationality"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nationality</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="phone"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Phone</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="personalEmail"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Personal email</FormLabel>
+              <FormControl>
+                <Input type="email" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
           name="jobTitle"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Job title</FormLabel>
               <FormControl>
                 <Input {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="employmentType"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Employment type</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {UPDATE_EMPLOYMENT_TYPE_OPTIONS.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type.replace(/_/g, ' ')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="hireDate"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Hire date</FormLabel>
+              <FormControl>
+                <Input type="date" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="countryCode"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Country code</FormLabel>
+              <FormControl>
+                <Input placeholder="GH" maxLength={2} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

@@ -192,6 +192,60 @@ describe('EmployeeService', () => {
 
       expect(history.create).not.toHaveBeenCalled();
     });
+
+    it('passes core profile field updates through to the repository', async () => {
+      employees.findById.mockResolvedValue(makeEmployee({}));
+      employees.update.mockResolvedValue(makeEmployee({ firstName: 'Ama' }));
+
+      await service.update(
+        'tenant-1',
+        'emp-1',
+        {
+          firstName: 'Ama',
+          lastName: 'Owusu',
+          dateOfBirth: '1990-01-15',
+          gender: 'FEMALE',
+          nationality: 'Ghanaian',
+          phone: '+233201234567',
+          personalEmail: 'ama@example.com',
+          employmentType: EmploymentType.FULL_TIME,
+          hireDate: '2020-03-01',
+          countryCode: 'GH',
+        },
+        'hr-1',
+      );
+
+      expect(employees.update).toHaveBeenCalledWith(
+        'tenant-1',
+        'emp-1',
+        expect.objectContaining({
+          firstName: 'Ama',
+          lastName: 'Owusu',
+          dateOfBirth: new Date('1990-01-15'),
+          gender: 'FEMALE',
+          nationality: 'Ghanaian',
+          phone: '+233201234567',
+          personalEmail: 'ama@example.com',
+          employmentType: 'FULL_TIME',
+          hireDate: new Date('2020-03-01'),
+          countryCode: 'GH',
+          updatedBy: 'hr-1',
+        }),
+      );
+    });
+
+    it('clears dateOfBirth when explicitly set to null', async () => {
+      employees.findById.mockResolvedValue(makeEmployee({}));
+      employees.update.mockResolvedValue(makeEmployee({}));
+
+      await service.update('tenant-1', 'emp-1', { dateOfBirth: null });
+
+      expect(employees.update).toHaveBeenCalledWith(
+        'tenant-1',
+        'emp-1',
+        expect.objectContaining({ dateOfBirth: null }),
+      );
+    });
   });
 
   describe('updateStatus', () => {

@@ -38,10 +38,20 @@ export interface UpdateEmployeeInput {
   organizationUnitId?: string | null;
   managerId?: string | null;
   userId?: string | null;
+  firstName?: string;
+  lastName?: string;
+  dateOfBirth?: Date | null;
+  gender?: string | null;
+  nationality?: string | null;
+  phone?: string | null;
+  personalEmail?: string | null;
   jobTitle?: string;
+  employmentType?: EmploymentType;
+  hireDate?: Date;
   baseSalary?: Prisma.Decimal | number | null;
   payFrequency?: string | null;
   annualRentPaid?: Prisma.Decimal | number | null;
+  countryCode?: string;
   updatedBy?: string;
 }
 
@@ -130,10 +140,20 @@ export class EmployeeRepository {
           organizationUnitId: input.organizationUnitId,
           managerId: input.managerId,
           userId: input.userId,
+          firstName: input.firstName,
+          lastName: input.lastName,
+          dateOfBirth: input.dateOfBirth,
+          gender: input.gender,
+          nationality: input.nationality,
+          phone: input.phone,
+          personalEmail: input.personalEmail,
           jobTitle: input.jobTitle,
+          employmentType: input.employmentType,
+          hireDate: input.hireDate,
           baseSalary: input.baseSalary,
           payFrequency: input.payFrequency,
           annualRentPaid: input.annualRentPaid,
+          countryCode: input.countryCode,
           updatedBy: input.updatedBy,
         },
       }),

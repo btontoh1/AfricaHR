@@ -3,6 +3,7 @@
 import { ListChecks } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLeaveTypes, useUpdateLeaveType } from './queries';
+import { EditLeaveTypeDialog } from './edit-leave-type-dialog';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -79,7 +80,10 @@ export function LeaveTypesList({ tenantId }: { tenantId: string }) {
                 </Badge>
               </TableCell>
               <TableCell>
-                <ToggleActiveButton tenantId={tenantId} id={leaveType.id} isActive={leaveType.isActive} />
+                <div className="flex justify-end gap-2">
+                  <EditLeaveTypeDialog tenantId={tenantId} leaveType={leaveType} />
+                  <ToggleActiveButton tenantId={tenantId} id={leaveType.id} isActive={leaveType.isActive} />
+                </div>
               </TableCell>
             </TableRow>
           ))}

@@ -3003,6 +3003,18 @@ export interface components {
         UpdateEmployeeDto: {
             /** @description Set to null to unassign the department */
             organizationUnitId?: string | null;
+            firstName?: string;
+            lastName?: string;
+            dateOfBirth?: string | null;
+            gender?: string | null;
+            nationality?: string | null;
+            phone?: string | null;
+            personalEmail?: string | null;
+            /** @enum {string} */
+            employmentType?: "FULL_TIME" | "PART_TIME" | "CONTRACT" | "INTERN";
+            hireDate?: string;
+            /** @example GH */
+            countryCode?: string;
             /** @description Set to null to clear the reporting manager */
             managerId?: string | null;
             /** @description Link or unlink (set null) portal access for this employee */

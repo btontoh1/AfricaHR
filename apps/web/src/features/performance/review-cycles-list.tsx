@@ -4,6 +4,7 @@ import { CalendarRange } from 'lucide-react';
 import { toast } from 'sonner';
 import { useReviewCycles, useUpdateReviewCycle } from './queries';
 import { ReviewCycleStatusBadge } from './review-cycle-status-badge';
+import { EditReviewCycleDialog } from './edit-review-cycle-dialog';
 import { getApiErrorMessage } from '@/lib/api-error';
 import type { ReviewCycleStatus } from './types';
 import { TableCard } from '@/components/table-card';
@@ -80,6 +81,7 @@ export function ReviewCyclesList({ tenantId }: { tenantId: string }) {
             <TableHead>Start date</TableHead>
             <TableHead>End date</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -93,6 +95,9 @@ export function ReviewCyclesList({ tenantId }: { tenantId: string }) {
                   <ReviewCycleStatusBadge status={cycle.status} />
                   <StatusControl tenantId={tenantId} id={cycle.id} status={cycle.status} />
                 </div>
+              </TableCell>
+              <TableCell>
+                <EditReviewCycleDialog tenantId={tenantId} cycle={cycle} />
               </TableCell>
             </TableRow>
           ))}

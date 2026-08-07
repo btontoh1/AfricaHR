@@ -15,6 +15,16 @@ export type NotificationTemplateFormValues = z.infer<typeof notificationTemplate
 
 export const NOTIFICATION_CHANNEL_OPTIONS = NOTIFICATION_CHANNELS;
 
+// Mirrors UpdateNotificationTemplateDto — code and channel aren't included
+// since the backend doesn't allow changing them after creation.
+export const editNotificationTemplateFormSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(200),
+  subjectTemplate: z.string().min(1, 'Subject is required').max(300),
+  bodyTemplate: z.string().min(1, 'Body is required').max(5000),
+});
+
+export type EditNotificationTemplateFormValues = z.infer<typeof editNotificationTemplateFormSchema>;
+
 // Mirrors SendNotificationDto.
 export const sendNotificationFormSchema = z.object({
   userId: z.string().uuid('Select a user'),

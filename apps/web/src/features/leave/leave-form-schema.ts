@@ -20,6 +20,16 @@ export const leaveTypeFormSchema = z.object({
 
 export type LeaveTypeFormValues = z.infer<typeof leaveTypeFormSchema>;
 
+// Mirrors UpdateLeaveTypeDto (libs/leave/feature/src/lib/dto/update-leave-type.dto.ts) —
+// code isn't included since the backend doesn't allow renaming it after creation.
+export const editLeaveTypeFormSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(100),
+  isPaid: z.boolean(),
+  defaultEntitlementDays: z.string().min(1, 'Entitlement is required'),
+});
+
+export type EditLeaveTypeFormValues = z.infer<typeof editLeaveTypeFormSchema>;
+
 export const rejectLeaveRequestFormSchema = z.object({
   rejectionReason: z.string().min(1, 'A reason is required').max(500),
 });

@@ -1,11 +1,75 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsString, IsUUID, Length, Min } from 'class-validator';
+import { EmploymentType } from '@prisma/client';
+import {
+  IsDateString,
+  IsEmail,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Length,
+  Matches,
+  Min,
+} from 'class-validator';
 
 export class UpdateEmployeeDto {
   @ApiPropertyOptional({ description: 'Set to null to unassign the department', nullable: true })
   @IsOptional()
   @IsUUID()
   organizationUnitId?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Length(1, 100)
+  firstName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Length(1, 100)
+  lastName?: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsDateString()
+  dateOfBirth?: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  gender?: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  nationality?: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  phone?: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsEmail()
+  personalEmail?: string | null;
+
+  @ApiPropertyOptional({ enum: Object.values(EmploymentType) })
+  @IsOptional()
+  @IsEnum(EmploymentType)
+  employmentType?: EmploymentType;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  hireDate?: string;
+
+  @ApiPropertyOptional({ example: 'GH' })
+  @IsOptional()
+  @Matches(/^[A-Z]{2}$/, { message: 'countryCode must be a 2-letter ISO 3166-1 alpha-2 code' })
+  countryCode?: string;
 
   @ApiPropertyOptional({ description: 'Set to null to clear the reporting manager', nullable: true })
   @IsOptional()

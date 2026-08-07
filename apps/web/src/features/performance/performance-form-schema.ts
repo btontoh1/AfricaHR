@@ -34,6 +34,16 @@ export const reviewCycleFormSchema = z.object({
 
 export type ReviewCycleFormValues = z.infer<typeof reviewCycleFormSchema>;
 
+// Mirrors UpdateReviewCycleDto's name/startDate/endDate — status is edited
+// separately via the inline status control already on the list page.
+export const editReviewCycleFormSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(100),
+  startDate: z.string().min(1, 'Start date is required'),
+  endDate: z.string().min(1, 'End date is required'),
+});
+
+export type EditReviewCycleFormValues = z.infer<typeof editReviewCycleFormSchema>;
+
 // Mirrors StartReviewDto (self-service) and StartReviewForEmployeeDto (HR).
 export const startReviewFormSchema = z.object({
   cycleId: z.string().uuid('Select a review cycle'),

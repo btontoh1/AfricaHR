@@ -3168,6 +3168,8 @@ export interface components {
             /** @description The pay run's pay date (YYYY-MM-DD) */
             payDate: string;
             employeeId: string;
+            employeeFirstName: string;
+            employeeLastName: string;
             /** @enum {string} */
             status: "DRAFT" | "APPROVED" | "PAID";
             countryCode: string;

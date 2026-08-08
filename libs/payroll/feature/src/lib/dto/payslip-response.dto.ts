@@ -21,6 +21,12 @@ export class PayslipResponseDto {
   @ApiProperty()
   employeeId!: string;
 
+  @ApiProperty()
+  employeeFirstName!: string;
+
+  @ApiProperty()
+  employeeLastName!: string;
+
   @ApiProperty({ enum: Object.values(PayslipStatus) })
   status!: PayslipStatus;
 

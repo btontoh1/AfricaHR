@@ -100,11 +100,16 @@ describe('PayslipService', () => {
       listActiveByOrganization: jest.fn().mockResolvedValue([]),
       findById: jest.fn().mockResolvedValue({
         id: 'emp-1',
+        firstName: 'Ama',
+        lastName: 'Owusu',
         organizationId: 'org-1',
         baseSalary: new Prisma.Decimal(1000),
         currency: 'GHS',
         countryCode: 'GH',
       }),
+      findManyByIds: jest.fn().mockResolvedValue([
+        { id: 'emp-1', firstName: 'Ama', lastName: 'Owusu', organizationId: 'org-1' },
+      ]),
       findByUserId: jest.fn(),
     } as unknown as jest.Mocked<PayrollEmployeeRepository>;
 
@@ -154,7 +159,7 @@ describe('PayslipService', () => {
   });
 
   describe('findByIdWithPeriod', () => {
-    it('merges the pay run\'s period dates onto the payslip', async () => {
+    it('merges the pay run\'s period dates and the employee\'s name onto the payslip', async () => {
       payslips.findById.mockResolvedValue(makePayslip());
       payRuns.findById.mockResolvedValue(makePayRun());
 
@@ -163,11 +168,23 @@ describe('PayslipService', () => {
       expect(result.periodStart).toEqual(new Date('2026-01-01'));
       expect(result.periodEnd).toEqual(new Date('2026-01-31'));
       expect(result.payDate).toEqual(new Date('2026-02-01'));
+      expect(result.employeeFirstName).toBe('Ama');
+      expect(result.employeeLastName).toBe('Owusu');
     });
 
     it('throws NotFoundException when the pay run behind the payslip is gone', async () => {
       payslips.findById.mockResolvedValue(makePayslip());
       payRuns.findById.mockResolvedValue(null);
+
+      await expect(service.findByIdWithPeriod('tenant-1', 'payslip-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('throws NotFoundException when the employee behind the payslip is gone', async () => {
+      payslips.findById.mockResolvedValue(makePayslip());
+      payRuns.findById.mockResolvedValue(makePayRun());
+      employees.findById.mockResolvedValue(null);
 
       await expect(service.findByIdWithPeriod('tenant-1', 'payslip-1')).rejects.toThrow(
         NotFoundException,
@@ -188,7 +205,9 @@ describe('PayslipService', () => {
       const result = await service.listByEmployee('tenant-1', 'emp-1');
 
       expect(payRuns.findManyByIds).toHaveBeenCalledWith('tenant-1', ['run-1', 'run-2']);
+      expect(employees.findManyByIds).toHaveBeenCalledWith('tenant-1', ['emp-1']);
       expect(result[0].periodStart).toEqual(new Date('2026-01-01'));
+      expect(result[0].employeeFirstName).toBe('Ama');
       expect(result[1].periodStart).toEqual(new Date('2026-02-01'));
     });
   });
@@ -214,7 +233,16 @@ describe('PayslipService', () => {
 
       expect(employees.findByUserId).toHaveBeenCalledWith('tenant-1', 'user-1');
       expect(payslips.listByEmployee).toHaveBeenCalledWith('tenant-1', 'emp-1');
-      expect(result).toEqual([{ ...payslip, periodStart: expect.any(Date), periodEnd: expect.any(Date), payDate: expect.any(Date) }]);
+      expect(result).toEqual([
+        {
+          ...payslip,
+          periodStart: expect.any(Date),
+          periodEnd: expect.any(Date),
+          payDate: expect.any(Date),
+          employeeFirstName: 'Ama',
+          employeeLastName: 'Owusu',
+        },
+      ]);
     });
   });
 

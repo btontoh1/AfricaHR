@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { Receipt } from 'lucide-react';
 import { usePayRun, usePayslipsByPayRun } from './queries';
 import { useOrganization } from '@/features/organizations/queries';
-import { useEmployees } from '@/features/employees/queries';
 import { PayRunStatusBadge } from './pay-run-status-badge';
 import { PayRunLifecycleActions } from './pay-run-lifecycle-actions';
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -37,12 +36,6 @@ export function PayRunDetail({ tenantId, payRunId }: { tenantId: string; payRunI
   const { data: payRun, isLoading, isError, error } = usePayRun(tenantId, payRunId);
   const { data: payslips } = usePayslipsByPayRun(tenantId, payRunId);
   const { data: organization } = useOrganization(tenantId, payRun?.organizationId ?? '');
-  const { data: employees } = useEmployees(tenantId);
-
-  const employeeName = (id: string) => {
-    const employee = employees?.find((e) => e.id === id);
-    return employee ? `${employee.firstName} ${employee.lastName}` : id;
-  };
 
   if (isLoading) {
     return <CardSkeleton />;
@@ -100,7 +93,7 @@ export function PayRunDetail({ tenantId, payRunId }: { tenantId: string; payRunI
                 <TableBody>
                   {payslips.map((payslip) => (
                     <TableRow key={payslip.id}>
-                      <TableCell>{employeeName(payslip.employeeId)}</TableCell>
+                      <TableCell>{payslip.employeeFirstName} {payslip.employeeLastName}</TableCell>
                       <TableCell>{formatCurrency(payslip.grossPay, payslip.currency)}</TableCell>
                       <TableCell className="font-medium">
                         {formatCurrency(payslip.netPay, payslip.currency)}

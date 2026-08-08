@@ -73,6 +73,16 @@ export class PayrollEmployeeRepository {
     );
   }
 
+  /** Batches one query for a set of employee ids, rather than one query per employee - used to enrich payslip lists with the employee's name. */
+  findManyByIds(tenantId: string, ids: string[]): Promise<PayrollEligibleEmployee[]> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.employee.findMany({
+        where: { id: { in: ids }, tenantId, deletedAt: null },
+        select: EMPLOYEE_SELECT,
+      }),
+    );
+  }
+
   /** Resolves the caller's own employeeId for self-service payslip access. */
   findByUserId(tenantId: string, userId: string): Promise<PayrollEmployeeIdentity | null> {
     return this.prisma.withTenantContext(tenantId, (tx) =>

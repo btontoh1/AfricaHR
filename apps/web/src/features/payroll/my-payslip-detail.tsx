@@ -46,6 +46,7 @@ export function MyPayslipDetail({ tenantId, payslipId }: { tenantId: string; pay
           <CardTitle>Breakdown</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-3">
+          <Field label="Employee" value={`${payslip.employeeFirstName} ${payslip.employeeLastName}`} />
           <Field label="Status" value={<PayslipStatusBadge status={payslip.status} />} />
           <Field
             label="Pay period"

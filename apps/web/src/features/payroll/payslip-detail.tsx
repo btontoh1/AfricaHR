@@ -4,7 +4,6 @@ import { ListPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePayslip, useRemovePayslipLineItem } from './queries';
 import { AddLineItemForm } from './add-line-item-form';
-import { useEmployee } from '@/features/employees/queries';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { formatCurrency } from '@/lib/format-currency';
 import { Button } from '@/components/ui/button';
@@ -34,7 +33,6 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 
 export function PayslipDetail({ tenantId, payslipId }: { tenantId: string; payslipId: string }) {
   const { data: payslip, isLoading, isError, error } = usePayslip(tenantId, payslipId);
-  const { data: employee } = useEmployee(tenantId, payslip?.employeeId ?? '');
   const removeLineItem = useRemovePayslipLineItem(tenantId, payslipId);
 
   async function handleRemove(lineItemId: string) {
@@ -55,7 +53,7 @@ export function PayslipDetail({ tenantId, payslipId }: { tenantId: string; paysl
   }
 
   const canEdit = payslip.status === 'DRAFT';
-  const employeeName = employee ? `${employee.firstName} ${employee.lastName}` : payslip.employeeId;
+  const employeeName = `${payslip.employeeFirstName} ${payslip.employeeLastName}`;
 
   return (
     <div className="space-y-6">

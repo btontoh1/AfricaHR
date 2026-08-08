@@ -47,6 +47,15 @@ describe('PayrollEmployeeRepository', () => {
     });
   });
 
+  it('finds multiple employees by id, scoped to the tenant', async () => {
+    await repository.findManyByIds('tenant-1', ['emp-1', 'emp-2']);
+
+    expect(tx.employee.findMany).toHaveBeenCalledWith({
+      where: { id: { in: ['emp-1', 'emp-2'] }, tenantId: 'tenant-1', deletedAt: null },
+      select: EMPLOYEE_SELECT,
+    });
+  });
+
   it('finds an employee by userId, scoped to the tenant', async () => {
     await repository.findByUserId('tenant-1', 'user-1');
 

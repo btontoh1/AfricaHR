@@ -38,6 +38,19 @@ function isIdentityDocumentContentType(type: string): type is IdentityDocumentCo
   return (IDENTITY_DOCUMENT_CONTENT_TYPES as readonly string[]).includes(type);
 }
 
+// Client-side only — nothing enforces this server-side (presigned PUT
+// URLs, unlike presigned POST, don't carry a content-length-range
+// condition; see the equivalent gap on OrganizationVerificationDocument's
+// upload flow, which has none either). This just catches the common case
+// (a huge file attached by mistake) with a fast, clear message instead of
+// a slow upload that succeeds anyway.
+const MAX_RESUME_BYTES = 5 * 1024 * 1024;
+const MAX_IDENTITY_DOCUMENT_BYTES = 10 * 1024 * 1024;
+
+function formatMb(bytes: number): string {
+  return `${Math.round(bytes / (1024 * 1024))}MB`;
+}
+
 const IDENTITY_DOCUMENT_TYPE_OPTIONS: { value: IdentityDocumentType; label: string }[] = [
   { value: 'PASSPORT', label: 'Passport' },
   { value: 'NATIONAL_ID', label: 'National ID (e.g. Ghana Card)' },
@@ -79,6 +92,10 @@ export function PublicApplicationForm({ requisition }: { requisition: PublicJobR
       setSubmitError('Resume must be a PDF or Word document');
       return;
     }
+    if (file && file.size > MAX_RESUME_BYTES) {
+      setSubmitError(`Resume must be ${formatMb(MAX_RESUME_BYTES)} or smaller`);
+      return;
+    }
     setSubmitError(null);
     setResumeFile(file);
   }
@@ -86,6 +103,10 @@ export function PublicApplicationForm({ requisition }: { requisition: PublicJobR
   function handleIdentityFileChange(file: File | null) {
     if (file && !isIdentityDocumentContentType(file.type)) {
       setSubmitError('Government ID must be a PDF, PNG, or JPEG');
+      return;
+    }
+    if (file && file.size > MAX_IDENTITY_DOCUMENT_BYTES) {
+      setSubmitError(`Government ID must be ${formatMb(MAX_IDENTITY_DOCUMENT_BYTES)} or smaller`);
       return;
     }
     setSubmitError(null);

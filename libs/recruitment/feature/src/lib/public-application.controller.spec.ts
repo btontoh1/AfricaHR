@@ -8,6 +8,8 @@ describe('PublicApplicationController', () => {
   beforeEach(() => {
     service = {
       getOpenRequisition: jest.fn(),
+      requestResumeUpload: jest.fn(),
+      requestIdentityDocumentUpload: jest.fn(),
       apply: jest.fn(),
     } as unknown as jest.Mocked<PublicApplicationService>;
 
@@ -26,5 +28,21 @@ describe('PublicApplicationController', () => {
     controller.apply('req-1', dto);
 
     expect(service.apply).toHaveBeenCalledWith('req-1', dto);
+  });
+
+  it('delegates requestResumeUpload with the requisition id and dto', () => {
+    const dto = { fileName: 'resume.pdf', contentType: 'application/pdf' };
+
+    controller.requestResumeUpload('req-1', dto);
+
+    expect(service.requestResumeUpload).toHaveBeenCalledWith('req-1', dto);
+  });
+
+  it('delegates requestIdentityDocumentUpload with the requisition id and dto', () => {
+    const dto = { fileName: 'ghana-card.jpg', contentType: 'image/jpeg' };
+
+    controller.requestIdentityDocumentUpload('req-1', dto);
+
+    expect(service.requestIdentityDocumentUpload).toHaveBeenCalledWith('req-1', dto);
   });
 });

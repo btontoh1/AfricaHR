@@ -2086,6 +2086,38 @@ export interface paths {
         patch: operations["MyApplicationController_advance"];
         trace?: never;
     };
+    "/api/tenants/{tenantId}/applications/mine/{id}/resume-view-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyApplicationController_getResumeViewUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/applications/mine/{id}/identity-document-view-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyApplicationController_getIdentityDocumentViewUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/applications": {
         parameters: {
             query?: never;
@@ -2182,6 +2214,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/applications/{id}/resume-view-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ApplicationController_getResumeViewUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/applications/{id}/identity-document-view-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ApplicationController_getIdentityDocumentViewUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/public/job-requisitions/{id}": {
         parameters: {
             query?: never;
@@ -2193,6 +2257,40 @@ export interface paths {
         get: operations["PublicApplicationController_getOpenRequisition"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/job-requisitions/{id}/resume-upload-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Get a short-lived URL to upload a resume for a public application */
+        post: operations["PublicApplicationController_requestResumeUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/job-requisitions/{id}/identity-document-upload-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Get a short-lived URL to upload a government ID for a public application */
+        post: operations["PublicApplicationController_requestIdentityDocumentUpload"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2704,7 +2802,6 @@ export interface components {
             createdAt: string;
         };
         DocumentViewUrlResponseDto: {
-            /** @description Short-lived signed URL to view/download the document directly from storage */
             viewUrl: string;
         };
         CreateOrganizationDto: {
@@ -3718,6 +3815,10 @@ export interface components {
             offerRespondedAt?: string | null;
             offerAccepted?: boolean | null;
             hiredEmployeeId?: string | null;
+            resumeFileName?: string | null;
+            identityDocumentFileName?: string | null;
+            /** @enum {string|null} */
+            identityDocumentType?: "PASSPORT" | "NATIONAL_ID" | "DRIVERS_LICENSE" | "OTHER" | null;
             createdAt: string;
             updatedAt: string;
             candidate: components["schemas"]["CandidateResponseDto"];
@@ -3746,6 +3847,10 @@ export interface components {
             offerRespondedAt?: string | null;
             offerAccepted?: boolean | null;
             hiredEmployeeId?: string | null;
+            resumeFileName?: string | null;
+            identityDocumentFileName?: string | null;
+            /** @enum {string|null} */
+            identityDocumentType?: "PASSPORT" | "NATIONAL_ID" | "DRIVERS_LICENSE" | "OTHER" | null;
             createdAt: string;
             updatedAt: string;
         };
@@ -3772,11 +3877,33 @@ export interface components {
             /** @enum {string} */
             employmentType: "FULL_TIME" | "PART_TIME" | "CONTRACT" | "INTERN";
         };
+        RequestPublicResumeUploadDto: {
+            /** @example kwame-mensah-resume.pdf */
+            fileName: string;
+            /** @enum {string} */
+            contentType: "application/pdf" | "application/msword" | "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        };
+        PublicDocumentUploadUrlResponseDto: {
+            uploadUrl: string;
+            storageKey: string;
+        };
+        RequestPublicIdentityDocumentUploadDto: {
+            /** @example ghana-card-front.jpg */
+            fileName: string;
+            /** @enum {string} */
+            contentType: "application/pdf" | "image/png" | "image/jpeg";
+        };
         SubmitPublicApplicationDto: {
             firstName: string;
             lastName: string;
             email: string;
             phone?: string;
+            resumeStorageKey?: string;
+            resumeFileName?: string;
+            identityDocumentStorageKey?: string;
+            identityDocumentFileName?: string;
+            /** @enum {string} */
+            identityDocumentType?: "PASSPORT" | "NATIONAL_ID" | "DRIVERS_LICENSE" | "OTHER";
         };
         PublicApplicationResponseDto: {
             applicationId: string;
@@ -8025,6 +8152,50 @@ export interface operations {
             };
         };
     };
+    MyApplicationController_getResumeViewUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentViewUrlResponseDto"];
+                };
+            };
+        };
+    };
+    MyApplicationController_getIdentityDocumentViewUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentViewUrlResponseDto"];
+                };
+            };
+        };
+    };
     ApplicationController_list: {
         parameters: {
             query?: {
@@ -8201,6 +8372,50 @@ export interface operations {
             };
         };
     };
+    ApplicationController_getResumeViewUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentViewUrlResponseDto"];
+                };
+            };
+        };
+    };
+    ApplicationController_getIdentityDocumentViewUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentViewUrlResponseDto"];
+                };
+            };
+        };
+    };
     PublicApplicationController_getOpenRequisition: {
         parameters: {
             query?: never;
@@ -8218,6 +8433,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PublicJobRequisitionResponseDto"];
+                };
+            };
+        };
+    };
+    PublicApplicationController_requestResumeUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestPublicResumeUploadDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicDocumentUploadUrlResponseDto"];
+                };
+            };
+        };
+    };
+    PublicApplicationController_requestIdentityDocumentUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestPublicIdentityDocumentUploadDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicDocumentUploadUrlResponseDto"];
                 };
             };
         };

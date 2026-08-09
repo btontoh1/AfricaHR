@@ -7,6 +7,7 @@ import {
   ApplicationResponseDto,
   ApplicationWithRelationsResponseDto,
 } from './dto/application-response.dto';
+import { DocumentViewUrlResponseDto } from './dto/document-view-url-response.dto';
 
 /**
  * Hiring-manager access: no @RequirePermissions — authorization is checked
@@ -54,5 +55,33 @@ export class MyApplicationController {
   ) {
     assertTenantScope(actor, tenantId);
     return this.applications.advanceAsHiringManager(tenantId, actor.sub, id, dto);
+  }
+
+  @Get(':id/resume-view-url')
+  @ApiOkResponse({ type: DocumentViewUrlResponseDto })
+  async getResumeViewUrl(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: RequestUser,
+  ): Promise<DocumentViewUrlResponseDto> {
+    assertTenantScope(actor, tenantId);
+    const viewUrl = await this.applications.getResumeViewUrlForHiringManager(tenantId, actor.sub, id);
+    return { viewUrl };
+  }
+
+  @Get(':id/identity-document-view-url')
+  @ApiOkResponse({ type: DocumentViewUrlResponseDto })
+  async getIdentityDocumentViewUrl(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: RequestUser,
+  ): Promise<DocumentViewUrlResponseDto> {
+    assertTenantScope(actor, tenantId);
+    const viewUrl = await this.applications.getIdentityDocumentViewUrlForHiringManager(
+      tenantId,
+      actor.sub,
+      id,
+    );
+    return { viewUrl };
   }
 }

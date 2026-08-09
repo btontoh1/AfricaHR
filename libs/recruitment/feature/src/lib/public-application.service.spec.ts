@@ -1,6 +1,7 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Candidate, JobRequisition } from '@prisma/client';
-import { CandidateRepository, JobRequisitionRepository } from '@africahr/recruitment-data-access';
+import { ApplicationRepository, CandidateRepository, JobRequisitionRepository } from '@africahr/recruitment-data-access';
+import { StorageService } from '@africahr/platform-storage';
 import { ApplicationService } from './application.service';
 import { PublicApplicationService } from './public-application.service';
 
@@ -9,6 +10,8 @@ describe('PublicApplicationService', () => {
   let requisitions: jest.Mocked<JobRequisitionRepository>;
   let candidates: jest.Mocked<CandidateRepository>;
   let applications: jest.Mocked<ApplicationService>;
+  let applicationRepository: jest.Mocked<ApplicationRepository>;
+  let storage: jest.Mocked<StorageService>;
 
   function makeRequisition(overrides: Partial<JobRequisition> = {}): JobRequisition {
     return {
@@ -61,8 +64,14 @@ describe('PublicApplicationService', () => {
     applications = {
       create: jest.fn(),
     } as unknown as jest.Mocked<ApplicationService>;
+    applicationRepository = {
+      update: jest.fn(),
+    } as unknown as jest.Mocked<ApplicationRepository>;
+    storage = {
+      getUploadUrl: jest.fn(),
+    } as unknown as jest.Mocked<StorageService>;
 
-    service = new PublicApplicationService(requisitions, candidates, applications);
+    service = new PublicApplicationService(requisitions, candidates, applications, applicationRepository, storage);
   });
 
   describe('getOpenRequisition', () => {
@@ -85,6 +94,54 @@ describe('PublicApplicationService', () => {
       requisitions.findOpenByIdAcrossTenants.mockResolvedValue(null);
 
       await expect(service.getOpenRequisition('missing')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('requestResumeUpload', () => {
+    it('mints an upload URL scoped under resumes/<tenantId>/ for the requisition\'s tenant', async () => {
+      requisitions.findOpenByIdAcrossTenants.mockResolvedValue(makeRequisition());
+      storage.getUploadUrl.mockResolvedValue('https://storage.example/signed-put');
+
+      const result = await service.requestResumeUpload('req-1', {
+        fileName: 'resume.pdf',
+        contentType: 'application/pdf',
+      });
+
+      expect(storage.getUploadUrl).toHaveBeenCalledWith(
+        expect.stringMatching(/^resumes\/tenant-1\/.+-resume\.pdf$/),
+        'application/pdf',
+      );
+      expect(result).toEqual({
+        uploadUrl: 'https://storage.example/signed-put',
+        storageKey: expect.stringMatching(/^resumes\/tenant-1\/.+-resume\.pdf$/),
+      });
+    });
+
+    it('throws NotFoundException when the requisition is not open', async () => {
+      requisitions.findOpenByIdAcrossTenants.mockResolvedValue(null);
+
+      await expect(
+        service.requestResumeUpload('req-1', { fileName: 'resume.pdf', contentType: 'application/pdf' }),
+      ).rejects.toThrow(NotFoundException);
+      expect(storage.getUploadUrl).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('requestIdentityDocumentUpload', () => {
+    it('mints an upload URL scoped under identity-documents/<tenantId>/', async () => {
+      requisitions.findOpenByIdAcrossTenants.mockResolvedValue(makeRequisition());
+      storage.getUploadUrl.mockResolvedValue('https://storage.example/signed-put');
+
+      const result = await service.requestIdentityDocumentUpload('req-1', {
+        fileName: 'ghana-card.jpg',
+        contentType: 'image/jpeg',
+      });
+
+      expect(storage.getUploadUrl).toHaveBeenCalledWith(
+        expect.stringMatching(/^identity-documents\/tenant-1\/.+-ghana-card\.jpg$/),
+        'image/jpeg',
+      );
+      expect(result.storageKey).toMatch(/^identity-documents\/tenant-1\//);
     });
   });
 
@@ -154,6 +211,70 @@ describe('PublicApplicationService', () => {
       await expect(
         service.apply('req-1', { firstName: 'Kwame', lastName: 'Mensah', email: 'kwame@example.com' }),
       ).rejects.toThrow(conflict);
+    });
+
+    it('does not touch applicationRepository.update when no resume/identity document was attached', async () => {
+      requisitions.findOpenByIdAcrossTenants.mockResolvedValue(makeRequisition());
+      candidates.list.mockResolvedValue([makeCandidate()]);
+      applications.create.mockResolvedValue({ id: 'app-1' } as never);
+
+      await service.apply('req-1', { firstName: 'Kwame', lastName: 'Mensah', email: 'kwame@example.com' });
+
+      expect(applicationRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('persists resume and identity document fields onto the created application when attached', async () => {
+      requisitions.findOpenByIdAcrossTenants.mockResolvedValue(makeRequisition());
+      candidates.list.mockResolvedValue([makeCandidate()]);
+      applications.create.mockResolvedValue({ id: 'app-1' } as never);
+
+      await service.apply('req-1', {
+        firstName: 'Kwame',
+        lastName: 'Mensah',
+        email: 'kwame@example.com',
+        resumeStorageKey: 'resumes/tenant-1/abc-resume.pdf',
+        resumeFileName: 'resume.pdf',
+        identityDocumentStorageKey: 'identity-documents/tenant-1/abc-id.jpg',
+        identityDocumentFileName: 'ghana-card.jpg',
+        identityDocumentType: 'NATIONAL_ID',
+      });
+
+      expect(applicationRepository.update).toHaveBeenCalledWith('tenant-1', 'app-1', {
+        resumeStorageKey: 'resumes/tenant-1/abc-resume.pdf',
+        resumeFileName: 'resume.pdf',
+        identityDocumentStorageKey: 'identity-documents/tenant-1/abc-id.jpg',
+        identityDocumentFileName: 'ghana-card.jpg',
+        identityDocumentType: 'NATIONAL_ID',
+      });
+    });
+
+    it('rejects a resumeStorageKey that does not belong to this requisition\'s tenant', async () => {
+      requisitions.findOpenByIdAcrossTenants.mockResolvedValue(makeRequisition());
+
+      await expect(
+        service.apply('req-1', {
+          firstName: 'Kwame',
+          lastName: 'Mensah',
+          email: 'kwame@example.com',
+          resumeStorageKey: 'resumes/some-other-tenant/abc-resume.pdf',
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(candidates.list).not.toHaveBeenCalled();
+      expect(applications.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects an identityDocumentStorageKey that does not belong to this requisition\'s tenant', async () => {
+      requisitions.findOpenByIdAcrossTenants.mockResolvedValue(makeRequisition());
+
+      await expect(
+        service.apply('req-1', {
+          firstName: 'Kwame',
+          lastName: 'Mensah',
+          email: 'kwame@example.com',
+          identityDocumentStorageKey: 'identity-documents/some-other-tenant/abc-id.jpg',
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

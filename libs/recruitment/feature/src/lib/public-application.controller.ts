@@ -5,6 +5,9 @@ import { PublicApplicationService } from './public-application.service';
 import { SubmitPublicApplicationDto } from './dto/submit-public-application.dto';
 import { PublicJobRequisitionResponseDto } from './dto/public-job-requisition-response.dto';
 import { PublicApplicationResponseDto } from './dto/public-application-response.dto';
+import { RequestPublicResumeUploadDto } from './dto/request-public-resume-upload.dto';
+import { RequestPublicIdentityDocumentUploadDto } from './dto/request-public-identity-document-upload.dto';
+import { PublicDocumentUploadUrlResponseDto } from './dto/public-document-upload-url-response.dto';
 
 /**
  * Public, unauthenticated — a candidate reaches this from a link a company
@@ -24,6 +27,28 @@ export class PublicApplicationController {
   @ApiOkResponse({ type: PublicJobRequisitionResponseDto })
   getOpenRequisition(@Param('id') id: string): Promise<PublicJobRequisitionResponseDto> {
     return this.publicApplications.getOpenRequisition(id);
+  }
+
+  @Post(':id/resume-upload-url')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Get a short-lived URL to upload a resume for a public application' })
+  @ApiOkResponse({ type: PublicDocumentUploadUrlResponseDto })
+  requestResumeUpload(
+    @Param('id') id: string,
+    @Body() dto: RequestPublicResumeUploadDto,
+  ): Promise<PublicDocumentUploadUrlResponseDto> {
+    return this.publicApplications.requestResumeUpload(id, dto);
+  }
+
+  @Post(':id/identity-document-upload-url')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Get a short-lived URL to upload a government ID for a public application' })
+  @ApiOkResponse({ type: PublicDocumentUploadUrlResponseDto })
+  requestIdentityDocumentUpload(
+    @Param('id') id: string,
+    @Body() dto: RequestPublicIdentityDocumentUploadDto,
+  ): Promise<PublicDocumentUploadUrlResponseDto> {
+    return this.publicApplications.requestIdentityDocumentUpload(id, dto);
   }
 
   @Post(':id/apply')

@@ -20,6 +20,7 @@ import { CreateApplicationDto } from './dto/create-application.dto';
 import { LinkHiredEmployeeDto } from './dto/link-hired-employee.dto';
 import { SendOfferDto } from './dto/send-offer.dto';
 import { RespondToOfferDto } from './dto/respond-to-offer.dto';
+import { DocumentViewUrlResponseDto } from './dto/document-view-url-response.dto';
 
 @ApiTags('recruitment-applications')
 @ApiBearerAuth()
@@ -119,5 +120,31 @@ export class ApplicationController {
   ) {
     assertTenantScope(actor, tenantId);
     return this.applications.linkHiredEmployee(tenantId, id, dto, actor.sub);
+  }
+
+  @Get(':id/resume-view-url')
+  @RequirePermissions(Permission.RECRUITMENT_READ)
+  @ApiOkResponse({ type: DocumentViewUrlResponseDto })
+  async getResumeViewUrl(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: RequestUser,
+  ): Promise<DocumentViewUrlResponseDto> {
+    assertTenantScope(actor, tenantId);
+    const viewUrl = await this.applications.getResumeViewUrl(tenantId, id);
+    return { viewUrl };
+  }
+
+  @Get(':id/identity-document-view-url')
+  @RequirePermissions(Permission.RECRUITMENT_READ)
+  @ApiOkResponse({ type: DocumentViewUrlResponseDto })
+  async getIdentityDocumentViewUrl(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: RequestUser,
+  ): Promise<DocumentViewUrlResponseDto> {
+    assertTenantScope(actor, tenantId);
+    const viewUrl = await this.applications.getIdentityDocumentViewUrl(tenantId, id);
+    return { viewUrl };
   }
 }

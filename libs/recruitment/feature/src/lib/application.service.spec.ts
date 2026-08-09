@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, NotFoundExc
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Candidate, JobRequisition, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
+import { StorageService } from '@africahr/platform-storage';
 import {
   ApplicationRepository,
   ApplicationWithRelations,
@@ -22,6 +23,7 @@ describe('ApplicationService', () => {
   let employees: jest.Mocked<RecruitmentEmployeeRepository>;
   let audit: jest.Mocked<AuditService>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
+  let storage: jest.Mocked<StorageService>;
 
   function makeCandidate(overrides: Partial<Candidate> = {}): Candidate {
     return {
@@ -79,6 +81,11 @@ describe('ApplicationService', () => {
       offerRespondedAt: null,
       offerAccepted: null,
       hiredEmployeeId: null,
+      resumeStorageKey: null,
+      resumeFileName: null,
+      identityDocumentStorageKey: null,
+      identityDocumentFileName: null,
+      identityDocumentType: null,
       createdAt: new Date(),
       updatedAt: new Date(),
       deletedAt: null,
@@ -112,8 +119,9 @@ describe('ApplicationService', () => {
 
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
     eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
+    storage = { getViewUrl: jest.fn() } as unknown as jest.Mocked<StorageService>;
 
-    service = new ApplicationService(applications, requisitions, employees, audit, eventEmitter);
+    service = new ApplicationService(applications, requisitions, employees, audit, eventEmitter, storage);
   });
 
   describe('create', () => {
@@ -596,6 +604,71 @@ describe('ApplicationService', () => {
       expect(result).toHaveLength(2);
       expect(applications.list).toHaveBeenCalledWith('tenant-1', { requisitionId: 'req-1' });
       expect(applications.list).toHaveBeenCalledWith('tenant-1', { requisitionId: 'req-2' });
+    });
+  });
+
+  describe('getResumeViewUrl', () => {
+    it('resolves a signed view URL when a resume was uploaded', async () => {
+      applications.findById.mockResolvedValue(makeApplication({ resumeStorageKey: 'resumes/tenant-1/abc.pdf' }));
+      storage.getViewUrl.mockResolvedValue('https://storage.example/signed-get');
+
+      const result = await service.getResumeViewUrl('tenant-1', 'app-1');
+
+      expect(storage.getViewUrl).toHaveBeenCalledWith('resumes/tenant-1/abc.pdf');
+      expect(result).toBe('https://storage.example/signed-get');
+    });
+
+    it('throws NotFoundException when no resume was uploaded', async () => {
+      applications.findById.mockResolvedValue(makeApplication({ resumeStorageKey: null }));
+
+      await expect(service.getResumeViewUrl('tenant-1', 'app-1')).rejects.toThrow(NotFoundException);
+      expect(storage.getViewUrl).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getResumeViewUrlForHiringManager', () => {
+    it('rejects a caller who is not the hiring manager for the requisition', async () => {
+      applications.findById.mockResolvedValue(makeApplication({ resumeStorageKey: 'resumes/tenant-1/abc.pdf' }));
+      requisitions.findById.mockResolvedValue(makeRequisition({ hiringManagerId: 'someone-else' }));
+      employees.findByUserId.mockResolvedValue({ id: 'mgr-emp-2', userId: 'mgr-user-2' });
+
+      await expect(
+        service.getResumeViewUrlForHiringManager('tenant-1', 'mgr-user-2', 'app-1'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(storage.getViewUrl).not.toHaveBeenCalled();
+    });
+
+    it('resolves a signed view URL for the requisition’s hiring manager', async () => {
+      applications.findById.mockResolvedValue(
+        makeApplication({ resumeStorageKey: 'resumes/tenant-1/abc.pdf', requisitionId: 'req-1' }),
+      );
+      requisitions.findById.mockResolvedValue(makeRequisition({ hiringManagerId: 'mgr-emp-1' }));
+      employees.findByUserId.mockResolvedValue({ id: 'mgr-emp-1', userId: 'mgr-user-1' });
+      storage.getViewUrl.mockResolvedValue('https://storage.example/signed-get');
+
+      const result = await service.getResumeViewUrlForHiringManager('tenant-1', 'mgr-user-1', 'app-1');
+
+      expect(result).toBe('https://storage.example/signed-get');
+    });
+  });
+
+  describe('getIdentityDocumentViewUrl', () => {
+    it('resolves a signed view URL when an identity document was uploaded', async () => {
+      applications.findById.mockResolvedValue(
+        makeApplication({ identityDocumentStorageKey: 'identity-documents/tenant-1/abc.jpg' }),
+      );
+      storage.getViewUrl.mockResolvedValue('https://storage.example/signed-get');
+
+      const result = await service.getIdentityDocumentViewUrl('tenant-1', 'app-1');
+
+      expect(storage.getViewUrl).toHaveBeenCalledWith('identity-documents/tenant-1/abc.jpg');
+      expect(result).toBe('https://storage.example/signed-get');
+    });
+
+    it('throws NotFoundException when no identity document was uploaded', async () => {
+      applications.findById.mockResolvedValue(makeApplication({ identityDocumentStorageKey: null }));
+
+      await expect(service.getIdentityDocumentViewUrl('tenant-1', 'app-1')).rejects.toThrow(NotFoundException);
     });
   });
 });

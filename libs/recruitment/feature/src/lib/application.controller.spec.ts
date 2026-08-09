@@ -25,6 +25,8 @@ describe('ApplicationController', () => {
       sendOffer: jest.fn(),
       respondToOffer: jest.fn(),
       linkHiredEmployee: jest.fn(),
+      getResumeViewUrl: jest.fn(),
+      getIdentityDocumentViewUrl: jest.fn(),
     } as unknown as jest.Mocked<ApplicationService>;
 
     controller = new ApplicationController(service);
@@ -82,5 +84,23 @@ describe('ApplicationController', () => {
     controller.linkHiredEmployee('tenant-1', 'app-1', dto, hrManager);
 
     expect(service.linkHiredEmployee).toHaveBeenCalledWith('tenant-1', 'app-1', dto, 'hr-1');
+  });
+
+  it('delegates getResumeViewUrl and wraps the result as { viewUrl }', async () => {
+    service.getResumeViewUrl.mockResolvedValue('https://storage.example/signed-get');
+
+    const result = await controller.getResumeViewUrl('tenant-1', 'app-1', hrManager);
+
+    expect(service.getResumeViewUrl).toHaveBeenCalledWith('tenant-1', 'app-1');
+    expect(result).toEqual({ viewUrl: 'https://storage.example/signed-get' });
+  });
+
+  it('delegates getIdentityDocumentViewUrl and wraps the result as { viewUrl }', async () => {
+    service.getIdentityDocumentViewUrl.mockResolvedValue('https://storage.example/signed-get');
+
+    const result = await controller.getIdentityDocumentViewUrl('tenant-1', 'app-1', hrManager);
+
+    expect(service.getIdentityDocumentViewUrl).toHaveBeenCalledWith('tenant-1', 'app-1');
+    expect(result).toEqual({ viewUrl: 'https://storage.example/signed-get' });
   });
 });

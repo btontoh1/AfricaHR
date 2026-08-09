@@ -1,5 +1,6 @@
 'use client';
 
+import { toast } from 'sonner';
 import {
   useAdvanceApplication,
   useAdvanceMyApplication,
@@ -11,6 +12,7 @@ import { AdvanceStageControl } from './advance-stage-control';
 import { SendOfferForm } from './send-offer-form';
 import { RespondToOfferControl } from './respond-to-offer-control';
 import { LinkHiredEmployeeForm } from './link-hired-employee-form';
+import { apiClient } from '@/lib/api-client';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CardSkeleton } from '@/components/loading-state';
@@ -22,6 +24,29 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
     <div>
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className="text-sm">{value ?? '—'}</div>
+    </div>
+  );
+}
+
+function DocumentField({
+  label,
+  fileName,
+  onView,
+}: {
+  label: string;
+  fileName?: string | null;
+  onView: () => void;
+}) {
+  return (
+    <div>
+      <div className="text-xs text-muted-foreground">{label}</div>
+      {fileName ? (
+        <button type="button" onClick={onView} className="text-sm text-primary hover:underline">
+          {fileName}
+        </button>
+      ) : (
+        <div className="text-sm">—</div>
+      )}
     </div>
   );
 }
@@ -56,6 +81,38 @@ export function ApplicationDetail({
     tier === 'hr' && application.stage === 'OFFER' && Boolean(application.offerSentAt) && !application.offerRespondedAt;
   const canLinkEmployee = tier === 'hr' && application.stage === 'HIRED' && !application.hiredEmployeeId;
 
+  async function handleViewResume() {
+    const { data, error: viewError } =
+      tier === 'hr'
+        ? await apiClient.GET('/api/tenants/{tenantId}/applications/{id}/resume-view-url', {
+            params: { path: { tenantId, id: applicationId } },
+          })
+        : await apiClient.GET('/api/tenants/{tenantId}/applications/mine/{id}/resume-view-url', {
+            params: { path: { tenantId, id: applicationId } },
+          });
+    if (viewError || !data) {
+      toast.error(getApiErrorMessage(viewError, 'Failed to open resume'));
+      return;
+    }
+    window.open(data.viewUrl, '_blank', 'noopener,noreferrer');
+  }
+
+  async function handleViewIdentityDocument() {
+    const { data, error: viewError } =
+      tier === 'hr'
+        ? await apiClient.GET('/api/tenants/{tenantId}/applications/{id}/identity-document-view-url', {
+            params: { path: { tenantId, id: applicationId } },
+          })
+        : await apiClient.GET('/api/tenants/{tenantId}/applications/mine/{id}/identity-document-view-url', {
+            params: { path: { tenantId, id: applicationId } },
+          });
+    if (viewError || !data) {
+      toast.error(getApiErrorMessage(viewError, 'Failed to open identity document'));
+      return;
+    }
+    window.open(data.viewUrl, '_blank', 'noopener,noreferrer');
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -89,6 +146,16 @@ export function ApplicationDetail({
             }
           />
           <Field label="Hired employee" value={application.hiredEmployeeId} />
+          <DocumentField label="Resume" fileName={application.resumeFileName} onView={handleViewResume} />
+          <DocumentField
+            label={
+              application.identityDocumentType
+                ? `Government ID (${application.identityDocumentType.replace('_', ' ')})`
+                : 'Government ID'
+            }
+            fileName={application.identityDocumentFileName}
+            onView={handleViewIdentityDocument}
+          />
         </CardContent>
       </Card>
 

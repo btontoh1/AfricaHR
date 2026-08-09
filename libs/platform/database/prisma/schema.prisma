@@ -1297,6 +1297,18 @@ enum ApplicationStage {
   WITHDRAWN
 }
 
+/// Deliberately generic rather than country-specific (e.g. no literal
+/// "GHANA_CARD" value) — ParotHR is pan-African (see README), and a
+/// Ghana Card, a Kenyan Huduma Namba card, etc. are all just a national ID
+/// under a different local name. NATIONAL_ID covers those; the upload
+/// form's label spells out the local example per country instead.
+enum IdentityDocumentType {
+  PASSPORT
+  NATIONAL_ID
+  DRIVERS_LICENSE
+  OTHER
+}
+
 /// Links a Candidate to a JobRequisition and tracks the pipeline. Offer
 /// details are folded in directly rather than a separate Offer model — one
 /// offer per application is the norm (see project memory). No automatic
@@ -1321,6 +1333,23 @@ model Application {
   offerAccepted    Boolean?  @map("offer_accepted")
 
   hiredEmployeeId String? @map("hired_employee_id")
+
+  // Object-storage key for an uploaded resume, same pattern as
+  // OrganizationVerificationDocument.storageKey - never sent to the client
+  // directly (see ApplicationResponseDto), only ever resolved into a
+  // short-lived signed view URL on demand. resumeFileName is the one part
+  // of this pair that is client-facing, for display ("View resume").
+  // Nullable since a resume is optional and only the public apply flow
+  // sets it - HR/manager-created applications never populate it.
+  resumeStorageKey String? @map("resume_storage_key")
+  resumeFileName   String? @map("resume_file_name")
+
+  // Same shape and same client-facing rule as the resume fields above -
+  // storage key never leaves the server, only the file name and declared
+  // document type do (see ApplicationResponseDto).
+  identityDocumentStorageKey String?               @map("identity_document_storage_key")
+  identityDocumentFileName   String?               @map("identity_document_file_name")
+  identityDocumentType       IdentityDocumentType? @map("identity_document_type")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")

@@ -13,6 +13,7 @@ import {
 import { RequisitionStatusBadge } from './requisition-status-badge';
 import { ApplicationStageBadge } from './application-stage-badge';
 import { UpdateRequisitionForm } from './update-requisition-form';
+import { PublicApplicationLinkCard } from './public-application-link-card';
 import { useOrganization } from '@/features/organizations/queries';
 import { useEmployee } from '@/features/employees/queries';
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -99,6 +100,8 @@ export function RequisitionDetail({
           <Field label="Description" value={requisition.description} />
         </CardContent>
       </Card>
+
+      <PublicApplicationLinkCard requisition={requisition} />
 
       <Card>
         <CardHeader>

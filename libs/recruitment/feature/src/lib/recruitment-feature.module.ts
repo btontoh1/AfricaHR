@@ -10,20 +10,25 @@ import { CandidateController } from './candidate.controller';
 import { ApplicationService } from './application.service';
 import { MyApplicationController } from './my-application.controller';
 import { ApplicationController } from './application.controller';
+import { PublicApplicationService } from './public-application.service';
+import { PublicApplicationController } from './public-application.controller';
 
 @Module({
   imports: [RecruitmentDataAccessModule, PlatformAuthModule, AuditModule],
   // Literal-path controllers ("/mine") must be registered before their
   // sibling dynamic-path controllers ("/:id") so Nest's router matches the
-  // literal segment first (same gotcha as Modules 5-8).
+  // literal segment first (same gotcha as Modules 5-8). PublicApplicationController
+  // lives under its own "public/" prefix so it never shares a route tree
+  // with the tenant-scoped controllers regardless of ordering.
   controllers: [
     MyJobRequisitionController,
     JobRequisitionController,
     CandidateController,
     MyApplicationController,
     ApplicationController,
+    PublicApplicationController,
   ],
-  providers: [JobRequisitionService, CandidateService, ApplicationService],
-  exports: [JobRequisitionService, CandidateService, ApplicationService],
+  providers: [JobRequisitionService, CandidateService, ApplicationService, PublicApplicationService],
+  exports: [JobRequisitionService, CandidateService, ApplicationService, PublicApplicationService],
 })
 export class RecruitmentFeatureModule {}

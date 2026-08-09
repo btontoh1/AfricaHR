@@ -2182,6 +2182,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/job-requisitions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get an open job posting's public details, for a company's careers page */
+        get: operations["PublicApplicationController_getOpenRequisition"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/job-requisitions/{id}/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit a job application from a public careers page */
+        post: operations["PublicApplicationController_apply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/reports/headcount": {
         parameters: {
             query?: never;
@@ -3730,6 +3764,22 @@ export interface components {
         LinkHiredEmployeeDto: {
             /** @description The Employee record HR created for this hire via the Employee module */
             employeeId: string;
+        };
+        PublicJobRequisitionResponseDto: {
+            id: string;
+            title: string;
+            description?: string | null;
+            /** @enum {string} */
+            employmentType: "FULL_TIME" | "PART_TIME" | "CONTRACT" | "INTERN";
+        };
+        SubmitPublicApplicationDto: {
+            firstName: string;
+            lastName: string;
+            email: string;
+            phone?: string;
+        };
+        PublicApplicationResponseDto: {
+            applicationId: string;
         };
         HeadcountByEmploymentTypeResponseDto: {
             /** @enum {string} */
@@ -8147,6 +8197,52 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApplicationResponseDto"];
+                };
+            };
+        };
+    };
+    PublicApplicationController_getOpenRequisition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicJobRequisitionResponseDto"];
+                };
+            };
+        };
+    };
+    PublicApplicationController_apply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitPublicApplicationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicApplicationResponseDto"];
                 };
             };
         };

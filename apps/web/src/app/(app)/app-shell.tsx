@@ -19,6 +19,7 @@ import { Logo } from '@/components/logo';
 import { NewNotificationWatcher } from '@/features/notifications/new-notification-watcher';
 import { NotificationBell } from '@/features/notifications/notification-bell';
 import { useMyTenant } from '@/features/settings/queries';
+import { useOrganization } from '@/features/organizations/queries';
 import { cn } from '@/lib/utils';
 import type { SessionUser } from '@/lib/session';
 import { buildNavGroups, type NavGroup } from './nav-config';
@@ -94,6 +95,14 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: tenant } = useMyTenant({ enabled: Boolean(user.tenantId) });
+  // An org admin's "world" is their one organization, not the tenant - show
+  // that name in the brand mark/header instead of the (possibly
+  // multi-organization) tenant name, e.g. NALAG's own admins would
+  // otherwise see "NALAG" rather than the specific member organization
+  // they actually manage.
+  const isOrgAdmin = user.role === 'ORG_ADMIN';
+  const { data: organization } = useOrganization(user.tenantId ?? '', user.organizationId ?? '');
+  const brandName = isOrgAdmin ? organization?.legalName : tenant?.name;
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -110,7 +119,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
 
       {/* Desktop sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card px-3 py-5 lg:flex print:hidden">
-        <BrandMark logoUrl={tenant?.logoUrl} tenantName={tenant?.name} />
+        <BrandMark logoUrl={tenant?.logoUrl} tenantName={brandName} />
         <div className="mt-6 flex-1 overflow-y-auto">
           <NavGroups groups={navGroups} pathname={pathname} />
         </div>
@@ -137,7 +146,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
                     from ever shrinking enough to trigger their own
                     overflow-y-auto scrollbar. */}
                 <div className="flex h-full min-h-0 flex-col px-3 py-5">
-                  <BrandMark logoUrl={tenant?.logoUrl} tenantName={tenant?.name} />
+                  <BrandMark logoUrl={tenant?.logoUrl} tenantName={brandName} />
                   <div className="mt-6 min-h-0 flex-1 overflow-y-auto">
                     <NavGroups groups={navGroups} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
                   </div>
@@ -145,7 +154,13 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
               </SheetContent>
             </Sheet>
             <span className="text-sm text-muted-foreground">
-              {user.tenantId ? (tenant ? `Tenant - ${tenant.name}` : null) : 'Platform Admin'}
+              {user.tenantId
+                ? brandName
+                  ? isOrgAdmin
+                    ? `Organization - ${brandName}`
+                    : `Tenant - ${brandName}`
+                  : null
+                : 'Platform Admin'}
             </span>
           </div>
 

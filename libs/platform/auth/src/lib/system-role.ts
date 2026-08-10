@@ -169,9 +169,13 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
   // whichever single Organization User.organizationId points at
   // (assertOrganizationScope enforces the "within" part - this list alone
   // doesn't). No leave/attendance/payroll/recruitment - those stay
-  // TENANT_ADMIN/HR_MANAGER-only for now.
+  // TENANT_ADMIN/HR_MANAGER-only for now. USER_READ (not MANAGE) mirrors
+  // HR_MANAGER's own grant - both need to list tenant users to link one to
+  // an Employee.userId (granting portal access), but neither can invite,
+  // deactivate, or change the role of a User themselves.
   [SystemRole.ORG_ADMIN]: [
     Permission.ORGANIZATION_READ,
+    Permission.USER_READ,
     Permission.EMPLOYEE_MANAGE,
     Permission.EMPLOYEE_READ,
   ],

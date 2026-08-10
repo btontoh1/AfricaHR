@@ -230,6 +230,19 @@ describe('hasPermission', () => {
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.PLATFORM_DISBURSEMENT_READ)).toBe(false);
   });
 
+  it('grants org admins employee management, org read, and user read, but nothing tenant-wide', () => {
+    expect(hasPermission(SystemRole.ORG_ADMIN, Permission.EMPLOYEE_MANAGE)).toBe(true);
+    expect(hasPermission(SystemRole.ORG_ADMIN, Permission.EMPLOYEE_READ)).toBe(true);
+    expect(hasPermission(SystemRole.ORG_ADMIN, Permission.ORGANIZATION_READ)).toBe(true);
+    expect(hasPermission(SystemRole.ORG_ADMIN, Permission.USER_READ)).toBe(true);
+    expect(hasPermission(SystemRole.ORG_ADMIN, Permission.USER_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.ORG_ADMIN, Permission.ORGANIZATION_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.ORG_ADMIN, Permission.PAYROLL_READ)).toBe(false);
+    expect(hasPermission(SystemRole.ORG_ADMIN, Permission.LEAVE_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.ORG_ADMIN, Permission.RECRUITMENT_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.ORG_ADMIN, Permission.REPORTING_READ)).toBe(false);
+  });
+
   it('restricts notification delivery visibility to platform admins', () => {
     expect(hasPermission(SystemRole.PLATFORM_ADMIN, Permission.PLATFORM_NOTIFICATION_READ)).toBe(true);
     expect(hasPermission(SystemRole.TENANT_ADMIN, Permission.PLATFORM_NOTIFICATION_READ)).toBe(false);

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
   assertTenantScope,
@@ -72,6 +72,18 @@ export class EmployeeController {
   ) {
     assertTenantScope(actor, tenantId);
     return this.employees.update(tenantId, id, dto, actor.sub);
+  }
+
+  @Delete(':id')
+  @RequirePermissions(Permission.EMPLOYEE_MANAGE)
+  @ApiOkResponse({ type: EmployeeResponseDto })
+  softDelete(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.employees.softDelete(tenantId, id, actor.sub);
   }
 
   @Patch(':id/status')

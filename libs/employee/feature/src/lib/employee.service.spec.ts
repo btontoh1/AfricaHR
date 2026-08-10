@@ -401,6 +401,33 @@ describe('EmployeeService', () => {
     });
   });
 
+  describe('softDelete', () => {
+    it('throws NotFoundException when the employee does not exist', async () => {
+      employees.findById.mockResolvedValue(null);
+
+      await expect(service.softDelete('tenant-1', 'missing')).rejects.toThrow(NotFoundException);
+      expect(employees.softDelete).not.toHaveBeenCalled();
+    });
+
+    it('soft-deletes and records an audit entry', async () => {
+      employees.findById.mockResolvedValue(makeEmployee());
+      employees.softDelete.mockResolvedValue(makeEmployee({ deletedAt: new Date() }));
+
+      const result = await service.softDelete('tenant-1', 'emp-1', 'hr-1');
+
+      expect(employees.softDelete).toHaveBeenCalledWith('tenant-1', 'emp-1', 'hr-1');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'employee.deleted',
+          resourceType: 'Employee',
+          resourceId: 'emp-1',
+          actorUserId: 'hr-1',
+        }),
+      );
+      expect(result.deletedAt).not.toBeNull();
+    });
+  });
+
   describe('getHistory', () => {
     it('throws NotFoundException when the employee does not exist', async () => {
       employees.findById.mockResolvedValue(null);

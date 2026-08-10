@@ -136,6 +136,22 @@ export function useUpsertMyPaymentMethod(tenantId: string) {
   });
 }
 
+export function useDeleteEmployee(tenantId: string, id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await apiClient.DELETE('/api/tenants/{tenantId}/employees/{id}', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: employeesKey(tenantId) });
+      queryClient.removeQueries({ queryKey: employeeKey(tenantId, id) });
+    },
+  });
+}
+
 export function useUpdateEmploymentStatus(tenantId: string, id: string) {
   const queryClient = useQueryClient();
   return useMutation({

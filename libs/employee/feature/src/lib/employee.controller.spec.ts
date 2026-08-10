@@ -23,6 +23,7 @@ describe('EmployeeController', () => {
       findById: jest.fn(),
       update: jest.fn(),
       updateStatus: jest.fn(),
+      softDelete: jest.fn(),
       getHistory: jest.fn(),
     } as unknown as jest.Mocked<EmployeeService>;
 
@@ -58,5 +59,16 @@ describe('EmployeeController', () => {
     );
 
     expect(service.updateStatus).toHaveBeenCalledWith('tenant-1', 'emp-1', 'ON_LEAVE', undefined, 'hr-1');
+  });
+
+  it('delegates softDelete with tenant, id, and actor', () => {
+    controller.softDelete('tenant-1', 'emp-1', hrManager);
+
+    expect(service.softDelete).toHaveBeenCalledWith('tenant-1', 'emp-1', 'hr-1');
+  });
+
+  it('rejects softDelete for an actor acting on a different tenant', () => {
+    expect(() => controller.softDelete('tenant-2', 'emp-1', hrManager)).toThrow(ForbiddenException);
+    expect(service.softDelete).not.toHaveBeenCalled();
   });
 });

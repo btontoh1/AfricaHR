@@ -895,7 +895,7 @@ export interface paths {
         get: operations["EmployeeController_findById"];
         put?: never;
         post?: never;
-        delete?: never;
+        delete: operations["EmployeeController_softDelete"];
         options?: never;
         head?: never;
         patch: operations["EmployeeController_update"];
@@ -5873,6 +5873,28 @@ export interface operations {
         };
     };
     EmployeeController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmployeeResponseDto"];
+                };
+            };
+        };
+    };
+    EmployeeController_softDelete: {
         parameters: {
             query?: never;
             header?: never;

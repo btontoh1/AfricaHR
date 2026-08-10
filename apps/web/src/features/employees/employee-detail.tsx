@@ -2,6 +2,7 @@
 
 import { useEmployee } from './queries';
 import { useOrganization, useOrganizationUnits } from '@/features/organizations/queries';
+import { DeleteEmployeeDialog } from './delete-employee-dialog';
 import { EmploymentStatusBadge } from './employment-status-badge';
 import { StatusChangeControl } from './status-change-control';
 import { UpdateEmployeeForm } from './update-employee-form';
@@ -29,6 +30,9 @@ export function EmployeeDetail({ tenantId, employeeId }: { tenantId: string; emp
   // reach this page (hasAdminAccess) but doesn't hold LEAVE_MANAGE, so it
   // shouldn't see an action that would just 403 at the API.
   const hasLeaveAdminAccess = session.role === 'TENANT_ADMIN' || session.role === 'HR_MANAGER';
+  // Mirrors EMPLOYEE_MANAGE in system-role.ts (PLATFORM_ADMIN doesn't reach
+  // this tenant-scoped page through normal navigation).
+  const hasEmployeeManageAccess = session.role === 'TENANT_ADMIN' || session.role === 'HR_MANAGER';
   const { data: employee, isLoading, isError, error } = useEmployee(tenantId, employeeId);
   // Employee only carries organizationId/organizationUnitId/managerId -
   // resolve them to display names here rather than showing raw UUIDs in the
@@ -111,6 +115,17 @@ export function EmployeeDetail({ tenantId, employeeId }: { tenantId: string; emp
           <UpdateEmployeeForm tenantId={tenantId} employee={employee} />
         </CardContent>
       </Card>
+
+      {hasEmployeeManageAccess && (
+        <Card className="border-destructive/50">
+          <CardHeader>
+            <CardTitle>Danger zone</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DeleteEmployeeDialog tenantId={tenantId} employee={employee} />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

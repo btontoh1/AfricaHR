@@ -10,11 +10,13 @@ describe('UserRepository', () => {
     create: jest.Mock;
     update: jest.Mock;
   };
+  let organizationDelegate: { findFirst: jest.Mock };
   let withTenantContext: jest.Mock;
   let withPlatformScope: jest.Mock;
   let queryRaw: jest.Mock;
   let prisma: {
     user: typeof userDelegate;
+    organization: typeof organizationDelegate;
     withTenantContext: jest.Mock;
     withPlatformScope: jest.Mock;
     $queryRaw: jest.Mock;
@@ -27,10 +29,17 @@ describe('UserRepository', () => {
       create: jest.fn(),
       update: jest.fn(),
     };
-    withTenantContext = jest.fn((_tenantId, fn) => fn({ user: userDelegate }));
+    organizationDelegate = { findFirst: jest.fn() };
+    withTenantContext = jest.fn((_tenantId, fn) => fn({ user: userDelegate, organization: organizationDelegate }));
     withPlatformScope = jest.fn((fn) => fn({ user: userDelegate }));
     queryRaw = jest.fn().mockResolvedValue([]);
-    prisma = { user: userDelegate, withTenantContext, withPlatformScope, $queryRaw: queryRaw };
+    prisma = {
+      user: userDelegate,
+      organization: organizationDelegate,
+      withTenantContext,
+      withPlatformScope,
+      $queryRaw: queryRaw,
+    };
 
     repository = new UserRepository(prisma as unknown as PrismaService);
   });
@@ -132,6 +141,50 @@ describe('UserRepository', () => {
       expect(userDelegate.create).toHaveBeenCalledWith({
         data: expect.objectContaining({ tenantId: 'tenant-1' }),
       });
+    });
+  });
+
+  describe('updateRole', () => {
+    it('writes both role and organizationId', async () => {
+      await repository.updateRole('tenant-1', 'user-1', SystemRole.ORG_ADMIN, 'org-1', 'actor-1');
+
+      expect(withTenantContext).toHaveBeenCalledWith('tenant-1', expect.any(Function));
+      expect(userDelegate.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { role: SystemRole.ORG_ADMIN, organizationId: 'org-1', updatedBy: 'actor-1' },
+      });
+    });
+
+    it('clears organizationId when moving a user off ORG_ADMIN', async () => {
+      await repository.updateRole('tenant-1', 'user-1', SystemRole.HR_MANAGER, null, 'actor-1');
+
+      expect(userDelegate.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { role: SystemRole.HR_MANAGER, organizationId: null, updatedBy: 'actor-1' },
+      });
+    });
+  });
+
+  describe('organizationExistsInTenant', () => {
+    it('returns true when the organization is visible under that tenant context', async () => {
+      organizationDelegate.findFirst.mockResolvedValue({ id: 'org-1' });
+
+      const result = await repository.organizationExistsInTenant('tenant-1', 'org-1');
+
+      expect(withTenantContext).toHaveBeenCalledWith('tenant-1', expect.any(Function));
+      expect(organizationDelegate.findFirst).toHaveBeenCalledWith({
+        where: { id: 'org-1', deletedAt: null },
+        select: { id: true },
+      });
+      expect(result).toBe(true);
+    });
+
+    it('returns false when the organization is not visible under that tenant context', async () => {
+      organizationDelegate.findFirst.mockResolvedValue(null);
+
+      const result = await repository.organizationExistsInTenant('tenant-1', 'org-from-another-tenant');
+
+      expect(result).toBe(false);
     });
   });
 

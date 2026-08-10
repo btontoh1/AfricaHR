@@ -17,16 +17,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 // A tenant-scoped list never includes PLATFORM_ADMIN (that role always has
-// tenantId: null), so the assignable set here is exhaustive for what this
-// table will ever render - no "other" case to handle.
+// tenantId: null), so this is exhaustive for what this table will ever
+// render - no "other" case to handle.
 const ROLE_LABEL: Record<Exclude<SystemRole, 'PLATFORM_ADMIN'>, string> = {
   TENANT_ADMIN: 'Tenant Admin',
   HR_MANAGER: 'HR Manager',
   PAYROLL_MANAGER: 'Payroll Manager',
+  ORG_ADMIN: 'Org Admin',
   EMPLOYEE: 'Employee',
 };
 
-const ASSIGNABLE_ROLES = Object.keys(ROLE_LABEL) as (keyof typeof ROLE_LABEL)[];
+// ORG_ADMIN is excluded from the selectable set - this inline dropdown has
+// nowhere to collect the organizationId it requires, same reasoning as
+// team-members-list.tsx's RoleControl. An existing ORG_ADMIN row renders
+// ROLE_LABEL as fixed text instead of this Select (see below).
+const ASSIGNABLE_ROLES = (Object.keys(ROLE_LABEL) as (keyof typeof ROLE_LABEL)[]).filter(
+  (role) => role !== 'ORG_ADMIN',
+);
 
 export function TenantUsersTable({ tenantId }: { tenantId: string }) {
   const { data: users, isLoading, isError, error } = useTenantUsers(tenantId);
@@ -83,21 +90,25 @@ export function TenantUsersTable({ tenantId }: { tenantId: string }) {
               </TableCell>
               <TableCell className="text-muted-foreground">{user.email}</TableCell>
               <TableCell>
-                <Select
-                  value={user.role}
-                  onValueChange={(value) => handleRoleChange(user.id, value as SystemRole)}
-                >
-                  <SelectTrigger className="h-8 w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ASSIGNABLE_ROLES.map((role) => (
-                      <SelectItem key={role} value={role}>
-                        {ROLE_LABEL[role]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {user.role === 'ORG_ADMIN' ? (
+                  <span className="text-sm">{ROLE_LABEL.ORG_ADMIN}</span>
+                ) : (
+                  <Select
+                    value={user.role}
+                    onValueChange={(value) => handleRoleChange(user.id, value as SystemRole)}
+                  >
+                    <SelectTrigger className="h-8 w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ASSIGNABLE_ROLES.map((role) => (
+                        <SelectItem key={role} value={role}>
+                          {ROLE_LABEL[role]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </TableCell>
               <TableCell>
                 <Badge variant={user.isActive ? 'success' : 'outline'}>{user.isActive ? 'Active' : 'Inactive'}</Badge>

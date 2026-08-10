@@ -39,11 +39,16 @@ export function CreateEmployeeForm() {
   const session = useSession();
   const tenantId = session.tenantId as string;
   const createEmployee = useCreateEmployee(tenantId);
+  // An org admin only ever creates employees within their own organization
+  // - the picker below is locked to it rather than offered as a tenant-wide
+  // dropdown (the backend enforces this regardless; this just keeps the
+  // form from offering a choice that would 403).
+  const isOrgAdmin = session.role === 'ORG_ADMIN';
 
   const form = useForm<EmployeeFormValues>({
     resolver: zodResolver(employeeFormSchema),
     defaultValues: {
-      organizationId: '',
+      organizationId: isOrgAdmin ? (session.organizationId ?? '') : '',
       organizationUnitId: '',
       managerId: '',
       employeeNumber: '',
@@ -134,6 +139,7 @@ export function CreateEmployeeForm() {
                         field.onChange(value);
                         form.setValue('organizationUnitId', '');
                       }}
+                      disabled={isOrgAdmin}
                     />
                   </FormControl>
                   <FormMessage />

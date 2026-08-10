@@ -10,6 +10,7 @@ describe('assertTenantScope', () => {
       email: 'user@acme.com',
       role: SystemRole.TENANT_ADMIN,
       tenantId: 'tenant-1',
+      organizationId: null,
       iat: 1,
       exp: 2,
       ...overrides,

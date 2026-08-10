@@ -6,6 +6,9 @@ export const SystemRole = {
   TENANT_ADMIN: 'TENANT_ADMIN',
   HR_MANAGER: 'HR_MANAGER',
   PAYROLL_MANAGER: 'PAYROLL_MANAGER',
+  // Scoped to exactly one Organization within the tenant (User.organizationId)
+  // - see assertOrganizationScope. Every other role here is tenant-wide.
+  ORG_ADMIN: 'ORG_ADMIN',
   EMPLOYEE: 'EMPLOYEE',
 } as const;
 
@@ -161,6 +164,16 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.PAYROLL_MANAGE,
     Permission.PAYROLL_READ,
     Permission.REPORTING_READ,
+  ],
+  // Deliberately narrow (v1 scope cut): employee management only, within
+  // whichever single Organization User.organizationId points at
+  // (assertOrganizationScope enforces the "within" part - this list alone
+  // doesn't). No leave/attendance/payroll/recruitment - those stay
+  // TENANT_ADMIN/HR_MANAGER-only for now.
+  [SystemRole.ORG_ADMIN]: [
+    Permission.ORGANIZATION_READ,
+    Permission.EMPLOYEE_MANAGE,
+    Permission.EMPLOYEE_READ,
   ],
   [SystemRole.EMPLOYEE]: [],
 };

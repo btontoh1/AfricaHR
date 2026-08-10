@@ -15,6 +15,7 @@ describe('JwtTokenService', () => {
     email: 'admin@africahr.com',
     role: SystemRole.PLATFORM_ADMIN,
     tenantId: null,
+    organizationId: null,
   };
 
   beforeEach(() => {

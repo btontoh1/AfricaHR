@@ -31,8 +31,12 @@ export function EmployeeDetail({ tenantId, employeeId }: { tenantId: string; emp
   // shouldn't see an action that would just 403 at the API.
   const hasLeaveAdminAccess = session.role === 'TENANT_ADMIN' || session.role === 'HR_MANAGER';
   // Mirrors EMPLOYEE_MANAGE in system-role.ts (PLATFORM_ADMIN doesn't reach
-  // this tenant-scoped page through normal navigation).
-  const hasEmployeeManageAccess = session.role === 'TENANT_ADMIN' || session.role === 'HR_MANAGER';
+  // this tenant-scoped page through normal navigation). ORG_ADMIN also
+  // holds EMPLOYEE_MANAGE - the backend additionally scopes it to their own
+  // organization, so it's safe to show this to them for any employee they
+  // can actually load in the first place.
+  const hasEmployeeManageAccess =
+    session.role === 'TENANT_ADMIN' || session.role === 'HR_MANAGER' || session.role === 'ORG_ADMIN';
   const { data: employee, isLoading, isError, error } = useEmployee(tenantId, employeeId);
   // Employee only carries organizationId/organizationUnitId/managerId -
   // resolve them to display names here rather than showing raw UUIDs in the

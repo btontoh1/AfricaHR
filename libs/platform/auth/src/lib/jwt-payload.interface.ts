@@ -7,6 +7,8 @@ export interface JwtPayload {
   role: SystemRole;
   /** null for platform admins */
   tenantId: string | null;
+  /** Set only for ORG_ADMIN; null for every other role. */
+  organizationId: string | null;
 }
 
 export interface RequestUser extends JwtPayload {

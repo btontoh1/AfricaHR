@@ -12,6 +12,7 @@ describe('EmployeeController', () => {
     email: 'hr@acme.com',
     role: SystemRole.HR_MANAGER,
     tenantId: 'tenant-1',
+    organizationId: null,
     iat: 1,
     exp: 2,
   };
@@ -43,11 +44,41 @@ describe('EmployeeController', () => {
 
     controller.create('tenant-1', dto, hrManager);
 
-    expect(service.create).toHaveBeenCalledWith('tenant-1', dto, 'hr-1');
+    expect(service.create).toHaveBeenCalledWith('tenant-1', dto, hrManager);
   });
 
   it('rejects an actor acting on a different tenant', () => {
     expect(() => controller.list('tenant-2', hrManager)).toThrow(ForbiddenException);
+  });
+
+  it('delegates list with tenant, params, and actor', () => {
+    controller.list('tenant-1', hrManager, 'org-1', 'unit-1');
+
+    expect(service.list).toHaveBeenCalledWith(
+      'tenant-1',
+      { organizationId: 'org-1', organizationUnitId: 'unit-1' },
+      hrManager,
+    );
+  });
+
+  it('delegates findById with tenant, id, and actor', () => {
+    controller.findById('tenant-1', 'emp-1', hrManager);
+
+    expect(service.findById).toHaveBeenCalledWith('tenant-1', 'emp-1', hrManager);
+  });
+
+  it('delegates update with tenant, id, dto, and actor', () => {
+    const dto = { jobTitle: 'Senior Engineer' } as never;
+
+    controller.update('tenant-1', 'emp-1', dto, hrManager);
+
+    expect(service.update).toHaveBeenCalledWith('tenant-1', 'emp-1', dto, hrManager);
+  });
+
+  it('delegates getHistory with tenant, id, and actor', () => {
+    controller.getHistory('tenant-1', 'emp-1', hrManager);
+
+    expect(service.getHistory).toHaveBeenCalledWith('tenant-1', 'emp-1', hrManager);
   });
 
   it('delegates updateStatus with tenant, id, status, terminationDate, and actor', () => {
@@ -58,13 +89,13 @@ describe('EmployeeController', () => {
       hrManager,
     );
 
-    expect(service.updateStatus).toHaveBeenCalledWith('tenant-1', 'emp-1', 'ON_LEAVE', undefined, 'hr-1');
+    expect(service.updateStatus).toHaveBeenCalledWith('tenant-1', 'emp-1', 'ON_LEAVE', undefined, hrManager);
   });
 
   it('delegates softDelete with tenant, id, and actor', () => {
     controller.softDelete('tenant-1', 'emp-1', hrManager);
 
-    expect(service.softDelete).toHaveBeenCalledWith('tenant-1', 'emp-1', 'hr-1');
+    expect(service.softDelete).toHaveBeenCalledWith('tenant-1', 'emp-1', hrManager);
   });
 
   it('rejects softDelete for an actor acting on a different tenant', () => {

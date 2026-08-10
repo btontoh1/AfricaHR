@@ -5,6 +5,7 @@ import { withScope } from './tenant-scoped';
 
 export interface CreateUserInput {
   tenantId: string | null;
+  organizationId?: string | null;
   email: string;
   passwordHash: string;
   firstName: string;
@@ -22,6 +23,7 @@ export interface UpdateUserProfileInput {
 export interface UserForLogin {
   id: string;
   tenantId: string | null;
+  organizationId: string | null;
   email: string;
   passwordHash: string;
   firstName: string;
@@ -84,6 +86,7 @@ export class UserRepository {
       client.user.create({
         data: {
           tenantId: input.tenantId,
+          organizationId: input.organizationId,
           email: input.email,
           passwordHash: input.passwordHash,
           firstName: input.firstName,
@@ -102,15 +105,37 @@ export class UserRepository {
     );
   }
 
+  /**
+   * organizationId is always written (not merged) alongside role - a role
+   * change away from ORG_ADMIN must clear it, same as a change into it must
+   * set it, so the caller (UserService) always passes the field it wants,
+   * never omits it to "leave as-is".
+   */
   updateRole(
     tenantId: string | null,
     id: string,
     role: SystemRole,
+    organizationId: string | null,
     updatedBy?: string,
   ): Promise<User> {
     return withScope(this.prisma, tenantId, (client) =>
-      client.user.update({ where: { id }, data: { role, updatedBy } }),
+      client.user.update({ where: { id }, data: { role, organizationId, updatedBy } }),
     );
+  }
+
+  /**
+   * Existence check run under the given tenant's RLS context (see
+   * RLS_CONVENTION.md) - if organizationId belongs to a different tenant,
+   * it's simply invisible here and this returns false, same effect as "not
+   * found". Used to validate ORG_ADMIN assignment without iam depending on
+   * the tenancy bounded context (see EmployeeService's analogous comment on
+   * why cross-context reaches go through the shared PrismaService instead).
+   */
+  async organizationExistsInTenant(tenantId: string, organizationId: string): Promise<boolean> {
+    const org = await this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.organization.findFirst({ where: { id: organizationId, deletedAt: null }, select: { id: true } }),
+    );
+    return org !== null;
   }
 
   setActive(

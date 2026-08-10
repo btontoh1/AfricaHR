@@ -11,6 +11,7 @@ describe('UserController', () => {
     email: 'admin@acme.com',
     role: SystemRole.TENANT_ADMIN,
     tenantId: 'tenant-1',
+    organizationId: null,
     iat: 1,
     exp: 2,
   };
@@ -44,10 +45,16 @@ describe('UserController', () => {
     expect(userService.create).toHaveBeenCalledWith(dto, actor);
   });
 
-  it('delegates updateRole with the id, role, and actor', () => {
+  it('delegates updateRole with the id, role, actor, and organizationId', () => {
     controller.updateRole('user-2', { role: SystemRole.HR_MANAGER }, actor);
 
-    expect(userService.updateRole).toHaveBeenCalledWith(actor, 'user-2', SystemRole.HR_MANAGER);
+    expect(userService.updateRole).toHaveBeenCalledWith(actor, 'user-2', SystemRole.HR_MANAGER, undefined);
+  });
+
+  it('passes organizationId through to updateRole when set', () => {
+    controller.updateRole('user-2', { role: SystemRole.ORG_ADMIN, organizationId: 'org-1' }, actor);
+
+    expect(userService.updateRole).toHaveBeenCalledWith(actor, 'user-2', SystemRole.ORG_ADMIN, 'org-1');
   });
 
   it('delegates setActive with the id, flag, and actor', () => {

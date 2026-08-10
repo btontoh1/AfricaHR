@@ -14,6 +14,7 @@ describe('TenantMeController', () => {
     email: 'hr@acme.com',
     role: SystemRole.TENANT_ADMIN,
     tenantId: 'tenant-1',
+    organizationId: null,
     iat: 1,
     exp: 2,
   };
@@ -23,6 +24,7 @@ describe('TenantMeController', () => {
     email: 'ops@africahr.com',
     role: SystemRole.PLATFORM_ADMIN,
     tenantId: null,
+    organizationId: null,
     iat: 1,
     exp: 2,
   };

@@ -26,6 +26,9 @@ export class UserService {
 
   async create(dto: CreateUserDto, actor: RequestUser): Promise<User> {
     const tenantId = this.resolveCreateTenantId(dto, actor);
+    const organizationId = tenantId
+      ? await this.resolveOrganizationId(tenantId, dto.role, dto.organizationId)
+      : null;
 
     const passwordErrors = getPasswordRequirementErrors(dto.password);
     if (passwordErrors.length > 0) {
@@ -41,6 +44,7 @@ export class UserService {
 
     const user = await this.users.create({
       tenantId,
+      organizationId,
       email: dto.email,
       passwordHash,
       firstName: dto.firstName,
@@ -74,7 +78,7 @@ export class UserService {
     return this.users.listByTenant(tenantId);
   }
 
-  async updateRole(actor: RequestUser, id: string, role: SystemRole): Promise<User> {
+  async updateRole(actor: RequestUser, id: string, role: SystemRole, organizationId?: string): Promise<User> {
     const tenantId = this.requireTenantScope(actor);
     await this.findById(actor, id);
 
@@ -82,7 +86,8 @@ export class UserService {
       throw new BadRequestException('Cannot assign PLATFORM_ADMIN within a tenant');
     }
 
-    const user = await this.users.updateRole(tenantId, id, role, actor.sub);
+    const resolvedOrganizationId = await this.resolveOrganizationId(tenantId, role, organizationId);
+    const user = await this.users.updateRole(tenantId, id, role, resolvedOrganizationId, actor.sub);
 
     await this.audit.record({
       tenantId,
@@ -296,7 +301,13 @@ export class UserService {
     return user;
   }
 
-  async updateRoleForTenant(tenantId: string, id: string, role: SystemRole, actorId?: string): Promise<User> {
+  async updateRoleForTenant(
+    tenantId: string,
+    id: string,
+    role: SystemRole,
+    actorId?: string,
+    organizationId?: string,
+  ): Promise<User> {
     const existing = await this.users.findById(tenantId, id);
     if (!existing) {
       throw new NotFoundException(`User "${id}" not found`);
@@ -305,7 +316,8 @@ export class UserService {
       throw new BadRequestException('Cannot assign PLATFORM_ADMIN within a tenant');
     }
 
-    const user = await this.users.updateRole(tenantId, id, role, actorId);
+    const resolvedOrganizationId = await this.resolveOrganizationId(tenantId, role, organizationId);
+    const user = await this.users.updateRole(tenantId, id, role, resolvedOrganizationId, actorId);
 
     await this.audit.record({
       tenantId,
@@ -361,6 +373,36 @@ export class UserService {
     }
 
     return this.requireTenantScope(actor);
+  }
+
+  /**
+   * ORG_ADMIN requires an organizationId that actually belongs to
+   * tenantId; every other role must not carry one (a stray org id sitting
+   * on a tenant-wide role's JWT would be meaningless and confusing, so
+   * it's rejected rather than silently dropped).
+   */
+  private async resolveOrganizationId(
+    tenantId: string,
+    role: SystemRole,
+    organizationId?: string,
+  ): Promise<string | null> {
+    if (role !== SystemRole.ORG_ADMIN) {
+      if (organizationId) {
+        throw new BadRequestException('organizationId is only accepted when role is ORG_ADMIN');
+      }
+      return null;
+    }
+
+    if (!organizationId) {
+      throw new BadRequestException('organizationId is required when role is ORG_ADMIN');
+    }
+
+    const belongsToTenant = await this.users.organizationExistsInTenant(tenantId, organizationId);
+    if (!belongsToTenant) {
+      throw new NotFoundException(`Organization "${organizationId}" not found`);
+    }
+
+    return organizationId;
   }
 
   /**

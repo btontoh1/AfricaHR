@@ -11,6 +11,7 @@ describe('PlatformTenantUsersController', () => {
     email: 'ops@africahr.com',
     role: SystemRole.PLATFORM_ADMIN,
     tenantId: null,
+    organizationId: null,
     iat: 1,
     exp: 2,
   };
@@ -41,6 +42,7 @@ describe('PlatformTenantUsersController', () => {
       'user-2',
       SystemRole.HR_MANAGER,
       'ops-1',
+      undefined,
     );
   });
 

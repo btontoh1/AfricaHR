@@ -185,6 +185,8 @@ model Organization {
   payRuns               PayRun[]
   jobRequisitions       JobRequisition[]
   verificationDocuments OrganizationVerificationDocument[]
+  /// ORG_ADMIN users scoped to this organization - see User.organizationId.
+  orgAdmins             User[]
 
   @@index([tenantId])
   @@map("organizations")
@@ -253,6 +255,11 @@ enum SystemRole {
   TENANT_ADMIN
   HR_MANAGER
   PAYROLL_MANAGER
+  /// Scoped to exactly one Organization (User.organizationId) - manages
+  /// employees within that org only, unlike every other role above which
+  /// is tenant-wide. See RLS_CONVENTION.md for why this scoping is
+  /// app-level (assertOrganizationScope) rather than a new RLS dimension.
+  ORG_ADMIN
   EMPLOYEE
 }
 
@@ -281,6 +288,10 @@ model User {
   firstName    String     @map("first_name")
   lastName     String     @map("last_name")
   role         SystemRole
+  /// Set only when role is ORG_ADMIN - which single Organization (within
+  /// tenantId) this user administers. Null for every other role, including
+  /// TENANT_ADMIN/HR_MANAGER/PAYROLL_MANAGER, which stay tenant-wide.
+  organizationId String?  @map("organization_id")
   isActive     Boolean    @default(true) @map("is_active")
   lastLoginAt  DateTime?  @map("last_login_at")
 
@@ -310,6 +321,7 @@ model User {
   updatedBy String?   @map("updated_by")
 
   tenant            Tenant?            @relation(fields: [tenantId], references: [id])
+  organization      Organization?      @relation(fields: [organizationId], references: [id])
   refreshTokens     RefreshToken[]
   employee          Employee?
   notifications     Notification[]
@@ -317,6 +329,7 @@ model User {
   mfaTrustedDevices MfaTrustedDevice[]
 
   @@index([tenantId])
+  @@index([organizationId])
   @@map("users")
 }
 

@@ -127,7 +127,10 @@ function AdminOverview({ tenantId }: { tenantId: string }) {
 export default function DashboardPage() {
   const session = useSession();
   const isTenantMember = Boolean(session.tenantId);
-  const hasAdminAccess = isTenantMember && session.role !== 'EMPLOYEE';
+  // Excludes ORG_ADMIN - AdminOverview shows tenant-wide numbers, which
+  // would be misleading for a role scoped to a single organization (see
+  // nav-config.ts's hasAdminAccess for the same exclusion).
+  const hasAdminAccess = isTenantMember && session.role !== 'EMPLOYEE' && session.role !== 'ORG_ADMIN';
   // Same gate as the leave-approval queue itself (nav-config.ts's
   // hasLeaveAdminAccess) — PAYROLL_MANAGER has hasAdminAccess but can't act
   // on leave requests, so it shouldn't see a card pointing at a page it

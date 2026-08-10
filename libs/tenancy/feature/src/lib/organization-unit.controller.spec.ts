@@ -12,6 +12,7 @@ describe('OrganizationUnitController', () => {
     email: 'admin@acme.com',
     role: SystemRole.TENANT_ADMIN,
     tenantId: 'tenant-1',
+    organizationId: null,
     iat: 1,
     exp: 2,
   };

@@ -62,7 +62,12 @@ export interface NavGroup {
 export function buildNavGroups(user: SessionUser): NavGroup[] {
   const isTenantMember = Boolean(user.tenantId);
   const isPlatformAdmin = user.role === 'PLATFORM_ADMIN';
-  const hasAdminAccess = isTenantMember && user.role !== 'EMPLOYEE';
+  const isOrgAdmin = user.role === 'ORG_ADMIN';
+  // ORG_ADMIN is deliberately excluded from the tenant-wide admin surface
+  // (Organizations, Team Members, Payroll, Reports, ...) - it only gets
+  // Employees, scoped to its own organization (see hasEmployeesAccess).
+  const hasAdminAccess = isTenantMember && user.role !== 'EMPLOYEE' && !isOrgAdmin;
+  const hasEmployeesAccess = hasAdminAccess || isOrgAdmin;
   // PAYROLL_MANAGER is admin-ish but doesn't hold LEAVE_READ/LEAVE_MANAGE.
   const hasLeaveAdminAccess =
     isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
@@ -102,7 +107,7 @@ export function buildNavGroups(user: SessionUser): NavGroup[] {
     {
       label: 'People',
       items: [
-        ...(hasAdminAccess ? [{ label: 'Employees', href: '/employees', icon: Users }] : []),
+        ...(hasEmployeesAccess ? [{ label: 'Employees', href: '/employees', icon: Users }] : []),
         ...(hasAdminAccess
           ? [{ label: 'Organizations', href: '/organizations', icon: Building2 }]
           : []),

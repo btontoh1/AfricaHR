@@ -23,6 +23,7 @@ export interface RequestContext {
 interface AuthenticatableUser {
   id: string;
   tenantId: string | null;
+  organizationId: string | null;
   email: string;
   passwordHash: string;
   role: SystemRole;
@@ -103,7 +104,13 @@ export class AuthService {
     await this.users.updateLastLogin(user.tenantId, user.id);
 
     const response = await this.issueTokenPair(
-      { id: user.id, email: user.email, role: user.role, tenantId: user.tenantId },
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        tenantId: user.tenantId,
+        organizationId: user.organizationId,
+      },
       context,
     );
 
@@ -192,7 +199,13 @@ export class AuthService {
     await this.users.updateLastLogin(user.tenantId, user.id);
 
     const response = await this.issueTokenPair(
-      { id: user.id, email: user.email, role: user.role, tenantId: user.tenantId },
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        tenantId: user.tenantId,
+        organizationId: user.organizationId,
+      },
       context,
     );
 
@@ -224,7 +237,13 @@ export class AuthService {
     await this.refreshTokens.revoke(existing.tenantId, existing.id);
 
     const response = await this.issueTokenPair(
-      { id: user.id, email: user.email, role: user.role, tenantId: user.tenantId },
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        tenantId: user.tenantId,
+        organizationId: user.organizationId,
+      },
       context,
     );
 
@@ -259,7 +278,13 @@ export class AuthService {
   }
 
   private async issueTokenPair(
-    user: { id: string; email: string; role: SystemRole; tenantId: string | null },
+    user: {
+      id: string;
+      email: string;
+      role: SystemRole;
+      tenantId: string | null;
+      organizationId: string | null;
+    },
     context: RequestContext,
   ): Promise<AuthResponseDto> {
     const accessToken = this.tokens.signAccessToken({
@@ -267,6 +292,7 @@ export class AuthService {
       email: user.email,
       role: user.role,
       tenantId: user.tenantId,
+      organizationId: user.organizationId,
     });
 
     const rawRefreshToken = randomBytes(32).toString('hex');

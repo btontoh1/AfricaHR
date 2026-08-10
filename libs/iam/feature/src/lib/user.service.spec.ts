@@ -23,6 +23,7 @@ describe('UserService', () => {
     email: 'admin@acme.com',
     role: SystemRole.TENANT_ADMIN,
     tenantId: 'tenant-1',
+    organizationId: null,
     iat: 1,
     exp: 2,
   };
@@ -32,6 +33,7 @@ describe('UserService', () => {
     email: 'ops@africahr.com',
     role: SystemRole.PLATFORM_ADMIN,
     tenantId: null,
+    organizationId: null,
     iat: 1,
     exp: 2,
   };
@@ -58,6 +60,7 @@ describe('UserService', () => {
       setActive: jest.fn(),
       softDelete: jest.fn(),
       updatePassword: jest.fn(),
+      organizationExistsInTenant: jest.fn(),
     } as unknown as jest.Mocked<UserRepository>;
 
     refreshTokens = { revokeAllForUser: jest.fn() } as unknown as jest.Mocked<RefreshTokenRepository>;
@@ -131,6 +134,47 @@ describe('UserService', () => {
 
       expect(users.create).toHaveBeenCalledWith(expect.objectContaining({ tenantId: null }));
     });
+
+    it('rejects ORG_ADMIN with no organizationId', async () => {
+      users.findByEmail.mockResolvedValue(null);
+
+      await expect(service.create(makeDto({ role: SystemRole.ORG_ADMIN }), tenantAdmin)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(users.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects a non-ORG_ADMIN role that supplies organizationId', async () => {
+      users.findByEmail.mockResolvedValue(null);
+
+      await expect(
+        service.create(makeDto({ role: SystemRole.HR_MANAGER, organizationId: 'org-1' }), tenantAdmin),
+      ).rejects.toThrow(BadRequestException);
+      expect(users.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects an ORG_ADMIN organizationId that does not belong to the tenant', async () => {
+      users.findByEmail.mockResolvedValue(null);
+      users.organizationExistsInTenant.mockResolvedValue(false);
+
+      await expect(
+        service.create(makeDto({ role: SystemRole.ORG_ADMIN, organizationId: 'org-9' }), tenantAdmin),
+      ).rejects.toThrow(NotFoundException);
+      expect(users.organizationExistsInTenant).toHaveBeenCalledWith('tenant-1', 'org-9');
+      expect(users.create).not.toHaveBeenCalled();
+    });
+
+    it('creates an ORG_ADMIN scoped to a valid organization', async () => {
+      users.findByEmail.mockResolvedValue(null);
+      users.organizationExistsInTenant.mockResolvedValue(true);
+      users.create.mockResolvedValue({ id: 'new-org-admin' } as User);
+
+      await service.create(makeDto({ role: SystemRole.ORG_ADMIN, organizationId: 'org-1' }), tenantAdmin);
+
+      expect(users.create).toHaveBeenCalledWith(
+        expect.objectContaining({ tenantId: 'tenant-1', organizationId: 'org-1', role: SystemRole.ORG_ADMIN }),
+      );
+    });
   });
 
   describe('tenant-scoped reads', () => {
@@ -160,6 +204,41 @@ describe('UserService', () => {
       await expect(
         service.updateRole(tenantAdmin, 'user-2', SystemRole.PLATFORM_ADMIN),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('updates a tenant-wide role with no organizationId', async () => {
+      users.findById.mockResolvedValue({ id: 'user-2' } as User);
+      users.updateRole.mockResolvedValue({ id: 'user-2', role: SystemRole.HR_MANAGER } as User);
+
+      await service.updateRole(tenantAdmin, 'user-2', SystemRole.HR_MANAGER);
+
+      expect(users.updateRole).toHaveBeenCalledWith('tenant-1', 'user-2', SystemRole.HR_MANAGER, null, 'actor-1');
+    });
+
+    it('rejects ORG_ADMIN with no organizationId', async () => {
+      users.findById.mockResolvedValue({ id: 'user-2' } as User);
+
+      await expect(service.updateRole(tenantAdmin, 'user-2', SystemRole.ORG_ADMIN)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(users.updateRole).not.toHaveBeenCalled();
+    });
+
+    it('promotes a user to ORG_ADMIN scoped to a valid organization', async () => {
+      users.findById.mockResolvedValue({ id: 'user-2' } as User);
+      users.organizationExistsInTenant.mockResolvedValue(true);
+      users.updateRole.mockResolvedValue({ id: 'user-2', role: SystemRole.ORG_ADMIN } as User);
+
+      await service.updateRole(tenantAdmin, 'user-2', SystemRole.ORG_ADMIN, 'org-1');
+
+      expect(users.organizationExistsInTenant).toHaveBeenCalledWith('tenant-1', 'org-1');
+      expect(users.updateRole).toHaveBeenCalledWith(
+        'tenant-1',
+        'user-2',
+        SystemRole.ORG_ADMIN,
+        'org-1',
+        'actor-1',
+      );
     });
   });
 
@@ -322,7 +401,13 @@ describe('UserService', () => {
 
       await service.updateRoleForTenant('tenant-9', 'user-2', SystemRole.HR_MANAGER, 'actor-2');
 
-      expect(users.updateRole).toHaveBeenCalledWith('tenant-9', 'user-2', SystemRole.HR_MANAGER, 'actor-2');
+      expect(users.updateRole).toHaveBeenCalledWith(
+        'tenant-9',
+        'user-2',
+        SystemRole.HR_MANAGER,
+        null,
+        'actor-2',
+      );
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'user.role_changed', tenantId: 'tenant-9', resourceId: 'user-2' }),
       );

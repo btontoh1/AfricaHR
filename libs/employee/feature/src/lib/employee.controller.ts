@@ -31,7 +31,7 @@ export class EmployeeController {
     @CurrentUser() actor: RequestUser,
   ) {
     assertTenantScope(actor, tenantId);
-    return this.employees.create(tenantId, dto, actor.sub);
+    return this.employees.create(tenantId, dto, actor);
   }
 
   @Get()
@@ -46,7 +46,7 @@ export class EmployeeController {
     @Query('organizationUnitId') organizationUnitId?: string,
   ) {
     assertTenantScope(actor, tenantId);
-    return this.employees.list(tenantId, { organizationId, organizationUnitId });
+    return this.employees.list(tenantId, { organizationId, organizationUnitId }, actor);
   }
 
   @Get(':id')
@@ -58,7 +58,7 @@ export class EmployeeController {
     @CurrentUser() actor: RequestUser,
   ) {
     assertTenantScope(actor, tenantId);
-    return this.employees.findById(tenantId, id);
+    return this.employees.findById(tenantId, id, actor);
   }
 
   @Patch(':id')
@@ -71,7 +71,7 @@ export class EmployeeController {
     @CurrentUser() actor: RequestUser,
   ) {
     assertTenantScope(actor, tenantId);
-    return this.employees.update(tenantId, id, dto, actor.sub);
+    return this.employees.update(tenantId, id, dto, actor);
   }
 
   @Delete(':id')
@@ -83,7 +83,7 @@ export class EmployeeController {
     @CurrentUser() actor: RequestUser,
   ) {
     assertTenantScope(actor, tenantId);
-    return this.employees.softDelete(tenantId, id, actor.sub);
+    return this.employees.softDelete(tenantId, id, actor);
   }
 
   @Patch(':id/status')
@@ -96,7 +96,7 @@ export class EmployeeController {
     @CurrentUser() actor: RequestUser,
   ) {
     assertTenantScope(actor, tenantId);
-    return this.employees.updateStatus(tenantId, id, dto.status, dto.terminationDate, actor.sub);
+    return this.employees.updateStatus(tenantId, id, dto.status, dto.terminationDate, actor);
   }
 
   @Get(':id/history')
@@ -107,6 +107,6 @@ export class EmployeeController {
     @CurrentUser() actor: RequestUser,
   ) {
     assertTenantScope(actor, tenantId);
-    return this.employees.getHistory(tenantId, id);
+    return this.employees.getHistory(tenantId, id, actor);
   }
 }

@@ -1,5 +1,6 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Employee, EmploymentType, Prisma } from '@prisma/client';
+import { RequestUser, SystemRole } from '@africahr/platform-auth';
 import { AuditService } from '@africahr/platform-audit';
 import {
   EmployeeRepository,
@@ -18,6 +19,28 @@ describe('EmployeeService', () => {
   let familyMembers: jest.Mocked<FamilyMemberRepository>;
   let userAccess: jest.Mocked<UserAccessRepository>;
   let audit: jest.Mocked<AuditService>;
+
+  const hrManager: RequestUser = {
+    sub: 'hr-1',
+    email: 'hr@acme.com',
+    role: SystemRole.HR_MANAGER,
+    tenantId: 'tenant-1',
+    organizationId: null,
+    iat: 1,
+    exp: 2,
+  };
+
+  function makeOrgAdmin(organizationId: string): RequestUser {
+    return {
+      sub: 'org-admin-1',
+      email: 'orgadmin@acme.com',
+      role: SystemRole.ORG_ADMIN,
+      tenantId: 'tenant-1',
+      organizationId,
+      iat: 1,
+      exp: 2,
+    };
+  }
 
   function makeEmployee(overrides: Partial<Employee> = {}): Employee {
     return {
@@ -103,7 +126,7 @@ describe('EmployeeService', () => {
       employees.count.mockResolvedValue(6);
       employees.create.mockResolvedValue(makeEmployee({ employeeNumber: 'EMP-0007' }));
 
-      await service.create('tenant-1', makeDto());
+      await service.create('tenant-1', makeDto(), hrManager);
 
       expect(employees.create).toHaveBeenCalledWith(
         'tenant-1',
@@ -113,7 +136,7 @@ describe('EmployeeService', () => {
 
     it('rejects an explicitly supplied invalid employee number', async () => {
       await expect(
-        service.create('tenant-1', makeDto({ employeeNumber: 'not-valid' })),
+        service.create('tenant-1', makeDto({ employeeNumber: 'not-valid' }), hrManager),
       ).rejects.toThrow(BadRequestException);
       expect(employees.create).not.toHaveBeenCalled();
     });
@@ -128,7 +151,7 @@ describe('EmployeeService', () => {
         }),
       );
 
-      await expect(service.create('tenant-1', makeDto())).rejects.toThrow(NotFoundException);
+      await expect(service.create('tenant-1', makeDto(), hrManager)).rejects.toThrow(NotFoundException);
     });
 
     it('records an audit entry on success', async () => {
@@ -136,7 +159,7 @@ describe('EmployeeService', () => {
       const created = makeEmployee();
       employees.create.mockResolvedValue(created);
 
-      await service.create('tenant-1', makeDto(), 'hr-1');
+      await service.create('tenant-1', makeDto(), hrManager);
 
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'employee.created', resourceId: created.id }),
@@ -154,6 +177,7 @@ describe('EmployeeService', () => {
       const result = await service.create(
         'tenant-1',
         makeDto({ familyMembers: [{ relationship: 'PARENT', name: 'Kofi Owusu', dateOfBirth: '1970-01-01' }] }),
+        hrManager,
       );
 
       expect(familyMembers.replaceForEmployee).toHaveBeenCalledWith('tenant-1', created.id, [
@@ -166,10 +190,26 @@ describe('EmployeeService', () => {
       employees.count.mockResolvedValue(0);
       employees.create.mockResolvedValue(makeEmployee());
 
-      const result = await service.create('tenant-1', makeDto());
+      const result = await service.create('tenant-1', makeDto(), hrManager);
 
       expect(familyMembers.replaceForEmployee).not.toHaveBeenCalled();
       expect(result.familyMembers).toEqual([]);
+    });
+
+    it('allows an org admin to create an employee within their own organization', async () => {
+      employees.count.mockResolvedValue(0);
+      employees.create.mockResolvedValue(makeEmployee({ organizationId: 'org-1' }));
+
+      await expect(
+        service.create('tenant-1', makeDto({ organizationId: 'org-1' }), makeOrgAdmin('org-1')),
+      ).resolves.toBeDefined();
+    });
+
+    it('rejects an org admin creating an employee under a different organization', async () => {
+      await expect(
+        service.create('tenant-1', makeDto({ organizationId: 'org-2' }), makeOrgAdmin('org-1')),
+      ).rejects.toThrow(ForbiddenException);
+      expect(employees.create).not.toHaveBeenCalled();
     });
   });
 
@@ -177,7 +217,21 @@ describe('EmployeeService', () => {
     it('throws NotFoundException when the employee does not exist', async () => {
       employees.findById.mockResolvedValue(null);
 
-      await expect(service.findById('tenant-1', 'missing')).rejects.toThrow(NotFoundException);
+      await expect(service.findById('tenant-1', 'missing', hrManager)).rejects.toThrow(NotFoundException);
+    });
+
+    it('allows an org admin to read an employee within their own organization', async () => {
+      employees.findById.mockResolvedValue(makeEmployee({ organizationId: 'org-1' }));
+
+      await expect(service.findById('tenant-1', 'emp-1', makeOrgAdmin('org-1'))).resolves.toBeDefined();
+    });
+
+    it('rejects an org admin reading an employee from a different organization', async () => {
+      employees.findById.mockResolvedValue(makeEmployee({ organizationId: 'org-1' }));
+
+      await expect(service.findById('tenant-1', 'emp-1', makeOrgAdmin('org-2'))).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 
@@ -186,7 +240,7 @@ describe('EmployeeService', () => {
       employees.findById.mockResolvedValue(makeEmployee());
 
       await expect(
-        service.update('tenant-1', 'emp-1', { managerId: 'emp-1' }),
+        service.update('tenant-1', 'emp-1', { managerId: 'emp-1' }, hrManager),
       ).rejects.toThrow(BadRequestException);
       expect(employees.update).not.toHaveBeenCalled();
     });
@@ -199,7 +253,7 @@ describe('EmployeeService', () => {
       employees.list.mockResolvedValue([emp1, emp2]);
 
       await expect(
-        service.update('tenant-1', 'emp-1', { managerId: 'emp-2' }),
+        service.update('tenant-1', 'emp-1', { managerId: 'emp-2' }, hrManager),
       ).rejects.toThrow(BadRequestException);
       expect(employees.update).not.toHaveBeenCalled();
     });
@@ -208,7 +262,7 @@ describe('EmployeeService', () => {
       employees.findById.mockResolvedValue(makeEmployee({ jobTitle: 'Engineer' }));
       employees.update.mockResolvedValue(makeEmployee({ jobTitle: 'Senior Engineer' }));
 
-      await service.update('tenant-1', 'emp-1', { jobTitle: 'Senior Engineer' }, 'hr-1');
+      await service.update('tenant-1', 'emp-1', { jobTitle: 'Senior Engineer' }, hrManager);
 
       expect(history.create).toHaveBeenCalledWith(
         'tenant-1',
@@ -224,7 +278,7 @@ describe('EmployeeService', () => {
       employees.findById.mockResolvedValue(makeEmployee({ jobTitle: 'Engineer' }));
       employees.update.mockResolvedValue(makeEmployee({ jobTitle: 'Engineer' }));
 
-      await service.update('tenant-1', 'emp-1', { jobTitle: 'Engineer' });
+      await service.update('tenant-1', 'emp-1', { jobTitle: 'Engineer' }, hrManager);
 
       expect(history.create).not.toHaveBeenCalled();
     });
@@ -248,7 +302,7 @@ describe('EmployeeService', () => {
           hireDate: '2020-03-01',
           countryCode: 'GH',
         },
-        'hr-1',
+        hrManager,
       );
 
       expect(employees.update).toHaveBeenCalledWith(
@@ -274,7 +328,7 @@ describe('EmployeeService', () => {
       employees.findById.mockResolvedValue(makeEmployee({}));
       employees.update.mockResolvedValue(makeEmployee({}));
 
-      await service.update('tenant-1', 'emp-1', { dateOfBirth: null });
+      await service.update('tenant-1', 'emp-1', { dateOfBirth: null }, hrManager);
 
       expect(employees.update).toHaveBeenCalledWith(
         'tenant-1',
@@ -287,9 +341,12 @@ describe('EmployeeService', () => {
       employees.findById.mockResolvedValue(makeEmployee({}));
       employees.update.mockResolvedValue(makeEmployee({}));
 
-      await service.update('tenant-1', 'emp-1', {
-        familyMembers: [{ relationship: 'CHILD', name: 'Yaw Owusu' }],
-      });
+      await service.update(
+        'tenant-1',
+        'emp-1',
+        { familyMembers: [{ relationship: 'CHILD', name: 'Yaw Owusu' }] },
+        hrManager,
+      );
 
       expect(familyMembers.replaceForEmployee).toHaveBeenCalledWith('tenant-1', 'emp-1', [
         { relationship: 'CHILD', name: 'Yaw Owusu', dateOfBirth: undefined },
@@ -301,10 +358,19 @@ describe('EmployeeService', () => {
       employees.findById.mockResolvedValue(makeEmployee({}));
       employees.update.mockResolvedValue(makeEmployee({}));
 
-      await service.update('tenant-1', 'emp-1', { jobTitle: 'Senior Engineer' });
+      await service.update('tenant-1', 'emp-1', { jobTitle: 'Senior Engineer' }, hrManager);
 
       expect(familyMembers.replaceForEmployee).not.toHaveBeenCalled();
       expect(familyMembers.listByEmployee).toHaveBeenCalledWith('tenant-1', 'emp-1');
+    });
+
+    it('rejects an org admin updating an employee from a different organization', async () => {
+      employees.findById.mockResolvedValue(makeEmployee({ organizationId: 'org-1' }));
+
+      await expect(
+        service.update('tenant-1', 'emp-1', { jobTitle: 'Senior Engineer' }, makeOrgAdmin('org-2')),
+      ).rejects.toThrow(ForbiddenException);
+      expect(employees.update).not.toHaveBeenCalled();
     });
   });
 
@@ -315,7 +381,7 @@ describe('EmployeeService', () => {
       );
 
       await expect(
-        service.updateStatus('tenant-1', 'emp-1', EmploymentStatus.ACTIVE),
+        service.updateStatus('tenant-1', 'emp-1', EmploymentStatus.ACTIVE, undefined, hrManager),
       ).rejects.toThrow(ConflictException);
       expect(employees.updateStatus).not.toHaveBeenCalled();
     });
@@ -326,7 +392,7 @@ describe('EmployeeService', () => {
         makeEmployee({ employmentStatus: EmploymentStatus.TERMINATED }),
       );
 
-      await service.updateStatus('tenant-1', 'emp-1', EmploymentStatus.TERMINATED, undefined, 'hr-1');
+      await service.updateStatus('tenant-1', 'emp-1', EmploymentStatus.TERMINATED, undefined, hrManager);
 
       expect(employees.updateStatus).toHaveBeenCalledWith(
         'tenant-1',
@@ -343,7 +409,7 @@ describe('EmployeeService', () => {
         makeEmployee({ employmentStatus: EmploymentStatus.ON_LEAVE }),
       );
 
-      await service.updateStatus('tenant-1', 'emp-1', EmploymentStatus.ON_LEAVE);
+      await service.updateStatus('tenant-1', 'emp-1', EmploymentStatus.ON_LEAVE, undefined, hrManager);
 
       expect(history.create).toHaveBeenCalledWith(
         'tenant-1',
@@ -362,7 +428,7 @@ describe('EmployeeService', () => {
         makeEmployee({ employmentStatus: EmploymentStatus.TERMINATED, userId: 'user-1' }),
       );
 
-      await service.updateStatus('tenant-1', 'emp-1', EmploymentStatus.TERMINATED, undefined, 'hr-1');
+      await service.updateStatus('tenant-1', 'emp-1', EmploymentStatus.TERMINATED, undefined, hrManager);
 
       expect(userAccess.deactivate).toHaveBeenCalledWith('tenant-1', 'user-1', 'hr-1');
       expect(audit.record).toHaveBeenCalledWith(
@@ -382,7 +448,7 @@ describe('EmployeeService', () => {
         makeEmployee({ employmentStatus: EmploymentStatus.TERMINATED, userId: null }),
       );
 
-      await service.updateStatus('tenant-1', 'emp-1', EmploymentStatus.TERMINATED);
+      await service.updateStatus('tenant-1', 'emp-1', EmploymentStatus.TERMINATED, undefined, hrManager);
 
       expect(userAccess.deactivate).not.toHaveBeenCalled();
     });
@@ -395,9 +461,26 @@ describe('EmployeeService', () => {
         makeEmployee({ employmentStatus: EmploymentStatus.SUSPENDED, userId: 'user-1' }),
       );
 
-      await service.updateStatus('tenant-1', 'emp-1', EmploymentStatus.SUSPENDED);
+      await service.updateStatus('tenant-1', 'emp-1', EmploymentStatus.SUSPENDED, undefined, hrManager);
 
       expect(userAccess.deactivate).not.toHaveBeenCalled();
+    });
+
+    it('rejects an org admin changing status for an employee from a different organization', async () => {
+      employees.findById.mockResolvedValue(
+        makeEmployee({ organizationId: 'org-1', employmentStatus: EmploymentStatus.ACTIVE }),
+      );
+
+      await expect(
+        service.updateStatus(
+          'tenant-1',
+          'emp-1',
+          EmploymentStatus.ON_LEAVE,
+          undefined,
+          makeOrgAdmin('org-2'),
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      expect(employees.updateStatus).not.toHaveBeenCalled();
     });
   });
 
@@ -405,7 +488,7 @@ describe('EmployeeService', () => {
     it('throws NotFoundException when the employee does not exist', async () => {
       employees.findById.mockResolvedValue(null);
 
-      await expect(service.softDelete('tenant-1', 'missing')).rejects.toThrow(NotFoundException);
+      await expect(service.softDelete('tenant-1', 'missing', hrManager)).rejects.toThrow(NotFoundException);
       expect(employees.softDelete).not.toHaveBeenCalled();
     });
 
@@ -413,7 +496,7 @@ describe('EmployeeService', () => {
       employees.findById.mockResolvedValue(makeEmployee());
       employees.softDelete.mockResolvedValue(makeEmployee({ deletedAt: new Date() }));
 
-      const result = await service.softDelete('tenant-1', 'emp-1', 'hr-1');
+      const result = await service.softDelete('tenant-1', 'emp-1', hrManager);
 
       expect(employees.softDelete).toHaveBeenCalledWith('tenant-1', 'emp-1', 'hr-1');
       expect(audit.record).toHaveBeenCalledWith(
@@ -426,13 +509,22 @@ describe('EmployeeService', () => {
       );
       expect(result.deletedAt).not.toBeNull();
     });
+
+    it('rejects an org admin deleting an employee from a different organization', async () => {
+      employees.findById.mockResolvedValue(makeEmployee({ organizationId: 'org-1' }));
+
+      await expect(service.softDelete('tenant-1', 'emp-1', makeOrgAdmin('org-2'))).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(employees.softDelete).not.toHaveBeenCalled();
+    });
   });
 
   describe('getHistory', () => {
     it('throws NotFoundException when the employee does not exist', async () => {
       employees.findById.mockResolvedValue(null);
 
-      await expect(service.getHistory('tenant-1', 'missing')).rejects.toThrow(NotFoundException);
+      await expect(service.getHistory('tenant-1', 'missing', hrManager)).rejects.toThrow(NotFoundException);
       expect(history.listByEmployee).not.toHaveBeenCalled();
     });
 
@@ -440,9 +532,44 @@ describe('EmployeeService', () => {
       employees.findById.mockResolvedValue(makeEmployee());
       history.listByEmployee.mockResolvedValue([]);
 
-      await service.getHistory('tenant-1', 'emp-1');
+      await service.getHistory('tenant-1', 'emp-1', hrManager);
 
       expect(history.listByEmployee).toHaveBeenCalledWith('tenant-1', 'emp-1');
+    });
+
+    it('rejects an org admin reading history for an employee from a different organization', async () => {
+      employees.findById.mockResolvedValue(makeEmployee({ organizationId: 'org-1' }));
+
+      await expect(service.getHistory('tenant-1', 'emp-1', makeOrgAdmin('org-2'))).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(history.listByEmployee).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('list', () => {
+    it('passes through explicit filters for a tenant-wide role', async () => {
+      employees.list.mockResolvedValue([]);
+
+      await service.list('tenant-1', { organizationId: 'org-9' }, hrManager);
+
+      expect(employees.list).toHaveBeenCalledWith('tenant-1', { organizationId: 'org-9' });
+    });
+
+    it("forces an org admin's own organization regardless of the requested filter", async () => {
+      employees.list.mockResolvedValue([]);
+
+      await service.list('tenant-1', { organizationId: 'org-9' }, makeOrgAdmin('org-1'));
+
+      expect(employees.list).toHaveBeenCalledWith('tenant-1', { organizationId: 'org-1' });
+    });
+
+    it("defaults to an org admin's own organization when no filter is requested", async () => {
+      employees.list.mockResolvedValue([]);
+
+      await service.list('tenant-1', {}, makeOrgAdmin('org-1'));
+
+      expect(employees.list).toHaveBeenCalledWith('tenant-1', { organizationId: 'org-1' });
     });
   });
 });

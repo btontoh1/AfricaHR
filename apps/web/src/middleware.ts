@@ -14,7 +14,15 @@ const PUBLIC_PATHS = ['/login', '/setup', '/careers'];
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (PUBLIC_PATHS.some((path) => pathname.startsWith(path)) || pathname.startsWith('/api')) {
+  // Root is the public marketing homepage (RootPage itself still redirects
+  // a *logged-in* visitor straight to /dashboard) - deliberately an exact
+  // match, not startsWith, since every path starts with "/" and that would
+  // blow the gate open for the whole app.
+  if (
+    pathname === '/' ||
+    PUBLIC_PATHS.some((path) => pathname.startsWith(path)) ||
+    pathname.startsWith('/api')
+  ) {
     return NextResponse.next();
   }
 

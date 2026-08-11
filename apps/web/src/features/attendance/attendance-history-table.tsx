@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import { History } from 'lucide-react';
 import { useMyAttendance } from './queries';
-import { getApiErrorMessage } from '@/lib/api-error';
+import { getApiErrorMessage, isNoEmployeeLinkedError } from '@/lib/api-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TableCard } from '@/components/table-card';
 import { EmptyState } from '@/components/empty-state';
+import { EmployeeLinkRequiredState } from '@/components/employee-link-required-state';
 import { TableSkeleton } from '@/components/loading-state';
 import { ErrorState } from '@/components/error-state';
 import {
@@ -31,6 +32,10 @@ export function AttendanceHistoryTable({ tenantId }: { tenantId: string }) {
     to: to || undefined,
   });
 
+  if (isError && isNoEmployeeLinkedError(error)) {
+    return <EmployeeLinkRequiredState />;
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
@@ -46,7 +51,9 @@ export function AttendanceHistoryTable({ tenantId }: { tenantId: string }) {
 
       {isLoading && <TableSkeleton />}
 
-      {isError && <ErrorState message={getApiErrorMessage(error, 'Failed to load attendance history')} />}
+      {isError && !isNoEmployeeLinkedError(error) && (
+        <ErrorState message={getApiErrorMessage(error, 'Failed to load attendance history')} />
+      )}
 
       {records && records.length === 0 && (
         <EmptyState icon={History} title="No attendance records yet" />

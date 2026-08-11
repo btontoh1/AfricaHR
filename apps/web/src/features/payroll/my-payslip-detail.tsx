@@ -2,11 +2,12 @@
 
 import { useMyPayslip } from './queries';
 import { PayslipStatusBadge } from './payslip-status-badge';
-import { getApiErrorMessage } from '@/lib/api-error';
+import { getApiErrorMessage, isNoEmployeeLinkedError } from '@/lib/api-error';
 import { formatCurrency } from '@/lib/format-currency';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CardSkeleton } from '@/components/loading-state';
 import { ErrorState } from '@/components/error-state';
+import { EmployeeLinkRequiredState } from '@/components/employee-link-required-state';
 import { EmptyState } from '@/components/empty-state';
 import { ListPlus } from 'lucide-react';
 import { TableCard } from '@/components/table-card';
@@ -35,8 +36,15 @@ export function MyPayslipDetail({ tenantId, payslipId }: { tenantId: string; pay
     return <CardSkeleton />;
   }
 
-  if (isError || !payslip) {
+  if (isError) {
+    if (isNoEmployeeLinkedError(error)) {
+      return <EmployeeLinkRequiredState />;
+    }
     return <ErrorState message={getApiErrorMessage(error, 'Failed to load payslip')} />;
+  }
+
+  if (!payslip) {
+    return <ErrorState message="Failed to load payslip" />;
   }
 
   return (

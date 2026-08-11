@@ -5,10 +5,11 @@ import { toast } from 'sonner';
 import { useCancelMyBenefitEnrollment, useMyBenefitEnrollments } from './queries';
 import { BenefitEnrollmentStatusBadge } from './benefit-enrollment-status-badge';
 import { ContributionCell } from './contribution-cell';
-import { getApiErrorMessage } from '@/lib/api-error';
+import { getApiErrorMessage, isNoEmployeeLinkedError } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
 import { TableCard } from '@/components/table-card';
 import { EmptyState } from '@/components/empty-state';
+import { EmployeeLinkRequiredState } from '@/components/employee-link-required-state';
 import { TableSkeleton } from '@/components/loading-state';
 import { ErrorState } from '@/components/error-state';
 import {
@@ -38,6 +39,9 @@ export function MyBenefitEnrollmentsList({ tenantId }: { tenantId: string }) {
   }
 
   if (isError) {
+    if (isNoEmployeeLinkedError(error)) {
+      return <EmployeeLinkRequiredState />;
+    }
     return <ErrorState message={getApiErrorMessage(error, 'Failed to load your benefit enrollments')} />;
   }
 

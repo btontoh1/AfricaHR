@@ -3,13 +3,14 @@
 import { Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useClockIn, useClockOut, useMyAttendance } from './queries';
-import { getApiErrorMessage } from '@/lib/api-error';
+import { getApiErrorMessage, isNoEmployeeLinkedError } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CardSkeleton } from '@/components/loading-state';
+import { EmployeeLinkRequiredState } from '@/components/employee-link-required-state';
 
 export function ClockInOutCard({ tenantId }: { tenantId: string }) {
-  const { data: records, isLoading } = useMyAttendance(tenantId);
+  const { data: records, isLoading, isError, error } = useMyAttendance(tenantId);
   const clockIn = useClockIn(tenantId);
   const clockOut = useClockOut(tenantId);
 
@@ -43,6 +44,10 @@ export function ClockInOutCard({ tenantId }: { tenantId: string }) {
 
   if (isLoading) {
     return <CardSkeleton />;
+  }
+
+  if (isError && isNoEmployeeLinkedError(error)) {
+    return <EmployeeLinkRequiredState />;
   }
 
   return (

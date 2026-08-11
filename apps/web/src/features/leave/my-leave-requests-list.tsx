@@ -5,10 +5,11 @@ import { toast } from 'sonner';
 import { useCancelMyLeaveRequest, useLeaveTypes, useMyLeaveRequests } from './queries';
 import { LeaveRequestStatusBadge } from './leave-request-status-badge';
 import { LeaveRequestReasonCell } from './leave-request-reason-cell';
-import { getApiErrorMessage } from '@/lib/api-error';
+import { getApiErrorMessage, isNoEmployeeLinkedError } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
 import { TableCard } from '@/components/table-card';
 import { EmptyState } from '@/components/empty-state';
+import { EmployeeLinkRequiredState } from '@/components/employee-link-required-state';
 import { TableSkeleton } from '@/components/loading-state';
 import { ErrorState } from '@/components/error-state';
 import {
@@ -41,6 +42,9 @@ export function MyLeaveRequestsList({ tenantId }: { tenantId: string }) {
   }
 
   if (isError) {
+    if (isNoEmployeeLinkedError(error)) {
+      return <EmployeeLinkRequiredState />;
+    }
     return <ErrorState message={getApiErrorMessage(error, 'Failed to load leave requests')} />;
   }
 

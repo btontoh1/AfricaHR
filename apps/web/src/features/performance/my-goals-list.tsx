@@ -5,11 +5,12 @@ import { Target } from 'lucide-react';
 import { useMyGoals } from './queries';
 import { GoalStatusBadge } from './goal-status-badge';
 import { UpdateGoalForm } from './update-goal-form';
-import { getApiErrorMessage } from '@/lib/api-error';
+import { getApiErrorMessage, isNoEmployeeLinkedError } from '@/lib/api-error';
 import type { PerformanceGoal } from './types';
 import { Button } from '@/components/ui/button';
 import { TableCard } from '@/components/table-card';
 import { EmptyState } from '@/components/empty-state';
+import { EmployeeLinkRequiredState } from '@/components/employee-link-required-state';
 import { TableSkeleton } from '@/components/loading-state';
 import { ErrorState } from '@/components/error-state';
 import {
@@ -30,6 +31,9 @@ export function MyGoalsList({ tenantId }: { tenantId: string }) {
   }
 
   if (isError) {
+    if (isNoEmployeeLinkedError(error)) {
+      return <EmployeeLinkRequiredState />;
+    }
     return <ErrorState message={getApiErrorMessage(error, 'Failed to load goals')} />;
   }
 

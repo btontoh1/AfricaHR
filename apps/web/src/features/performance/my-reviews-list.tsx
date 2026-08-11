@@ -4,9 +4,10 @@ import Link from 'next/link';
 import { ClipboardCheck } from 'lucide-react';
 import { useMyReviews, useReviewCycles } from './queries';
 import { ReviewStatusBadge } from './review-status-badge';
-import { getApiErrorMessage } from '@/lib/api-error';
+import { getApiErrorMessage, isNoEmployeeLinkedError } from '@/lib/api-error';
 import { TableCard } from '@/components/table-card';
 import { EmptyState } from '@/components/empty-state';
+import { EmployeeLinkRequiredState } from '@/components/employee-link-required-state';
 import { TableSkeleton } from '@/components/loading-state';
 import { ErrorState } from '@/components/error-state';
 import {
@@ -29,6 +30,9 @@ export function MyReviewsList({ tenantId }: { tenantId: string }) {
   }
 
   if (isError) {
+    if (isNoEmployeeLinkedError(error)) {
+      return <EmployeeLinkRequiredState />;
+    }
     return <ErrorState message={getApiErrorMessage(error, 'Failed to load your reviews')} />;
   }
 

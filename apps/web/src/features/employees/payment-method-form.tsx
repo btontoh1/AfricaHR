@@ -7,13 +7,14 @@ import { toast } from 'sonner';
 import { useMyPaymentMethod, useMyPaymentMethodBanks, useUpsertMyPaymentMethod } from './queries';
 import { paymentMethodFormSchema, type PaymentMethodFormValues } from './payment-method-form-schema';
 import type { PaymentMethod, PaymentMethodType } from './types';
-import { getApiErrorMessage } from '@/lib/api-error';
+import { getApiErrorMessage, isNoEmployeeLinkedError } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { CardSkeleton } from '@/components/loading-state';
 import { ErrorState } from '@/components/error-state';
+import { EmployeeLinkRequiredState } from '@/components/employee-link-required-state';
 import {
   Select,
   SelectContent,
@@ -271,6 +272,9 @@ export function PaymentMethodForm({ tenantId }: { tenantId: string }) {
   }
 
   if (isError) {
+    if (isNoEmployeeLinkedError(error)) {
+      return <EmployeeLinkRequiredState />;
+    }
     return <ErrorState message={getApiErrorMessage(error, 'Failed to load payment details')} />;
   }
 

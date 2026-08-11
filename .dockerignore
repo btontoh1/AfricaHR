@@ -1,0 +1,27 @@
+# Both Dockerfiles run `npm ci` and their own build inside the image, so
+# none of this needs to travel from the host into the build context - it
+# was never excluded before, which is why "transferring context" got
+# slower every deploy as node_modules/.git/build caches grew on the host.
+node_modules
+**/node_modules
+
+.git
+
+# Nx/Next build output and caches - regenerated inside the image.
+dist
+.nx
+**/.next
+**/.next/**
+coverage
+**/*.tsbuildinfo
+
+# Never send real secrets through the build context/image layers, even
+# though the Dockerfiles don't explicitly COPY these - `COPY . .` would
+# otherwise pull them into the build stage regardless.
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+*.log
+.DS_Store

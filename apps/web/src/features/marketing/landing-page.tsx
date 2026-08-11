@@ -17,8 +17,29 @@ import { Button } from '@/components/ui/button';
 
 const NAV_LINKS = [
   { href: '#features', label: 'Features' },
-  { href: '#how-it-works', label: 'How it works' },
+  { href: '#countries', label: 'Where we operate' },
   { href: '#security', label: 'Security' },
+];
+
+const COUNTRIES = [
+  {
+    flag: '🇬🇭',
+    name: 'Ghana',
+    currency: 'GHS',
+    statutory: ['SSNIT contributions', 'PAYE income tax'],
+  },
+  {
+    flag: '🇳🇬',
+    name: 'Nigeria',
+    currency: 'NGN',
+    statutory: ['PAYE with rent relief', 'Pension & NHIS'],
+  },
+  {
+    flag: '🇰🇪',
+    name: 'Kenya',
+    currency: 'KES',
+    statutory: ['NSSF contributions', 'PAYE with personal relief'],
+  },
 ];
 
 const FEATURES = [
@@ -32,7 +53,7 @@ const FEATURES = [
     icon: Banknote,
     title: 'Payroll',
     description:
-      'Run multi-currency pay cycles and pay employees directly to their bank accounts, built around African statutory requirements from day one.',
+      "Run pay cycles in each country's own currency, with the statutory deductions above calculated automatically and paid straight to employee bank accounts.",
   },
   {
     icon: CalendarDays,
@@ -65,7 +86,7 @@ const STEPS = [
     number: '01',
     title: 'Set up your organization',
     description:
-      'Bring your company structure in - one organization or several under a single account, each with its own admin if you need it.',
+      'Bring your company structure in - one organization, or several under a single account, each with its own admin if you need it.',
   },
   {
     number: '02',
@@ -100,16 +121,6 @@ const TRUST_POINTS = [
   },
 ];
 
-function SectionHeading({ eyebrow, title, description }: { eyebrow: string; title: string; description?: string }) {
-  return (
-    <div className="mx-auto max-w-2xl text-center">
-      <p className="text-sm font-semibold tracking-wide text-primary uppercase">{eyebrow}</p>
-      <h2 className="mt-2 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">{title}</h2>
-      {description && <p className="mt-4 text-muted-foreground">{description}</p>}
-    </div>
-  );
-}
-
 // Hand-built preview of the product's own dashboard (mirrors
 // apps/web/src/app/(app)/dashboard) rather than a real screenshot - keeps
 // this page free of any real tenant's data while still showing accurately
@@ -117,7 +128,11 @@ function SectionHeading({ eyebrow, title, description }: { eyebrow: string; titl
 function ProductPreview() {
   const bars = [38, 52, 46, 60, 71, 55, 64, 48, 58, 66, 50, 62];
   return (
-    <div className="mx-auto mt-16 max-w-4xl">
+    <div className="relative">
+      <div
+        className="pointer-events-none absolute -inset-8 -z-10 rounded-full bg-primary/10 blur-3xl"
+        aria-hidden="true"
+      />
       <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft-lg">
         <div className="flex items-center gap-1.5 border-b border-border bg-muted/50 px-4 py-3">
           <span className="size-2.5 rounded-full bg-destructive/60" aria-hidden="true" />
@@ -125,10 +140,10 @@ function ProductPreview() {
           <span className="size-2.5 rounded-full bg-success/60" aria-hidden="true" />
           <span className="ml-3 text-xs text-muted-foreground">app.parothr.com/dashboard</span>
         </div>
-        <div className="grid gap-4 p-6 sm:grid-cols-3">
-          <div className="rounded-lg border border-border bg-background p-4 sm:col-span-2">
+        <div className="space-y-4 p-5">
+          <div className="rounded-lg border border-border bg-background p-4">
             <p className="text-xs font-medium text-muted-foreground">Payroll cost trend</p>
-            <div className="mt-4 flex h-32 items-end gap-2">
+            <div className="mt-4 flex h-28 items-end gap-1.5">
               {bars.map((height, index) => (
                 <div
                   key={index}
@@ -139,18 +154,18 @@ function ProductPreview() {
               ))}
             </div>
           </div>
-          <div className="space-y-3">
-            <div className="rounded-lg border border-border bg-background p-4">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-lg border border-border bg-background p-3">
               <p className="text-xs font-medium text-muted-foreground">Employees</p>
-              <p className="mt-1 text-2xl font-semibold">128</p>
+              <p className="mt-1 text-xl font-semibold">128</p>
             </div>
-            <div className="rounded-lg border border-border bg-background p-4">
-              <p className="text-xs font-medium text-muted-foreground">Open requisitions</p>
-              <p className="mt-1 text-2xl font-semibold">4</p>
+            <div className="rounded-lg border border-border bg-background p-3">
+              <p className="text-xs font-medium text-muted-foreground">Open reqs</p>
+              <p className="mt-1 text-xl font-semibold">4</p>
             </div>
-            <div className="rounded-lg border border-border bg-background p-4">
+            <div className="rounded-lg border border-border bg-background p-3">
               <p className="text-xs font-medium text-muted-foreground">Pending leave</p>
-              <p className="mt-1 text-2xl font-semibold">6</p>
+              <p className="mt-1 text-xl font-semibold">6</p>
             </div>
           </div>
         </div>
@@ -193,118 +208,176 @@ export function LandingPage() {
       </header>
 
       <main className="flex-1">
-        <section className="relative overflow-hidden px-4 pt-16 pb-8 sm:pt-24 lg:px-8">
-          <div
-            className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[32rem] opacity-40"
-            style={{
-              background: 'radial-gradient(60% 60% at 50% 0%, var(--color-primary) 0%, transparent 70%)',
-              opacity: 0.08,
-            }}
-            aria-hidden="true"
-          />
-          <div className="mx-auto max-w-3xl text-center">
-            <h1 className="text-4xl leading-tight font-semibold tracking-tight text-balance sm:text-6xl">
-              HR &amp; payroll, simplified for African businesses.
-            </h1>
-            <p className="mt-6 text-lg text-muted-foreground text-balance">
-              ParotHR brings employees, payroll, leave, recruitment, and performance into one system - built
-              around how African businesses and payroll law actually work, not bolted on afterward.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <Button asChild size="lg">
-                <Link href="/login">
-                  Get started
-                  <ArrowRight className="size-4" />
-                </Link>
-              </Button>
-              <Button asChild size="lg" variant="outline">
-                <a href="#features">See how it works</a>
-              </Button>
+        {/* Hero - asymmetric two-column, not centered, so the page has an
+            actual focal point instead of everything stacked on one axis. */}
+        <section className="overflow-hidden px-4 pt-14 pb-20 sm:pt-20 lg:px-8">
+          <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-12">
+            <div className="lg:col-span-6">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
+                <span aria-hidden="true">🇬🇭 🇳🇬 🇰🇪</span>
+                Live in Ghana, Nigeria &amp; Kenya
+              </div>
+              <h1 className="mt-5 text-4xl leading-[1.1] font-semibold tracking-tight text-balance sm:text-5xl">
+                HR &amp; payroll built for how African businesses actually work.
+              </h1>
+              <p className="mt-5 max-w-xl text-lg text-muted-foreground text-balance">
+                Employees, payroll, leave, recruitment, and performance in one system - with the statutory
+                rules for each country handled automatically instead of bolted on afterward.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <Button asChild size="lg">
+                  <Link href="/login">
+                    Get started
+                    <ArrowRight className="size-4" />
+                  </Link>
+                </Button>
+                <Button asChild size="lg" variant="outline">
+                  <a href="#features">See how it works</a>
+                </Button>
+              </div>
+            </div>
+            <div className="lg:col-span-6">
+              <ProductPreview />
             </div>
           </div>
-          <ProductPreview />
         </section>
 
-        <section id="features" className="px-4 py-24 lg:px-8">
-          <SectionHeading
-            eyebrow="Features"
-            title="Everything HR needs, one system"
-            description="Every module shares the same employee record, so nothing gets re-entered or falls out of sync."
-          />
-          <div className="mx-auto mt-16 grid max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map(({ icon: Icon, title, description }) => (
-              <div key={title} className="rounded-xl border border-border bg-card p-6 shadow-soft-sm">
-                <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <Icon className="size-5" />
-                </span>
-                <h3 className="mt-4 text-base font-semibold">{title}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">{description}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section id="how-it-works" className="bg-muted/40 px-4 py-24 lg:px-8">
-          <SectionHeading eyebrow="How it works" title="Up and running in three steps" />
-          <div className="mx-auto mt-16 grid max-w-5xl gap-8 sm:grid-cols-3">
-            {STEPS.map((step) => (
-              <div key={step.number}>
-                <span className="text-sm font-semibold text-primary">{step.number}</span>
-                <h3 className="mt-2 text-lg font-semibold">{step.title}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">{step.description}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section id="security" className="bg-primary px-4 py-24 text-primary-foreground lg:px-8">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-semibold tracking-wide uppercase opacity-80">Security</p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-              Built to keep every tenant's data separate and every action accountable
-            </h2>
-          </div>
-          <div className="mx-auto mt-16 grid max-w-5xl gap-8 sm:grid-cols-3">
-            {TRUST_POINTS.map(({ icon: Icon, title, description }) => (
-              <div key={title} className="text-center sm:text-left">
-                <span className="mx-auto flex size-10 items-center justify-center rounded-full bg-white/15 sm:mx-0">
-                  <Icon className="size-5" />
-                </span>
-                <h3 className="mt-4 text-base font-semibold">{title}</h3>
-                <p className="mt-2 text-sm text-primary-foreground/80">{description}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="px-4 py-24 lg:px-8">
-          <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-card p-10 text-center shadow-soft-lg">
-            <h2 className="text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
-              Ready to simplify HR &amp; payroll for your business?
-            </h2>
-            <p className="mt-3 text-muted-foreground">Sign in to get your team set up, or ask us for a walkthrough.</p>
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-              <Button asChild size="lg">
-                <Link href="/login">
-                  Get started
-                  <ArrowRight className="size-4" />
-                </Link>
-              </Button>
+        {/* Country coverage - direct, substantive answer to "where do you
+            operate," not just a badge: what payroll actually calculates in
+            each market. */}
+        <section id="countries" className="border-y border-border bg-muted/30 px-4 py-20 lg:px-8">
+          <div className="mx-auto max-w-6xl">
+            <div className="max-w-xl">
+              <p className="text-sm font-semibold tracking-wide text-primary uppercase">Where we operate</p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-balance">
+                Payroll that already knows the rules in three markets
+              </h2>
             </div>
-            <ul className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
-              <li className="flex items-center gap-1.5">
-                <CheckCircle2 className="size-4 text-success" />
-                No spreadsheets
-              </li>
-              <li className="flex items-center gap-1.5">
-                <CheckCircle2 className="size-4 text-success" />
-                Built for African payroll
-              </li>
-              <li className="flex items-center gap-1.5">
-                <CheckCircle2 className="size-4 text-success" />
-                Role-based access down to one team
-              </li>
-            </ul>
+            <div className="mt-10 grid gap-6 sm:grid-cols-3">
+              {COUNTRIES.map((country) => (
+                <div key={country.name} className="rounded-xl border border-border bg-card p-6">
+                  <span className="text-3xl" aria-hidden="true">
+                    {country.flag}
+                  </span>
+                  <h3 className="mt-3 text-lg font-semibold">{country.name}</h3>
+                  <p className="text-sm text-muted-foreground">Paid in {country.currency}</p>
+                  <ul className="mt-4 space-y-2 border-t border-border pt-4">
+                    {country.statutory.map((item) => (
+                      <li key={item} className="flex items-start gap-2 text-sm">
+                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Features - a bordered list rather than a uniform icon-card grid,
+            with the flagship module (Payroll) given more visual weight. */}
+        <section id="features" className="px-4 py-20 lg:px-8">
+          <div className="mx-auto max-w-6xl">
+            <div className="max-w-xl">
+              <p className="text-sm font-semibold tracking-wide text-primary uppercase">Features</p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+                Everything HR needs, one system
+              </h2>
+              <p className="mt-4 text-muted-foreground">
+                Every module shares the same employee record, so nothing gets re-entered or falls out of sync.
+              </p>
+            </div>
+            <div className="mt-12 overflow-hidden rounded-2xl border border-border">
+              {FEATURES.map(({ icon: Icon, title, description }, index) => (
+                <div
+                  key={title}
+                  className={`flex flex-col gap-4 p-6 sm:flex-row sm:items-start sm:gap-6 sm:p-8 ${
+                    index % 2 === 1 ? 'bg-muted/30' : 'bg-card'
+                  } ${index !== 0 ? 'border-t border-border' : ''}`}
+                >
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Icon className="size-5" />
+                  </span>
+                  <div>
+                    <h3 className="text-base font-semibold">{title}</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* How it works - connected timeline instead of a plain 3-col grid. */}
+        <section className="bg-muted/30 px-4 py-20 lg:px-8">
+          <div className="mx-auto max-w-6xl">
+            <div className="max-w-xl">
+              <p className="text-sm font-semibold tracking-wide text-primary uppercase">How it works</p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+                Up and running in three steps
+              </h2>
+            </div>
+            <div className="relative mt-14 grid gap-10 sm:grid-cols-3 sm:gap-6">
+              <div
+                className="absolute top-5 right-0 left-0 hidden h-px bg-border sm:block"
+                aria-hidden="true"
+              />
+              {STEPS.map((step) => (
+                <div key={step.number} className="relative">
+                  <span className="relative z-10 flex size-10 items-center justify-center rounded-full border border-border bg-background text-sm font-semibold text-primary">
+                    {step.number}
+                  </span>
+                  <h3 className="mt-4 text-lg font-semibold">{step.title}</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">{step.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Security - two-column, breaking the centered-heading rhythm the
+            other sections use. */}
+        <section id="security" className="bg-primary px-4 py-20 text-primary-foreground lg:px-8">
+          <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-12">
+            <div className="lg:col-span-5">
+              <p className="text-sm font-semibold tracking-wide uppercase opacity-80">Security</p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+                Every tenant's data stays separate. Every action stays accountable.
+              </h2>
+            </div>
+            <div className="space-y-8 lg:col-span-7">
+              {TRUST_POINTS.map(({ icon: Icon, title, description }) => (
+                <div key={title} className="flex items-start gap-4">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/15">
+                    <Icon className="size-5" />
+                  </span>
+                  <div>
+                    <h3 className="text-base font-semibold">{title}</h3>
+                    <p className="mt-1 text-sm text-primary-foreground/80">{description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="px-4 py-20 lg:px-8">
+          <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-8 rounded-2xl border border-border bg-card p-10 sm:flex-row sm:items-center">
+            <div>
+              <h2 className="text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
+                Ready to simplify HR &amp; payroll for your business?
+              </h2>
+              <p className="mt-2 text-muted-foreground">
+                Sign in to get your team set up in Ghana, Nigeria, or Kenya.
+              </p>
+            </div>
+            <Button asChild size="lg" className="shrink-0">
+              <Link href="/login">
+                Get started
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
           </div>
         </section>
       </main>

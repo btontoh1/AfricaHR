@@ -4,7 +4,8 @@ import { z } from 'zod';
 export const demoRequestFormSchema = z.object({
   fullName: z.string().min(1, 'Full name is required').max(200),
   email: z.string().email('Enter a valid email'),
-  phoneNumber: z.string().max(30).optional().or(z.literal('')),
+  phoneNumber: z.string().min(1, 'Phone number is required').max(30),
+  isWhatsapp: z.boolean(),
   organizationName: z.string().min(1, 'Organization name is required').max(200),
   numberOfEmployees: z.string().max(30).optional().or(z.literal('')),
   preferredDate: z.string().max(30).optional().or(z.literal('')),

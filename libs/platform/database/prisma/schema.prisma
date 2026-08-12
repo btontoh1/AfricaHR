@@ -75,7 +75,8 @@ model DemoRequest {
   id                String    @id @default(uuid())
   fullName          String    @map("full_name")
   email             String
-  phoneNumber       String?   @map("phone_number")
+  phoneNumber       String    @map("phone_number")
+  isWhatsapp        Boolean   @default(false) @map("is_whatsapp")
   organizationName  String    @map("organization_name")
   numberOfEmployees String?   @map("number_of_employees")
   preferredDate     String?   @map("preferred_date")

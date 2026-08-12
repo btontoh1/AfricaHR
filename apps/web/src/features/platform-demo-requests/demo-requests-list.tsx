@@ -1,6 +1,6 @@
 'use client';
 
-import { Presentation } from 'lucide-react';
+import { MessageCircle, Presentation } from 'lucide-react';
 import { useDemoRequests } from './queries';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { PageHeader } from '@/components/page-header';
@@ -55,7 +55,17 @@ export function DemoRequestsList() {
                 <TableRow key={request.id}>
                   <TableCell className="font-medium">{request.fullName}</TableCell>
                   <TableCell className="text-muted-foreground">{request.email}</TableCell>
-                  <TableCell className="text-muted-foreground">{request.phoneNumber ?? '—'}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    <span className="inline-flex items-center gap-1.5">
+                      {request.phoneNumber}
+                      {request.isWhatsapp && (
+                        <MessageCircle
+                          className="size-3.5 text-primary"
+                          aria-label="Prefers WhatsApp"
+                        />
+                      )}
+                    </span>
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{request.organizationName}</TableCell>
                   <TableCell className="text-muted-foreground">{request.numberOfEmployees ?? '—'}</TableCell>
                   <TableCell className="text-muted-foreground">

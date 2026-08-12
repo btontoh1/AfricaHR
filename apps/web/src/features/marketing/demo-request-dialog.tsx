@@ -16,6 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 
@@ -23,6 +24,7 @@ const EMPTY_VALUES: DemoRequestFormValues = {
   fullName: '',
   email: '',
   phoneNumber: '',
+  isWhatsapp: false,
   organizationName: '',
   numberOfEmployees: '',
   preferredDate: '',
@@ -44,7 +46,8 @@ function DemoRequestForm({ onSuccess }: { onSuccess: () => void }) {
       await submitDemoRequest.mutateAsync({
         fullName: values.fullName,
         email: values.email,
-        phoneNumber: values.phoneNumber || undefined,
+        phoneNumber: values.phoneNumber,
+        isWhatsapp: values.isWhatsapp,
         organizationName: values.organizationName,
         numberOfEmployees: values.numberOfEmployees || undefined,
         preferredDate: values.preferredDate || undefined,
@@ -91,7 +94,7 @@ function DemoRequestForm({ onSuccess }: { onSuccess: () => void }) {
             name="phoneNumber"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Phone number (optional)</FormLabel>
+                <FormLabel>Phone number</FormLabel>
                 <FormControl>
                   <Input {...field} />
                 </FormControl>
@@ -100,6 +103,18 @@ function DemoRequestForm({ onSuccess }: { onSuccess: () => void }) {
             )}
           />
         </div>
+        <FormField
+          control={form.control}
+          name="isWhatsapp"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center gap-2">
+              <FormControl>
+                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+              </FormControl>
+              <FormLabel className="!mt-0">This number is on WhatsApp</FormLabel>
+            </FormItem>
+          )}
+        />
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField
             control={form.control}

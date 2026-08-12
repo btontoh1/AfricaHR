@@ -22,6 +22,7 @@ export class DemoRequestService {
         fullName: dto.fullName,
         email: dto.email,
         phoneNumber: dto.phoneNumber,
+        isWhatsapp: dto.isWhatsapp ?? false,
         organizationName: dto.organizationName,
         numberOfEmployees: dto.numberOfEmployees,
         preferredDate: dto.preferredDate,

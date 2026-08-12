@@ -10,8 +10,11 @@ export class DemoRequestAdminResponseDto {
   @ApiProperty()
   email!: string;
 
-  @ApiPropertyOptional()
-  phoneNumber?: string | null;
+  @ApiProperty()
+  phoneNumber!: string;
+
+  @ApiProperty()
+  isWhatsapp!: boolean;
 
   @ApiProperty()
   organizationName!: string;

@@ -2978,7 +2978,9 @@ export interface components {
         SubmitDemoRequestDto: {
             fullName: string;
             email: string;
-            phoneNumber?: string;
+            phoneNumber: string;
+            /** @default false */
+            isWhatsapp: boolean;
             organizationName: string;
             numberOfEmployees?: string;
             preferredDate?: string;
@@ -2993,7 +2995,8 @@ export interface components {
             id: string;
             fullName: string;
             email: string;
-            phoneNumber?: string;
+            phoneNumber: string;
+            isWhatsapp: boolean;
             organizationName: string;
             numberOfEmployees?: string;
             preferredDate?: string;

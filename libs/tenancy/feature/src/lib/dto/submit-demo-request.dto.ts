@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsEmail, IsOptional, IsString, Length } from 'class-validator';
 
 /** What an anonymous visitor submits from the "Book a demo" form on the public marketing site. */
 export class SubmitDemoRequestDto {
@@ -12,11 +12,15 @@ export class SubmitDemoRequestDto {
   @IsEmail()
   email!: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
+  @ApiProperty()
   @IsString()
-  @Length(0, 30)
-  phoneNumber?: string;
+  @Length(1, 30)
+  phoneNumber!: string;
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  isWhatsapp?: boolean;
 
   @ApiProperty()
   @IsString()

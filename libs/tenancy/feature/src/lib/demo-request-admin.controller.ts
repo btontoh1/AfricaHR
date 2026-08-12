@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard, Permission, PermissionsGuard, RequirePermissions } from '@africahr/platform-auth';
 import { DemoRequestService } from './demo-request.service';
@@ -17,5 +17,12 @@ export class DemoRequestAdminController {
   @ApiOkResponse({ type: DemoRequestAdminResponseDto, isArray: true })
   listRecent(): Promise<DemoRequestAdminResponseDto[]> {
     return this.demoRequests.listRecent();
+  }
+
+  @Post('mark-all-viewed')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Mark every unviewed demo request as viewed, clearing the admin notification badge' })
+  markAllViewed(): Promise<void> {
+    return this.demoRequests.markAllViewed();
   }
 }

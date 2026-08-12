@@ -18,6 +18,8 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { Logo } from '@/components/logo';
 import { NewNotificationWatcher } from '@/features/notifications/new-notification-watcher';
 import { NotificationBell } from '@/features/notifications/notification-bell';
+import { NewDemoRequestWatcher } from '@/features/platform-demo-requests/new-demo-request-watcher';
+import { DemoRequestBell } from '@/features/platform-demo-requests/demo-request-bell';
 import { useMyTenant } from '@/features/settings/queries';
 import { useOrganization } from '@/features/organizations/queries';
 import { cn } from '@/lib/utils';
@@ -112,10 +114,12 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
 
   const initials = user.email.slice(0, 2).toUpperCase();
   const navGroups = buildNavGroups(user);
+  const isPlatformAdmin = user.role === 'PLATFORM_ADMIN';
 
   return (
     <div className="flex min-h-screen bg-background">
       {user.tenantId && <NewNotificationWatcher tenantId={user.tenantId} />}
+      {isPlatformAdmin && <NewDemoRequestWatcher />}
 
       {/* Desktop sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card px-3 py-5 lg:flex print:hidden">
@@ -166,6 +170,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
 
           <div className="flex items-center gap-1">
             {user.tenantId && <NotificationBell tenantId={user.tenantId} />}
+            {isPlatformAdmin && <DemoRequestBell />}
             <ThemeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

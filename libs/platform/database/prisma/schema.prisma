@@ -69,8 +69,10 @@ model Tenant {
 
 /// A "Book a demo" submission from the public marketing site
 /// (apps/web/src/features/marketing) — pre-tenant, platform-root, same as
-/// Tenant itself: no tenantId, no RLS. Read-only for platform admins (no
-/// status workflow in v1); follow-up happens outside the system.
+/// Tenant itself: no tenantId, no RLS. No status workflow in v1 beyond
+/// viewedAt (null until a platform admin opens the list, see
+/// DemoRequestService.markAllViewed) — follow-up itself happens outside the
+/// system.
 model DemoRequest {
   id                String    @id @default(uuid())
   fullName          String    @map("full_name")
@@ -81,6 +83,7 @@ model DemoRequest {
   numberOfEmployees String?   @map("number_of_employees")
   preferredDate     String?   @map("preferred_date")
   preferredTime     String?   @map("preferred_time")
+  viewedAt          DateTime? @map("viewed_at")
 
   createdAt DateTime @default(now()) @map("created_at")
 

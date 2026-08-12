@@ -497,6 +497,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/platform-admin/demo-requests/mark-all-viewed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark every unviewed demo request as viewed, clearing the admin notification badge */
+        post: operations["DemoRequestAdminController_markAllViewed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/login": {
         parameters: {
             query?: never;
@@ -3002,6 +3019,8 @@ export interface components {
             preferredDate?: string;
             preferredTime?: string;
             /** Format: date-time */
+            viewedAt?: string;
+            /** Format: date-time */
             createdAt: string;
         };
         MfaChallengeResponseDto: {
@@ -5315,6 +5334,23 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DemoRequestAdminResponseDto"][];
                 };
+            };
+        };
+    };
+    DemoRequestAdminController_markAllViewed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

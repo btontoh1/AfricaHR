@@ -1,17 +1,30 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { MessageCircle, Presentation } from 'lucide-react';
-import { useDemoRequests } from './queries';
+import { useDemoRequests, useMarkAllDemoRequestsViewed } from './queries';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { PageHeader } from '@/components/page-header';
 import { TableCard } from '@/components/table-card';
 import { EmptyState } from '@/components/empty-state';
 import { TableSkeleton } from '@/components/loading-state';
 import { ErrorState } from '@/components/error-state';
+import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export function DemoRequestsList() {
   const { data: demoRequests, isLoading, isError, error } = useDemoRequests();
+  const markAllViewed = useMarkAllDemoRequestsViewed();
+  // Read through a ref rather than depending on markAllViewed.mutate
+  // directly — the effect below should fire once per mount (visiting this
+  // page is what "seeing" the requests means), not on every render where
+  // the mutation object's identity happens to change.
+  const markAllViewedRef = useRef(markAllViewed.mutate);
+  markAllViewedRef.current = markAllViewed.mutate;
+
+  useEffect(() => {
+    markAllViewedRef.current();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -53,7 +66,12 @@ export function DemoRequestsList() {
             <TableBody>
               {demoRequests.map((request) => (
                 <TableRow key={request.id}>
-                  <TableCell className="font-medium">{request.fullName}</TableCell>
+                  <TableCell className="font-medium">
+                    <span className="inline-flex items-center gap-2">
+                      {request.fullName}
+                      {!request.viewedAt && <Badge>New</Badge>}
+                    </span>
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{request.email}</TableCell>
                   <TableCell className="text-muted-foreground">
                     <span className="inline-flex items-center gap-1.5">

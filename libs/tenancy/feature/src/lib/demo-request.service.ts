@@ -37,4 +37,11 @@ export class DemoRequestService {
       take: RECENT_DEMO_REQUESTS_LIMIT,
     });
   }
+
+  async markAllViewed(): Promise<void> {
+    await this.prisma.demoRequest.updateMany({
+      where: { viewedAt: null },
+      data: { viewedAt: new Date() },
+    });
+  }
 }

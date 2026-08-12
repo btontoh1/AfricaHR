@@ -28,6 +28,9 @@ export class DemoRequestAdminResponseDto {
   @ApiPropertyOptional()
   preferredTime?: string | null;
 
+  @ApiPropertyOptional()
+  viewedAt?: Date | null;
+
   @ApiProperty()
   createdAt!: Date;
 }

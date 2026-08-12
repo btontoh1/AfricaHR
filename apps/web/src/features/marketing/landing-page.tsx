@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { Button } from '@/components/ui/button';
+import { DemoRequestDialog } from './demo-request-dialog';
 
 const NAV_LINKS = [
   { href: '#features', label: 'Features' },
@@ -200,6 +201,7 @@ export function LandingPage() {
             <Button asChild variant="ghost">
               <Link href="/login">Login</Link>
             </Button>
+            <DemoRequestDialog trigger={<Button variant="outline">Book a demo</Button>} />
             <Button asChild>
               <Link href="/login">Get started</Link>
             </Button>
@@ -231,9 +233,7 @@ export function LandingPage() {
                     <ArrowRight className="size-4" />
                   </Link>
                 </Button>
-                <Button asChild size="lg" variant="outline">
-                  <a href="#features">See how it works</a>
-                </Button>
+                <DemoRequestDialog trigger={<Button size="lg" variant="outline">Book a demo</Button>} />
               </div>
             </div>
             <div className="lg:col-span-6">
@@ -372,12 +372,15 @@ export function LandingPage() {
                 Sign in to get your team set up in Ghana, Nigeria, or Kenya.
               </p>
             </div>
-            <Button asChild size="lg" className="shrink-0">
-              <Link href="/login">
-                Get started
-                <ArrowRight className="size-4" />
-              </Link>
-            </Button>
+            <div className="flex shrink-0 flex-wrap items-center gap-3">
+              <DemoRequestDialog trigger={<Button size="lg" variant="outline">Book a demo</Button>} />
+              <Button asChild size="lg">
+                <Link href="/login">
+                  Get started
+                  <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+            </div>
           </div>
         </section>
       </main>

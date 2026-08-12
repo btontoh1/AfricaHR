@@ -36,6 +36,7 @@ import {
   Building,
   KeyRound,
   ScrollText,
+  Presentation,
 } from 'lucide-react';
 import type { SessionUser } from '@/lib/session';
 
@@ -101,6 +102,9 @@ export function buildNavGroups(user: SessionUser): NavGroup[] {
           : []),
         ...(isPlatformAdmin
           ? [{ label: 'Audit Log', href: '/platform-admin/audit-logs', icon: ScrollText }]
+          : []),
+        ...(isPlatformAdmin
+          ? [{ label: 'Demo Requests', href: '/platform-admin/demo-requests', icon: Presentation }]
           : []),
       ],
     },

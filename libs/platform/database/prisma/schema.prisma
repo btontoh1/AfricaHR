@@ -67,6 +67,26 @@ model Tenant {
   @@map("tenants")
 }
 
+/// A "Book a demo" submission from the public marketing site
+/// (apps/web/src/features/marketing) — pre-tenant, platform-root, same as
+/// Tenant itself: no tenantId, no RLS. Read-only for platform admins (no
+/// status workflow in v1); follow-up happens outside the system.
+model DemoRequest {
+  id                String    @id @default(uuid())
+  fullName          String    @map("full_name")
+  email             String
+  phoneNumber       String?   @map("phone_number")
+  organizationName  String    @map("organization_name")
+  numberOfEmployees String?   @map("number_of_employees")
+  preferredDate     String?   @map("preferred_date")
+  preferredTime     String?   @map("preferred_time")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("demo_requests")
+}
+
 enum SubscriptionStatus {
   TRIALING
   ACTIVE

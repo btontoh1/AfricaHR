@@ -11,6 +11,7 @@ import { OrganizationUnitService } from './organization-unit.service';
 import { OrganizationVerificationDocumentService } from './organization-verification-document.service';
 import { PlatformDashboardService } from './platform-dashboard.service';
 import { PlatformAuditLogService } from './platform-audit-log.service';
+import { DemoRequestService } from './demo-request.service';
 import { TenantController } from './tenant.controller';
 import { TenantPublicController } from './tenant-public.controller';
 import { TenantMeController } from './tenant-me.controller';
@@ -19,6 +20,8 @@ import { OrganizationUnitController } from './organization-unit.controller';
 import { OrganizationVerificationController } from './organization-verification.controller';
 import { PlatformDashboardController } from './platform-dashboard.controller';
 import { PlatformAuditLogController } from './platform-audit-log.controller';
+import { DemoRequestPublicController } from './demo-request-public.controller';
+import { DemoRequestAdminController } from './demo-request-admin.controller';
 
 @Module({
   imports: [TenancyDataAccessModule, PlatformAuthModule, AuditModule, StorageModule, PrismaModule, RedisModule],
@@ -34,9 +37,11 @@ import { PlatformAuditLogController } from './platform-audit-log.controller';
   // to disambiguate — they don't actually overlap (different first
   // segment), but this keeps the "more specific/platform routes first"
   // convention used elsewhere in this codebase (see recruitment-feature.module.ts).
-  // PlatformDashboardController (platform-admin/dashboard) and
-  // PlatformAuditLogController (platform-admin/audit-logs) both have
-  // distinct first segments too, so no ordering concern there either.
+  // PlatformDashboardController (platform-admin/dashboard),
+  // PlatformAuditLogController (platform-admin/audit-logs), and the
+  // DemoRequest controllers (public/demo-requests,
+  // platform-admin/demo-requests) all have distinct first segments too, so
+  // no ordering concern there either.
   controllers: [
     TenantPublicController,
     TenantMeController,
@@ -46,6 +51,8 @@ import { PlatformAuditLogController } from './platform-audit-log.controller';
     OrganizationUnitController,
     PlatformDashboardController,
     PlatformAuditLogController,
+    DemoRequestPublicController,
+    DemoRequestAdminController,
   ],
   providers: [
     TenantService,
@@ -54,6 +61,7 @@ import { PlatformAuditLogController } from './platform-audit-log.controller';
     OrganizationVerificationDocumentService,
     PlatformDashboardService,
     PlatformAuditLogService,
+    DemoRequestService,
   ],
   exports: [TenantService, OrganizationService, OrganizationUnitService, OrganizationVerificationDocumentService],
 })

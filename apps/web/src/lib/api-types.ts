@@ -463,6 +463,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/demo-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit a "Book a demo" request from the public marketing site */
+        post: operations["DemoRequestPublicController_submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform-admin/demo-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List recent "Book a demo" submissions for platform admin follow-up */
+        get: operations["DemoRequestAdminController_listRecent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/login": {
         parameters: {
             query?: never;
@@ -2941,6 +2975,32 @@ export interface components {
             /** @description Total rows matching the current filters, across all pages */
             totalCount: number;
         };
+        SubmitDemoRequestDto: {
+            fullName: string;
+            email: string;
+            phoneNumber?: string;
+            organizationName: string;
+            numberOfEmployees?: string;
+            preferredDate?: string;
+            preferredTime?: string;
+        };
+        DemoRequestResponseDto: {
+            id: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        DemoRequestAdminResponseDto: {
+            id: string;
+            fullName: string;
+            email: string;
+            phoneNumber?: string;
+            organizationName: string;
+            numberOfEmployees?: string;
+            preferredDate?: string;
+            preferredTime?: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
         MfaChallengeResponseDto: {
             /** @enum {boolean} */
             mfaRequired: true;
@@ -5209,6 +5269,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditLogPageResponseDto"];
+                };
+            };
+        };
+    };
+    DemoRequestPublicController_submit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitDemoRequestDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoRequestResponseDto"];
+                };
+            };
+        };
+    };
+    DemoRequestAdminController_listRecent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoRequestAdminResponseDto"][];
                 };
             };
         };

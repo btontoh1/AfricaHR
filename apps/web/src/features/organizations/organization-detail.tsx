@@ -8,6 +8,7 @@ import { CreateOrganizationUnitForm } from './create-organization-unit-form';
 import { EditOrganizationDialog } from './edit-organization-dialog';
 import { EditOrganizationUnitDialog } from './edit-organization-unit-dialog';
 import { RemoveOrganizationUnitDialog } from './remove-organization-unit-dialog';
+import { OrganizationLogoCard } from './organization-logo-card';
 import { OrganizationVerificationStatusBadge } from './organization-verification-status-badge';
 import { UploadVerificationDocumentForm } from './upload-verification-document-form';
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -51,6 +52,14 @@ export function OrganizationDetail({
   const { data: documents } = useVerificationDocuments(tenantId, organizationId);
   const submitForVerification = useSubmitForVerification(tenantId);
   const canEdit = session.role === 'TENANT_ADMIN' || session.role === 'PLATFORM_ADMIN';
+  // Broader than canEdit - invoice branding is granted to ORG_ADMIN too
+  // (see INVOICING_MANAGE's doc comment in system-role.ts), but only for
+  // their own organization, same scoping the backend enforces.
+  const canManageInvoicing =
+    session.role === 'PLATFORM_ADMIN' ||
+    session.role === 'TENANT_ADMIN' ||
+    session.role === 'HR_MANAGER' ||
+    (session.role === 'ORG_ADMIN' && session.organizationId === organizationId);
 
   if (isLoading) {
     return <CardSkeleton />;
@@ -113,6 +122,8 @@ export function OrganizationDetail({
           <Field label="Tax identification number" value={organization.taxIdentificationNumber} />
         </CardContent>
       </Card>
+
+      {canManageInvoicing && <OrganizationLogoCard tenantId={tenantId} organizationId={organizationId} />}
 
       <Card>
         <CardHeader>

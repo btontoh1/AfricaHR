@@ -10,3 +10,4 @@ export type OrganizationVerificationStatus = Organization['verificationStatus'];
 export type VerificationDocument = components['schemas']['OrganizationVerificationDocumentResponseDto'];
 export type RequestVerificationDocumentUploadInput = components['schemas']['RequestVerificationDocumentUploadDto'];
 export type RejectOrganizationInput = components['schemas']['RejectOrganizationDto'];
+export type RequestOrganizationLogoUploadInput = components['schemas']['RequestOrganizationLogoUploadDto'];

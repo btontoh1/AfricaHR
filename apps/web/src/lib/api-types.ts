@@ -381,6 +381,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/organizations/{id}/logo/upload-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["OrganizationController_requestLogoUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/organizations/{id}/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["OrganizationController_removeLogo"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/organizations/{id}/logo-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OrganizationController_getLogoUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/organization-units": {
         parameters: {
             query?: never;
@@ -2693,6 +2741,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/customers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomerController_list"];
+        put?: never;
+        post: operations["CustomerController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/customers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomerController_findById"];
+        put?: never;
+        post?: never;
+        delete: operations["CustomerController_softDelete"];
+        options?: never;
+        head?: never;
+        patch: operations["CustomerController_update"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/customer-invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomerInvoiceController_list"];
+        put?: never;
+        post: operations["CustomerInvoiceController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/customer-invoices/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomerInvoiceController_findById"];
+        put?: never;
+        post?: never;
+        delete: operations["CustomerInvoiceController_softDelete"];
+        options?: never;
+        head?: never;
+        patch: operations["CustomerInvoiceController_update"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/customer-invoices/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["CustomerInvoiceController_updateStatus"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/customer-invoices/{id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomerInvoiceController_downloadPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2836,6 +2980,8 @@ export interface components {
             /** @description Reviewer note, set on rejection */
             verificationNote?: string;
             verifiedAt?: string;
+            /** @description Storage key for the organization's own logo, shown on its invoices */
+            logoStorageKey?: string;
             createdAt: string;
             updatedAt: string;
         };
@@ -2911,6 +3057,20 @@ export interface components {
             /** @description Short-lived signed URL — PUT the file bytes here directly, not through this API */
             uploadUrl: string;
             documentId: string;
+        };
+        RequestOrganizationLogoUploadDto: {
+            /** @example logo.png */
+            fileName: string;
+            /** @enum {string} */
+            contentType: "image/png" | "image/jpeg" | "image/webp" | "image/svg+xml";
+        };
+        RequestOrganizationLogoUploadResponseDto: {
+            /** @description Short-lived signed URL — PUT the file bytes here directly, not through this API */
+            uploadUrl: string;
+        };
+        OrganizationLogoUrlResponseDto: {
+            /** @description Short-lived signed URL, or null if no logo is set */
+            viewUrl?: string | null;
         };
         CreateOrganizationUnitDto: {
             organizationId: string;
@@ -4208,6 +4368,94 @@ export interface components {
             platformRevenue: components["schemas"]["RevenueByCurrencyResponseDto"][];
             expiringSubscriptions: components["schemas"]["ExpiringSubscriptionResponseDto"][];
         };
+        CreateCustomerDto: {
+            organizationId: string;
+            name: string;
+            email?: string;
+            phone?: string;
+            billingAddress?: string;
+        };
+        CustomerResponseDto: {
+            id: string;
+            organizationId: string;
+            name: string;
+            email?: string;
+            phone?: string;
+            billingAddress?: string;
+            createdAt: string;
+            updatedAt: string;
+        };
+        UpdateCustomerDto: {
+            name?: string;
+            email?: string;
+            phone?: string;
+            billingAddress?: string;
+        };
+        InvoiceLineItemDto: {
+            description: string;
+            quantity: number;
+            unitPrice: number;
+        };
+        CreateCustomerInvoiceDto: {
+            organizationId: string;
+            customerId: string;
+            issueDate: string;
+            dueDate: string;
+            /** @example GHS */
+            currency: string;
+            notes?: string;
+            /**
+             * @description Percent, e.g. 15 for 15%
+             * @default 0
+             */
+            taxRate: number;
+            lineItems: components["schemas"]["InvoiceLineItemDto"][];
+        };
+        CustomerInvoiceLineItemResponseDto: {
+            id: string;
+            description: string;
+            quantity: string;
+            unitPrice: string;
+            amount: string;
+            sortOrder: number;
+        };
+        CustomerInvoiceResponseDto: {
+            id: string;
+            organizationId: string;
+            customerId: string;
+            customerName: string;
+            invoiceNumber: string;
+            issueDate: string;
+            dueDate: string;
+            currency: string;
+            /** @enum {string} */
+            status: "DRAFT" | "SENT" | "PAID" | "OVERDUE" | "CANCELLED";
+            notes?: string;
+            taxRate: string;
+            subtotal: string;
+            taxAmount: string;
+            total: string;
+            sentAt?: string;
+            paidAt?: string;
+            lineItems: components["schemas"]["CustomerInvoiceLineItemResponseDto"][];
+            createdAt: string;
+            updatedAt: string;
+        };
+        UpdateCustomerInvoiceDto: {
+            customerId?: string;
+            issueDate?: string;
+            dueDate?: string;
+            /** @example GHS */
+            currency?: string;
+            notes?: string;
+            /** @description Percent, e.g. 15 for 15% */
+            taxRate?: number;
+            lineItems?: components["schemas"]["InvoiceLineItemDto"][];
+        };
+        UpdateInvoiceStatusDto: {
+            /** @enum {string} */
+            status: "DRAFT" | "SENT" | "PAID" | "OVERDUE" | "CANCELLED";
+        };
     };
     responses: never;
     parameters: never;
@@ -5116,6 +5364,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentViewUrlResponseDto"];
+                };
+            };
+        };
+    };
+    OrganizationController_requestLogoUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestOrganizationLogoUploadDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequestOrganizationLogoUploadResponseDto"];
+                };
+            };
+        };
+    };
+    OrganizationController_removeLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OrganizationController_getLogoUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationLogoUrlResponseDto"];
                 };
             };
         };
@@ -9242,6 +9558,288 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PlatformBillingSummaryResponseDto"];
                 };
+            };
+        };
+    };
+    CustomerController_list: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerResponseDto"][];
+                };
+            };
+        };
+    };
+    CustomerController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCustomerDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerResponseDto"];
+                };
+            };
+        };
+    };
+    CustomerController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerResponseDto"];
+                };
+            };
+        };
+    };
+    CustomerController_softDelete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerResponseDto"];
+                };
+            };
+        };
+    };
+    CustomerController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCustomerDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerResponseDto"];
+                };
+            };
+        };
+    };
+    CustomerInvoiceController_list: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerInvoiceResponseDto"][];
+                };
+            };
+        };
+    };
+    CustomerInvoiceController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCustomerInvoiceDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerInvoiceResponseDto"];
+                };
+            };
+        };
+    };
+    CustomerInvoiceController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerInvoiceResponseDto"];
+                };
+            };
+        };
+    };
+    CustomerInvoiceController_softDelete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CustomerInvoiceController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCustomerInvoiceDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerInvoiceResponseDto"];
+                };
+            };
+        };
+    };
+    CustomerInvoiceController_updateStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateInvoiceStatusDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerInvoiceResponseDto"];
+                };
+            };
+        };
+    };
+    CustomerInvoiceController_downloadPdf: {
+        parameters: {
+            query: {
+                download: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -37,6 +37,7 @@ import {
   KeyRound,
   ScrollText,
   Presentation,
+  Contact,
 } from 'lucide-react';
 import type { SessionUser } from '@/lib/session';
 
@@ -85,6 +86,11 @@ export function buildNavGroups(user: SessionUser): NavGroup[] {
   // HR_MANAGER only holds USER_READ (not MANAGE); PAYROLL_MANAGER holds neither.
   const hasTeamMembersReadAccess =
     isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
+  // Invoicing is an exception to ORG_ADMIN's otherwise employee-only scope -
+  // it's the organization's own external billing tool, not an internal HR
+  // function, so ORG_ADMIN gets it too (see Permission.INVOICING_MANAGE).
+  const hasInvoicingAccess =
+    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER' || isOrgAdmin);
 
   const groups: NavGroup[] = [
     {
@@ -162,6 +168,13 @@ export function buildNavGroups(user: SessionUser): NavGroup[] {
         ...(hasBenefitsAdminAccess
           ? [{ label: 'Benefit Enrollments', href: '/benefits/enrollments', icon: FileCheck2 }]
           : []),
+      ],
+    },
+    {
+      label: 'Invoicing',
+      items: [
+        ...(hasInvoicingAccess ? [{ label: 'Customers', href: '/customers', icon: Contact }] : []),
+        ...(hasInvoicingAccess ? [{ label: 'Invoices', href: '/invoices', icon: Receipt }] : []),
       ],
     },
     {

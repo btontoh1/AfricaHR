@@ -95,7 +95,10 @@
       "@africahr/invoicing-data-access": [
         "./libs/invoicing/data-access/src/index.ts"
       ],
-      "@africahr/invoicing-feature": ["./libs/invoicing/feature/src/index.ts"]
+      "@africahr/invoicing-feature": ["./libs/invoicing/feature/src/index.ts"],
+      "@africahr/how-it-works-feature": [
+        "./libs/how-it-works/feature/src/index.ts"
+      ]
     }
   },
   "exclude": ["node_modules", "tmp"]

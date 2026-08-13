@@ -1604,3 +1604,29 @@ model CustomerInvoiceLineItem {
   @@index([invoiceId])
   @@map("customer_invoice_line_items")
 }
+
+// ---------------------------------------------------------------------------
+// How It Works videos (Module 13)
+// ---------------------------------------------------------------------------
+
+/// Platform-root reference content (no tenantId, no RLS - same convention as
+/// DemoRequest and the statutory reference tables): one shared catalog of
+/// tutorial video links shown to every tenant, curated by PLATFORM_ADMIN.
+/// videoUrl is an external embed link (YouTube/Vimeo/Loom/etc.), not a
+/// storage key - this app never stores video bytes.
+model HowItWorksVideo {
+  id          String  @id @default(uuid())
+  title       String
+  description String?
+  videoUrl    String  @map("video_url")
+  category    String?
+  sortOrder   Int     @default(0) @map("sort_order")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  @@index([sortOrder])
+  @@map("how_it_works_videos")
+}

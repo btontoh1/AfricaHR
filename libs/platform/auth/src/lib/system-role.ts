@@ -86,6 +86,12 @@ export const Permission = {
   // operation, not tenant-wide HR administration.
   INVOICING_MANAGE: 'invoicing:manage',
   INVOICING_READ: 'invoicing:read',
+  // Platform-admin only: the "How it works" tutorial catalog is the same
+  // curated content shown to every tenant, so only the platform admin
+  // curates it - no tenant-level counterpart, same reasoning as
+  // PLATFORM_PAYROLL_CONFIG_MANAGE. Read side needs no permission at all
+  // (every authenticated user can view - see HowItWorksVideoController).
+  HOW_IT_WORKS_MANAGE: 'platform:how-it-works:manage',
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
@@ -122,6 +128,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.PLATFORM_AUDIT_READ,
     Permission.PLATFORM_DISBURSEMENT_READ,
     Permission.PLATFORM_NOTIFICATION_READ,
+    Permission.HOW_IT_WORKS_MANAGE,
   ],
   [SystemRole.TENANT_ADMIN]: [
     Permission.TENANT_BRANDING_MANAGE,

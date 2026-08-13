@@ -184,6 +184,14 @@ model Organization {
   /// column yet (e.g. Ghana SSNIT employer number).
   metadata                Json?
 
+  /// Object-storage key for the organization's own branding logo - shown on
+  /// invoices this organization sends to its own customers (see
+  /// CustomerInvoice). Deliberately separate from Tenant.logoStorageKey: a
+  /// multi-organization tenant's member organizations each bill under their
+  /// own name/mark, not the tenant's - same reasoning as why invoices below
+  /// key off organizationId, not tenantId alone.
+  logoStorageKey String? @map("logo_storage_key")
+
   /// KYB-style review: a PLATFORM_ADMIN verifies the legal-entity fields
   /// above (and any supporting documents) before the org is trusted.
   /// Nothing else in the app currently gates on this status - see the
@@ -211,6 +219,8 @@ model Organization {
   verificationDocuments OrganizationVerificationDocument[]
   /// ORG_ADMIN users scoped to this organization - see User.organizationId.
   orgAdmins             User[]
+  customers             Customer[]
+  invoices              CustomerInvoice[]
 
   @@index([tenantId])
   @@map("organizations")
@@ -1485,4 +1495,112 @@ model Notification {
   @@index([tenantId])
   @@index([userId])
   @@map("notifications")
+}
+
+// ---------------------------------------------------------------------------
+// Customer Invoicing (Module 12)
+// ---------------------------------------------------------------------------
+
+/// A customer an organization bills - distinct from anything tenant-wide:
+/// each organization under a multi-organization tenant (e.g. NALAG's member
+/// bodies) maintains its own customer list, not shared with sibling
+/// organizations. Deliberately unrelated to Employee/User - this is who the
+/// organization sells to, not who works for it.
+model Customer {
+  id             String  @id @default(uuid())
+  tenantId       String  @map("tenant_id")
+  organizationId String  @map("organization_id")
+  name           String
+  email          String?
+  phone          String?
+  billingAddress String? @map("billing_address")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  organization Organization      @relation(fields: [organizationId], references: [id])
+  invoices     CustomerInvoice[]
+
+  @@index([tenantId])
+  @@index([organizationId])
+  @@map("customers")
+}
+
+enum CustomerInvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+/// Invoices an organization sends to its own Customers - unrelated to
+/// Invoice (Module: Billing), which is ParotHR's own platform-to-tenant
+/// subscription billing. invoiceNumber is unique per organization (not
+/// tenant-wide): each organization bills under its own sequence, matching
+/// how a real standalone business numbers its own invoices. subtotal/
+/// taxAmount/total are computed from line items at write time and stored
+/// (not computed on every read) so a later tax-rate or line-item edit never
+/// silently rewrites a Sent/Paid invoice's history - see
+/// CustomerInvoiceService for where that computation happens.
+model CustomerInvoice {
+  id             String                 @id @default(uuid())
+  tenantId       String                 @map("tenant_id")
+  organizationId String                 @map("organization_id")
+  customerId     String                 @map("customer_id")
+  invoiceNumber  String                 @map("invoice_number")
+  issueDate      DateTime               @map("issue_date")
+  dueDate        DateTime               @map("due_date")
+  currency       String
+  status         CustomerInvoiceStatus  @default(DRAFT)
+  notes          String?
+  taxRate        Decimal                @default(0) @map("tax_rate")
+  subtotal       Decimal
+  taxAmount      Decimal                @map("tax_amount")
+  total          Decimal
+  sentAt         DateTime?              @map("sent_at")
+  paidAt         DateTime?              @map("paid_at")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  organization Organization             @relation(fields: [organizationId], references: [id])
+  customer     Customer                 @relation(fields: [customerId], references: [id])
+  lineItems    CustomerInvoiceLineItem[]
+
+  @@unique([organizationId, invoiceNumber])
+  @@index([tenantId])
+  @@index([organizationId])
+  @@index([customerId])
+  @@map("customer_invoices")
+}
+
+/// Immutable once written - an invoice edit deletes and recreates its line
+/// items wholesale rather than patching individual rows, same convention as
+/// PayslipLineItem (no updatedAt/deletedAt/updatedBy - the parent invoice
+/// carries those instead).
+model CustomerInvoiceLineItem {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  invoiceId   String   @map("invoice_id")
+  description String
+  quantity    Decimal
+  unitPrice   Decimal  @map("unit_price")
+  amount      Decimal
+  sortOrder   Int      @default(0) @map("sort_order")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  createdBy String?  @map("created_by")
+
+  invoice CustomerInvoice @relation(fields: [invoiceId], references: [id])
+
+  @@index([tenantId])
+  @@index([invoiceId])
+  @@map("customer_invoice_line_items")
 }

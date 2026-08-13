@@ -79,6 +79,13 @@ export const Permission = {
   // those emails go through. No tenant-level counterpart, same reasoning
   // as PLATFORM_AUDIT_READ/PLATFORM_DISBURSEMENT_READ.
   PLATFORM_NOTIFICATION_READ: 'platform:notification:read',
+  // An organization's own external billing tool (customers it invoices),
+  // not an internal HR function - deliberately granted to ORG_ADMIN despite
+  // that role otherwise being scoped to employees only (see ORG_ADMIN's own
+  // permission list below), since invoicing is the org's own business
+  // operation, not tenant-wide HR administration.
+  INVOICING_MANAGE: 'invoicing:manage',
+  INVOICING_READ: 'invoicing:read',
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
@@ -109,6 +116,8 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.REPORTING_READ,
     Permission.NOTIFICATIONS_MANAGE,
     Permission.NOTIFICATIONS_READ,
+    Permission.INVOICING_MANAGE,
+    Permission.INVOICING_READ,
     Permission.PLATFORM_BILLING_MANAGE,
     Permission.PLATFORM_AUDIT_READ,
     Permission.PLATFORM_DISBURSEMENT_READ,
@@ -137,6 +146,8 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.REPORTING_READ,
     Permission.NOTIFICATIONS_MANAGE,
     Permission.NOTIFICATIONS_READ,
+    Permission.INVOICING_MANAGE,
+    Permission.INVOICING_READ,
   ],
   [SystemRole.HR_MANAGER]: [
     Permission.ORGANIZATION_READ,
@@ -157,6 +168,8 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.REPORTING_READ,
     Permission.NOTIFICATIONS_MANAGE,
     Permission.NOTIFICATIONS_READ,
+    Permission.INVOICING_MANAGE,
+    Permission.INVOICING_READ,
   ],
   [SystemRole.PAYROLL_MANAGER]: [
     Permission.ORGANIZATION_READ,
@@ -172,12 +185,17 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
   // TENANT_ADMIN/HR_MANAGER-only for now. USER_READ (not MANAGE) mirrors
   // HR_MANAGER's own grant - both need to list tenant users to link one to
   // an Employee.userId (granting portal access), but neither can invite,
-  // deactivate, or change the role of a User themselves.
+  // deactivate, or change the role of a User themselves. INVOICING is the
+  // one exception to "employee management only": it's the organization's
+  // own external billing tool, not an internal HR function, so it's
+  // in scope even though leave/attendance/payroll aren't.
   [SystemRole.ORG_ADMIN]: [
     Permission.ORGANIZATION_READ,
     Permission.USER_READ,
     Permission.EMPLOYEE_MANAGE,
     Permission.EMPLOYEE_READ,
+    Permission.INVOICING_MANAGE,
+    Permission.INVOICING_READ,
   ],
   [SystemRole.EMPLOYEE]: [],
 };

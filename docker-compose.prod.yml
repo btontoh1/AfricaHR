@@ -67,6 +67,11 @@ services:
       MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY}
       PAYMENT_METHOD_ENCRYPTION_KEY: ${PAYMENT_METHOD_ENCRYPTION_KEY}
       PAYSTACK_SECRET_KEY: ${PAYSTACK_SECRET_KEY}
+      # Both optional — the app falls back to logging instead of sending
+      # (see NotificationsFeatureModule) when either is unset. Leave both
+      # blank to keep that behavior.
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY}
+      SENDGRID_FROM_EMAIL: ${SENDGRID_FROM_EMAIL}
       CORS_ORIGINS: https://${APP_DOMAIN}
       # S3-compatible object storage for uploads (organization verification
       # documents, tenant logo) - see libs/platform/storage. Uploads/downloads

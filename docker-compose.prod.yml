@@ -8,11 +8,24 @@
 # The api service publishes nothing at all: the web app reaches it over the
 # private docker network at API_BASE_URL, and the browser never talks to it
 # directly (see apps/web/src/lib/backend-client.ts).
+#
+# Every service below sets mem_limit/cpus (the legacy, non-Swarm resource
+# keys — these apply to a plain `docker compose up`, unlike deploy.resources
+# which Compose only honors reliably in Swarm mode). Limits total ~3GB of
+# this box's ~3.7GB RAM, leaving headroom for the host OS, sshd, and the
+# cron scripts (backup/health-check) that run natively, not in a container.
+# This caps the blast radius of any one service ballooning in *steady-state
+# operation* — it does NOT fix resource contention during `docker compose
+# up --build` itself, since the image build runs outside these containers
+# entirely; that's still bound by the host's real capacity.
 
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    mem_limit: 1024m
+    mem_reservation: 512m
+    cpus: 0.75
     environment:
       POSTGRES_USER: africahr
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -32,6 +45,9 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    mem_limit: 320m
+    mem_reservation: 128m
+    cpus: 0.25
     command: --requirepass ${REDIS_PASSWORD}
     ports:
       - '127.0.0.1:6379:6379'
@@ -48,6 +64,9 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     restart: unless-stopped
+    mem_limit: 896m
+    mem_reservation: 384m
+    cpus: 0.75
     depends_on:
       postgres:
         condition: service_healthy
@@ -91,6 +110,9 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
     restart: unless-stopped
+    mem_limit: 640m
+    mem_reservation: 256m
+    cpus: 0.5
     depends_on:
       - api
     environment:
@@ -100,6 +122,9 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    mem_limit: 192m
+    mem_reservation: 64m
+    cpus: 0.25
     environment:
       APP_DOMAIN: ${APP_DOMAIN}
       APEX_DOMAIN: ${APEX_DOMAIN}

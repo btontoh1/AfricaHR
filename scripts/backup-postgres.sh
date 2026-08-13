@@ -63,4 +63,29 @@ echo "backup-postgres: wrote $(wc -c < "$OUTFILE") bytes to $OUTFILE"
 DELETED=$(find "$BACKUP_DIR" -maxdepth 1 -name 'africahr-*.dump' -mtime "+$RETENTION_DAYS" -print -delete | wc -l)
 echo "backup-postgres: pruned $DELETED backup(s) older than $RETENTION_DAYS days"
 
+# Off-site copy — reuses the same S3-compatible object storage this app
+# already uses for uploads (see StorageService), under its own prefix so
+# it never collides with tenant-uploaded files. Optional: skipped entirely
+# if the STORAGE_* vars aren't set. Expiring old off-site copies is left to
+# a bucket lifecycle rule (configured once in the storage provider's
+# console) rather than reimplemented here — S3-compatible lifecycle rules
+# expire objects even if this script/cron stops running, which a
+# client-side prune here couldn't guarantee.
+OFFSITE_PREFIX="pg-backups"
+if [ -n "${STORAGE_ENDPOINT:-}" ] && [ -n "${STORAGE_BUCKET:-}" ] && [ -n "${STORAGE_ACCESS_KEY:-}" ] && [ -n "${STORAGE_SECRET_KEY:-}" ]; then
+  if command -v aws >/dev/null 2>&1; then
+    echo "backup-postgres: uploading off-site to s3://$STORAGE_BUCKET/$OFFSITE_PREFIX/"
+    AWS_ACCESS_KEY_ID="$STORAGE_ACCESS_KEY" \
+    AWS_SECRET_ACCESS_KEY="$STORAGE_SECRET_KEY" \
+    AWS_DEFAULT_REGION="${STORAGE_REGION:-auto}" \
+    aws s3 cp "$OUTFILE" "s3://$STORAGE_BUCKET/$OFFSITE_PREFIX/$(basename "$OUTFILE")" \
+      --endpoint-url "$STORAGE_ENDPOINT"
+    echo "backup-postgres: off-site upload done"
+  else
+    echo "backup-postgres: STORAGE_* is set but the 'aws' CLI isn't installed — skipping off-site copy" >&2
+  fi
+else
+  echo "backup-postgres: STORAGE_* off-site credentials not fully set — skipping off-site copy"
+fi
+
 echo "backup-postgres: done"

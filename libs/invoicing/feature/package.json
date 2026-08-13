@@ -1,0 +1,24 @@
+{
+  "name": "@africahr/invoicing-feature",
+  "version": "0.0.1",
+  "private": true,
+  "type": "commonjs",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "dependencies": {
+    "tslib": "^2.3.0",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/swagger": "^11.4.5",
+    "class-validator": "^0.15.1",
+    "class-transformer": "^0.5.1",
+    "express": "5.2.1",
+    "@africahr/platform-auth": "0.0.1",
+    "@africahr/platform-audit": "0.0.1",
+    "@africahr/platform-storage": "0.0.1",
+    "@africahr/invoicing-data-access": "0.0.1",
+    "@africahr/invoicing-domain": "0.0.1",
+    "@prisma/client": "^7.8.0",
+    "@react-pdf/renderer": "^4.6.0",
+    "react": "19.0.0"
+  }
+}

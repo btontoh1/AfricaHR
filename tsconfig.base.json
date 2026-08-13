@@ -90,7 +90,12 @@
       "@africahr/billing-data-access": [
         "./libs/billing/data-access/src/index.ts"
       ],
-      "@africahr/billing-feature": ["./libs/billing/feature/src/index.ts"]
+      "@africahr/billing-feature": ["./libs/billing/feature/src/index.ts"],
+      "@africahr/invoicing-domain": ["./libs/invoicing/domain/src/index.ts"],
+      "@africahr/invoicing-data-access": [
+        "./libs/invoicing/data-access/src/index.ts"
+      ],
+      "@africahr/invoicing-feature": ["./libs/invoicing/feature/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

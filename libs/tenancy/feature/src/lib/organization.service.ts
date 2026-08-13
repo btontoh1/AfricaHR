@@ -1,10 +1,17 @@
+import { randomUUID } from 'node:crypto';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Organization, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
+import { StorageService } from '@africahr/platform-storage';
 import { canTransitionOrganizationVerificationStatus, OrganizationVerificationStatus } from '@africahr/tenancy-domain';
 import { OrganizationRepository, TenantRepository } from '@africahr/tenancy-data-access';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
+import { RequestOrganizationLogoUploadDto } from './dto/request-organization-logo-upload.dto';
+
+export interface RequestOrganizationLogoUploadResult {
+  uploadUrl: string;
+}
 
 @Injectable()
 export class OrganizationService {
@@ -12,6 +19,7 @@ export class OrganizationService {
     private readonly organizations: OrganizationRepository,
     private readonly tenants: TenantRepository,
     private readonly audit: AuditService,
+    private readonly storage: StorageService,
   ) {}
 
   async create(
@@ -190,5 +198,57 @@ export class OrganizationService {
     });
 
     return updated;
+  }
+
+  async requestLogoUpload(
+    tenantId: string,
+    id: string,
+    dto: RequestOrganizationLogoUploadDto,
+    actorId?: string,
+  ): Promise<RequestOrganizationLogoUploadResult> {
+    await this.findById(tenantId, id);
+
+    const storageKey = `organization-logos/${tenantId}/${id}/${randomUUID()}-${dto.fileName}`;
+    const uploadUrl = await this.storage.getUploadUrl(storageKey, dto.contentType);
+
+    await this.organizations.updateLogo(tenantId, id, storageKey, actorId);
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'organization.logo_updated',
+      resourceType: 'Organization',
+      resourceId: id,
+    });
+
+    return { uploadUrl };
+  }
+
+  async removeLogo(tenantId: string, id: string, actorId?: string): Promise<void> {
+    const organization = await this.findById(tenantId, id);
+    if (!organization.logoStorageKey) {
+      return;
+    }
+
+    await this.storage.deleteObject(organization.logoStorageKey);
+    await this.organizations.updateLogo(tenantId, id, null, actorId);
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'organization.logo_removed',
+      resourceType: 'Organization',
+      resourceId: id,
+    });
+  }
+
+  // 1 hour rather than the storage service's 15-minute default - same
+  // reasoning as TenantService.getLogoUrl: this backs a logo shown across a
+  // normal browsing session, not a one-off document view.
+  async getLogoUrl(organization: Organization): Promise<string | null> {
+    if (!organization.logoStorageKey) {
+      return null;
+    }
+    return this.storage.getViewUrl(organization.logoStorageKey, 60 * 60);
   }
 }

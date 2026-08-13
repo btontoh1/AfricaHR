@@ -13,6 +13,7 @@ import { RecruitmentFeatureModule } from '@africahr/recruitment-feature';
 import { ReportingFeatureModule } from '@africahr/reporting-feature';
 import { NotificationsFeatureModule } from '@africahr/notifications-feature';
 import { BillingFeatureModule } from '@africahr/billing-feature';
+import { InvoicingFeatureModule } from '@africahr/invoicing-feature';
 import { SetupModule } from './setup/setup.module';
 import { TenantAuthModule } from './tenant-auth/tenant-auth.module';
 
@@ -34,6 +35,7 @@ import { TenantAuthModule } from './tenant-auth/tenant-auth.module';
     ReportingFeatureModule,
     NotificationsFeatureModule,
     BillingFeatureModule,
+    InvoicingFeatureModule,
   ],
 })
 export class AppModule {}

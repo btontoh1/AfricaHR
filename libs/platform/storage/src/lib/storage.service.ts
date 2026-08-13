@@ -22,7 +22,12 @@ export interface StorageUsage {
  * signed URL, never through the API - the Next.js proxy's generic
  * `/api/[...path]` route reads every request body with `await
  * request.text()`, which is lossy for binary data, so it can never carry a
- * file. This service only ever hands out URLs, never bytes.
+ * file. This service hands out URLs for that path.
+ *
+ * getObjectBytes is the one deliberate exception: server-side PDF
+ * generation (see InvoicePdfService) needs an organization's logo bytes
+ * embedded directly into the PDF it assembles in-process, not a URL for a
+ * browser to fetch - there's no browser involved in that request at all.
  */
 @Injectable()
 export class StorageService {
@@ -47,6 +52,12 @@ export class StorageService {
 
   async deleteObject(key: string): Promise<void> {
     await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
+  }
+
+  async getObjectBytes(key: string): Promise<Buffer> {
+    const response = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
+    const bytes = await response.Body?.transformToByteArray();
+    return Buffer.from(bytes ?? []);
   }
 
   /**

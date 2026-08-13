@@ -43,6 +43,7 @@ export default [
                         { sourceTag: "scope:reporting", onlyDependOnLibsWithTags: ["scope:reporting", "scope:platform"] },
                         { sourceTag: "scope:notifications", onlyDependOnLibsWithTags: ["scope:notifications", "scope:platform"] },
                         { sourceTag: "scope:billing", onlyDependOnLibsWithTags: ["scope:billing", "scope:platform"] },
+                        { sourceTag: "scope:invoicing", onlyDependOnLibsWithTags: ["scope:invoicing", "scope:platform"] },
 
                         { sourceTag: "type:app", onlyDependOnLibsWithTags: ["*"] },
                         { sourceTag: "type:e2e", onlyDependOnLibsWithTags: ["*"] },

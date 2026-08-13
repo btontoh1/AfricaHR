@@ -1,0 +1,19 @@
+{
+  "name": "invoicing-data-access",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/invoicing/data-access/src",
+  "projectType": "library",
+  "tags": ["scope:invoicing", "type:data-access"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/invoicing/data-access",
+        "main": "libs/invoicing/data-access/src/index.ts",
+        "tsConfig": "libs/invoicing/data-access/tsconfig.lib.json",
+        "assets": ["libs/invoicing/data-access/*.md"]
+      }
+    }
+  }
+}

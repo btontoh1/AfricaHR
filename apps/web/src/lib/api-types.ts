@@ -2837,6 +2837,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/how-it-works-videos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List tutorial videos, in display order */
+        get: operations["HowItWorksVideoController_list"];
+        put?: never;
+        /** Add a tutorial video (platform admin only) */
+        post: operations["HowItWorksVideoController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/how-it-works-videos/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a tutorial video (platform admin only) */
+        delete: operations["HowItWorksVideoController_remove"];
+        options?: never;
+        head?: never;
+        /** Update a tutorial video (platform admin only) */
+        patch: operations["HowItWorksVideoController_update"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4455,6 +4491,39 @@ export interface components {
         UpdateInvoiceStatusDto: {
             /** @enum {string} */
             status: "DRAFT" | "SENT" | "PAID" | "OVERDUE" | "CANCELLED";
+        };
+        HowItWorksVideoResponseDto: {
+            id: string;
+            title: string;
+            description?: string;
+            videoUrl: string;
+            category?: string;
+            sortOrder: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CreateHowItWorksVideoDto: {
+            title: string;
+            description?: string;
+            /** @example https://www.youtube.com/watch?v=... */
+            videoUrl: string;
+            /** @example Getting Started */
+            category?: string;
+            /**
+             * @description Lower numbers appear first
+             * @default 0
+             */
+            sortOrder: number;
+        };
+        UpdateHowItWorksVideoDto: {
+            title?: string;
+            description?: string;
+            videoUrl?: string;
+            category?: string;
+            /** @description Lower numbers appear first */
+            sortOrder?: number;
         };
     };
     responses: never;
@@ -9834,6 +9903,88 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HowItWorksVideoController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HowItWorksVideoResponseDto"][];
+                };
+            };
+        };
+    };
+    HowItWorksVideoController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateHowItWorksVideoDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HowItWorksVideoController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HowItWorksVideoController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateHowItWorksVideoDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {

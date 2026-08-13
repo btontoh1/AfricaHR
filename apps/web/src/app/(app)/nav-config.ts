@@ -38,6 +38,7 @@ import {
   ScrollText,
   Presentation,
   Contact,
+  PlayCircle,
 } from 'lucide-react';
 import type { SessionUser } from '@/lib/session';
 
@@ -95,7 +96,13 @@ export function buildNavGroups(user: SessionUser): NavGroup[] {
   const groups: NavGroup[] = [
     {
       label: 'Overview',
-      items: [{ label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard }],
+      items: [
+        { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+        // Every authenticated user sees this regardless of role or tenant
+        // membership, same as "My Account" below - it's platform-wide
+        // reference content curated by PLATFORM_ADMIN, not gated by role.
+        { label: 'How it works', href: '/how-it-works', icon: PlayCircle },
+      ],
     },
     {
       label: 'Platform Admin',

@@ -37,6 +37,15 @@ enum VerificationDocumentType {
   OTHER
 }
 
+/// Which goal-categorization scheme a tenant's Performance Management
+/// module uses. BALANCED_SCORECARD is aimed at financial-services/bank
+/// tenants that organize goals into the 4 BSC perspectives (see
+/// GoalPerspective) rather than tracking goals uncategorized.
+enum PerformanceFramework {
+  STANDARD
+  BALANCED_SCORECARD
+}
+
 /// The SaaS account. Platform-root table — no tenantId, no RLS.
 model Tenant {
   id       String       @id @default(uuid())
@@ -52,6 +61,12 @@ model Tenant {
   // short-lived signed view URL minted on read, same pattern as
   // OrganizationVerificationDocument.storageKey.
   logoStorageKey String? @map("logo_storage_key")
+
+  // Tenant Admin self-service toggle (see TenantMeController) - no separate
+  // settings table since this is the only per-tenant module-behavior flag
+  // that exists today; a JSON/table-based settings scheme can replace this
+  // if/when a second one is needed.
+  performanceFramework PerformanceFramework @default(STANDARD) @map("performance_framework")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -1162,6 +1177,16 @@ enum PerformanceGoalStatus {
   CANCELLED
 }
 
+/// Balanced Scorecard perspective (see Tenant.performanceFramework) -
+/// Risk & Control replaces the standard BSC's "Internal Business Process"
+/// quadrant, a common banking-sector adaptation.
+enum GoalPerspective {
+  FINANCIAL
+  CUSTOMER
+  PEOPLE
+  RISK_CONTROL
+}
+
 /// An employee's own ongoing goal tracking. Standalone — not tied to a
 /// PerformanceReviewCycle in v1 (a deliberate scope cut, see project
 /// memory); goals and reviews aren't hard-linked.
@@ -1174,6 +1199,11 @@ model PerformanceGoal {
   targetDate      DateTime?             @map("target_date")
   status          PerformanceGoalStatus @default(NOT_STARTED)
   progressPercent Int                   @default(0) @map("progress_percent")
+  // Nullable regardless of the tenant's current framework - a tenant that
+  // switches STANDARD -> BALANCED_SCORECARD doesn't retroactively require
+  // every existing goal to be re-tagged; enforcement of "must be set" only
+  // applies to new goals (see PerformanceGoalService.create).
+  perspective     GoalPerspective?
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")

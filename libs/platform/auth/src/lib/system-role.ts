@@ -58,6 +58,10 @@ export const Permission = {
   // their own branding, unlike PLATFORM_TENANT_MANAGE's ops-only lifecycle
   // actions (status changes, etc).
   TENANT_BRANDING_MANAGE: 'tenant:branding:manage',
+  // Tenant-scoped, separate from TENANT_BRANDING_MANAGE: module-behavior
+  // toggles (currently just Performance Management's Balanced Scorecard
+  // framework switch) rather than branding/identity.
+  TENANT_SETTINGS_MANAGE: 'tenant:settings:manage',
   // Platform-admin only: subscriptions/invoices are assigned and managed by
   // the platform admin in v1 (no tenant self-serve checkout - see project
   // scoping decision), so there is no tenant-level counterpart yet.
@@ -132,6 +136,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
   ],
   [SystemRole.TENANT_ADMIN]: [
     Permission.TENANT_BRANDING_MANAGE,
+    Permission.TENANT_SETTINGS_MANAGE,
     Permission.ORGANIZATION_MANAGE,
     Permission.ORGANIZATION_READ,
     Permission.USER_MANAGE,

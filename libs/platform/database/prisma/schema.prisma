@@ -46,6 +46,14 @@ enum PerformanceFramework {
   BALANCED_SCORECARD
 }
 
+/// Modules that can be gated behind a paid add-on (see Tenant.enabledAddOns
+/// and AddOnGuard/@RequireAddOn in @africahr/platform-auth). Fixed,
+/// code-defined catalog, same convention as Permission/SystemRole - tenants
+/// don't get to invent their own add-ons.
+enum AddOnModule {
+  INVOICING
+}
+
 /// The SaaS account. Platform-root table — no tenantId, no RLS.
 model Tenant {
   id       String       @id @default(uuid())
@@ -67,6 +75,13 @@ model Tenant {
   // that exists today; a JSON/table-based settings scheme can replace this
   // if/when a second one is needed.
   performanceFramework PerformanceFramework @default(STANDARD) @map("performance_framework")
+
+  // Platform-admin-only, manual toggle (see TenantController's add-ons
+  // endpoint) - enabling/disabling happens after payment is handled outside
+  // the app, same "no tenant self-serve checkout" v1 pattern as Subscription.
+  // A Postgres array directly on Tenant rather than a join table - simplest
+  // fit for a small, code-defined, rarely-changing catalog (see AddOnModule).
+  enabledAddOns AddOnModule[] @default([]) @map("enabled_add_ons")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")

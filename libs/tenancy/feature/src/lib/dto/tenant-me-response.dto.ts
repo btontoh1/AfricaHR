@@ -1,4 +1,5 @@
 import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
+import { PerformanceFramework } from '@prisma/client';
 
 export class TenantMeResponseDto {
   @ApiProperty({ example: 'Acme Ghana Ltd' })
@@ -9,4 +10,7 @@ export class TenantMeResponseDto {
 
   @ApiPropertyOptional({ description: 'Signed view URL for the uploaded business logo, or null if none set' })
   logoUrl?: string | null;
+
+  @ApiProperty({ enum: Object.values(PerformanceFramework) })
+  performanceFramework!: PerformanceFramework;
 }

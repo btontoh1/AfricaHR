@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { PerformanceGoalStatus } from '@prisma/client';
+import { GoalPerspective, PerformanceGoalStatus } from '@prisma/client';
 import { IsDateString, IsEnum, IsInt, IsOptional, IsString, Length, Max, Min } from 'class-validator';
 
 export class UpdatePerformanceGoalDto {
@@ -31,4 +31,9 @@ export class UpdatePerformanceGoalDto {
   @Min(0)
   @Max(100)
   progressPercent?: number;
+
+  @ApiPropertyOptional({ enum: Object.values(GoalPerspective) })
+  @IsOptional()
+  @IsEnum(GoalPerspective)
+  perspective?: GoalPerspective;
 }

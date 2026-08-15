@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { Tenant } from '@prisma/client';
+import { PerformanceFramework, Tenant } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import { StorageService } from '@africahr/platform-storage';
 import { TenantRepository } from '@africahr/tenancy-data-access';
@@ -116,6 +116,25 @@ export class TenantService {
       tenantId: id,
       actorUserId: actorId ?? null,
       action: 'tenant.updated',
+      resourceType: 'Tenant',
+      resourceId: id,
+    });
+
+    return updated;
+  }
+
+  async updatePerformanceFramework(
+    id: string,
+    performanceFramework: PerformanceFramework,
+    actorId?: string,
+  ): Promise<Tenant> {
+    await this.findById(id);
+    const updated = await this.tenants.updatePerformanceFramework(id, performanceFramework, actorId);
+
+    await this.audit.record({
+      tenantId: id,
+      actorUserId: actorId ?? null,
+      action: 'tenant.performance_framework_updated',
       resourceType: 'Tenant',
       resourceId: id,
     });

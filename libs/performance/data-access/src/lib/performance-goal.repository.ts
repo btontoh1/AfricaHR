@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PerformanceGoal, PerformanceGoalStatus } from '@prisma/client';
+import { GoalPerspective, PerformanceGoal, PerformanceGoalStatus } from '@prisma/client';
 import { PrismaService } from '@africahr/platform-database';
 
 export interface CreatePerformanceGoalInput {
@@ -7,6 +7,7 @@ export interface CreatePerformanceGoalInput {
   title: string;
   description?: string;
   targetDate?: Date;
+  perspective?: GoalPerspective;
   createdBy?: string;
 }
 
@@ -16,6 +17,7 @@ export interface UpdatePerformanceGoalInput {
   targetDate?: Date | null;
   status?: PerformanceGoalStatus;
   progressPercent?: number;
+  perspective?: GoalPerspective;
   updatedBy?: string;
 }
 
@@ -37,6 +39,7 @@ export class PerformanceGoalRepository {
           title: input.title,
           description: input.description,
           targetDate: input.targetDate,
+          perspective: input.perspective,
           createdBy: input.createdBy,
           updatedBy: input.createdBy,
         },
@@ -78,6 +81,7 @@ export class PerformanceGoalRepository {
           targetDate: input.targetDate,
           status: input.status,
           progressPercent: input.progressPercent,
+          perspective: input.perspective,
           updatedBy: input.updatedBy,
         },
       }),

@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   NotFoundException,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -22,6 +23,7 @@ import { TenantService } from './tenant.service';
 import { TenantMeResponseDto } from './dto/tenant-me-response.dto';
 import { RequestTenantLogoUploadDto } from './dto/request-tenant-logo-upload.dto';
 import { RequestTenantLogoUploadResponseDto } from './dto/request-tenant-logo-upload-response.dto';
+import { UpdatePerformanceFrameworkDto } from './dto/update-performance-framework.dto';
 
 /**
  * Self-service, like MyAttendanceController: reads have no
@@ -50,7 +52,27 @@ export class TenantMeController {
     }
     const tenant = await this.tenants.findById(actor.tenantId);
     const logoUrl = await this.tenants.getLogoUrl(tenant);
-    return { name: tenant.name, slug: tenant.slug, logoUrl };
+    return { name: tenant.name, slug: tenant.slug, logoUrl, performanceFramework: tenant.performanceFramework };
+  }
+
+  @Patch('performance-framework')
+  @RequirePermissions(Permission.TENANT_SETTINGS_MANAGE)
+  @ApiOperation({ summary: "Switch the tenant's Performance Management framework (Standard or Balanced Scorecard)" })
+  @ApiOkResponse({ type: TenantMeResponseDto })
+  async updatePerformanceFramework(
+    @CurrentUser() actor: RequestUser,
+    @Body() dto: UpdatePerformanceFrameworkDto,
+  ): Promise<TenantMeResponseDto> {
+    if (!actor.tenantId) {
+      throw new NotFoundException('No tenant for this account');
+    }
+    const tenant = await this.tenants.updatePerformanceFramework(
+      actor.tenantId,
+      dto.performanceFramework,
+      actor.sub,
+    );
+    const logoUrl = await this.tenants.getLogoUrl(tenant);
+    return { name: tenant.name, slug: tenant.slug, logoUrl, performanceFramework: tenant.performanceFramework };
   }
 
   @Post('logo/upload-url')

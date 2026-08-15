@@ -1,6 +1,7 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { PerformanceGoal, PerformanceGoalStatus, Prisma } from '@prisma/client';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { PerformanceFramework, PerformanceGoal, PerformanceGoalStatus, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
+import { PrismaService } from '@africahr/platform-database';
 import { PerformanceEmployeeRepository, PerformanceGoalRepository } from '@africahr/performance-data-access';
 import { CreatePerformanceGoalDto } from './dto/create-performance-goal.dto';
 import { UpdatePerformanceGoalDto } from './dto/update-performance-goal.dto';
@@ -11,6 +12,12 @@ export class PerformanceGoalService {
     private readonly goals: PerformanceGoalRepository,
     private readonly employees: PerformanceEmployeeRepository,
     private readonly audit: AuditService,
+    // Direct Prisma access to read Tenant.performanceFramework - this
+    // queries the shared Prisma client (already available to every feature
+    // module via @africahr/platform-database), not a TypeScript import
+    // across the scope:performance -> scope:tenancy module boundary, so it
+    // doesn't violate the eslint dependency-constraint rules.
+    private readonly prisma: PrismaService,
   ) {}
 
   async resolveOwnEmployeeId(tenantId: string, userId: string): Promise<string> {
@@ -36,6 +43,8 @@ export class PerformanceGoalService {
     dto: CreatePerformanceGoalDto,
     actorId?: string,
   ): Promise<PerformanceGoal> {
+    await this.assertPerspectiveProvidedIfRequired(tenantId, dto.perspective);
+
     let goal: PerformanceGoal;
     try {
       goal = await this.goals.create(tenantId, {
@@ -43,6 +52,7 @@ export class PerformanceGoalService {
         title: dto.title,
         description: dto.description,
         targetDate: dto.targetDate ? new Date(dto.targetDate) : undefined,
+        perspective: dto.perspective,
         createdBy: actorId,
       });
     } catch (error) {
@@ -112,6 +122,7 @@ export class PerformanceGoalService {
       targetDate: dto.targetDate !== undefined ? (dto.targetDate ? new Date(dto.targetDate) : null) : undefined,
       status: dto.status,
       progressPercent: dto.progressPercent,
+      perspective: dto.perspective,
       updatedBy: actorId,
     });
 
@@ -124,5 +135,23 @@ export class PerformanceGoalService {
     });
 
     return updated;
+  }
+
+  // Only enforced on create - a tenant switching STANDARD -> BALANCED_SCORECARD
+  // doesn't retroactively require every existing goal's next edit to supply
+  // a perspective too (see the schema comment on PerformanceGoal.perspective).
+  private async assertPerspectiveProvidedIfRequired(
+    tenantId: string,
+    perspective: PerformanceGoal['perspective'] | undefined,
+  ): Promise<void> {
+    if (perspective) {
+      return;
+    }
+    const tenant = await this.prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } });
+    if (tenant.performanceFramework === PerformanceFramework.BALANCED_SCORECARD) {
+      throw new BadRequestException(
+        'This tenant uses the Balanced Scorecard framework - every goal must have a perspective (Financial, Customer, People, or Risk & Control)',
+      );
+    }
   }
 }

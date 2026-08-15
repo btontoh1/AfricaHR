@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, Tenant, TenantStatus } from '@prisma/client';
+import { PerformanceFramework, Prisma, Tenant, TenantStatus } from '@prisma/client';
 import { PrismaService } from '@africahr/platform-database';
 
 export interface CreateTenantInput {
@@ -86,6 +86,17 @@ export class TenantRepository {
     return this.prisma.tenant.update({
       where: { id },
       data: { status, updatedBy },
+    });
+  }
+
+  updatePerformanceFramework(
+    id: string,
+    performanceFramework: PerformanceFramework,
+    updatedBy?: string,
+  ): Promise<Tenant> {
+    return this.prisma.tenant.update({
+      where: { id },
+      data: { performanceFramework, updatedBy },
     });
   }
 

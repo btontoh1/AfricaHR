@@ -5,6 +5,7 @@ import { Check, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMyTenant } from './queries';
 import { LogoSettingsCard } from './logo-settings-card';
+import { PerformanceFrameworkCard } from './performance-framework-card';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -61,6 +62,7 @@ export function TenantSettings() {
       </Card>
 
       <LogoSettingsCard tenant={tenant} />
+      <PerformanceFrameworkCard tenant={tenant} />
     </div>
   );
 }

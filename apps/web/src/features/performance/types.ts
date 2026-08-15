@@ -12,5 +12,6 @@ export type StartReviewForEmployeeInput = components['schemas']['StartReviewForE
 export type SubmitSelfAssessmentInput = components['schemas']['SubmitSelfAssessmentDto'];
 export type SubmitManagerAssessmentInput = components['schemas']['SubmitManagerAssessmentDto'];
 export type PerformanceGoalStatus = PerformanceGoal['status'];
+export type GoalPerspective = NonNullable<PerformanceGoal['perspective']>;
 export type ReviewCycleStatus = ReviewCycle['status'];
 export type PerformanceReviewStatus = PerformanceReview['status'];

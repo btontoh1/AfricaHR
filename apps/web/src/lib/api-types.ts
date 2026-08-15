@@ -123,6 +123,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/me/performance-framework": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Switch the tenant's Performance Management framework (Standard or Balanced Scorecard) */
+        patch: operations["TenantMeController_updatePerformanceFramework"];
+        trace?: never;
+    };
     "/api/tenants/me/logo/upload-url": {
         parameters: {
             query?: never;
@@ -2925,6 +2942,12 @@ export interface components {
             slug: string;
             /** @description Signed view URL for the uploaded business logo, or null if none set */
             logoUrl?: string;
+            /** @enum {string} */
+            performanceFramework: "STANDARD" | "BALANCED_SCORECARD";
+        };
+        UpdatePerformanceFrameworkDto: {
+            /** @enum {string} */
+            performanceFramework: "STANDARD" | "BALANCED_SCORECARD";
         };
         RequestTenantLogoUploadDto: {
             /** @example logo.png */
@@ -3921,6 +3944,8 @@ export interface components {
             /** @enum {string} */
             status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
             progressPercent: number;
+            /** @enum {string|null} */
+            perspective?: "FINANCIAL" | "CUSTOMER" | "PEOPLE" | "RISK_CONTROL" | null;
             createdAt: string;
             updatedAt: string;
         };
@@ -3929,6 +3954,8 @@ export interface components {
             title: string;
             description?: string;
             targetDate?: string;
+            /** @enum {string} */
+            perspective?: "FINANCIAL" | "CUSTOMER" | "PEOPLE" | "RISK_CONTROL";
         };
         UpdatePerformanceGoalDto: {
             title?: string;
@@ -3937,6 +3964,8 @@ export interface components {
             /** @enum {string} */
             status?: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
             progressPercent?: number;
+            /** @enum {string} */
+            perspective?: "FINANCIAL" | "CUSTOMER" | "PEOPLE" | "RISK_CONTROL";
         };
         CreateReviewCycleDto: {
             /** @example Q1 2026 Review */
@@ -4959,6 +4988,29 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantMeResponseDto"];
+                };
+            };
+        };
+    };
+    TenantMeController_updatePerformanceFramework: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePerformanceFrameworkDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {

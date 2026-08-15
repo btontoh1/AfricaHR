@@ -113,7 +113,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
   }
 
   const initials = user.email.slice(0, 2).toUpperCase();
-  const navGroups = buildNavGroups(user);
+  const navGroups = buildNavGroups(user, tenant?.enabledAddOns);
   const isPlatformAdmin = user.role === 'PLATFORM_ADMIN';
 
   return (

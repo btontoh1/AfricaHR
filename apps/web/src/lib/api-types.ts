@@ -222,6 +222,22 @@ export interface paths {
         patch: operations["TenantController_updateStatus"];
         trace?: never;
     };
+    "/api/tenants/{id}/add-ons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["TenantController_updateAddOn"];
+        trace?: never;
+    };
     "/api/organizations/verification-queue": {
         parameters: {
             query?: never;
@@ -2944,6 +2960,7 @@ export interface components {
             logoUrl?: string;
             /** @enum {string} */
             performanceFramework: "STANDARD" | "BALANCED_SCORECARD";
+            enabledAddOns: "INVOICING"[];
         };
         UpdatePerformanceFrameworkDto: {
             /** @enum {string} */
@@ -2993,6 +3010,7 @@ export interface components {
             currency: string;
             timezone: string;
             logoStorageKey?: string | null;
+            enabledAddOns: "INVOICING"[];
             createdAt: string;
             updatedAt: string;
             deletedAt?: string | null;
@@ -3026,6 +3044,11 @@ export interface components {
         UpdateTenantStatusDto: {
             /** @enum {string} */
             status: "TRIAL" | "ACTIVE" | "SUSPENDED" | "CLOSED";
+        };
+        UpdateTenantAddOnDto: {
+            /** @enum {string} */
+            module: "INVOICING";
+            enabled: boolean;
         };
         OrganizationResponseDto: {
             id: string;
@@ -5183,6 +5206,31 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["UpdateTenantStatusDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantResponseDto"];
+                };
+            };
+        };
+    };
+    TenantController_updateAddOn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTenantAddOnDto"];
             };
         };
         responses: {

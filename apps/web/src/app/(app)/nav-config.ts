@@ -62,7 +62,7 @@ export interface NavGroup {
  * Coarse, cheap client-side visibility checks only - the backend remains
  * the real enforcement point.
  */
-export function buildNavGroups(user: SessionUser): NavGroup[] {
+export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []): NavGroup[] {
   const isTenantMember = Boolean(user.tenantId);
   const isPlatformAdmin = user.role === 'PLATFORM_ADMIN';
   const isOrgAdmin = user.role === 'ORG_ADMIN';
@@ -90,8 +90,12 @@ export function buildNavGroups(user: SessionUser): NavGroup[] {
   // Invoicing is an exception to ORG_ADMIN's otherwise employee-only scope -
   // it's the organization's own external billing tool, not an internal HR
   // function, so ORG_ADMIN gets it too (see Permission.INVOICING_MANAGE).
+  // Also gated behind the tenant's paid INVOICING add-on (see AddOnGuard) -
+  // role alone isn't enough, same enforcement the backend applies.
   const hasInvoicingAccess =
-    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER' || isOrgAdmin);
+    isTenantMember &&
+    (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER' || isOrgAdmin) &&
+    enabledAddOns.includes('INVOICING');
 
   const groups: NavGroup[] = [
     {

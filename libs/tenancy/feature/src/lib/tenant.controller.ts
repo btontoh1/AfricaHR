@@ -12,6 +12,7 @@ import { TenantService } from './tenant.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { UpdateTenantStatusDto } from './dto/update-tenant-status.dto';
+import { UpdateTenantAddOnDto } from './dto/update-tenant-add-on.dto';
 import { TenantResponseDto } from './dto/tenant-response.dto';
 
 /**
@@ -62,6 +63,16 @@ export class TenantController {
     @CurrentUser() actor: RequestUser,
   ) {
     return this.tenants.updateStatus(id, dto.status, actor.sub);
+  }
+
+  @Patch(':id/add-ons')
+  @ApiOkResponse({ type: TenantResponseDto })
+  updateAddOn(
+    @Param('id') id: string,
+    @Body() dto: UpdateTenantAddOnDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    return this.tenants.setAddOnEnabled(id, dto.module, dto.enabled, actor.sub);
   }
 
   /** Offboarding - only reachable once the tenant is already CLOSED, see TenantService.softDelete's own doc comment. */

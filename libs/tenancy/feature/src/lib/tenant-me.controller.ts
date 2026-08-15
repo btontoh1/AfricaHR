@@ -52,7 +52,13 @@ export class TenantMeController {
     }
     const tenant = await this.tenants.findById(actor.tenantId);
     const logoUrl = await this.tenants.getLogoUrl(tenant);
-    return { name: tenant.name, slug: tenant.slug, logoUrl, performanceFramework: tenant.performanceFramework };
+    return {
+      name: tenant.name,
+      slug: tenant.slug,
+      logoUrl,
+      performanceFramework: tenant.performanceFramework,
+      enabledAddOns: tenant.enabledAddOns,
+    };
   }
 
   @Patch('performance-framework')
@@ -72,7 +78,13 @@ export class TenantMeController {
       actor.sub,
     );
     const logoUrl = await this.tenants.getLogoUrl(tenant);
-    return { name: tenant.name, slug: tenant.slug, logoUrl, performanceFramework: tenant.performanceFramework };
+    return {
+      name: tenant.name,
+      slug: tenant.slug,
+      logoUrl,
+      performanceFramework: tenant.performanceFramework,
+      enabledAddOns: tenant.enabledAddOns,
+    };
   }
 
   @Post('logo/upload-url')

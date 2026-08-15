@@ -1,5 +1,5 @@
 import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
-import { PerformanceFramework } from '@prisma/client';
+import { AddOnModule, PerformanceFramework } from '@prisma/client';
 
 export class TenantMeResponseDto {
   @ApiProperty({ example: 'Acme Ghana Ltd' })
@@ -13,4 +13,7 @@ export class TenantMeResponseDto {
 
   @ApiProperty({ enum: Object.values(PerformanceFramework) })
   performanceFramework!: PerformanceFramework;
+
+  @ApiProperty({ enum: Object.values(AddOnModule), isArray: true })
+  enabledAddOns!: AddOnModule[];
 }

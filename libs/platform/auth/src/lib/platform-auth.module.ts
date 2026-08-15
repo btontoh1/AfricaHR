@@ -2,15 +2,18 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { AppConfigModule, AppConfigService } from '@africahr/platform-core';
 import { RedisModule } from '@africahr/platform-redis';
+import { PrismaModule } from '@africahr/platform-database';
 import { JwtTokenService } from './jwt-token.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { PermissionsGuard } from './permissions.guard';
+import { AddOnGuard } from './add-on.guard';
 import { TokenRevocationService } from './token-revocation.service';
 
 @Module({
   imports: [
     AppConfigModule,
     RedisModule,
+    PrismaModule,
     JwtModule.registerAsync({
       imports: [AppConfigModule],
       inject: [AppConfigService],
@@ -28,7 +31,7 @@ import { TokenRevocationService } from './token-revocation.service';
       },
     }),
   ],
-  providers: [JwtTokenService, JwtAuthGuard, PermissionsGuard, TokenRevocationService],
-  exports: [JwtTokenService, JwtAuthGuard, PermissionsGuard, TokenRevocationService],
+  providers: [JwtTokenService, JwtAuthGuard, PermissionsGuard, AddOnGuard, TokenRevocationService],
+  exports: [JwtTokenService, JwtAuthGuard, PermissionsGuard, AddOnGuard, TokenRevocationService],
 })
 export class PlatformAuthModule {}

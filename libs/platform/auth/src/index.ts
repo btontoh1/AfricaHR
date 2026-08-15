@@ -6,6 +6,8 @@ export * from './lib/token-revocation.service';
 export * from './lib/jwt-auth.guard';
 export * from './lib/permissions.guard';
 export * from './lib/require-permissions.decorator';
+export * from './lib/add-on.guard';
+export * from './lib/require-add-on.decorator';
 export * from './lib/current-user.decorator';
 export * from './lib/assert-tenant-scope';
 export * from './lib/assert-organization-scope';

@@ -12,6 +12,8 @@
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/core": "^11.0.0",
     "@africahr/platform-core": "0.0.1",
-    "@africahr/platform-redis": "0.0.1"
+    "@africahr/platform-redis": "0.0.1",
+    "@africahr/platform-database": "0.0.1",
+    "@prisma/client": "^7.8.0"
   }
 }

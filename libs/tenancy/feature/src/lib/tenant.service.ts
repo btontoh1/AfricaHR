@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { PerformanceFramework, Tenant } from '@prisma/client';
+import { AddOnModule, PerformanceFramework, Tenant } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import { StorageService } from '@africahr/platform-storage';
 import { TenantRepository } from '@africahr/tenancy-data-access';
@@ -137,6 +137,38 @@ export class TenantService {
       action: 'tenant.performance_framework_updated',
       resourceType: 'Tenant',
       resourceId: id,
+    });
+
+    return updated;
+  }
+
+  // Manual toggle only - no payment integration in v1, same pattern as
+  // Subscription (platform admin handles payment outside the app, then
+  // flips this on). Set-based, not push/pull, to make "already
+  // enabled"/"already disabled" idempotent rather than erroring.
+  async setAddOnEnabled(
+    id: string,
+    module: AddOnModule,
+    enabled: boolean,
+    actorId?: string,
+  ): Promise<Tenant> {
+    const tenant = await this.findById(id);
+    const current = new Set(tenant.enabledAddOns);
+    if (enabled) {
+      current.add(module);
+    } else {
+      current.delete(module);
+    }
+
+    const updated = await this.tenants.setEnabledAddOns(id, [...current], actorId);
+
+    await this.audit.record({
+      tenantId: id,
+      actorUserId: actorId ?? null,
+      action: enabled ? 'tenant.add_on_enabled' : 'tenant.add_on_disabled',
+      resourceType: 'Tenant',
+      resourceId: id,
+      metadata: { module },
     });
 
     return updated;

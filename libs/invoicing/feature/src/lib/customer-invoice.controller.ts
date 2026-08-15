@@ -1,13 +1,16 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { AddOnModule } from '@prisma/client';
 import {
+  AddOnGuard,
   assertTenantScope,
   CurrentUser,
   JwtAuthGuard,
   Permission,
   PermissionsGuard,
   RequestUser,
+  RequireAddOn,
   RequirePermissions,
 } from '@africahr/platform-auth';
 import { CustomerInvoiceService } from './customer-invoice.service';
@@ -24,7 +27,8 @@ import { CustomerInvoiceResponseDto } from './dto/customer-invoice-response.dto'
 // that path would silently shadow one controller's routes with the other's.
 @ApiTags('customer-invoices')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, AddOnGuard)
+@RequireAddOn(AddOnModule.INVOICING)
 @Controller('tenants/:tenantId/customer-invoices')
 export class CustomerInvoiceController {
   constructor(

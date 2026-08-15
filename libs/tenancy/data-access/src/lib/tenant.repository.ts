@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PerformanceFramework, Prisma, Tenant, TenantStatus } from '@prisma/client';
+import { AddOnModule, PerformanceFramework, Prisma, Tenant, TenantStatus } from '@prisma/client';
 import { PrismaService } from '@africahr/platform-database';
 
 export interface CreateTenantInput {
@@ -111,6 +111,13 @@ export class TenantRepository {
     return this.prisma.tenant.update({
       where: { id },
       data: { logoStorageKey, updatedBy },
+    });
+  }
+
+  setEnabledAddOns(id: string, enabledAddOns: AddOnModule[], updatedBy?: string): Promise<Tenant> {
+    return this.prisma.tenant.update({
+      where: { id },
+      data: { enabledAddOns, updatedBy },
     });
   }
 }

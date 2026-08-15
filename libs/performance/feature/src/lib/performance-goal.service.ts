@@ -137,6 +137,19 @@ export class PerformanceGoalService {
     return updated;
   }
 
+  async remove(tenantId: string, id: string, actorId?: string): Promise<void> {
+    await this.findById(tenantId, id);
+    await this.goals.softDelete(tenantId, id, actorId);
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'performance.goal.deleted',
+      resourceType: 'PerformanceGoal',
+      resourceId: id,
+    });
+  }
+
   // Only enforced on create - a tenant switching STANDARD -> BALANCED_SCORECARD
   // doesn't retroactively require every existing goal's next edit to supply
   // a perspective too (see the schema comment on PerformanceGoal.perspective).

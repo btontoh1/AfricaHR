@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
   assertTenantScope,
@@ -59,5 +59,22 @@ export class PerformanceGoalController {
   ) {
     assertTenantScope(actor, tenantId);
     return this.goals.update(tenantId, id, dto, actor.sub);
+  }
+
+  // Narrower than the Patch above - PERFORMANCE_GOAL_DELETE, not
+  // PERFORMANCE_MANAGE, so HR_MANAGER can edit goals but not delete them.
+  // Only exposed here (admin surface), not on the self-service
+  // MyPerformanceGoalController - an employee can't erase their own
+  // performance history.
+  @Delete(':id')
+  @RequirePermissions(Permission.PERFORMANCE_GOAL_DELETE)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: RequestUser,
+  ): Promise<void> {
+    assertTenantScope(actor, tenantId);
+    return this.goals.remove(tenantId, id, actor.sub);
   }
 }

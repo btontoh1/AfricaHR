@@ -87,4 +87,13 @@ export class PerformanceGoalRepository {
       }),
     );
   }
+
+  softDelete(tenantId: string, id: string, updatedBy?: string): Promise<PerformanceGoal> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.performanceGoal.update({
+        where: { id },
+        data: { deletedAt: new Date(), updatedBy },
+      }),
+    );
+  }
 }

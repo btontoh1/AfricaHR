@@ -5,8 +5,10 @@ import { Target } from 'lucide-react';
 import { useAllGoals } from './queries';
 import { useEmployees } from '@/features/employees/queries';
 import { useMyTenant } from '@/features/settings/queries';
+import { useSession } from '@/app/(app)/session-provider';
 import { GoalStatusBadge } from './goal-status-badge';
 import { AdminUpdateGoalForm } from './admin-update-goal-form';
+import { DeleteGoalDialog } from './delete-goal-dialog';
 import { GOAL_PERSPECTIVES, GOAL_PERSPECTIVE_LABEL } from './goal-perspective-labels';
 import type { PerformanceGoal, PerformanceGoalStatus } from './types';
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -41,13 +43,17 @@ const STATUS_FILTERS: (PerformanceGoalStatus | typeof ALL)[] = [
 ];
 
 function GoalsTable({
+  tenantId,
   goals,
   employeeName,
   onEdit,
+  canDelete,
 }: {
+  tenantId: string;
   goals: PerformanceGoal[];
   employeeName: (id: string) => string;
   onEdit: (goal: PerformanceGoal) => void;
+  canDelete: boolean;
 }) {
   return (
     <TableCard>
@@ -73,9 +79,12 @@ function GoalsTable({
                 {goal.targetDate ? goal.targetDate.slice(0, 10) : '—'}
               </TableCell>
               <TableCell>
-                <Button variant="outline" size="sm" onClick={() => onEdit(goal)}>
-                  Edit
-                </Button>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" size="sm" onClick={() => onEdit(goal)}>
+                    Edit
+                  </Button>
+                  {canDelete && <DeleteGoalDialog tenantId={tenantId} goal={goal} />}
+                </div>
               </TableCell>
             </TableRow>
           ))}
@@ -93,6 +102,10 @@ export function AllGoalsAdminList({ tenantId }: { tenantId: string }) {
   const { data: employees } = useEmployees(tenantId);
   const { data: tenant } = useMyTenant();
   const isBalancedScorecard = tenant?.performanceFramework === 'BALANCED_SCORECARD';
+  const session = useSession();
+  // Narrower than editing (PERFORMANCE_MANAGE, which HR_MANAGER also
+  // holds) - matches PERFORMANCE_GOAL_DELETE server-side.
+  const canDelete = session.role === 'PLATFORM_ADMIN' || session.role === 'TENANT_ADMIN';
   const { data: goals, isLoading, isError, error } = useAllGoals(tenantId, {
     employeeId: employeeId === ALL ? undefined : employeeId,
     status: status === ALL ? undefined : status,
@@ -151,7 +164,13 @@ export function AllGoalsAdminList({ tenantId }: { tenantId: string }) {
                   <h2 className="mb-3 text-sm font-medium text-muted-foreground">
                     {GOAL_PERSPECTIVE_LABEL[perspective]}
                   </h2>
-                  <GoalsTable goals={perspectiveGoals} employeeName={employeeName} onEdit={setEditingGoal} />
+                  <GoalsTable
+                    tenantId={tenantId}
+                    goals={perspectiveGoals}
+                    employeeName={employeeName}
+                    onEdit={setEditingGoal}
+                    canDelete={canDelete}
+                  />
                 </div>
               );
             })}
@@ -159,15 +178,23 @@ export function AllGoalsAdminList({ tenantId }: { tenantId: string }) {
               <div>
                 <h2 className="mb-3 text-sm font-medium text-muted-foreground">Unassigned</h2>
                 <GoalsTable
+                  tenantId={tenantId}
                   goals={goals.filter((goal) => !goal.perspective)}
                   employeeName={employeeName}
                   onEdit={setEditingGoal}
+                  canDelete={canDelete}
                 />
               </div>
             )}
           </div>
         ) : (
-          <GoalsTable goals={goals} employeeName={employeeName} onEdit={setEditingGoal} />
+          <GoalsTable
+            tenantId={tenantId}
+            goals={goals}
+            employeeName={employeeName}
+            onEdit={setEditingGoal}
+            canDelete={canDelete}
+          />
         )
       )}
       {editingGoal && (

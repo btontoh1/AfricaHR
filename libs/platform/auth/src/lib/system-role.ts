@@ -39,6 +39,10 @@ export const Permission = {
   BENEFITS_READ: 'benefits:read',
   PERFORMANCE_MANAGE: 'performance:manage',
   PERFORMANCE_READ: 'performance:read',
+  // Narrower than PERFORMANCE_MANAGE (which HR_MANAGER also holds, for
+  // editing) - deleting a goal permanently erases performance history, so
+  // only TENANT_ADMIN/PLATFORM_ADMIN get it.
+  PERFORMANCE_GOAL_DELETE: 'performance:goal:delete',
   RECRUITMENT_MANAGE: 'recruitment:manage',
   RECRUITMENT_READ: 'recruitment:read',
   // Read-only — reports are computed on demand, never created/edited, so
@@ -121,6 +125,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.BENEFITS_READ,
     Permission.PERFORMANCE_MANAGE,
     Permission.PERFORMANCE_READ,
+    Permission.PERFORMANCE_GOAL_DELETE,
     Permission.RECRUITMENT_MANAGE,
     Permission.RECRUITMENT_READ,
     Permission.REPORTING_READ,
@@ -153,6 +158,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.BENEFITS_READ,
     Permission.PERFORMANCE_MANAGE,
     Permission.PERFORMANCE_READ,
+    Permission.PERFORMANCE_GOAL_DELETE,
     Permission.RECRUITMENT_MANAGE,
     Permission.RECRUITMENT_READ,
     Permission.REPORTING_READ,

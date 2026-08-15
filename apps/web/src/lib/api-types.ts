@@ -1860,7 +1860,7 @@ export interface paths {
         get: operations["PerformanceGoalController_findById"];
         put?: never;
         post?: never;
-        delete?: never;
+        delete: operations["PerformanceGoalController_remove"];
         options?: never;
         head?: never;
         patch: operations["PerformanceGoalController_update"];
@@ -8039,6 +8039,26 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PerformanceGoalResponseDto"];
                 };
+            };
+        };
+    };
+    PerformanceGoalController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

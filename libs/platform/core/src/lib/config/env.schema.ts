@@ -42,7 +42,12 @@ export const envSchema = z.object({
   // LogNotificationDispatcher (logs instead of sending) rather than
   // failing to boot, so local/dev/CI environments never need a real key.
   SENDGRID_API_KEY: z.string().optional(),
-  SENDGRID_FROM_EMAIL: z.string().email().optional(),
+  // .optional() alone only accepts a missing key (undefined) - an env file
+  // with the line present but blank (SENDGRID_FROM_EMAIL=), which is how
+  // Docker Compose represents "left unset" from an .env file, still hands
+  // Zod an empty string, and .email() rejects that. Accept '' explicitly
+  // so the documented "leave it blank" story above actually works.
+  SENDGRID_FROM_EMAIL: z.union([z.string().email(), z.literal('')]).optional(),
 
   // AES-256 key (64-char hex = 32 bytes) for encrypting TOTP secrets at
   // rest. Optional at the env-schema level only so the Zod validator's

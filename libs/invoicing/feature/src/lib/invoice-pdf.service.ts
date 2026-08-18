@@ -1,6 +1,7 @@
 import { createElement as h } from 'react';
 import { Injectable, Logger } from '@nestjs/common';
 import { Document, Image, Page, renderToBuffer, StyleSheet, Text, View } from '@react-pdf/renderer';
+import sharp from 'sharp';
 import { StorageService } from '@africahr/platform-storage';
 import { CustomerInvoiceWithDetails } from '@africahr/invoicing-data-access';
 
@@ -168,7 +169,12 @@ export class InvoicePdfService {
       return null;
     }
     try {
-      return await this.storage.getObjectBytes(logoStorageKey);
+      const raw = await this.storage.getObjectBytes(logoStorageKey);
+      // Normalize to PNG - react-pdf's image resolver only recognizes
+      // JPEG/PNG/SVG magic bytes, but RequestOrganizationLogoUploadDto also
+      // allows WEBP, which it silently fails to render (no error, no
+      // logo). Re-encoding here covers every allowed upload format.
+      return await sharp(raw).png().toBuffer();
     } catch (error) {
       this.logger.warn(`Failed to load organization logo for PDF: ${(error as Error).message}`);
       return null;

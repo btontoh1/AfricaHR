@@ -1527,7 +1527,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        patch: operations["LeaveRequestController_update"];
         trace?: never;
     };
     "/api/tenants/{tenantId}/leave-requests/{id}/approve": {
@@ -3795,6 +3795,11 @@ export interface components {
         RejectLeaveRequestDto: {
             /** @example Insufficient team coverage for the requested dates */
             rejectionReason: string;
+        };
+        UpdateLeaveRequestDto: {
+            startDate?: string;
+            endDate?: string;
+            reason?: string;
         };
         AdjustLeaveBalanceDto: {
             employeeId: string;
@@ -7390,6 +7395,32 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaveRequestResponseDto"];
+                };
+            };
+        };
+    };
+    LeaveRequestController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateLeaveRequestDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {

@@ -23,6 +23,7 @@ const ROLE_LABEL: Record<Exclude<SystemRole, 'PLATFORM_ADMIN'>, string> = {
   TENANT_ADMIN: 'Tenant Admin',
   HR_MANAGER: 'HR Manager',
   PAYROLL_MANAGER: 'Payroll Manager',
+  PAYROLL_OFFICER: 'Payroll Officer',
   ORG_ADMIN: 'Org Admin',
   EMPLOYEE: 'Employee',
 };

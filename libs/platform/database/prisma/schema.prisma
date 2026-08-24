@@ -319,6 +319,11 @@ enum SystemRole {
   TENANT_ADMIN
   HR_MANAGER
   PAYROLL_MANAGER
+  /// Narrower than PAYROLL_MANAGER: can prepare a pay run (create, process,
+  /// adjust line items) but not approve, release payment, close, or cancel
+  /// it - separation of duties between who enters payroll data and who
+  /// releases funds. See Permission.PAYROLL_PREPARE.
+  PAYROLL_OFFICER
   /// Scoped to exactly one Organization (User.organizationId) - manages
   /// employees within that org only, unlike every other role above which
   /// is tenant-wide. See RLS_CONVENTION.md for why this scoping is

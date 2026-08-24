@@ -14,7 +14,14 @@ export { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from './auth-cookie-names';
 export interface SessionUser {
   sub: string;
   email: string;
-  role: 'PLATFORM_ADMIN' | 'TENANT_ADMIN' | 'HR_MANAGER' | 'PAYROLL_MANAGER' | 'ORG_ADMIN' | 'EMPLOYEE';
+  role:
+    | 'PLATFORM_ADMIN'
+    | 'TENANT_ADMIN'
+    | 'HR_MANAGER'
+    | 'PAYROLL_MANAGER'
+    | 'PAYROLL_OFFICER'
+    | 'ORG_ADMIN'
+    | 'EMPLOYEE';
   tenantId: string | null;
   organizationId: string | null;
   iat: number;

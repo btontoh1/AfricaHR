@@ -71,7 +71,7 @@ export class PayslipController {
   }
 
   @Post(':id/line-items')
-  @RequirePermissions(Permission.PAYROLL_MANAGE)
+  @RequirePermissions(Permission.PAYROLL_PREPARE)
   @ApiOkResponse({ type: PayslipLineItemResponseDto })
   addLineItem(
     @Param('tenantId') tenantId: string,
@@ -85,7 +85,7 @@ export class PayslipController {
 
   @Delete(':id/line-items/:lineItemId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @RequirePermissions(Permission.PAYROLL_MANAGE)
+  @RequirePermissions(Permission.PAYROLL_PREPARE)
   removeLineItem(
     @Param('tenantId') tenantId: string,
     @Param('id') id: string,

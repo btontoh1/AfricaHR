@@ -10,7 +10,13 @@ import { newPasswordSchema } from '@/lib/password-schema';
 // requires, so that role change only happens through CreateUserForm below
 // (new account) for now. RoleControl renders an existing ORG_ADMIN as a
 // fixed label instead, same treatment as PLATFORM_ADMIN.
-const ASSIGNABLE_ROLES = ['TENANT_ADMIN', 'HR_MANAGER', 'PAYROLL_MANAGER', 'EMPLOYEE'] as const;
+const ASSIGNABLE_ROLES = [
+  'TENANT_ADMIN',
+  'HR_MANAGER',
+  'PAYROLL_MANAGER',
+  'PAYROLL_OFFICER',
+  'EMPLOYEE',
+] as const;
 
 // CreateUserForm's role picker, unlike the inline one above, also offers
 // ORG_ADMIN - it already has a form to collect organizationId alongside it.

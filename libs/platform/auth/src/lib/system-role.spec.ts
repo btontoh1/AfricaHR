@@ -54,9 +54,21 @@ describe('hasPermission', () => {
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.EMPLOYEE_MANAGE)).toBe(false);
   });
 
-  it('grants payroll managers full payroll management', () => {
+  it('grants payroll managers full payroll management, including prepare', () => {
     expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.PAYROLL_MANAGE)).toBe(true);
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.PAYROLL_PREPARE)).toBe(true);
     expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.PAYROLL_READ)).toBe(true);
+  });
+
+  it('grants payroll officers prepare and read, but not approve/pay (separation of duties)', () => {
+    expect(hasPermission(SystemRole.PAYROLL_OFFICER, Permission.PAYROLL_PREPARE)).toBe(true);
+    expect(hasPermission(SystemRole.PAYROLL_OFFICER, Permission.PAYROLL_READ)).toBe(true);
+    expect(hasPermission(SystemRole.PAYROLL_OFFICER, Permission.PAYROLL_MANAGE)).toBe(false);
+  });
+
+  it('grants tenant and platform admins prepare as well as manage', () => {
+    expect(hasPermission(SystemRole.TENANT_ADMIN, Permission.PAYROLL_PREPARE)).toBe(true);
+    expect(hasPermission(SystemRole.PLATFORM_ADMIN, Permission.PAYROLL_PREPARE)).toBe(true);
   });
 
   it('grants HR managers read-only payroll access', () => {

@@ -10,7 +10,7 @@ export const addTenantUserFormSchema = z.object({
   lastName: z.string().min(1, 'Last name is required').max(100),
   email: z.string().email('Enter a valid email address'),
   password: newPasswordSchema,
-  role: z.enum(['TENANT_ADMIN', 'HR_MANAGER', 'PAYROLL_MANAGER', 'EMPLOYEE']),
+  role: z.enum(['TENANT_ADMIN', 'HR_MANAGER', 'PAYROLL_MANAGER', 'PAYROLL_OFFICER', 'EMPLOYEE']),
 });
 
 export type AddTenantUserFormValues = z.infer<typeof addTenantUserFormSchema>;

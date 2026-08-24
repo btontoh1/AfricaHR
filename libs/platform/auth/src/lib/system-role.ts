@@ -6,6 +6,10 @@ export const SystemRole = {
   TENANT_ADMIN: 'TENANT_ADMIN',
   HR_MANAGER: 'HR_MANAGER',
   PAYROLL_MANAGER: 'PAYROLL_MANAGER',
+  // Narrower than PAYROLL_MANAGER - holds Permission.PAYROLL_PREPARE but not
+  // PAYROLL_MANAGE, so it can prepare a pay run but not approve/pay it. See
+  // that permission's own comment for the separation-of-duties reasoning.
+  PAYROLL_OFFICER: 'PAYROLL_OFFICER',
   // Scoped to exactly one Organization within the tenant (User.organizationId)
   // - see assertOrganizationScope. Every other role here is tenant-wide.
   ORG_ADMIN: 'ORG_ADMIN',
@@ -29,8 +33,21 @@ export const Permission = {
   USER_READ: 'user:read',
   EMPLOYEE_MANAGE: 'employee:manage',
   EMPLOYEE_READ: 'employee:read',
+  // Covers the whole pay-run lifecycle: create, process, approve, pay,
+  // close, cancel, plus payslip line-item edits and disbursement retries.
+  // See PAYROLL_PREPARE for the narrower prepare-only slice PAYROLL_OFFICER
+  // holds instead - PAYROLL_MANAGE stays reserved for approve/pay/close/
+  // cancel/retry-disbursement (the money-releasing actions).
   PAYROLL_MANAGE: 'payroll:manage',
   PAYROLL_READ: 'payroll:read',
+  // Prepare-only slice of payroll: create a pay run, process it (compute
+  // payslips), and add/remove payslip line items - everything up to but not
+  // including approve/pay/close/cancel/retry-disbursement, which stay
+  // PAYROLL_MANAGE-only. Deliberate separation of duties so the person
+  // entering payroll data isn't necessarily the same one releasing funds.
+  // Every role holding PAYROLL_MANAGE also holds this one (see
+  // ROLE_PERMISSIONS) so approvers can still prepare a run themselves.
+  PAYROLL_PREPARE: 'payroll:prepare',
   LEAVE_MANAGE: 'leave:manage',
   LEAVE_READ: 'leave:read',
   ATTENDANCE_MANAGE: 'attendance:manage',
@@ -114,6 +131,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.EMPLOYEE_MANAGE,
     Permission.EMPLOYEE_READ,
     Permission.PAYROLL_MANAGE,
+    Permission.PAYROLL_PREPARE,
     Permission.PAYROLL_READ,
     Permission.PLATFORM_PAYROLL_CONFIG_MANAGE,
     Permission.PLATFORM_ORGANIZATION_VERIFY,
@@ -149,6 +167,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.EMPLOYEE_MANAGE,
     Permission.EMPLOYEE_READ,
     Permission.PAYROLL_MANAGE,
+    Permission.PAYROLL_PREPARE,
     Permission.PAYROLL_READ,
     Permission.LEAVE_MANAGE,
     Permission.LEAVE_READ,
@@ -193,6 +212,18 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.ORGANIZATION_READ,
     Permission.EMPLOYEE_READ,
     Permission.PAYROLL_MANAGE,
+    Permission.PAYROLL_PREPARE,
+    Permission.PAYROLL_READ,
+    Permission.REPORTING_READ,
+  ],
+  // Prepare-only counterpart to PAYROLL_MANAGER (see Permission.PAYROLL_PREPARE) -
+  // same visibility (organization/employee read, reports) but no
+  // PAYROLL_MANAGE, so approve/pay/close/cancel/retry-disbursement stay out
+  // of reach.
+  [SystemRole.PAYROLL_OFFICER]: [
+    Permission.ORGANIZATION_READ,
+    Permission.EMPLOYEE_READ,
+    Permission.PAYROLL_PREPARE,
     Permission.PAYROLL_READ,
     Permission.REPORTING_READ,
   ],

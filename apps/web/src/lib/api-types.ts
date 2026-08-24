@@ -3354,7 +3354,7 @@ export interface components {
             firstName: string;
             lastName: string;
             /** @enum {string} */
-            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "ORG_ADMIN" | "EMPLOYEE";
+            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "PAYROLL_OFFICER" | "ORG_ADMIN" | "EMPLOYEE";
             /** @description Required when role is ORG_ADMIN (which Organization they administer); rejected otherwise. */
             organizationId?: string;
         };
@@ -3366,7 +3366,7 @@ export interface components {
             firstName: string;
             lastName: string;
             /** @enum {string} */
-            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "ORG_ADMIN" | "EMPLOYEE";
+            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "PAYROLL_OFFICER" | "ORG_ADMIN" | "EMPLOYEE";
             isActive: boolean;
             lastLoginAt?: string | null;
             createdAt: string;
@@ -3384,7 +3384,7 @@ export interface components {
         };
         UpdateUserRoleDto: {
             /** @enum {string} */
-            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "ORG_ADMIN" | "EMPLOYEE";
+            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "PAYROLL_OFFICER" | "ORG_ADMIN" | "EMPLOYEE";
             /** @description Required when role is ORG_ADMIN (which Organization they administer); rejected otherwise. */
             organizationId?: string;
         };

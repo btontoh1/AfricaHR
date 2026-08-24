@@ -5,6 +5,7 @@ import { usePayRunAction } from './queries';
 import { getApiErrorMessage } from '@/lib/api-error';
 import type { PayRun } from './types';
 import { Button } from '@/components/ui/button';
+import { useSession } from '@/app/(app)/session-provider';
 
 const NEXT_ACTION: Partial<Record<PayRun['status'], { action: 'process' | 'approve' | 'pay' | 'close'; label: string }>> = {
   DRAFT: { action: 'process', label: 'Process' },
@@ -13,12 +14,23 @@ const NEXT_ACTION: Partial<Record<PayRun['status'], { action: 'process' | 'appro
   PAID: { action: 'close', label: 'Close' },
 };
 
+// 'process' (DRAFT -> PROCESSING) is prepare-tier (Permission.PAYROLL_PREPARE)
+// - approve/pay/close and cancel are all approve-tier (Permission.PAYROLL_MANAGE),
+// which PAYROLL_OFFICER deliberately doesn't hold. The backend already
+// enforces this; hiding the buttons here just avoids an officer hitting a
+// 403 on a button they can never use.
+const MANAGE_TIER_ACTIONS: ReadonlySet<string> = new Set(['approve', 'pay', 'close']);
+const MANAGE_TIER_ROLES: ReadonlySet<string> = new Set(['PLATFORM_ADMIN', 'TENANT_ADMIN', 'PAYROLL_MANAGER']);
+
 const CANCELLABLE_STATUSES: PayRun['status'][] = ['DRAFT', 'PROCESSING', 'APPROVED'];
 
 export function PayRunLifecycleActions({ tenantId, payRun }: { tenantId: string; payRun: PayRun }) {
   const action = usePayRunAction(tenantId, payRun.id);
-  const next = NEXT_ACTION[payRun.status];
-  const canCancel = CANCELLABLE_STATUSES.includes(payRun.status);
+  const { role } = useSession();
+  const canManage = MANAGE_TIER_ROLES.has(role);
+  const rawNext = NEXT_ACTION[payRun.status];
+  const next = rawNext && (!MANAGE_TIER_ACTIONS.has(rawNext.action) || canManage) ? rawNext : undefined;
+  const canCancel = canManage && CANCELLABLE_STATUSES.includes(payRun.status);
 
   async function run(label: string, name: 'process' | 'approve' | 'pay' | 'close' | 'cancel') {
     try {

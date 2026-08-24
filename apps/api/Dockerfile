@@ -35,5 +35,13 @@ COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/node_modules/@prisma/client ./node_modules/@prisma/client
 COPY --from=build /app/dist/apps/api/main.js ./
 
+# main.js itself only needs the generated @prisma/client above - the CLI,
+# config, and schema/migrations below exist purely so `docker compose run
+# --rm api npx prisma migrate deploy` can run directly against this image
+# at deploy time instead of needing a one-off build-stage image.
+COPY --from=build /app/prisma.config.ts ./
+COPY --from=build /app/libs/platform/database/prisma ./libs/platform/database/prisma
+RUN npm install --no-save prisma@^7.8.0 dotenv@^17.4.2
+
 EXPOSE 3000
 CMD ["node", "main.js"]

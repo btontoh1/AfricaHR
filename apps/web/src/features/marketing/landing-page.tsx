@@ -5,6 +5,7 @@ import {
   Briefcase,
   CalendarDays,
   CheckCircle2,
+  FileText,
   HeartHandshake,
   KeyRound,
   ScrollText,
@@ -49,7 +50,7 @@ const FEATURES = [
     icon: Banknote,
     title: 'Payroll',
     description:
-      "Run pay cycles in each country's own currency, with the statutory deductions above calculated automatically and paid straight to employee bank accounts.",
+      "Run pay cycles in each country's own currency, with the statutory deductions above calculated automatically and paid out by bank transfer or mobile money - each employee chooses how they get paid.",
   },
   {
     icon: CalendarDays,
@@ -74,6 +75,12 @@ const FEATURES = [
     title: 'Benefits',
     description:
       'Define benefit plans and let employees enroll themselves, with HR keeping full visibility over every enrollment.',
+  },
+  {
+    icon: FileText,
+    title: 'B2B invoicing',
+    description:
+      "Bill your own customers straight from ParotHR, with your organization's logo on every invoice PDF for a professional, branded look.",
   },
 ];
 
@@ -335,7 +342,7 @@ export function LandingPage() {
                 Ready to simplify HR &amp; payroll for your business?
               </h2>
               <p className="mt-2 text-muted-foreground">
-                Sign in to get your team set up in Ghana, Nigeria, or Kenya.
+                Sign in to get your team set up, wherever in Africa you operate.
               </p>
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-3">

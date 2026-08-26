@@ -28,11 +28,17 @@ export function PrivacyPage() {
           <li>
             <strong className="text-foreground">Employee &amp; payroll data</strong> - employee profiles,
             employment details, leave and attendance records, performance data, and payroll information
-            including bank account details needed to pay salaries.
+            including the bank account or mobile money account details needed to pay salaries, depending
+            on how each employee chooses to be paid.
           </li>
           <li>
             <strong className="text-foreground">Recruitment data</strong> - job applications, resumes, and
             identity documents submitted by candidates through a Customer&apos;s public job listing.
+          </li>
+          <li>
+            <strong className="text-foreground">Customer invoicing data</strong> - where a Customer uses
+            ParotHR to invoice its own customers, the business contact details of those customers and the
+            invoices generated on the Customer&apos;s behalf.
           </li>
           <li>
             <strong className="text-foreground">Usage &amp; technical data</strong> - log data such as IP

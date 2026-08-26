@@ -13,7 +13,7 @@ const REASONS = [
   {
     title: 'Payroll that gets the statutory math right',
     description:
-      "SSNIT, PAYE, NSSF, and pension calculations are built into every pay run for Ghana, Nigeria, and Kenya, so finance teams stop hand-checking deductions every cycle.",
+      'SSNIT, PAYE, NSSF, and pension calculations are built into every pay run across the African markets we serve, so finance teams stop hand-checking deductions every cycle.',
   },
   {
     title: 'Self-service that actually reduces HR workload',

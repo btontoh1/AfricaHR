@@ -16,8 +16,9 @@ export function TermsPage() {
         <h2>1. The service</h2>
         <p>
           ParotHR is a multi-tenant software-as-a-service platform for employee records, payroll
-          processing, leave and attendance management, recruitment, and performance reviews, currently
-          available to businesses operating in Ghana, Nigeria, and Kenya. ParotHR is provided
+          processing, leave and attendance management, recruitment, performance reviews, and B2B customer
+          invoicing, currently available to businesses operating in Ghana, Nigeria, and Kenya. ParotHR is
+          provided
           &quot;as is&quot; and we may add, change, or remove features from time to time as the product
           evolves.
         </p>
@@ -50,12 +51,24 @@ export function TermsPage() {
       <section>
         <h2>4. Payroll disbursement</h2>
         <p>
-          Where you use ParotHR to disburse payslip payments, funds are transferred to the bank accounts
-          you or your employees provide, processed through our payment partner, Paystack. You are
-          responsible for the accuracy of the account details and pay run figures you approve. We are not
-          liable for delays or failures caused by incorrect account information, or by the failure of a
-          bank or payment partner outside our control, though we will make reasonable efforts to flag and
-          help resolve failed or stuck disbursements.
+          Where you use ParotHR to disburse payslip payments, funds are transferred to the bank account or
+          mobile money account your employees provide - each employee chooses their own payout method,
+          subject to what our payment partner, Paystack, supports in that employee&apos;s country - and
+          processed through Paystack. You are responsible for the accuracy of the account details and pay
+          run figures you approve. We are not liable for delays or failures caused by incorrect account
+          information, or by the failure of a bank, mobile money provider, or payment partner outside our
+          control, though we will make reasonable efforts to flag and help resolve failed or stuck
+          disbursements.
+        </p>
+      </section>
+
+      <section>
+        <h2>5. Customer invoicing</h2>
+        <p>
+          Where available on your plan, ParotHR lets you create and send invoices to your own customers,
+          including invoice PDFs generated with your organization&apos;s uploaded logo. You are responsible
+          for the accuracy of the invoices you create and for your own relationship and any dispute with
+          the customers you bill - ParotHR is not a party to that transaction.
         </p>
       </section>
 
@@ -85,7 +98,7 @@ export function TermsPage() {
       </section>
 
       <section>
-        <h2>6. Acceptable use</h2>
+        <h2>7. Acceptable use</h2>
         <p>You agree not to:</p>
         <ul>
           <li>use ParotHR to process data you are not legally authorized to process;</li>
@@ -99,7 +112,7 @@ export function TermsPage() {
       </section>
 
       <section>
-        <h2>7. Intellectual property</h2>
+        <h2>8. Intellectual property</h2>
         <p>
           ParotHR, its underlying software, and all related trademarks are owned by Baffour &amp; Egyir
           Ringlife LTD. These Terms grant you a limited, non-exclusive, non-transferable right to use
@@ -109,7 +122,7 @@ export function TermsPage() {
       </section>
 
       <section>
-        <h2>8. Service availability</h2>
+        <h2>9. Service availability</h2>
         <p>
           We aim to keep ParotHR available and reliable, but we do not guarantee uninterrupted access.
           Planned maintenance, third-party outages (including our payment, email, and infrastructure
@@ -118,7 +131,7 @@ export function TermsPage() {
       </section>
 
       <section>
-        <h2>9. Limitation of liability</h2>
+        <h2>10. Limitation of liability</h2>
         <p>
           To the maximum extent permitted by law, ParotHR is not liable for indirect, incidental, or
           consequential damages arising from use of the service. Our total liability for any claim arising
@@ -129,7 +142,7 @@ export function TermsPage() {
       </section>
 
       <section>
-        <h2>10. Termination</h2>
+        <h2>11. Termination</h2>
         <p>
           You may cancel your subscription at any time in accordance with our{' '}
           <a href="/refund-policy" className="text-primary hover:underline">
@@ -141,7 +154,7 @@ export function TermsPage() {
       </section>
 
       <section>
-        <h2>11. Changes to these Terms</h2>
+        <h2>12. Changes to these Terms</h2>
         <p>
           We may update these Terms from time to time. If we make material changes, we will provide
           reasonable notice (for example, by email or an in-app notice) before the changes take effect.
@@ -150,12 +163,12 @@ export function TermsPage() {
       </section>
 
       <section>
-        <h2>12. Governing law</h2>
+        <h2>13. Governing law</h2>
         <p>These Terms are governed by the laws of Ghana, without regard to its conflict of law principles.</p>
       </section>
 
       <section>
-        <h2>13. Contact</h2>
+        <h2>14. Contact</h2>
         <p>
           Questions about these Terms can be sent to{' '}
           <a href="mailto:support@parothr.com" className="text-primary hover:underline">

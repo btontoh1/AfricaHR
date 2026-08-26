@@ -43,9 +43,9 @@ export function AboutPage() {
             </h1>
             <p className="mt-5 text-lg text-muted-foreground text-balance">
               ParotHR is built and operated by Baffour &amp; Egyir Ringlife LTD, a company registered in
-              Ghana. We started ParotHR because running payroll and HR across Ghana, Nigeria, and Kenya
-              usually means stitching together spreadsheets, bank portals, and software that treats
-              statutory compliance as an afterthought.
+              Ghana. We started ParotHR because running payroll and HR across Africa usually means
+              stitching together spreadsheets, bank portals, and software that treats statutory
+              compliance as an afterthought.
             </p>
           </div>
         </section>
@@ -54,7 +54,7 @@ export function AboutPage() {
           <div className="mx-auto max-w-3xl space-y-4 text-base text-muted-foreground">
             <h2 className="text-2xl font-semibold tracking-tight text-foreground">Our mission</h2>
             <p>
-              Give every business operating in Ghana, Nigeria, and Kenya a single system for employees,
+              Give every business operating in Africa a single system for employees,
               payroll, leave, recruitment, and performance - with the statutory rules for each country
               handled correctly by default, so HR and finance teams can spend less time reconciling
               spreadsheets and more time running the business.
@@ -64,8 +64,11 @@ export function AboutPage() {
               ParotHR is a multi-tenant HR and payroll platform. Each customer's organization runs its own
               employee records, payroll cycles, leave policies, recruitment pipeline, and performance
               reviews inside a fully isolated tenant. Payroll runs are calculated in each country's own
-              currency, statutory deductions are computed automatically, and payslip disbursement to
-              employee bank accounts is handled through our payment partner.
+              currency, statutory deductions are computed automatically, and payslip disbursement is
+              handled through our payment partner - by bank transfer or mobile money, so employees who
+              rely on mobile money for everyday transactions can be paid that way too. For businesses that
+              invoice their own customers, ParotHR also generates branded invoice PDFs carrying your
+              organization&apos;s own logo.
             </p>
           </div>
         </section>

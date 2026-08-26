@@ -29,7 +29,12 @@ const FAQ_SECTIONS = [
       {
         question: 'How does payroll disbursement work?',
         answer:
-          'Once a pay run is approved, ParotHR disburses payslip payments directly to employee bank accounts through our payment partner, Paystack. Every transfer is tracked to completion, and any failed or stuck disbursement is flagged for follow-up rather than silently dropped.',
+          'Once a pay run is approved, ParotHR disburses payslip payments to each employee through our payment partner, Paystack - by bank transfer or mobile money, whichever the employee has set as their own payment method, since mobile money is how a lot of people across Africa actually get paid day to day. Every transfer is tracked to completion, and any failed or stuck disbursement is flagged for follow-up rather than silently dropped.',
+      },
+      {
+        question: 'Can employees be paid by mobile money?',
+        answer:
+          'Yes. Each employee sets their own payout method - bank account or mobile money - in their payment details. Availability follows what our payment partner supports in each country: in Ghana an employee can choose either bank transfer or mobile money, in Kenya payouts go through mobile money, and in Nigeria they go through bank transfer.',
       },
       {
         question: 'Who is allowed to approve or release a payroll run?',
@@ -70,6 +75,11 @@ const FAQ_SECTIONS = [
         question: 'How does billing work?',
         answer:
           'ParotHR is billed as a subscription. See our Refund & Cancellation Policy for details on billing cycles, cancellation, and refund eligibility.',
+      },
+      {
+        question: 'Can I invoice my own customers through ParotHR?',
+        answer:
+          "Yes - separately from your ParotHR subscription, you can bill your own customers directly from the platform. Every invoice PDF carries your organization's own logo, so the invoices you send out look professionally branded rather than generic.",
       },
       {
         question: 'How do I get help if something goes wrong?',

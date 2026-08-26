@@ -12,15 +12,10 @@ import {
   Target,
   Users,
 } from 'lucide-react';
-import { Logo } from '@/components/logo';
 import { Button } from '@/components/ui/button';
 import { DemoRequestDialog } from './demo-request-dialog';
-
-const NAV_LINKS = [
-  { href: '#features', label: 'Features' },
-  { href: '#countries', label: 'Where we operate' },
-  { href: '#security', label: 'Security' },
-];
+import { MarketingHeader } from './marketing-header';
+import { MarketingFooter } from './marketing-footer';
 
 const COUNTRIES = [
   {
@@ -176,38 +171,9 @@ function ProductPreview() {
 }
 
 export function LandingPage() {
-  const year = new Date().getFullYear();
-
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-sm supports-backdrop-filter:bg-background/60">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 lg:px-8">
-          <div className="flex items-center gap-2">
-            <Logo className="size-8 rounded-lg" />
-            <span className="text-lg font-semibold tracking-tight">ParotHR</span>
-          </div>
-          <nav className="hidden items-center gap-8 md:flex">
-            {NAV_LINKS.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {link.label}
-              </a>
-            ))}
-          </nav>
-          <div className="flex items-center gap-2">
-            <Button asChild variant="ghost">
-              <Link href="/login">Login</Link>
-            </Button>
-            <DemoRequestDialog trigger={<Button variant="outline">Book a demo</Button>} />
-            <Button asChild>
-              <Link href="/login">Get started</Link>
-            </Button>
-          </div>
-        </div>
-      </header>
+      <MarketingHeader />
 
       <main className="flex-1">
         {/* Hero - asymmetric two-column, not centered, so the page has an
@@ -385,29 +351,7 @@ export function LandingPage() {
         </section>
       </main>
 
-      <footer className="border-t border-border px-4 py-10 lg:px-8">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
-          <div className="flex items-center gap-2">
-            <Logo className="size-6 rounded-md" />
-            <span className="text-sm font-medium">ParotHR</span>
-          </div>
-          <nav className="flex items-center gap-6">
-            {NAV_LINKS.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {link.label}
-              </a>
-            ))}
-            <Link href="/login" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-              Login
-            </Link>
-          </nav>
-          <p className="text-xs text-muted-foreground">&copy; {year} ParotHR. All rights reserved.</p>
-        </div>
-      </footer>
+      <MarketingFooter />
     </div>
   );
 }

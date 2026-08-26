@@ -3,7 +3,17 @@ import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from '@/lib/auth-cookie-nam
 
 // /careers is the public job-application flow — a candidate reaches it from
 // a link a company embeds on its own website, never a logged-in session.
-const PUBLIC_PATHS = ['/login', '/setup', '/careers'];
+const PUBLIC_PATHS = [
+  '/login',
+  '/setup',
+  '/careers',
+  '/about',
+  '/faq',
+  '/testimonials',
+  '/terms',
+  '/privacy',
+  '/refund-policy',
+];
 
 // Fast, cookie-presence-only gate — not a full JWT verification (Edge
 // middleware has no easy access to the backend's signing secret, and

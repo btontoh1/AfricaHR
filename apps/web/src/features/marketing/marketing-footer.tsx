@@ -81,9 +81,7 @@ export function MarketingFooter() {
           </div>
         </div>
         <div className="mt-12 flex flex-col items-start justify-between gap-4 border-t border-border pt-6 sm:flex-row sm:items-center">
-          <p className="text-xs text-muted-foreground">
-            &copy; {year} Baffour &amp; Egyir Ringlife LTD. All rights reserved.
-          </p>
+          <p className="text-xs text-muted-foreground">&copy; {year} ParotHR. All rights reserved.</p>
           <p className="text-xs text-muted-foreground">10 Benin St. GC-000-6098, Ghana</p>
         </div>
       </div>

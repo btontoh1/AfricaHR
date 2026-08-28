@@ -5,6 +5,7 @@ import { UserPlus, Users } from 'lucide-react';
 import { useSession } from '../session-provider';
 import { useEmployees } from '@/features/employees/queries';
 import { EmploymentStatusBadge } from '@/features/employees/employment-status-badge';
+import { BulkImportEmployeesDialog } from '@/features/employees/bulk-import-dialog';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/page-header';
@@ -32,12 +33,15 @@ export default function EmployeesPage() {
         title="Employees"
         description={employees ? `${employees.length} employee${employees.length === 1 ? '' : 's'}` : undefined}
         action={
-          <Button asChild>
-            <Link href="/employees/new">
-              <UserPlus className="size-4" />
-              Add employee
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <BulkImportEmployeesDialog tenantId={tenantId} />
+            <Button asChild>
+              <Link href="/employees/new">
+                <UserPlus className="size-4" />
+                Add employee
+              </Link>
+            </Button>
+          </div>
         }
       />
 

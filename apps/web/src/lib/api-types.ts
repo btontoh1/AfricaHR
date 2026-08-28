@@ -1017,6 +1017,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/employees/bulk-import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["EmployeeController_bulkImportEmployees"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/employees/{id}": {
         parameters: {
             query?: never;
@@ -3475,6 +3491,22 @@ export interface components {
             countryCode: string;
             createdAt: string;
             updatedAt: string;
+        };
+        BulkImportEmployeesDto: {
+            /** @description Every row in the CSV is created under this organization */
+            organizationId: string;
+            /** @description Raw CSV content, including the header row */
+            csv: string;
+        };
+        BulkImportRowErrorDto: {
+            /** @description 1-indexed row number as it would appear in a spreadsheet (header is row 1) */
+            row: number;
+            message: string;
+        };
+        BulkImportResultDto: {
+            /** @description Number of employees successfully created */
+            created: number;
+            errors: components["schemas"]["BulkImportRowErrorDto"][];
         };
         UpdateEmployeeDto: {
             /** @description Set to null to unassign the department */
@@ -6504,6 +6536,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EmployeeResponseDto"];
+                };
+            };
+        };
+    };
+    EmployeeController_bulkImportEmployees: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkImportEmployeesDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkImportResultDto"];
                 };
             };
         };

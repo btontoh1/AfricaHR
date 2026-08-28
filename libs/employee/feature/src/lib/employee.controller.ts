@@ -10,17 +10,23 @@ import {
   RequirePermissions,
 } from '@africahr/platform-auth';
 import { EmployeeService } from './employee.service';
+import { EmployeeBulkImportService } from './employee-bulk-import.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { UpdateEmploymentStatusDto } from './dto/update-employment-status.dto';
 import { EmployeeResponseDto } from './dto/employee-response.dto';
+import { BulkImportEmployeesDto } from './dto/bulk-import-employees.dto';
+import { BulkImportResultDto } from './dto/bulk-import-result.dto';
 
 @ApiTags('employees')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('tenants/:tenantId/employees')
 export class EmployeeController {
-  constructor(private readonly employees: EmployeeService) {}
+  constructor(
+    private readonly employees: EmployeeService,
+    private readonly bulkImport: EmployeeBulkImportService,
+  ) {}
 
   @Post()
   @RequirePermissions(Permission.EMPLOYEE_MANAGE)
@@ -32,6 +38,19 @@ export class EmployeeController {
   ) {
     assertTenantScope(actor, tenantId);
     return this.employees.create(tenantId, dto, actor);
+  }
+
+  /** Row-level partial success: invalid/failing rows are reported back rather than aborting the whole batch - see EmployeeBulkImportService. */
+  @Post('bulk-import')
+  @RequirePermissions(Permission.EMPLOYEE_MANAGE)
+  @ApiOkResponse({ type: BulkImportResultDto })
+  bulkImportEmployees(
+    @Param('tenantId') tenantId: string,
+    @Body() dto: BulkImportEmployeesDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.bulkImport.import(tenantId, dto.organizationId, dto.csv, actor);
   }
 
   @Get()

@@ -2,10 +2,12 @@ import { ForbiddenException } from '@nestjs/common';
 import { RequestUser, SystemRole } from '@africahr/platform-auth';
 import { EmployeeController } from './employee.controller';
 import { EmployeeService } from './employee.service';
+import { EmployeeBulkImportService } from './employee-bulk-import.service';
 
 describe('EmployeeController', () => {
   let controller: EmployeeController;
   let service: jest.Mocked<EmployeeService>;
+  let bulkImport: jest.Mocked<EmployeeBulkImportService>;
 
   const hrManager: RequestUser = {
     sub: 'hr-1',
@@ -28,7 +30,9 @@ describe('EmployeeController', () => {
       getHistory: jest.fn(),
     } as unknown as jest.Mocked<EmployeeService>;
 
-    controller = new EmployeeController(service);
+    bulkImport = { import: jest.fn() } as unknown as jest.Mocked<EmployeeBulkImportService>;
+
+    controller = new EmployeeController(service, bulkImport);
   });
 
   it('creates within the route tenant when the actor matches', () => {

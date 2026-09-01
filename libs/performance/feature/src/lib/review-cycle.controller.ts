@@ -1,15 +1,17 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
+  AddOnGuard,
   assertTenantScope,
   CurrentUser,
   JwtAuthGuard,
   Permission,
   PermissionsGuard,
   RequestUser,
+  RequireAddOn,
   RequirePermissions,
 } from '@africahr/platform-auth';
-import { PerformanceReviewCycleStatus } from '@prisma/client';
+import { AddOnModule, PerformanceReviewCycleStatus } from '@prisma/client';
 import { ReviewCycleService } from './review-cycle.service';
 import { CreateReviewCycleDto } from './dto/create-review-cycle.dto';
 import { ReviewCycleResponseDto } from './dto/review-cycle-response.dto';
@@ -17,7 +19,8 @@ import { UpdateReviewCycleDto } from './dto/update-review-cycle.dto';
 
 @ApiTags('review-cycles')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, AddOnGuard)
+@RequireAddOn(AddOnModule.PERFORMANCE)
 @Controller('tenants/:tenantId/review-cycles')
 export class ReviewCycleController {
   constructor(private readonly cycles: ReviewCycleService) {}

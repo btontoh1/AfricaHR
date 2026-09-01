@@ -52,6 +52,13 @@ enum PerformanceFramework {
 /// don't get to invent their own add-ons.
 enum AddOnModule {
   INVOICING
+  /// Unlike INVOICING (opt-in, off by default), RECRUITMENT and
+  /// PERFORMANCE existed as core features before add-on gating was
+  /// introduced - every tenant gets both by default (see the migration
+  /// that added these two values, and TenantService.create) and a
+  /// platform admin opts a tenant OUT rather than in.
+  RECRUITMENT
+  PERFORMANCE
 }
 
 /// The SaaS account. Platform-root table — no tenantId, no RLS.

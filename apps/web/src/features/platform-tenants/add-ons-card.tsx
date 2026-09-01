@@ -13,9 +13,17 @@ const ADD_ON_LABEL: Record<AddOnModule, { title: string; description: string }> 
     title: 'Invoicing',
     description: 'Customers and customer invoices, with logo-branded PDF downloads.',
   },
+  RECRUITMENT: {
+    title: 'Recruitment',
+    description: 'Job requisitions, candidates, and applications.',
+  },
+  PERFORMANCE: {
+    title: 'Performance',
+    description: 'Goals, review cycles, and performance reviews.',
+  },
 };
 
-const ALL_ADD_ONS: AddOnModule[] = ['INVOICING'];
+const ALL_ADD_ONS: AddOnModule[] = ['INVOICING', 'RECRUITMENT', 'PERFORMANCE'];
 
 export function AddOnsCard({ tenant }: { tenant: Tenant }) {
   const updateAddOn = useUpdateTenantAddOn(tenant.id);

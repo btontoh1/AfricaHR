@@ -1,5 +1,5 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
-import { Tenant } from '@prisma/client';
+import { PerformanceFramework, Tenant } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import { StorageService } from '@africahr/platform-storage';
 import { TenantRepository } from '@africahr/tenancy-data-access';
@@ -21,6 +21,8 @@ describe('TenantService', () => {
     currency: 'GHS',
     timezone: 'Africa/Accra',
     logoStorageKey: null,
+    performanceFramework: PerformanceFramework.STANDARD,
+    enabledAddOns: [],
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,

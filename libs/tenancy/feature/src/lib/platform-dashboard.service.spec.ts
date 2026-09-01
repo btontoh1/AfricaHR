@@ -1,4 +1,4 @@
-import { Tenant } from '@prisma/client';
+import { PerformanceFramework, Tenant } from '@prisma/client';
 import { PrismaService } from '@africahr/platform-database';
 import { RedisService } from '@africahr/platform-redis';
 import { StorageService } from '@africahr/platform-storage';
@@ -21,6 +21,8 @@ describe('PlatformDashboardService', () => {
     currency: 'GHS',
     timezone: 'Africa/Accra',
     logoStorageKey: null,
+    performanceFramework: PerformanceFramework.STANDARD,
+    enabledAddOns: [],
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,

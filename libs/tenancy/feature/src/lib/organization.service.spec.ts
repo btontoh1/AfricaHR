@@ -1,6 +1,7 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
-import { Organization, Tenant } from '@prisma/client';
+import { Organization, PerformanceFramework, Tenant } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
+import { StorageService } from '@africahr/platform-storage';
 import { OrganizationRepository, TenantRepository } from '@africahr/tenancy-data-access';
 import { OrganizationVerificationStatus, TenantStatus } from '@africahr/tenancy-domain';
 import { OrganizationService } from './organization.service';
@@ -10,6 +11,7 @@ describe('OrganizationService', () => {
   let organizations: jest.Mocked<OrganizationRepository>;
   let tenants: jest.Mocked<TenantRepository>;
   let audit: jest.Mocked<AuditService>;
+  let storage: jest.Mocked<StorageService>;
 
   const tenant: Tenant = {
     id: 'tenant-1',
@@ -20,6 +22,8 @@ describe('OrganizationService', () => {
     currency: 'GHS',
     timezone: 'Africa/Accra',
     logoStorageKey: null,
+    performanceFramework: PerformanceFramework.STANDARD,
+    enabledAddOns: [],
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
@@ -36,6 +40,7 @@ describe('OrganizationService', () => {
     registrationNumber: 'BN-12345',
     taxIdentificationNumber: null,
     metadata: null,
+    logoStorageKey: null,
     verificationStatus: OrganizationVerificationStatus.UNVERIFIED,
     verificationNote: null,
     verifiedAt: null,
@@ -67,7 +72,13 @@ describe('OrganizationService', () => {
 
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
 
-    service = new OrganizationService(organizations, tenants, audit);
+    storage = {
+      getUploadUrl: jest.fn(),
+      getViewUrl: jest.fn(),
+      deleteObject: jest.fn(),
+    } as unknown as jest.Mocked<StorageService>;
+
+    service = new OrganizationService(organizations, tenants, audit, storage);
   });
 
   describe('create', () => {

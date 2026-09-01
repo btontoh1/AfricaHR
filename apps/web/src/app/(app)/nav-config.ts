@@ -96,6 +96,13 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
     isTenantMember &&
     (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER' || isOrgAdmin) &&
     enabledAddOns.includes('INVOICING');
+  // Unlike INVOICING, these gate an entire nav group (including the
+  // self-service items every tenant member would otherwise see
+  // unconditionally, e.g. "My Goals"/"My Requisitions") since the backend
+  // now blocks those routes too when the add-on is off for the tenant -
+  // see RequireAddOn on the *-feature controllers.
+  const hasPerformanceAddOn = enabledAddOns.includes('PERFORMANCE');
+  const hasRecruitmentAddOn = enabledAddOns.includes('RECRUITMENT');
 
   const groups: NavGroup[] = [
     {
@@ -190,56 +197,60 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
     },
     {
       label: 'Performance',
-      items: [
-        ...(isTenantMember
-          ? [{ label: 'My Goals', href: '/performance/goals', icon: Target }]
-          : []),
-        ...(hasPerformanceAdminAccess
-          ? [{ label: 'All Goals', href: '/performance/goals/all', icon: ClipboardList }]
-          : []),
-        ...(isTenantMember
-          ? [{ label: 'My Reviews', href: '/performance/reviews', icon: FileText }]
-          : []),
-        // Visible to every tenant member: manager-ness is a dynamic
-        // per-employee relationship, not a role permission.
-        ...(isTenantMember
-          ? [{ label: 'Team Reviews', href: '/performance/reviews/team', icon: Users2 }]
-          : []),
-        ...(hasPerformanceAdminAccess
-          ? [{ label: 'Review Cycles', href: '/performance/cycles', icon: RefreshCw }]
-          : []),
-        ...(hasPerformanceAdminAccess
-          ? [{ label: 'All Reviews', href: '/performance/reviews/all', icon: ClipboardList }]
-          : []),
-      ],
+      items: !hasPerformanceAddOn
+        ? []
+        : [
+            ...(isTenantMember
+              ? [{ label: 'My Goals', href: '/performance/goals', icon: Target }]
+              : []),
+            ...(hasPerformanceAdminAccess
+              ? [{ label: 'All Goals', href: '/performance/goals/all', icon: ClipboardList }]
+              : []),
+            ...(isTenantMember
+              ? [{ label: 'My Reviews', href: '/performance/reviews', icon: FileText }]
+              : []),
+            // Visible to every tenant member: manager-ness is a dynamic
+            // per-employee relationship, not a role permission.
+            ...(isTenantMember
+              ? [{ label: 'Team Reviews', href: '/performance/reviews/team', icon: Users2 }]
+              : []),
+            ...(hasPerformanceAdminAccess
+              ? [{ label: 'Review Cycles', href: '/performance/cycles', icon: RefreshCw }]
+              : []),
+            ...(hasPerformanceAdminAccess
+              ? [{ label: 'All Reviews', href: '/performance/reviews/all', icon: ClipboardList }]
+              : []),
+          ],
     },
     {
       label: 'Recruitment',
-      items: [
-        ...(hasRecruitmentAdminAccess
-          ? [{ label: 'Requisitions', href: '/recruitment/requisitions', icon: Briefcase }]
-          : []),
-        ...(hasRecruitmentAdminAccess
-          ? [{ label: 'Candidates', href: '/recruitment/candidates', icon: UserSearch }]
-          : []),
-        ...(hasRecruitmentAdminAccess
-          ? [{ label: 'Applications', href: '/recruitment/applications', icon: FileInput }]
-          : []),
-        // Hiring-manager tier, visible to every tenant member same as Team
-        // Reviews - a dynamic JobRequisition.hiringManagerId relationship.
-        ...(isTenantMember
-          ? [
-              {
-                label: 'My Requisitions',
-                href: '/recruitment/requisitions/mine',
-                icon: Briefcase,
-              },
-            ]
-          : []),
-        ...(isTenantMember
-          ? [{ label: 'My Applications', href: '/recruitment/applications/mine', icon: FileInput }]
-          : []),
-      ],
+      items: !hasRecruitmentAddOn
+        ? []
+        : [
+            ...(hasRecruitmentAdminAccess
+              ? [{ label: 'Requisitions', href: '/recruitment/requisitions', icon: Briefcase }]
+              : []),
+            ...(hasRecruitmentAdminAccess
+              ? [{ label: 'Candidates', href: '/recruitment/candidates', icon: UserSearch }]
+              : []),
+            ...(hasRecruitmentAdminAccess
+              ? [{ label: 'Applications', href: '/recruitment/applications', icon: FileInput }]
+              : []),
+            // Hiring-manager tier, visible to every tenant member same as Team
+            // Reviews - a dynamic JobRequisition.hiringManagerId relationship.
+            ...(isTenantMember
+              ? [
+                  {
+                    label: 'My Requisitions',
+                    href: '/recruitment/requisitions/mine',
+                    icon: Briefcase,
+                  },
+                ]
+              : []),
+            ...(isTenantMember
+              ? [{ label: 'My Applications', href: '/recruitment/applications/mine', icon: FileInput }]
+              : []),
+          ],
     },
     {
       label: 'Reports',

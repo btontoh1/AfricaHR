@@ -24,18 +24,25 @@ import { StatCard } from '@/features/reporting/stat-card';
 import { PendingLeaveRequestsCard } from '@/features/leave/pending-leave-requests-card';
 import { TeamPendingLeaveRequestsCard } from '@/features/leave/team-pending-leave-requests-card';
 import { PlatformAdminOverview } from '@/features/platform-tenants/platform-admin-overview';
+import { useMyTenant } from '@/features/settings/queries';
 import { CardSkeleton } from '@/components/loading-state';
 import { ErrorState } from '@/components/error-state';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { formatCurrency } from '@/lib/format-currency';
 import { Card, CardContent } from '@/components/ui/card';
 
-const quickLinks = [
+const BASE_QUICK_LINKS = [
   { label: 'Leave', href: '/leave', icon: CalendarDays },
   { label: 'Attendance', href: '/attendance', icon: Clock },
+  { label: 'Notifications', href: '/notifications', icon: Bell },
+];
+
+// My Goals/My Reviews are performance-feature routes, gated the same as
+// nav-config.ts's Performance group - a tenant with the add-on off would
+// otherwise get a quick-link straight into a 403.
+const PERFORMANCE_QUICK_LINKS = [
   { label: 'My Goals', href: '/performance/goals', icon: Target },
   { label: 'My Reviews', href: '/performance/reviews', icon: FileText },
-  { label: 'Notifications', href: '/notifications', icon: Bell },
 ];
 
 function Greeting({ email }: { email: string }) {
@@ -48,7 +55,11 @@ function Greeting({ email }: { email: string }) {
   );
 }
 
-function QuickLinks() {
+function QuickLinks({ hasPerformanceAddOn }: { hasPerformanceAddOn: boolean }) {
+  const quickLinks = hasPerformanceAddOn
+    ? [...BASE_QUICK_LINKS, ...PERFORMANCE_QUICK_LINKS]
+    : BASE_QUICK_LINKS;
+
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
       {quickLinks.map(({ label, href, icon: Icon }) => (
@@ -127,6 +138,8 @@ function AdminOverview({ tenantId }: { tenantId: string }) {
 export default function DashboardPage() {
   const session = useSession();
   const isTenantMember = Boolean(session.tenantId);
+  const { data: tenant } = useMyTenant({ enabled: isTenantMember });
+  const hasPerformanceAddOn = Boolean(tenant?.enabledAddOns.includes('PERFORMANCE'));
   // Excludes ORG_ADMIN - AdminOverview shows tenant-wide numbers, which
   // would be misleading for a role scoped to a single organization (see
   // nav-config.ts's hasAdminAccess for the same exclusion).
@@ -157,7 +170,7 @@ export default function DashboardPage() {
       {isTenantMember && (
         <div>
           <h2 className="mb-3 text-sm font-semibold text-muted-foreground">Quick links</h2>
-          <QuickLinks />
+          <QuickLinks hasPerformanceAddOn={hasPerformanceAddOn} />
         </div>
       )}
     </div>

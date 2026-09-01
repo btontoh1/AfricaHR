@@ -1,6 +1,15 @@
 import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { assertTenantScope, CurrentUser, JwtAuthGuard, PermissionsGuard, RequestUser } from '@africahr/platform-auth';
+import {
+  AddOnGuard,
+  assertTenantScope,
+  CurrentUser,
+  JwtAuthGuard,
+  PermissionsGuard,
+  RequestUser,
+  RequireAddOn,
+} from '@africahr/platform-auth';
+import { AddOnModule } from '@prisma/client';
 import { ApplicationService } from './application.service';
 import { AdvanceApplicationDto } from './dto/advance-application.dto';
 import {
@@ -22,7 +31,8 @@ import { DocumentViewUrlResponseDto } from './dto/document-view-url-response.dto
  */
 @ApiTags('recruitment-applications')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, AddOnGuard)
+@RequireAddOn(AddOnModule.RECRUITMENT)
 @Controller('tenants/:tenantId/applications/mine')
 export class MyApplicationController {
   constructor(private readonly applications: ApplicationService) {}

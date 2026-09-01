@@ -2976,7 +2976,7 @@ export interface components {
             logoUrl?: string;
             /** @enum {string} */
             performanceFramework: "STANDARD" | "BALANCED_SCORECARD";
-            enabledAddOns: "INVOICING"[];
+            enabledAddOns: ("INVOICING" | "RECRUITMENT" | "PERFORMANCE")[];
         };
         UpdatePerformanceFrameworkDto: {
             /** @enum {string} */
@@ -3026,7 +3026,7 @@ export interface components {
             currency: string;
             timezone: string;
             logoStorageKey?: string | null;
-            enabledAddOns: "INVOICING"[];
+            enabledAddOns: ("INVOICING" | "RECRUITMENT" | "PERFORMANCE")[];
             createdAt: string;
             updatedAt: string;
             deletedAt?: string | null;
@@ -3063,7 +3063,7 @@ export interface components {
         };
         UpdateTenantAddOnDto: {
             /** @enum {string} */
-            module: "INVOICING";
+            module: "INVOICING" | "RECRUITMENT" | "PERFORMANCE";
             enabled: boolean;
         };
         OrganizationResponseDto: {

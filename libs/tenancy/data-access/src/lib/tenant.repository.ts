@@ -8,6 +8,7 @@ export interface CreateTenantInput {
   country: string;
   currency: string;
   timezone: string;
+  enabledAddOns?: AddOnModule[];
   createdBy?: string;
 }
 
@@ -32,6 +33,7 @@ export class TenantRepository {
         country: input.country,
         currency: input.currency,
         timezone: input.timezone,
+        enabledAddOns: input.enabledAddOns,
         createdBy: input.createdBy,
         updatedBy: input.createdBy,
       },

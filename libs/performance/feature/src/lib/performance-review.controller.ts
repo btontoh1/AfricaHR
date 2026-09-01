@@ -1,15 +1,17 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
+  AddOnGuard,
   assertTenantScope,
   CurrentUser,
   JwtAuthGuard,
   Permission,
   PermissionsGuard,
   RequestUser,
+  RequireAddOn,
   RequirePermissions,
 } from '@africahr/platform-auth';
-import { PerformanceReviewStatus } from '@prisma/client';
+import { AddOnModule, PerformanceReviewStatus } from '@prisma/client';
 import { PerformanceReviewService } from './performance-review.service';
 import { PerformanceReviewResponseDto } from './dto/performance-review-response.dto';
 import { StartReviewForEmployeeDto } from './dto/start-review-for-employee.dto';
@@ -17,7 +19,8 @@ import { SubmitManagerAssessmentDto } from './dto/submit-manager-assessment.dto'
 
 @ApiTags('performance-reviews')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, AddOnGuard)
+@RequireAddOn(AddOnModule.PERFORMANCE)
 @Controller('tenants/:tenantId/performance-reviews')
 export class PerformanceReviewController {
   constructor(private readonly reviews: PerformanceReviewService) {}

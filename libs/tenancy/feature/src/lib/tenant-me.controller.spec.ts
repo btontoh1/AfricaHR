@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { RequestUser, SystemRole } from '@africahr/platform-auth';
-import { Tenant } from '@prisma/client';
+import { PerformanceFramework, Tenant } from '@prisma/client';
 import { TenantStatus } from '@africahr/tenancy-domain';
 import { TenantMeController } from './tenant-me.controller';
 import { TenantService } from './tenant.service';
@@ -38,6 +38,8 @@ describe('TenantMeController', () => {
     currency: 'GHS',
     timezone: 'Africa/Accra',
     logoStorageKey: null,
+    performanceFramework: PerformanceFramework.STANDARD,
+    enabledAddOns: [],
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
@@ -63,6 +65,8 @@ describe('TenantMeController', () => {
       name: 'Acme Ghana Ltd',
       slug: 'acme-ghana-ltd',
       logoUrl: 'https://storage.example/view?sig=xyz',
+      performanceFramework: PerformanceFramework.STANDARD,
+      enabledAddOns: [],
     });
     expect(tenants.findById).toHaveBeenCalledWith('tenant-1');
   });

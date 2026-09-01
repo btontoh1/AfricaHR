@@ -1,15 +1,17 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
+  AddOnGuard,
   assertTenantScope,
   CurrentUser,
   JwtAuthGuard,
   Permission,
   PermissionsGuard,
   RequestUser,
+  RequireAddOn,
   RequirePermissions,
 } from '@africahr/platform-auth';
-import { JobRequisitionStatus } from '@prisma/client';
+import { AddOnModule, JobRequisitionStatus } from '@prisma/client';
 import { JobRequisitionService } from './job-requisition.service';
 import { CreateJobRequisitionDto } from './dto/create-job-requisition.dto';
 import { JobRequisitionResponseDto } from './dto/job-requisition-response.dto';
@@ -17,7 +19,8 @@ import { UpdateJobRequisitionDto } from './dto/update-job-requisition.dto';
 
 @ApiTags('recruitment-requisitions')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, AddOnGuard)
+@RequireAddOn(AddOnModule.RECRUITMENT)
 @Controller('tenants/:tenantId/job-requisitions')
 export class JobRequisitionController {
   constructor(private readonly requisitions: JobRequisitionService) {}

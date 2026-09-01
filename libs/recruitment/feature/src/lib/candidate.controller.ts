@@ -1,14 +1,17 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
+  AddOnGuard,
   assertTenantScope,
   CurrentUser,
   JwtAuthGuard,
   Permission,
   PermissionsGuard,
   RequestUser,
+  RequireAddOn,
   RequirePermissions,
 } from '@africahr/platform-auth';
+import { AddOnModule } from '@prisma/client';
 import { CandidateService } from './candidate.service';
 import { CandidateResponseDto } from './dto/candidate-response.dto';
 import { CreateCandidateDto } from './dto/create-candidate.dto';
@@ -16,7 +19,8 @@ import { UpdateCandidateDto } from './dto/update-candidate.dto';
 
 @ApiTags('recruitment-candidates')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, AddOnGuard)
+@RequireAddOn(AddOnModule.RECRUITMENT)
 @Controller('tenants/:tenantId/candidates')
 export class CandidateController {
   constructor(private readonly candidates: CandidateService) {}

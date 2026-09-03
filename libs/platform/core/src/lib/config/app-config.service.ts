@@ -86,4 +86,11 @@ export class AppConfigService {
   get paymentMethodEncryptionKey(): string | undefined {
     return this.configService.get('PAYMENT_METHOD_ENCRYPTION_KEY', { infer: true });
   }
+
+  get swaggerBasicAuth(): { user?: string; password?: string } {
+    return {
+      user: this.configService.get('SWAGGER_BASIC_AUTH_USER', { infer: true }),
+      password: this.configService.get('SWAGGER_BASIC_AUTH_PASSWORD', { infer: true }),
+    };
+  }
 }

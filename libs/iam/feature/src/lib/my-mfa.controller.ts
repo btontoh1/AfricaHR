@@ -35,7 +35,14 @@ export class MyMfaController {
     return this.mfa.setup(actor);
   }
 
+  /**
+   * Throttled the same as confirm-sms below - a stolen/leaked access token
+   * would otherwise get the global default's much higher request budget to
+   * brute-force the 6-digit TOTP code, instead of the same tight budget
+   * login itself enforces against the very same code.
+   */
   @Post('confirm')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOkResponse({ type: MfaConfirmResponseDto })
   confirm(@Body() dto: ConfirmMfaDto, @CurrentUser() actor: RequestUser) {
     return this.mfa.confirm(actor, dto.code);

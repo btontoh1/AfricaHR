@@ -84,6 +84,15 @@ export const envSchema = z.object({
         .map((origin) => origin.trim())
         .filter(Boolean),
     ),
+
+  // Gates /api/docs (Swagger UI + its raw JSON/YAML document) behind HTTP
+  // Basic Auth in production only - see main.ts. Optional at the schema
+  // level: unset in production means the docs are disabled outright rather
+  // than the app failing to boot, since they're a convenience, not a
+  // requirement (unlike CORS_ORIGINS/JWT secrets above). Unused, and
+  // Swagger stays open, in development/test.
+  SWAGGER_BASIC_AUTH_USER: z.string().optional(),
+  SWAGGER_BASIC_AUTH_PASSWORD: z.string().optional(),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

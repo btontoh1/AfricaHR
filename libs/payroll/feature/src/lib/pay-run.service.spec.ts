@@ -96,7 +96,13 @@ describe('PayRunService', () => {
       create: jest.fn(),
       findById: jest.fn(),
       list: jest.fn(),
-      updateStatus: jest.fn(),
+      // Defaults to a truthy "the transition succeeded" result - tests that
+      // don't care about the exact returned pay run (most of them) would
+      // otherwise get a null back from this mock and see updateStatusOrThrow
+      // throw ConflictException, since jest.fn() with no implementation
+      // resolves to undefined. Tests asserting a specific transition still
+      // override this per-call below.
+      updateStatus: jest.fn().mockResolvedValue(makePayRun()),
     } as unknown as jest.Mocked<PayRunRepository>;
 
     payslips = {
@@ -105,7 +111,10 @@ describe('PayRunService', () => {
       findByPayRunAndEmployee: jest.fn().mockResolvedValue(null),
       listByPayRun: jest.fn().mockResolvedValue([]),
       updateManyStatusByPayRun: jest.fn(),
-      recordDisbursementInitiated: jest.fn(),
+      // Defaults to a won claim (see the comment on payRuns.updateStatus
+      // above) - tests exercising the lost-the-race path override this to
+      // resolve null.
+      recordDisbursementInitiated: jest.fn().mockResolvedValue(makePayslip()),
       recordDisbursementResult: jest.fn(),
     } as unknown as jest.Mocked<PayslipRepository>;
 
@@ -772,6 +781,21 @@ describe('PayRunService', () => {
       expect(payslips.updateManyStatusByPayRun).toHaveBeenCalledWith('tenant-1', 'run-1', 'PAID', 'mgr-1');
     });
 
+    it('throws ConflictException instead of re-disbursing when a concurrent request already moved the pay run out of APPROVED', async () => {
+      // Simulates the double-click / retry race: this request read APPROVED
+      // and passed assertTransition, but by the time its conditional write
+      // runs, a concurrent markPaid call already won and moved the row to
+      // PAID - the repository's conditional updateMany then reports 0 rows
+      // changed, surfaced here as null.
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
+      payRuns.updateStatus.mockResolvedValueOnce(null);
+
+      await expect(service.markPaid('tenant-1', 'run-1', 'mgr-1')).rejects.toThrow(ConflictException);
+
+      expect(payslips.updateManyStatusByPayRun).not.toHaveBeenCalled();
+      expect(paystack.initiateTransfer).not.toHaveBeenCalled();
+    });
+
     it('initiates a Paystack transfer for a payslip whose employee has a usable payment method', async () => {
       payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
       payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PAID' }));
@@ -965,6 +989,41 @@ describe('PayRunService', () => {
       );
       expect(payslips.recordDisbursementResult).not.toHaveBeenCalled();
       expect(eventEmitter.emit).not.toHaveBeenCalled();
+    });
+
+    it('never calls Paystack for a payslip whose disbursement was already claimed by a concurrent request', async () => {
+      // The actual regression test for the double-payment bug: two
+      // concurrent attempts to disburse the same payslip (overlapping
+      // markPaid calls, or a markPaid racing retryDisbursement) both reach
+      // disburse(), but recordDisbursementInitiated's conditional write can
+      // only be won once. The loser must never call Paystack.
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PAID' }));
+      payslips.listByPayRun.mockResolvedValue([makePayslip({ countryCode: 'GH', currency: 'GHS' })]);
+      employees.findPaymentMethodByEmployeeId.mockResolvedValue({
+        type: 'BANK_ACCOUNT',
+        bankCode: encrypt('040'),
+        accountNumber: encrypt('1234567890'),
+        accountName: encrypt('Test Employee'),
+        mobileMoneyNumber: null,
+        paystackRecipientCode: null,
+      });
+      employees.findById.mockResolvedValue({
+        id: 'emp-1',
+        organizationId: 'org-1',
+        firstName: 'Test',
+        lastName: 'Employee',
+        baseSalary: new Prisma.Decimal(1000),
+        currency: 'GHS',
+        annualRentPaid: null,
+        countryCode: 'GH',
+      });
+      paystack.createRecipient.mockResolvedValue({ recipientCode: 'RCP_abc' });
+      payslips.recordDisbursementInitiated.mockResolvedValueOnce(null);
+
+      await service.markPaid('tenant-1', 'run-1', 'mgr-1');
+
+      expect(paystack.initiateTransfer).not.toHaveBeenCalled();
     });
   });
 

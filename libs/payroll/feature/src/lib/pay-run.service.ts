@@ -22,6 +22,7 @@ import {
   PayslipWithLineItems,
   StatutoryRateRepository,
   StatutoryTaxBandRepository,
+  UpdatePayRunStatusInput,
 } from '@africahr/payroll-data-access';
 import {
   BenefitEnrollmentContribution,
@@ -251,7 +252,8 @@ export class PayRunService {
 
     const isFirstProcessing = payRun.status === PrismaPayRunStatus.DRAFT;
     const updated = isFirstProcessing
-      ? await this.payRuns.updateStatus(tenantId, id, {
+      ? await this.updateStatusOrThrow(tenantId, id, {
+          fromStatus: PrismaPayRunStatus.DRAFT,
           status: PrismaPayRunStatus.PROCESSING,
           updatedBy: actorId,
         })
@@ -373,7 +375,8 @@ export class PayRunService {
       throw new ConflictException('Cannot approve a pay run with no payslips — process it first');
     }
 
-    const updated = await this.payRuns.updateStatus(tenantId, id, {
+    const updated = await this.updateStatusOrThrow(tenantId, id, {
+      fromStatus: payRun.status,
       status: PrismaPayRunStatus.APPROVED,
       approvedAt: new Date(),
       approvedBy: actorId,
@@ -396,7 +399,8 @@ export class PayRunService {
     const payRun = await this.findById(tenantId, id);
     this.assertTransition(payRun.status, PayRunStatus.PAID);
 
-    const updated = await this.payRuns.updateStatus(tenantId, id, {
+    const updated = await this.updateStatusOrThrow(tenantId, id, {
+      fromStatus: payRun.status,
       status: PrismaPayRunStatus.PAID,
       paidAt: new Date(),
       updatedBy: actorId,
@@ -511,11 +515,24 @@ export class PayRunService {
     // is allowed to resolve (retryDisbursement's FAILED/NOT_INITIATED
     // guard deliberately excludes PENDING, so a human can't retry an
     // in-flight disbursement either).
+    //
+    // This write is also the actual lock against a duplicate transfer: two
+    // concurrent calls into disburse() for the same payslip (overlapping
+    // markPaid requests, or a markPaid racing a retryDisbursement) both
+    // reach this point, but recordDisbursementInitiated's conditional
+    // update lets only one of them win. The loser gets null back and must
+    // stop here, before ever calling Paystack.
     const reference = randomUUID();
-    await this.payslips.recordDisbursementInitiated(tenantId, payslip.id, {
+    const claimed = await this.payslips.recordDisbursementInitiated(tenantId, payslip.id, {
       paystackRecipientCode: recipientCode,
       paystackTransferReference: reference,
     });
+    if (!claimed) {
+      this.logger.warn(
+        `Payslip "${payslip.id}" (employee "${payslip.employeeId}") disbursement was already claimed by a concurrent request - skipping to avoid a duplicate transfer`,
+      );
+      return;
+    }
 
     try {
       await this.paystack.initiateTransfer({
@@ -628,7 +645,8 @@ export class PayRunService {
     const payRun = await this.findById(tenantId, id);
     this.assertTransition(payRun.status, PayRunStatus.CLOSED);
 
-    const updated = await this.payRuns.updateStatus(tenantId, id, {
+    const updated = await this.updateStatusOrThrow(tenantId, id, {
+      fromStatus: payRun.status,
       status: PrismaPayRunStatus.CLOSED,
       updatedBy: actorId,
     });
@@ -648,7 +666,8 @@ export class PayRunService {
     const payRun = await this.findById(tenantId, id);
     this.assertTransition(payRun.status, PayRunStatus.CANCELLED);
 
-    const updated = await this.payRuns.updateStatus(tenantId, id, {
+    const updated = await this.updateStatusOrThrow(tenantId, id, {
+      fromStatus: payRun.status,
       status: PrismaPayRunStatus.CANCELLED,
       updatedBy: actorId,
     });
@@ -668,5 +687,29 @@ export class PayRunService {
     if (!canTransitionPayRunStatus(from as PayRunStatus, to)) {
       throw new ConflictException(`Cannot transition a pay run from ${from} to ${to}`);
     }
+  }
+
+  /**
+   * Thin wrapper around PayRunRepository.updateStatus's conditional write -
+   * every call site here has already read the pay run and validated the
+   * transition against that snapshot, so a null result means another
+   * request won a race for the same transition between that read and this
+   * write. Surfacing it as a 409 (rather than silently repeating audit
+   * records / re-triggering disbursement) is what actually closes the
+   * double-payment window on markPaid, on top of the payslip-level claim in
+   * disburse() below.
+   */
+  private async updateStatusOrThrow(
+    tenantId: string,
+    id: string,
+    input: UpdatePayRunStatusInput,
+  ): Promise<PayRun> {
+    const updated = await this.payRuns.updateStatus(tenantId, id, input);
+    if (!updated) {
+      throw new ConflictException(
+        `Pay run "${id}" was already moved out of ${input.fromStatus} by another request - reload and retry`,
+      );
+    }
+    return updated;
   }
 }

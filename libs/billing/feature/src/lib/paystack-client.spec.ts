@@ -96,4 +96,23 @@ describe('RealPaystackClient', () => {
     expect(client.verifyWebhookSignature(rawBody, 'wrong-signature')).toBe(false);
     expect(client.verifyWebhookSignature(rawBody, undefined)).toBe(false);
   });
+
+  it('rejects a same-length but incorrect signature without throwing (constant-time comparison)', () => {
+    const client = new RealPaystackClient('sk_test_key');
+    const rawBody = JSON.stringify({ event: 'charge.success' });
+    const signature = createHmac('sha512', 'sk_test_key').update(rawBody).digest('hex');
+    // Flip the last hex character - same length as a real digest, so this
+    // exercises timingSafeEqual's actual byte comparison rather than the
+    // length-mismatch short-circuit above it.
+    const almostRight = signature.slice(0, -1) + (signature.at(-1) === '0' ? '1' : '0');
+
+    expect(client.verifyWebhookSignature(rawBody, almostRight)).toBe(false);
+  });
+
+  it('rejects a signature of the wrong length instead of throwing', () => {
+    const client = new RealPaystackClient('sk_test_key');
+    const rawBody = JSON.stringify({ event: 'charge.success' });
+
+    expect(client.verifyWebhookSignature(rawBody, 'abcd')).toBe(false);
+  });
 });

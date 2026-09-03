@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { createHmac, randomUUID } from 'node:crypto';
+import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { parseJsonResponse } from '@africahr/platform-core';
 
 export interface InitializeTransactionInput {
@@ -137,6 +137,16 @@ export class RealPaystackClient extends PaystackClient {
       return false;
     }
     const expected = createHmac('sha512', this.secretKey).update(rawBody).digest('hex');
-    return expected === signatureHeader;
+    const expectedBuffer = Buffer.from(expected, 'hex');
+    const actualBuffer = Buffer.from(signatureHeader, 'hex');
+    // timingSafeEqual throws on a length mismatch rather than returning
+    // false, and a forged/truncated header will almost always differ in
+    // length - checked explicitly so a malformed header is just "not
+    // valid," not an uncaught exception. Constant-time from here on so a
+    // byte-by-byte comparison can't be used to guess the signature.
+    if (expectedBuffer.length !== actualBuffer.length) {
+      return false;
+    }
+    return timingSafeEqual(expectedBuffer, actualBuffer);
   }
 }

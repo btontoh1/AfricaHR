@@ -27,7 +27,19 @@ import { TokenRevocationService } from './token-revocation.service';
         if (!config.jwtRefreshSecret) {
           throw new Error('JWT_REFRESH_SECRET must be set to use platform-auth');
         }
-        return { secret: config.jwtAccessSecret };
+        // Pinned so a token signed (or forged) with a different algorithm -
+        // most notably `none`, or an RS256 token replayed against this
+        // HMAC secret - is rejected outright rather than relying on the
+        // library's own default behavior. Applies to every sign()/verify()
+        // call in JwtTokenService, including the MFA challenge token's
+        // explicit secret override: JwtService only shallow-merges each
+        // call's own options over these, so a call that doesn't specify its
+        // own algorithm still inherits this one.
+        return {
+          secret: config.jwtAccessSecret,
+          signOptions: { algorithm: 'HS256' },
+          verifyOptions: { algorithms: ['HS256'] },
+        };
       },
     }),
   ],

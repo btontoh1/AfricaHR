@@ -65,6 +65,7 @@ export function RequisitionDetail({
       ? hrApplications.data
       : myApplications.data?.filter((application) => application.requisitionId === requisitionId);
   const applicationsBasePath = tier === 'hr' ? '/recruitment/applications' : '/recruitment/applications/mine';
+  const backHref = tier === 'hr' ? '/recruitment/requisitions' : '/recruitment/requisitions/mine';
 
   const { data: organization } = useOrganization(tenantId, requisition?.organizationId ?? '');
   const { data: hiringManager } = useEmployee(tenantId, requisition?.hiringManagerId ?? '');
@@ -79,7 +80,11 @@ export function RequisitionDetail({
 
   return (
     <div className="space-y-6">
-      <PageHeader title={requisition.title} action={<RequisitionStatusBadge status={requisition.status} />} />
+      <PageHeader
+        title={requisition.title}
+        backHref={backHref}
+        action={<RequisitionStatusBadge status={requisition.status} />}
+      />
 
       <Card>
         <CardHeader>

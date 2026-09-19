@@ -80,6 +80,7 @@ export function ApplicationDetail({
   const canRespondToOffer =
     tier === 'hr' && application.stage === 'OFFER' && Boolean(application.offerSentAt) && !application.offerRespondedAt;
   const canLinkEmployee = tier === 'hr' && application.stage === 'HIRED' && !application.hiredEmployeeId;
+  const backHref = tier === 'hr' ? '/recruitment/applications' : '/recruitment/applications/mine';
 
   async function handleViewResume() {
     const { data, error: viewError } =
@@ -117,6 +118,7 @@ export function ApplicationDetail({
     <div className="space-y-6">
       <PageHeader
         title={`${application.candidate.firstName} ${application.candidate.lastName}`}
+        backHref={backHref}
         action={<ApplicationStageBadge stage={application.stage} />}
       />
 

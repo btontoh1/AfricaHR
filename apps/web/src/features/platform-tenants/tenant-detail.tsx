@@ -63,6 +63,7 @@ export function TenantDetail({ tenantId }: { tenantId: string }) {
       <PageHeader
         title={tenant.name}
         description={`Sign-in slug: ${tenant.slug}`}
+        backHref="/platform-admin/tenants"
         action={
           <div className="flex items-center gap-2">
             <TenantStatusBadge status={tenant.status} />

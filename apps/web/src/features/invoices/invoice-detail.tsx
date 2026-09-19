@@ -84,6 +84,7 @@ export function InvoiceDetail({ tenantId, invoiceId }: { tenantId: string; invoi
       <PageHeader
         title={invoice.invoiceNumber}
         description={invoice.customerName}
+        backHref="/invoices"
         action={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" asChild>

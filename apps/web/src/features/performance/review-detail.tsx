@@ -63,11 +63,18 @@ export function ReviewDetail({
   const canSubmitManager =
     tier === 'manager' && review.status !== 'COMPLETED' && review.status !== 'CANCELLED';
   const canCancel = tier === 'hr' && (review.status === 'DRAFT' || review.status === 'SELF_SUBMITTED');
+  const backHref =
+    tier === 'self'
+      ? '/performance/reviews'
+      : tier === 'manager'
+        ? '/performance/reviews/team'
+        : '/performance/reviews/all';
 
   return (
     <div className="space-y-6">
       <PageHeader
         title={cycleName}
+        backHref={backHref}
         action={
           <div className="flex items-center gap-3">
             <ReviewStatusBadge status={review.status} />

@@ -60,6 +60,7 @@ export function EmployeeDetail({ tenantId, employeeId }: { tenantId: string; emp
         title={`${employee.firstName} ${employee.lastName}`}
         description={`${employee.employeeNumber} · ${employee.jobTitle}`}
         action={<EmploymentStatusBadge status={employee.employmentStatus} />}
+        backHref="/employees"
       />
 
       <Card>

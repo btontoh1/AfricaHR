@@ -62,6 +62,7 @@ export function AttendanceRecordDetail({
       <PageHeader
         title={record.date.slice(0, 10)}
         description={employee ? `${employee.firstName} ${employee.lastName}` : record.employeeId}
+        backHref="/attendance/records"
       />
 
       <Card>

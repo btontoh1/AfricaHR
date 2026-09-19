@@ -57,7 +57,7 @@ export function PayslipDetail({ tenantId, payslipId }: { tenantId: string; paysl
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Payslip" description={employeeName} />
+      <PageHeader title="Payslip" description={employeeName} backHref={`/payroll/${payslip.payRunId}`} />
 
       <Card>
         <CardHeader>

@@ -97,6 +97,7 @@ export function OrganizationDetail({
       <PageHeader
         title={organization.legalName}
         description={organization.tradingName ? `Trading as ${organization.tradingName}` : undefined}
+        backHref="/organizations"
         action={
           <div className="flex items-center gap-2">
             <OrganizationVerificationStatusBadge status={organization.verificationStatus} />

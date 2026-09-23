@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import { RequestUser } from '@africahr/platform-auth';
@@ -12,6 +12,7 @@ import {
   computeInvoicePaidJournalLines,
   computeInvoiceSentJournalLines,
   computePayrollJournalLines,
+  computeReversalJournalLines,
   isBalancedEntry,
   JournalLineAmount,
   PayRunPayrollTotals,
@@ -41,6 +42,8 @@ function toJournalEntryResponseDto(entry: GlJournalEntryWithLines): JournalEntry
     currency: entry.currency,
     sourceType: entry.sourceType,
     sourceId: entry.sourceId,
+    voidedAt: entry.voidedAt ? entry.voidedAt.toISOString() : null,
+    reversalOfId: entry.reversalOfId,
     lines: entry.lines.map((line) => ({
       accountCode: line.account.code,
       accountName: line.account.name,
@@ -220,6 +223,68 @@ export class FinanceService {
     });
 
     return toJournalEntryResponseDto(entry);
+  }
+
+  /**
+   * Corrects a mistaken manual entry by posting its reversal (equal amounts,
+   * debit/credit swapped) and marking the original voided - never by
+   * deleting it, which would erase audit history. Restricted to MANUAL
+   * entries: automatic postings are derived from a payroll/invoicing event
+   * that already happened, so "fixing" them here would desync the GL from
+   * the source record (the pay run would still say PAID) - the correct fix
+   * for those is to correct the underlying payroll/invoice record, which
+   * re-posts through the normal event flow. A reversal itself is also never
+   * voidable, so this can't chain into repeated undo/redo.
+   */
+  async voidEntry(tenantId: string, id: string, actor: RequestUser): Promise<JournalEntryResponseDto> {
+    const original = await this.journalEntries.findById(tenantId, id);
+    if (!original) {
+      throw new NotFoundException(`Journal entry "${id}" not found`);
+    }
+    if (original.sourceType !== 'MANUAL') {
+      throw new BadRequestException(
+        'Only manual journal entries can be voided - correct the underlying payroll or invoice record instead',
+      );
+    }
+    if (original.reversalOfId) {
+      throw new BadRequestException('A reversal cannot itself be voided - post a new manual entry instead');
+    }
+    if (original.voidedAt) {
+      throw new ConflictException('This entry has already been voided');
+    }
+
+    const reversalLines = computeReversalJournalLines(
+      original.lines.map((line) => ({
+        accountId: line.accountId,
+        debit: Number(line.debit),
+        credit: Number(line.credit),
+      })),
+    );
+
+    const reversal = await this.journalEntries.voidEntry(tenantId, id, {
+      organizationId: original.organizationId,
+      entryDate: new Date(),
+      description: `Void: ${original.description}`,
+      currency: original.currency,
+      sourceType: 'MANUAL',
+      sourceId: randomUUID(),
+      createdBy: actor.sub,
+      lines: reversalLines,
+    });
+    if (!reversal) {
+      throw new ConflictException('This entry has already been voided');
+    }
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actor.sub ?? null,
+      action: 'finance.journal_entry.voided',
+      resourceType: 'GlJournalEntry',
+      resourceId: id,
+      metadata: { reversalEntryId: reversal.id },
+    });
+
+    return toJournalEntryResponseDto(reversal);
   }
 
   async listAccounts(tenantId: string): Promise<GlAccountResponseDto[]> {

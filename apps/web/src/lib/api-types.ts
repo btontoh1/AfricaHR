@@ -2970,6 +2970,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/finance/journal-entries/{id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["FinanceController_voidJournalEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/finance/reports/profit-and-loss": {
         parameters: {
             query?: never;
@@ -4733,6 +4749,10 @@ export interface components {
             currency: string;
             sourceType: string;
             sourceId: string;
+            /** @description Set once this entry has been voided by a reversal. */
+            voidedAt: string | null;
+            /** @description Set when this entry is itself the reversal of another. */
+            reversalOfId: string | null;
             lines: components["schemas"]["JournalEntryLineResponseDto"][];
         };
         ProfitAndLossByCurrencyDto: {
@@ -10433,6 +10453,28 @@ export interface operations {
                 "application/json": components["schemas"]["CreateManualJournalEntryDto"];
             };
         };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JournalEntryResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_voidJournalEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {

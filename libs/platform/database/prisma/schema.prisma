@@ -1754,14 +1754,32 @@ model GlJournalEntry {
   currency       String
   sourceType     GlJournalEntrySourceType @map("source_type")
   /// PayRun.id for PAY_RUN_DISBURSED, CustomerInvoice.id for both
-  /// CUSTOMER_INVOICE_* values, or a fresh uuid for MANUAL entries.
+  /// CUSTOMER_INVOICE_* values, or a fresh uuid for MANUAL entries (reversals
+  /// included - a reversal is itself just a MANUAL entry with reversalOfId
+  /// set, not a distinct sourceType).
   sourceId       String                   @map("source_id")
+
+  /// Set on the original entry once it's been voided - see FinanceService.
+  /// voidEntry. Never cleared; a voided entry stays in the ledger forever,
+  /// same as its reversal - correcting history by deleting rows would break
+  /// the audit trail, so a mistake is corrected by reversing it, not erasing
+  /// it.
+  voidedAt DateTime? @map("voided_at")
+  voidedBy String?   @map("voided_by")
+  /// Set on the reversal entry, pointing back at the entry it reverses.
+  /// Unique so an entry can only ever be reversed once - the database-level
+  /// backstop against a double-void, on top of the voidedAt check in
+  /// FinanceService. Only ever set on MANUAL entries; a reversal is itself
+  /// never voidable (FinanceService rejects it) so this never chains.
+  reversalOfId String? @unique @map("reversal_of_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   createdBy String?  @map("created_by")
 
   organization Organization    @relation(fields: [organizationId], references: [id])
   lines        GlJournalLine[]
+  reversalOf   GlJournalEntry? @relation("GlJournalEntryReversal", fields: [reversalOfId], references: [id])
+  reversedBy   GlJournalEntry? @relation("GlJournalEntryReversal")
 
   @@unique([sourceType, sourceId])
   @@index([tenantId])

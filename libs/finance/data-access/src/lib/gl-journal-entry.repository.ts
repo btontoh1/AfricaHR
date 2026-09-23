@@ -24,6 +24,8 @@ export interface CreateJournalEntryInput {
   sourceType: GlJournalEntrySourceType;
   sourceId: string;
   createdBy?: string;
+  /** Only set when this entry is itself a reversal - see voidEntry below. */
+  reversalOfId?: string;
   lines: CreateJournalEntryLineInput[];
 }
 
@@ -55,6 +57,7 @@ export class GlJournalEntryRepository {
             sourceType: input.sourceType,
             sourceId: input.sourceId,
             createdBy: input.createdBy,
+            reversalOfId: input.reversalOfId,
             lines: {
               create: input.lines.map((line) => ({
                 tenantId,
@@ -67,6 +70,67 @@ export class GlJournalEntryRepository {
           include: { lines: { include: { account: true } } },
         }),
       );
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  findById(tenantId: string, id: string): Promise<GlJournalEntryWithLines | null> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.glJournalEntry.findFirst({
+        where: { id, tenantId },
+        include: { lines: { include: { account: true } } },
+      }),
+    );
+  }
+
+  /**
+   * Atomically creates the reversing entry and marks the original as
+   * voided - both succeed or both fail in the same transaction, so a void
+   * can never leave the ledger with a reversal but no voidedAt, or vice
+   * versa. Returns null instead of throwing if the original was already
+   * voided concurrently (reversalOfId's unique constraint is the
+   * database-level backstop - see FinanceService.voidEntry for the
+   * business-rule checks that normally catch this first).
+   */
+  async voidEntry(
+    tenantId: string,
+    originalId: string,
+    reversal: CreateJournalEntryInput,
+  ): Promise<GlJournalEntryWithLines | null> {
+    try {
+      return await this.prisma.withTenantContext(tenantId, async (tx) => {
+        const reversalEntry = await tx.glJournalEntry.create({
+          data: {
+            tenantId,
+            organizationId: reversal.organizationId,
+            entryDate: reversal.entryDate,
+            description: reversal.description,
+            currency: reversal.currency,
+            sourceType: reversal.sourceType,
+            sourceId: reversal.sourceId,
+            reversalOfId: originalId,
+            createdBy: reversal.createdBy,
+            lines: {
+              create: reversal.lines.map((line) => ({
+                tenantId,
+                accountId: line.accountId,
+                debit: line.debit,
+                credit: line.credit,
+              })),
+            },
+          },
+          include: { lines: { include: { account: true } } },
+        });
+        await tx.glJournalEntry.update({
+          where: { id: originalId },
+          data: { voidedAt: new Date(), voidedBy: reversal.createdBy },
+        });
+        return reversalEntry;
+      });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         return null;

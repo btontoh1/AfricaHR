@@ -3,10 +3,12 @@
 import { useState } from 'react';
 import { ScrollText } from 'lucide-react';
 import { useJournalEntries } from './queries';
+import { VoidJournalEntryDialog } from './void-journal-entry-dialog';
 import { useOrganizations } from '@/features/organizations/queries';
 import { OrganizationFilter, ALL_ORGANIZATIONS } from '@/features/reporting/organization-filter';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { formatCurrency } from '@/lib/format-currency';
+import { cn } from '@/lib/utils';
 import { TableCard } from '@/components/table-card';
 import { EmptyState } from '@/components/empty-state';
 import { TableSkeleton } from '@/components/loading-state';
@@ -55,35 +57,48 @@ export function JournalEntriesList({ tenantId }: { tenantId: string }) {
                 <TableHead>Organization</TableHead>
                 <TableHead>Source</TableHead>
                 <TableHead>Lines</TableHead>
+                <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {entries.map((entry) => (
-                <TableRow key={entry.id}>
-                  <TableCell className="text-muted-foreground">{entry.entryDate.slice(0, 10)}</TableCell>
-                  <TableCell className="font-medium">{entry.description}</TableCell>
-                  <TableCell className="text-muted-foreground">{organizationName(entry.organizationId)}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{SOURCE_TYPE_LABELS[entry.sourceType] ?? entry.sourceType}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-0.5 text-xs">
-                      {entry.lines.map((line, index) => (
-                        <div key={index} className="flex justify-between gap-4">
-                          <span className="text-muted-foreground">
-                            {line.accountCode} — {line.accountName}
-                          </span>
-                          <span>
-                            {Number(line.debit) > 0
-                              ? `Dr ${formatCurrency(line.debit, entry.currency)}`
-                              : `Cr ${formatCurrency(line.credit, entry.currency)}`}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {entries.map((entry) => {
+                const canVoid = entry.sourceType === 'MANUAL' && !entry.voidedAt && !entry.reversalOfId;
+                return (
+                  <TableRow key={entry.id}>
+                    <TableCell className="text-muted-foreground">{entry.entryDate.slice(0, 10)}</TableCell>
+                    <TableCell className={cn('font-medium', entry.voidedAt && 'line-through opacity-60')}>
+                      {entry.description}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{organizationName(entry.organizationId)}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        <Badge variant="outline">{SOURCE_TYPE_LABELS[entry.sourceType] ?? entry.sourceType}</Badge>
+                        {entry.reversalOfId && <Badge variant="secondary">Reversal</Badge>}
+                        {entry.voidedAt && <Badge variant="warning">Voided</Badge>}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-0.5 text-xs">
+                        {entry.lines.map((line, index) => (
+                          <div key={index} className="flex justify-between gap-4">
+                            <span className="text-muted-foreground">
+                              {line.accountCode} — {line.accountName}
+                            </span>
+                            <span>
+                              {Number(line.debit) > 0
+                                ? `Dr ${formatCurrency(line.debit, entry.currency)}`
+                                : `Cr ${formatCurrency(line.credit, entry.currency)}`}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {canVoid && <VoidJournalEntryDialog tenantId={tenantId} entryId={entry.id} />}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </TableCard>

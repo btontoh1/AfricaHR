@@ -2,6 +2,7 @@ export * from './lib/default-chart-of-accounts';
 export * from './lib/journal-line-amount';
 export * from './lib/compute-payroll-journal-lines';
 export * from './lib/compute-invoice-journal-lines';
+export * from './lib/compute-reversal-journal-lines';
 export * from './lib/validate-balanced-entry';
 export * from './lib/compute-profit-and-loss';
 export * from './lib/compute-cash-flow';

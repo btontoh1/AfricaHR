@@ -72,6 +72,22 @@ export function useCreateJournalEntry(tenantId: string) {
   });
 }
 
+export function useVoidJournalEntry(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/journal-entries/{id}/void', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: journalEntriesListKey(tenantId) });
+    },
+  });
+}
+
 export function useProfitAndLossReport(
   tenantId: string,
   filters: { organizationId?: string; from: string; to: string },

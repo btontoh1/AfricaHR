@@ -61,6 +61,18 @@ export class FinanceController {
     return this.finance.createManualEntry(tenantId, dto, actor);
   }
 
+  @Post('journal-entries/:id/void')
+  @RequirePermissions(Permission.FINANCE_MANAGE)
+  @ApiOkResponse({ type: JournalEntryResponseDto })
+  voidJournalEntry(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.voidEntry(tenantId, id, actor);
+  }
+
   @Get('journal-entries')
   @RequirePermissions(Permission.FINANCE_READ)
   @ApiOkResponse({ type: JournalEntryResponseDto, isArray: true })

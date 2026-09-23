@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import { RequestUser, SystemRole } from '@africahr/platform-auth';
@@ -43,6 +43,8 @@ describe('FinanceService', () => {
       createIfNotExists: jest.fn(),
       list: jest.fn(),
       listLinesInRange: jest.fn(),
+      findById: jest.fn(),
+      voidEntry: jest.fn(),
     } as unknown as jest.Mocked<GlJournalEntryRepository>;
 
     audit = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
@@ -223,6 +225,106 @@ describe('FinanceService', () => {
       await expect(
         service.renameAccount('tenant-1', 'missing-id', { name: 'New Name' }, actor),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('voidEntry', () => {
+    function makeManualEntry(overrides: Record<string, unknown> = {}) {
+      return {
+        id: 'entry-1',
+        organizationId: 'org-1',
+        currency: 'GHS',
+        description: 'Office rent',
+        sourceType: 'MANUAL',
+        reversalOfId: null,
+        voidedAt: null,
+        lines: [
+          {
+            accountId: 'acc-payroll-exp',
+            debit: new Prisma.Decimal(500),
+            credit: new Prisma.Decimal(0),
+            account: { code: GlAccountCode.PAYROLL_EXPENSE, name: 'Payroll Expense' },
+          },
+          {
+            accountId: 'acc-cash',
+            debit: new Prisma.Decimal(0),
+            credit: new Prisma.Decimal(500),
+            account: { code: GlAccountCode.CASH_AND_BANK, name: 'Cash and Bank' },
+          },
+        ],
+        ...overrides,
+      };
+    }
+
+    it('posts a balanced reversal (debit/credit swapped) and records an audit entry', async () => {
+      journalEntries.findById.mockResolvedValue(makeManualEntry() as never);
+      journalEntries.voidEntry.mockResolvedValue({
+        id: 'reversal-1',
+        organizationId: 'org-1',
+        entryDate: new Date('2026-03-01'),
+        description: 'Void: Office rent',
+        currency: 'GHS',
+        sourceType: 'MANUAL',
+        sourceId: 'reversal-uuid',
+        voidedAt: null,
+        reversalOfId: 'entry-1',
+        lines: [],
+      } as never);
+
+      const result = await service.voidEntry('tenant-1', 'entry-1', actor);
+
+      expect(journalEntries.voidEntry).toHaveBeenCalledWith(
+        'tenant-1',
+        'entry-1',
+        expect.objectContaining({
+          organizationId: 'org-1',
+          currency: 'GHS',
+          sourceType: 'MANUAL',
+          description: 'Void: Office rent',
+          lines: [
+            { accountId: 'acc-payroll-exp', debit: 0, credit: 500 },
+            { accountId: 'acc-cash', debit: 500, credit: 0 },
+          ],
+        }),
+      );
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ tenantId: 'tenant-1', action: 'finance.journal_entry.voided', resourceId: 'entry-1' }),
+      );
+      expect(result.id).toBe('reversal-1');
+    });
+
+    it('throws NotFoundException when the entry does not exist', async () => {
+      journalEntries.findById.mockResolvedValue(null);
+
+      await expect(service.voidEntry('tenant-1', 'missing-id', actor)).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects voiding an automatic posting', async () => {
+      journalEntries.findById.mockResolvedValue(makeManualEntry({ sourceType: 'PAY_RUN_DISBURSED' }) as never);
+
+      await expect(service.voidEntry('tenant-1', 'entry-1', actor)).rejects.toThrow(BadRequestException);
+      expect(journalEntries.voidEntry).not.toHaveBeenCalled();
+    });
+
+    it('rejects voiding a reversal entry', async () => {
+      journalEntries.findById.mockResolvedValue(makeManualEntry({ reversalOfId: 'original-1' }) as never);
+
+      await expect(service.voidEntry('tenant-1', 'entry-1', actor)).rejects.toThrow(BadRequestException);
+      expect(journalEntries.voidEntry).not.toHaveBeenCalled();
+    });
+
+    it('rejects voiding an already-voided entry', async () => {
+      journalEntries.findById.mockResolvedValue(makeManualEntry({ voidedAt: new Date() }) as never);
+
+      await expect(service.voidEntry('tenant-1', 'entry-1', actor)).rejects.toThrow(ConflictException);
+      expect(journalEntries.voidEntry).not.toHaveBeenCalled();
+    });
+
+    it('translates a concurrent double-void (repository returns null) into a ConflictException', async () => {
+      journalEntries.findById.mockResolvedValue(makeManualEntry() as never);
+      journalEntries.voidEntry.mockResolvedValue(null);
+
+      await expect(service.voidEntry('tenant-1', 'entry-1', actor)).rejects.toThrow(ConflictException);
     });
   });
 });

@@ -36,6 +36,12 @@ export class JournalEntryResponseDto {
   @ApiProperty()
   sourceId!: string;
 
+  @ApiProperty({ nullable: true, description: 'Set once this entry has been voided by a reversal.' })
+  voidedAt!: string | null;
+
+  @ApiProperty({ nullable: true, description: 'Set when this entry is itself the reversal of another.' })
+  reversalOfId!: string | null;
+
   @ApiProperty({ type: JournalEntryLineResponseDto, isArray: true })
   lines!: JournalEntryLineResponseDto[];
 }

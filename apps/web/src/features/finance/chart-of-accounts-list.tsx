@@ -2,6 +2,7 @@
 
 import { Layers } from 'lucide-react';
 import { useAccounts } from './queries';
+import { EditAccountDialog } from './edit-account-dialog';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { TableCard } from '@/components/table-card';
 import { EmptyState } from '@/components/empty-state';
@@ -53,6 +54,7 @@ export function ChartOfAccountsList({ tenantId }: { tenantId: string }) {
             <TableHead>Code</TableHead>
             <TableHead>Name</TableHead>
             <TableHead>Type</TableHead>
+            <TableHead />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -64,6 +66,9 @@ export function ChartOfAccountsList({ tenantId }: { tenantId: string }) {
                 <Badge variant={TYPE_BADGE_VARIANT[account.type] ?? 'outline'}>
                   {TYPE_LABELS[account.type] ?? account.type}
                 </Badge>
+              </TableCell>
+              <TableCell className="text-right">
+                <EditAccountDialog tenantId={tenantId} account={account} />
               </TableCell>
             </TableRow>
           ))}

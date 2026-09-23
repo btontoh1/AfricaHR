@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
   assertTenantScope,
@@ -12,6 +12,7 @@ import {
 import { FinanceService } from './finance.service';
 import { FinanceReportsService } from './finance-reports.service';
 import { CreateManualJournalEntryDto } from './dto/create-manual-journal-entry.dto';
+import { UpdateGlAccountDto } from './dto/update-gl-account.dto';
 import { JournalEntryResponseDto } from './dto/journal-entry-response.dto';
 import { GlAccountResponseDto } from './dto/gl-account-response.dto';
 import { ProfitAndLossResponseDto } from './dto/profit-and-loss-response.dto';
@@ -33,6 +34,19 @@ export class FinanceController {
   listAccounts(@Param('tenantId') tenantId: string, @CurrentUser() actor: RequestUser) {
     assertTenantScope(actor, tenantId);
     return this.finance.listAccounts(tenantId);
+  }
+
+  @Patch('accounts/:id')
+  @RequirePermissions(Permission.FINANCE_MANAGE)
+  @ApiOkResponse({ type: GlAccountResponseDto })
+  renameAccount(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateGlAccountDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.renameAccount(tenantId, id, dto, actor);
   }
 
   @Post('journal-entries')

@@ -2,21 +2,42 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
-import type { CreateManualJournalEntryInput } from './types';
+import type { CreateManualJournalEntryInput, UpdateGlAccountInput } from './types';
 
 function journalEntriesListKey(tenantId: string) {
   return ['finance', 'journal-entries', tenantId] as const;
 }
 
+function accountsListKey(tenantId: string) {
+  return ['finance', 'accounts', tenantId] as const;
+}
+
 export function useAccounts(tenantId: string) {
   return useQuery({
-    queryKey: ['finance', 'accounts', tenantId],
+    queryKey: accountsListKey(tenantId),
     queryFn: async () => {
       const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/accounts', {
         params: { path: { tenantId } },
       });
       if (error) throw error;
       return data;
+    },
+  });
+}
+
+export function useRenameAccount(tenantId: string, id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UpdateGlAccountInput) => {
+      const { data, error } = await apiClient.PATCH('/api/tenants/{tenantId}/finance/accounts/{id}', {
+        params: { path: { tenantId, id } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: accountsListKey(tenantId) });
     },
   });
 }

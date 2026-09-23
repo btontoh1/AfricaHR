@@ -36,6 +36,7 @@ describe('FinanceService', () => {
       ensureDefaultAccounts: jest.fn().mockResolvedValue(undefined),
       listByTenant: jest.fn(),
       mapCodesToIds: jest.fn().mockResolvedValue(accountIdByCode),
+      updateName: jest.fn(),
     } as unknown as jest.Mocked<GlAccountRepository>;
 
     journalEntries = {
@@ -192,6 +193,36 @@ describe('FinanceService', () => {
       journalEntries.createIfNotExists.mockRejectedValue(fkError);
 
       await expect(service.createManualEntry('tenant-1', dto, actor)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('renameAccount', () => {
+    it('renames the account and records an audit entry', async () => {
+      accounts.updateName.mockResolvedValue({
+        id: 'acc-cash',
+        code: GlAccountCode.CASH_AND_BANK,
+        name: 'Operating Account',
+      } as never);
+
+      const result = await service.renameAccount('tenant-1', 'acc-cash', { name: 'Operating Account' }, actor);
+
+      expect(accounts.updateName).toHaveBeenCalledWith('tenant-1', 'acc-cash', 'Operating Account');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ tenantId: 'tenant-1', action: 'finance.account.renamed', resourceId: 'acc-cash' }),
+      );
+      expect(result.name).toBe('Operating Account');
+    });
+
+    it('translates a not-found id (P2025) into a NotFoundException', async () => {
+      const notFoundError = Object.assign(Object.create(Prisma.PrismaClientKnownRequestError.prototype), {
+        code: 'P2025',
+        message: 'mock',
+      });
+      accounts.updateName.mockRejectedValue(notFoundError);
+
+      await expect(
+        service.renameAccount('tenant-1', 'missing-id', { name: 'New Name' }, actor),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

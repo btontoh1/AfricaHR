@@ -2938,6 +2938,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/finance/accounts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["FinanceController_renameAccount"];
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/finance/journal-entries": {
         parameters: {
             query?: never;
@@ -4683,6 +4699,10 @@ export interface components {
             code: string;
             name: string;
             type: string;
+        };
+        UpdateGlAccountDto: {
+            /** @description Display name only - the account code and type are fixed. */
+            name: string;
         };
         ManualJournalEntryLineDto: {
             /** @enum {string} */
@@ -10346,6 +10366,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GlAccountResponseDto"][];
+                };
+            };
+        };
+    };
+    FinanceController_renameAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateGlAccountDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GlAccountResponseDto"];
                 };
             };
         };

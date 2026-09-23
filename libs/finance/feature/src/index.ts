@@ -2,6 +2,7 @@ export * from './lib/finance.service';
 export * from './lib/finance-reports.service';
 export * from './lib/finance-feature.module';
 export * from './lib/dto/create-manual-journal-entry.dto';
+export * from './lib/dto/update-gl-account.dto';
 export * from './lib/dto/journal-entry-response.dto';
 export * from './lib/dto/gl-account-response.dto';
 export * from './lib/dto/profit-and-loss-response.dto';

@@ -4,11 +4,11 @@ import { GlAccountRepository } from './gl-account.repository';
 
 describe('GlAccountRepository', () => {
   let repository: GlAccountRepository;
-  let tx: { glAccount: { upsert: jest.Mock; findMany: jest.Mock } };
+  let tx: { glAccount: { upsert: jest.Mock; findMany: jest.Mock; update: jest.Mock } };
   let prisma: { withTenantContext: jest.Mock };
 
   beforeEach(() => {
-    tx = { glAccount: { upsert: jest.fn(), findMany: jest.fn() } };
+    tx = { glAccount: { upsert: jest.fn(), findMany: jest.fn(), update: jest.fn() } };
     prisma = { withTenantContext: jest.fn((_tenantId, fn) => fn(tx)) };
     repository = new GlAccountRepository(prisma as unknown as PrismaService);
   });
@@ -48,6 +48,20 @@ describe('GlAccountRepository', () => {
       await expect(
         repository.mapCodesToIds('tenant-1', [GlAccountCode.CASH_AND_BANK, GlAccountCode.REVENUE]),
       ).rejects.toThrow(new RegExp(GlAccountCode.REVENUE));
+    });
+  });
+
+  describe('updateName', () => {
+    it('updates only the name, by id', async () => {
+      tx.glAccount.update.mockResolvedValue({ id: 'acc-1', code: GlAccountCode.CASH_AND_BANK, name: 'Operating Account' });
+
+      const result = await repository.updateName('tenant-1', 'acc-1', 'Operating Account');
+
+      expect(tx.glAccount.update).toHaveBeenCalledWith({
+        where: { id: 'acc-1' },
+        data: { name: 'Operating Account' },
+      });
+      expect(result.name).toBe('Operating Account');
     });
   });
 });

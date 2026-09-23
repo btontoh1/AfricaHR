@@ -17,6 +17,7 @@ import {
   PayRunPayrollTotals,
 } from '@africahr/finance-domain';
 import { CreateManualJournalEntryDto } from './dto/create-manual-journal-entry.dto';
+import { UpdateGlAccountDto } from './dto/update-gl-account.dto';
 import { JournalEntryResponseDto } from './dto/journal-entry-response.dto';
 import { GlAccountResponseDto } from './dto/gl-account-response.dto';
 
@@ -25,6 +26,10 @@ function translateOrganizationReferenceError(error: unknown, organizationId: str
     throw new NotFoundException(`Organization "${organizationId}" not found`);
   }
   throw error;
+}
+
+function toAccountResponseDto(account: { id: string; code: string; name: string; type: string }): GlAccountResponseDto {
+  return { id: account.id, code: account.code, name: account.name, type: account.type };
 }
 
 function toJournalEntryResponseDto(entry: GlJournalEntryWithLines): JournalEntryResponseDto {
@@ -220,12 +225,39 @@ export class FinanceService {
   async listAccounts(tenantId: string): Promise<GlAccountResponseDto[]> {
     await this.accounts.ensureDefaultAccounts(tenantId);
     const accounts = await this.accounts.listByTenant(tenantId);
-    return accounts.map((account) => ({
-      id: account.id,
-      code: account.code,
-      name: account.name,
-      type: account.type,
-    }));
+    return accounts.map(toAccountResponseDto);
+  }
+
+  /**
+   * The only edit the chart of accounts supports - see GlAccountRepository.
+   * updateName's own doc comment for why code/type stay fixed.
+   */
+  async renameAccount(
+    tenantId: string,
+    id: string,
+    dto: UpdateGlAccountDto,
+    actor: RequestUser,
+  ): Promise<GlAccountResponseDto> {
+    let account;
+    try {
+      account = await this.accounts.updateName(tenantId, id, dto.name);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        throw new NotFoundException(`Account "${id}" not found`);
+      }
+      throw error;
+    }
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actor.sub ?? null,
+      action: 'finance.account.renamed',
+      resourceType: 'GlAccount',
+      resourceId: id,
+      metadata: { name: dto.name },
+    });
+
+    return toAccountResponseDto(account);
   }
 
   async listJournalEntries(tenantId: string, organizationId?: string): Promise<JournalEntryResponseDto[]> {

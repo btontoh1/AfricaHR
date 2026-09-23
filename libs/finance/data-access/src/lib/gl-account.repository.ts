@@ -34,6 +34,17 @@ export class GlAccountRepository {
   }
 
   /**
+   * Renames an account - the only thing the chart of accounts is editable
+   * on. `code`/`type` stay fixed, since payroll/invoicing auto-posting
+   * (see FinanceService) resolves accounts by code, not name - renaming
+   * never risks breaking a posting. RLS scopes this to the tenant; a
+   * mismatched id simply matches no row (Prisma throws P2025).
+   */
+  updateName(tenantId: string, id: string, name: string): Promise<GlAccount> {
+    return this.prisma.withTenantContext(tenantId, (tx) => tx.glAccount.update({ where: { id }, data: { name } }));
+  }
+
+  /**
    * Resolves every one of `codes` to its account id in one round trip, so
    * posting callers only ever deal in stable account codes, never raw ids.
    * Throws if any code hasn't been seeded yet for this tenant - callers are

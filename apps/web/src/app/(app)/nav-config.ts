@@ -31,6 +31,7 @@ import {
   LineChart,
   Coins,
   BookText,
+  Layers,
   Bell,
   FileCode,
   Send,
@@ -208,6 +209,9 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
       items: [
         ...(hasFinanceAccess
           ? [{ label: 'Journal Entries', href: '/finance/journal-entries', icon: BookText }]
+          : []),
+        ...(hasFinanceAccess
+          ? [{ label: 'Chart of Accounts', href: '/finance/accounts', icon: Layers }]
           : []),
       ],
     },

@@ -28,6 +28,8 @@ import {
   Wallet,
   CalendarRange,
   TrendingUp,
+  LineChart,
+  Coins,
   Bell,
   FileCode,
   Send,
@@ -70,6 +72,11 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
   // (Organizations, Team Members, Payroll, Reports, ...) - it only gets
   // Employees, scoped to its own organization (see hasEmployeesAccess).
   const hasAdminAccess = isTenantMember && user.role !== 'EMPLOYEE' && !isOrgAdmin;
+  // General ledger reports (FINANCE_READ) are TENANT_ADMIN-only - unlike
+  // most of the "Reports" group, HR_MANAGER/PAYROLL_MANAGER/PAYROLL_OFFICER
+  // don't hold this permission (see system-role.ts), so hasAdminAccess alone
+  // would be too broad here.
+  const hasFinanceAccess = isTenantMember && user.role === 'TENANT_ADMIN';
   const hasEmployeesAccess = hasAdminAccess || isOrgAdmin;
   // PAYROLL_MANAGER is admin-ish but doesn't hold LEAVE_READ/LEAVE_MANAGE.
   const hasLeaveAdminAccess =
@@ -275,6 +282,12 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
                 icon: TrendingUp,
               },
             ]
+          : []),
+        ...(hasFinanceAccess
+          ? [{ label: 'Profit and Loss', href: '/reports/profit-and-loss', icon: LineChart }]
+          : []),
+        ...(hasFinanceAccess
+          ? [{ label: 'Cash Flow', href: '/reports/cash-flow', icon: Coins }]
           : []),
       ],
     },

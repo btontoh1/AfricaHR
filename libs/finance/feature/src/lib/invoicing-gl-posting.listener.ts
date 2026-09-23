@@ -17,6 +17,7 @@ export interface CustomerInvoiceStatusChangedEventPayload {
   toStatus: string;
   /** ISO timestamp of the transition (sentAt/paidAt). */
   entryDate: string;
+  currency: string;
   subtotal: number;
   taxAmount: number;
   total: number;
@@ -40,6 +41,7 @@ export class InvoicingGlPostingListener {
         organizationId: payload.organizationId,
         invoiceId: payload.invoiceId,
         entryDate: new Date(payload.entryDate),
+        currency: payload.currency,
         subtotal: payload.subtotal,
         taxAmount: payload.taxAmount,
         total: payload.total,

@@ -97,18 +97,26 @@ export interface PayRunProcessedEvent {
  */
 export const PAY_RUN_DISBURSED_EVENT = 'payroll.pay_run.disbursed';
 
+export interface PayRunCurrencyTotals {
+  currency: string;
+  totalGrossPay: number;
+  /** Sum of every employer-only statutory/benefit cost across every
+   * payslip in this currency group - see payslip-calculator.ts's own doc
+   * comments for why each of these is never deducted from the employee. */
+  totalEmployerOnlyCost: number;
+  totalNetPay: number;
+}
+
 export interface PayRunDisbursedEvent {
   tenantId: string;
   organizationId: string;
   payRunId: string;
   /** ISO date (YYYY-MM-DD). */
   payDate: string;
-  totalGrossPay: number;
-  /** Sum of every employer-only statutory/benefit cost across every
-   * payslip - see payslip-calculator.ts's own doc comments for why each of
-   * these is never deducted from the employee. */
-  totalEmployerOnlyCost: number;
-  totalNetPay: number;
+  /** One entry per currency present among this pay run's payslips - almost
+   * always exactly one (an Organization has one country), but PayRun itself
+   * carries no currency column, so this is never assumed. */
+  byCurrency: PayRunCurrencyTotals[];
 }
 
 @Injectable()
@@ -444,27 +452,31 @@ export class PayRunService {
     });
 
     const payslips = await this.payslips.listByPayRun(tenantId, id);
-    const totals = payslips.reduce(
-      (sum, payslip) => ({
-        totalGrossPay: sum.totalGrossPay + Number(payslip.grossPay),
-        totalEmployerOnlyCost:
-          sum.totalEmployerOnlyCost +
-          Number(payslip.ssnitEmployer) +
-          Number(payslip.ghanaTier2PensionEmployer) +
-          Number(payslip.kenyaHousingLevyEmployer) +
-          Number(payslip.nigeriaNsitfEmployer) +
-          Number(payslip.nigeriaNhisEmployer) +
-          Number(payslip.benefitsEmployerCost),
-        totalNetPay: sum.totalNetPay + Number(payslip.netPay),
-      }),
-      { totalGrossPay: 0, totalEmployerOnlyCost: 0, totalNetPay: 0 },
-    );
+    const totalsByCurrency = new Map<string, PayRunCurrencyTotals>();
+    for (const payslip of payslips) {
+      const running = totalsByCurrency.get(payslip.currency) ?? {
+        currency: payslip.currency,
+        totalGrossPay: 0,
+        totalEmployerOnlyCost: 0,
+        totalNetPay: 0,
+      };
+      running.totalGrossPay += Number(payslip.grossPay);
+      running.totalEmployerOnlyCost +=
+        Number(payslip.ssnitEmployer) +
+        Number(payslip.ghanaTier2PensionEmployer) +
+        Number(payslip.kenyaHousingLevyEmployer) +
+        Number(payslip.nigeriaNsitfEmployer) +
+        Number(payslip.nigeriaNhisEmployer) +
+        Number(payslip.benefitsEmployerCost);
+      running.totalNetPay += Number(payslip.netPay);
+      totalsByCurrency.set(payslip.currency, running);
+    }
     const disbursedEvent: PayRunDisbursedEvent = {
       tenantId,
       organizationId: payRun.organizationId,
       payRunId: id,
       payDate: payRun.payDate.toISOString().slice(0, 10),
-      ...totals,
+      byCurrency: [...totalsByCurrency.values()],
     };
     this.eventEmitter.emit(PAY_RUN_DISBURSED_EVENT, disbursedEvent);
 

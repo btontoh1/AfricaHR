@@ -41,6 +41,7 @@ export interface CustomerInvoiceStatusChangedEvent {
   toStatus: string;
   /** ISO timestamp of the transition (sentAt/paidAt). */
   entryDate: string;
+  currency: string;
   subtotal: number;
   taxAmount: number;
   total: number;
@@ -243,6 +244,7 @@ export class CustomerInvoiceService {
       fromStatus: existing.status,
       toStatus: status,
       entryDate: transitionedAt.toISOString(),
+      currency: existing.currency,
       subtotal: Number(existing.subtotal),
       taxAmount: Number(existing.taxAmount),
       total: Number(existing.total),

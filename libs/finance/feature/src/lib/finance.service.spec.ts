@@ -57,13 +57,15 @@ describe('FinanceService', () => {
         organizationId: 'org-1',
         payRunId: 'payrun-1',
         payDate: new Date('2026-01-31'),
+        currency: 'GHS',
         totals: { totalGrossPay: 1000, totalEmployerOnlyCost: 130, totalNetPay: 850 },
       });
 
       expect(accounts.ensureDefaultAccounts).toHaveBeenCalledWith('tenant-1');
       const call = journalEntries.createIfNotExists.mock.calls[0][1];
       expect(call.sourceType).toBe('PAY_RUN_DISBURSED');
-      expect(call.sourceId).toBe('payrun-1');
+      expect(call.sourceId).toBe('payrun-1:GHS');
+      expect(call.currency).toBe('GHS');
       const debits = call.lines.reduce((sum, l) => sum + Number(l.debit), 0);
       const credits = call.lines.reduce((sum, l) => sum + Number(l.credit), 0);
       expect(debits).toBeCloseTo(credits, 2);
@@ -78,6 +80,7 @@ describe('FinanceService', () => {
         organizationId: 'org-1',
         invoiceId: 'inv-1',
         entryDate: new Date('2026-02-01'),
+        currency: 'GHS',
         subtotal: 1000,
         taxAmount: 150,
         total: 1150,
@@ -96,6 +99,7 @@ describe('FinanceService', () => {
         organizationId: 'org-1',
         invoiceId: 'inv-1',
         entryDate: new Date('2026-02-15'),
+        currency: 'GHS',
         subtotal: 1000,
         taxAmount: 150,
         total: 1150,
@@ -112,6 +116,7 @@ describe('FinanceService', () => {
       organizationId: 'org-1',
       entryDate: '2026-03-01',
       description: 'Office rent',
+      currency: 'GHS',
       lines: [
         { accountCode: GlAccountCode.PAYROLL_EXPENSE, debit: 500 },
         { accountCode: GlAccountCode.CASH_AND_BANK, credit: 500 },
@@ -152,6 +157,7 @@ describe('FinanceService', () => {
         organizationId: 'org-1',
         entryDate: new Date('2026-03-01'),
         description: 'Office rent',
+        currency: 'GHS',
         sourceType: 'MANUAL',
         sourceId: 'generated-uuid',
         lines: [

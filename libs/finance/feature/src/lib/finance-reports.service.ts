@@ -20,8 +20,9 @@ export class FinanceReportsService {
   async profitAndLoss(tenantId: string, range: ReportRange): Promise<ProfitAndLossResponseDto> {
     await this.accounts.ensureDefaultAccounts(tenantId);
     const lines = await this.journalEntries.listLinesInRange(tenantId, range);
-    const report = computeProfitAndLoss(
+    const byCurrency = computeProfitAndLoss(
       lines.map((line) => ({
+        currency: line.journalEntry.currency,
         accountType: line.account.type,
         debit: Number(line.debit),
         credit: Number(line.credit),
@@ -31,7 +32,7 @@ export class FinanceReportsService {
       organizationId: range.organizationId,
       from: range.from.toISOString(),
       to: range.to.toISOString(),
-      ...report,
+      byCurrency,
     };
   }
 
@@ -40,13 +41,17 @@ export class FinanceReportsService {
     const lines = await this.journalEntries.listLinesInRange(tenantId, range);
     const cashLines = lines
       .filter((line) => line.account.code === GlAccountCode.CASH_AND_BANK)
-      .map((line) => ({ debit: Number(line.debit), credit: Number(line.credit) }));
-    const report = computeCashFlow(cashLines);
+      .map((line) => ({
+        currency: line.journalEntry.currency,
+        debit: Number(line.debit),
+        credit: Number(line.credit),
+      }));
+    const byCurrency = computeCashFlow(cashLines);
     return {
       organizationId: range.organizationId,
       from: range.from.toISOString(),
       to: range.to.toISOString(),
-      ...report,
+      byCurrency,
     };
   }
 }

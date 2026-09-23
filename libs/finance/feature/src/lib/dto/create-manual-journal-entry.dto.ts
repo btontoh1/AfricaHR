@@ -49,6 +49,11 @@ export class CreateManualJournalEntryDto {
   @Length(1, 500)
   description!: string;
 
+  @ApiProperty({ example: 'GHS' })
+  @IsString()
+  @Length(3, 3)
+  currency!: string;
+
   @ApiProperty({ type: ManualJournalEntryLineDto, isArray: true })
   @IsArray()
   @ArrayMinSize(2)

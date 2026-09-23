@@ -28,6 +28,7 @@ describe('GlJournalEntryRepository', () => {
       organizationId: 'org-1',
       entryDate: new Date('2026-01-31'),
       description: 'Pay run disbursed',
+      currency: 'GHS',
       sourceType: 'PAY_RUN_DISBURSED' as const,
       sourceId: 'payrun-1',
       lines: [{ accountId: 'acc-1', debit: 100, credit: 0 }],
@@ -45,6 +46,7 @@ describe('GlJournalEntryRepository', () => {
           organizationId: 'org-1',
           entryDate: input.entryDate,
           description: 'Pay run disbursed',
+          currency: 'GHS',
           sourceType: 'PAY_RUN_DISBURSED',
           sourceId: 'payrun-1',
           createdBy: undefined,
@@ -81,7 +83,7 @@ describe('GlJournalEntryRepository', () => {
           tenantId: 'tenant-1',
           journalEntry: { organizationId: 'org-1', entryDate: { gte: from, lte: to } },
         },
-        include: { account: true },
+        include: { account: true, journalEntry: { select: { currency: true } } },
       });
     });
   });

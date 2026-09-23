@@ -1728,6 +1728,12 @@ model GlAccount {
 /// idempotency guard against a re-fired event double-posting. CUSTOMER_
 /// INVOICE_SENT and CUSTOMER_INVOICE_PAID share the same sourceId (the
 /// invoice's own id) but stay distinct rows because sourceType differs.
+/// PAY_RUN_DISBURSED's sourceId is "<payRunId>:<currency>", not the bare
+/// payRunId - a single pay run's payslips are all but always one currency in
+/// practice (one Organization, one country), but PayRun itself carries no
+/// currency column, so PayRunService groups its payslips by currency and
+/// posts one entry per group; the composite id keeps each group's entry
+/// unique in the (rare) case a pay run does mix currencies.
 enum GlJournalEntrySourceType {
   PAY_RUN_DISBURSED
   CUSTOMER_INVOICE_SENT
@@ -1741,6 +1747,11 @@ model GlJournalEntry {
   organizationId String                   @map("organization_id")
   entryDate      DateTime                 @map("entry_date")
   description    String
+  /// Every line in one entry shares this currency - a journal entry always
+  /// originates from one payslip/pay-run currency-group, one invoice, or one
+  /// manual entry, never a mix. Reports group by this, never blend across
+  /// currencies (see finance-domain's computeProfitAndLoss/computeCashFlow).
+  currency       String
   sourceType     GlJournalEntrySourceType @map("source_type")
   /// PayRun.id for PAY_RUN_DISBURSED, CustomerInvoice.id for both
   /// CUSTOMER_INVOICE_* values, or a fresh uuid for MANUAL entries.

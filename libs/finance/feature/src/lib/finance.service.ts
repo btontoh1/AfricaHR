@@ -33,6 +33,7 @@ function toJournalEntryResponseDto(entry: GlJournalEntryWithLines): JournalEntry
     organizationId: entry.organizationId,
     entryDate: entry.entryDate.toISOString(),
     description: entry.description,
+    currency: entry.currency,
     sourceType: entry.sourceType,
     sourceId: entry.sourceId,
     lines: entry.lines.map((line) => ({
@@ -48,6 +49,7 @@ export interface PayRunDisbursedForPosting {
   organizationId: string;
   payRunId: string;
   payDate: Date;
+  currency: string;
   totals: PayRunPayrollTotals;
 }
 
@@ -55,6 +57,7 @@ export interface CustomerInvoiceAmountsForPosting {
   organizationId: string;
   invoiceId: string;
   entryDate: Date;
+  currency: string;
   subtotal: number;
   taxAmount: number;
   total: number;
@@ -82,8 +85,12 @@ export class FinanceService {
       organizationId: input.organizationId,
       entryDate: input.payDate,
       description: `Pay run disbursed (${input.payRunId})`,
+      currency: input.currency,
       sourceType: 'PAY_RUN_DISBURSED',
-      sourceId: input.payRunId,
+      // Composite, not the bare payRunId - see the schema's own doc comment
+      // on GlJournalEntrySourceType for why (a pay run's payslips are
+      // grouped by currency upstream, one entry posted per group).
+      sourceId: `${input.payRunId}:${input.currency}`,
       lines,
     });
   }
@@ -95,6 +102,7 @@ export class FinanceService {
       organizationId: input.organizationId,
       entryDate: input.entryDate,
       description: `Customer invoice sent (${input.invoiceId})`,
+      currency: input.currency,
       sourceType: 'CUSTOMER_INVOICE_SENT',
       sourceId: input.invoiceId,
       lines,
@@ -108,6 +116,7 @@ export class FinanceService {
       organizationId: input.organizationId,
       entryDate: input.entryDate,
       description: `Customer invoice paid (${input.invoiceId})`,
+      currency: input.currency,
       sourceType: 'CUSTOMER_INVOICE_PAID',
       sourceId: input.invoiceId,
       lines,
@@ -120,6 +129,7 @@ export class FinanceService {
       organizationId: string;
       entryDate: Date;
       description: string;
+      currency: string;
       sourceType: 'PAY_RUN_DISBURSED' | 'CUSTOMER_INVOICE_SENT' | 'CUSTOMER_INVOICE_PAID';
       sourceId: string;
       lines: JournalLineAmount[];
@@ -133,6 +143,7 @@ export class FinanceService {
       organizationId: input.organizationId,
       entryDate: input.entryDate,
       description: input.description,
+      currency: input.currency,
       sourceType: input.sourceType,
       sourceId: input.sourceId,
       lines: input.lines.map((line) => ({
@@ -175,6 +186,7 @@ export class FinanceService {
         organizationId: dto.organizationId,
         entryDate: new Date(dto.entryDate),
         description: dto.description,
+        currency: dto.currency,
         sourceType: 'MANUAL',
         sourceId: randomUUID(),
         createdBy: actor.sub,

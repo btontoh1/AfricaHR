@@ -1,14 +1,8 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 
-export class ProfitAndLossResponseDto {
-  @ApiPropertyOptional()
-  organizationId?: string;
-
+export class ProfitAndLossByCurrencyDto {
   @ApiProperty()
-  from!: string;
-
-  @ApiProperty()
-  to!: string;
+  currency!: string;
 
   @ApiProperty({
     description:
@@ -23,4 +17,24 @@ export class ProfitAndLossResponseDto {
 
   @ApiProperty()
   netIncome!: number;
+}
+
+export class ProfitAndLossResponseDto {
+  @ApiProperty({ required: false })
+  organizationId?: string;
+
+  @ApiProperty()
+  from!: string;
+
+  @ApiProperty()
+  to!: string;
+
+  @ApiProperty({
+    type: ProfitAndLossByCurrencyDto,
+    isArray: true,
+    description:
+      'One entry per currency the tenant has posted activity in - never blended together, since ' +
+      'summing different currencies into one number would be meaningless.',
+  })
+  byCurrency!: ProfitAndLossByCurrencyDto[];
 }

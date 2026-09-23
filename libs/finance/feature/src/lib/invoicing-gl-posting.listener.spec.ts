@@ -10,6 +10,7 @@ describe('InvoicingGlPostingListener', () => {
     organizationId: 'org-1',
     invoiceId: 'inv-1',
     entryDate: '2026-02-01T00:00:00.000Z',
+    currency: 'GHS',
     subtotal: 1000,
     taxAmount: 150,
     total: 1150,

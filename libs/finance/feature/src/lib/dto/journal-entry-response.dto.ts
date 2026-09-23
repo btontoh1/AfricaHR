@@ -28,6 +28,9 @@ export class JournalEntryResponseDto {
   description!: string;
 
   @ApiProperty()
+  currency!: string;
+
+  @ApiProperty()
   sourceType!: string;
 
   @ApiProperty()

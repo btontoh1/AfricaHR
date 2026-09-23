@@ -7,7 +7,7 @@ export type GlJournalEntryWithLines = Prisma.GlJournalEntryGetPayload<{
 }>;
 
 export type GlJournalLineWithAccount = Prisma.GlJournalLineGetPayload<{
-  include: { account: true };
+  include: { account: true; journalEntry: { select: { currency: true } } };
 }>;
 
 export interface CreateJournalEntryLineInput {
@@ -20,6 +20,7 @@ export interface CreateJournalEntryInput {
   organizationId: string;
   entryDate: Date;
   description: string;
+  currency: string;
   sourceType: GlJournalEntrySourceType;
   sourceId: string;
   createdBy?: string;
@@ -50,6 +51,7 @@ export class GlJournalEntryRepository {
             organizationId: input.organizationId,
             entryDate: input.entryDate,
             description: input.description,
+            currency: input.currency,
             sourceType: input.sourceType,
             sourceId: input.sourceId,
             createdBy: input.createdBy,
@@ -102,7 +104,7 @@ export class GlJournalEntryRepository {
             entryDate: { gte: range.from, lte: range.to },
           },
         },
-        include: { account: true },
+        include: { account: true, journalEntry: { select: { currency: true } } },
       }),
     );
   }

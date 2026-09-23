@@ -2922,6 +2922,70 @@ export interface paths {
         patch: operations["HowItWorksVideoController_update"];
         trace?: never;
     };
+    "/api/tenants/{tenantId}/finance/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_listAccounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/journal-entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_listJournalEntries"];
+        put?: never;
+        post: operations["FinanceController_createJournalEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/reports/profit-and-loss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_profitAndLoss"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/reports/cash-flow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_cashFlow"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4613,6 +4677,69 @@ export interface components {
             category?: string;
             /** @description Lower numbers appear first */
             sortOrder?: number;
+        };
+        GlAccountResponseDto: {
+            id: string;
+            code: string;
+            name: string;
+            type: string;
+        };
+        ManualJournalEntryLineDto: {
+            /** @enum {string} */
+            accountCode: "1000" | "1100" | "2000" | "2100" | "4000" | "5000";
+            /** @description Set exactly one of debit/credit per line, never both. */
+            debit?: number;
+            credit?: number;
+        };
+        CreateManualJournalEntryDto: {
+            organizationId: string;
+            entryDate: string;
+            description: string;
+            /** @example GHS */
+            currency: string;
+            lines: components["schemas"]["ManualJournalEntryLineDto"][];
+        };
+        JournalEntryLineResponseDto: {
+            accountCode: string;
+            accountName: string;
+            debit: string;
+            credit: string;
+        };
+        JournalEntryResponseDto: {
+            id: string;
+            organizationId: string;
+            entryDate: string;
+            description: string;
+            currency: string;
+            sourceType: string;
+            sourceId: string;
+            lines: components["schemas"]["JournalEntryLineResponseDto"][];
+        };
+        ProfitAndLossByCurrencyDto: {
+            currency: string;
+            /** @description Only reflects revenue/expense actually posted so far - payroll disbursement and customer invoicing today, plus whatever manual journal entries have been recorded. Not a complete P&L until other expense sources (rent, subscriptions, etc) are also entered. */
+            totalRevenue: number;
+            totalExpense: number;
+            netIncome: number;
+        };
+        ProfitAndLossResponseDto: {
+            organizationId?: string;
+            from: string;
+            to: string;
+            /** @description One entry per currency the tenant has posted activity in - never blended together, since summing different currencies into one number would be meaningless. */
+            byCurrency: components["schemas"]["ProfitAndLossByCurrencyDto"][];
+        };
+        CashFlowByCurrencyDto: {
+            currency: string;
+            /** @description Net change in Cash and Bank over the period, classified entirely as Operating - there is no AP/investing/financing activity yet to split out into the other standard cash-flow sections. */
+            netCashChange: number;
+        };
+        CashFlowResponseDto: {
+            organizationId?: string;
+            from: string;
+            to: string;
+            /** @description One entry per currency the tenant has posted cash activity in - never blended together. */
+            byCurrency: components["schemas"]["CashFlowByCurrencyDto"][];
         };
     };
     responses: never;
@@ -10199,6 +10326,125 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    FinanceController_listAccounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GlAccountResponseDto"][];
+                };
+            };
+        };
+    };
+    FinanceController_listJournalEntries: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JournalEntryResponseDto"][];
+                };
+            };
+        };
+    };
+    FinanceController_createJournalEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateManualJournalEntryDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JournalEntryResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_profitAndLoss: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfitAndLossResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_cashFlow: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashFlowResponseDto"];
+                };
             };
         };
     };

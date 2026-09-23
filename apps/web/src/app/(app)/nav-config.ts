@@ -30,6 +30,7 @@ import {
   TrendingUp,
   LineChart,
   Coins,
+  BookText,
   Bell,
   FileCode,
   Send,
@@ -200,6 +201,14 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
       items: [
         ...(hasInvoicingAccess ? [{ label: 'Customers', href: '/customers', icon: Contact }] : []),
         ...(hasInvoicingAccess ? [{ label: 'Invoices', href: '/invoices', icon: Receipt }] : []),
+      ],
+    },
+    {
+      label: 'Finance',
+      items: [
+        ...(hasFinanceAccess
+          ? [{ label: 'Journal Entries', href: '/finance/journal-entries', icon: BookText }]
+          : []),
       ],
     },
     {

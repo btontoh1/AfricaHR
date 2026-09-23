@@ -1,4 +1,5 @@
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import { RequestUser, SystemRole } from '@africahr/platform-auth';
@@ -11,6 +12,7 @@ describe('CustomerInvoiceService', () => {
   let invoices: jest.Mocked<CustomerInvoiceRepository>;
   let customers: jest.Mocked<CustomerService>;
   let audit: jest.Mocked<AuditService>;
+  let eventEmitter: jest.Mocked<EventEmitter2>;
 
   const tenantAdmin: RequestUser = {
     sub: 'user-1',
@@ -92,8 +94,9 @@ describe('CustomerInvoiceService', () => {
     } as unknown as jest.Mocked<CustomerService>;
 
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
+    eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
 
-    service = new CustomerInvoiceService(invoices, customers, audit);
+    service = new CustomerInvoiceService(invoices, customers, audit, eventEmitter);
   });
 
   describe('create', () => {
@@ -306,7 +309,7 @@ describe('CustomerInvoiceService', () => {
       expect(invoices.updateStatus).not.toHaveBeenCalled();
     });
 
-    it('sets sentAt when transitioning Draft -> Sent', async () => {
+    it('sets sentAt when transitioning Draft -> Sent, and emits the GL-posting event', async () => {
       invoices.findById.mockResolvedValue(makeInvoice({ status: 'DRAFT' }));
 
       await service.updateStatus('tenant-1', 'inv-1', 'SENT', tenantAdmin);
@@ -317,9 +320,22 @@ describe('CustomerInvoiceService', () => {
         'SENT',
         expect.objectContaining({ sentAt: expect.any(Date), paidAt: undefined }),
       );
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        'invoicing.customer_invoice.status_changed',
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          organizationId: 'org-1',
+          invoiceId: 'inv-1',
+          fromStatus: 'DRAFT',
+          toStatus: 'SENT',
+          subtotal: 1000,
+          taxAmount: 150,
+          total: 1150,
+        }),
+      );
     });
 
-    it('sets paidAt when transitioning Sent -> Paid', async () => {
+    it('sets paidAt when transitioning Sent -> Paid, and emits the GL-posting event', async () => {
       invoices.findById.mockResolvedValue(makeInvoice({ status: 'SENT' }));
 
       await service.updateStatus('tenant-1', 'inv-1', 'PAID', tenantAdmin);
@@ -329,6 +345,10 @@ describe('CustomerInvoiceService', () => {
         'inv-1',
         'PAID',
         expect.objectContaining({ paidAt: expect.any(Date), sentAt: undefined }),
+      );
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        'invoicing.customer_invoice.status_changed',
+        expect.objectContaining({ fromStatus: 'SENT', toStatus: 'PAID', total: 1150 }),
       );
     });
 

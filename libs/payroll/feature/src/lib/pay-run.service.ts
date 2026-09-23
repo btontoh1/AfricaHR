@@ -83,6 +83,34 @@ export interface PayRunProcessedEvent {
   actorUserId: string | null;
 }
 
+/**
+ * Emitted every time markPaid() successfully transitions a pay run to PAID
+ * - the point this codebase treats as "payroll disbursed" for accounting
+ * purposes, even though the actual Paystack transfers it kicks off
+ * (initiateDisbursements) resolve asynchronously via webhook afterwards.
+ * Consumed by finance-feature's PayrollGlPostingListener to post the pay
+ * run's GL journal entry - scope:payroll is not allowed to depend on
+ * scope:finance (see eslint.config.mjs module boundaries), same decoupling
+ * reasoning as PAY_RUN_PROCESSED_EVENT above. totalGrossPay/
+ * totalEmployerOnlyCost/totalNetPay are summed here (not recomputed by the
+ * listener) because scope:finance can't read Payslip rows itself.
+ */
+export const PAY_RUN_DISBURSED_EVENT = 'payroll.pay_run.disbursed';
+
+export interface PayRunDisbursedEvent {
+  tenantId: string;
+  organizationId: string;
+  payRunId: string;
+  /** ISO date (YYYY-MM-DD). */
+  payDate: string;
+  totalGrossPay: number;
+  /** Sum of every employer-only statutory/benefit cost across every
+   * payslip - see payslip-calculator.ts's own doc comments for why each of
+   * these is never deducted from the employee. */
+  totalEmployerOnlyCost: number;
+  totalNetPay: number;
+}
+
 @Injectable()
 export class PayRunService {
   private readonly logger = new Logger(PayRunService.name);
@@ -414,6 +442,31 @@ export class PayRunService {
       resourceType: 'PayRun',
       resourceId: id,
     });
+
+    const payslips = await this.payslips.listByPayRun(tenantId, id);
+    const totals = payslips.reduce(
+      (sum, payslip) => ({
+        totalGrossPay: sum.totalGrossPay + Number(payslip.grossPay),
+        totalEmployerOnlyCost:
+          sum.totalEmployerOnlyCost +
+          Number(payslip.ssnitEmployer) +
+          Number(payslip.ghanaTier2PensionEmployer) +
+          Number(payslip.kenyaHousingLevyEmployer) +
+          Number(payslip.nigeriaNsitfEmployer) +
+          Number(payslip.nigeriaNhisEmployer) +
+          Number(payslip.benefitsEmployerCost),
+        totalNetPay: sum.totalNetPay + Number(payslip.netPay),
+      }),
+      { totalGrossPay: 0, totalEmployerOnlyCost: 0, totalNetPay: 0 },
+    );
+    const disbursedEvent: PayRunDisbursedEvent = {
+      tenantId,
+      organizationId: payRun.organizationId,
+      payRunId: id,
+      payDate: payRun.payDate.toISOString().slice(0, 10),
+      ...totals,
+    };
+    this.eventEmitter.emit(PAY_RUN_DISBURSED_EVENT, disbursedEvent);
 
     await this.initiateDisbursements(tenantId, id);
 

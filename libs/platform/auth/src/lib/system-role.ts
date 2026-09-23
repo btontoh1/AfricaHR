@@ -111,6 +111,14 @@ export const Permission = {
   // operation, not tenant-wide HR administration.
   INVOICING_MANAGE: 'invoicing:manage',
   INVOICING_READ: 'invoicing:read',
+  // General ledger: manual journal entries plus the automatic postings from
+  // payroll disbursement and customer invoicing. Restricted to
+  // PLATFORM_ADMIN/TENANT_ADMIN only, unlike INVOICING_MANAGE - the GL spans
+  // every organization under the tenant and misposting it corrupts financial
+  // reports, so it isn't handed to ORG_ADMIN/HR_MANAGER the way an org's own
+  // customer invoicing is.
+  FINANCE_MANAGE: 'finance:manage',
+  FINANCE_READ: 'finance:read',
   // Platform-admin only: the "How it works" tutorial catalog is the same
   // curated content shown to every tenant, so only the platform admin
   // curates it - no tenant-level counterpart, same reasoning as
@@ -151,6 +159,8 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.NOTIFICATIONS_READ,
     Permission.INVOICING_MANAGE,
     Permission.INVOICING_READ,
+    Permission.FINANCE_MANAGE,
+    Permission.FINANCE_READ,
     Permission.PLATFORM_BILLING_MANAGE,
     Permission.PLATFORM_AUDIT_READ,
     Permission.PLATFORM_DISBURSEMENT_READ,
@@ -185,6 +195,8 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.NOTIFICATIONS_READ,
     Permission.INVOICING_MANAGE,
     Permission.INVOICING_READ,
+    Permission.FINANCE_MANAGE,
+    Permission.FINANCE_READ,
   ],
   [SystemRole.HR_MANAGER]: [
     Permission.ORGANIZATION_READ,

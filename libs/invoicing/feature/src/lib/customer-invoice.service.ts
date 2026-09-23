@@ -1,4 +1,5 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CustomerInvoiceStatus as PrismaCustomerInvoiceStatus, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import { assertOrganizationScope, RequestUser, SystemRole } from '@africahr/platform-auth';
@@ -18,6 +19,31 @@ function translateReferenceError(error: unknown, organizationId: string): never 
     throw new NotFoundException(`Organization "${organizationId}" not found`);
   }
   throw error;
+}
+
+/**
+ * Emitted on every status transition, SENT/PAID included - consumed by
+ * finance-feature's InvoicingGlPostingListener to post the invoice's GL
+ * journal entry (it ignores every other status). Lives as a plain event
+ * rather than a direct call because scope:invoicing is not allowed to
+ * depend on scope:finance (see eslint.config.mjs module boundaries), same
+ * decoupling reasoning as payroll's PAY_RUN_DISBURSED_EVENT. subtotal/
+ * taxAmount/total are passed as plain numbers (not Prisma.Decimal) since
+ * scope:finance can't share a Prisma-typed contract across the boundary.
+ */
+export const CUSTOMER_INVOICE_STATUS_CHANGED_EVENT = 'invoicing.customer_invoice.status_changed';
+
+export interface CustomerInvoiceStatusChangedEvent {
+  tenantId: string;
+  organizationId: string;
+  invoiceId: string;
+  fromStatus: string;
+  toStatus: string;
+  /** ISO timestamp of the transition (sentAt/paidAt). */
+  entryDate: string;
+  subtotal: number;
+  taxAmount: number;
+  total: number;
 }
 
 function toResponseDto(invoice: CustomerInvoiceWithDetails): CustomerInvoiceResponseDto {
@@ -57,6 +83,7 @@ export class CustomerInvoiceService {
     private readonly invoices: CustomerInvoiceRepository,
     private readonly customers: CustomerService,
     private readonly audit: AuditService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async create(
@@ -193,9 +220,10 @@ export class CustomerInvoiceService {
     const existing = await this.findInvoiceOrThrow(tenantId, id, actor);
     assertValidInvoiceStatusTransition(existing.status, status);
 
+    const transitionedAt = new Date();
     await this.invoices.updateStatus(tenantId, id, status, {
-      sentAt: status === PrismaCustomerInvoiceStatus.SENT ? new Date() : undefined,
-      paidAt: status === PrismaCustomerInvoiceStatus.PAID ? new Date() : undefined,
+      sentAt: status === PrismaCustomerInvoiceStatus.SENT ? transitionedAt : undefined,
+      paidAt: status === PrismaCustomerInvoiceStatus.PAID ? transitionedAt : undefined,
       updatedBy: actor.sub,
     });
 
@@ -207,6 +235,19 @@ export class CustomerInvoiceService {
       resourceId: id,
       metadata: { from: existing.status, to: status },
     });
+
+    const statusChangedEvent: CustomerInvoiceStatusChangedEvent = {
+      tenantId,
+      organizationId: existing.organizationId,
+      invoiceId: id,
+      fromStatus: existing.status,
+      toStatus: status,
+      entryDate: transitionedAt.toISOString(),
+      subtotal: Number(existing.subtotal),
+      taxAmount: Number(existing.taxAmount),
+      total: Number(existing.total),
+    };
+    this.eventEmitter.emit(CUSTOMER_INVOICE_STATUS_CHANGED_EVENT, statusChangedEvent);
 
     return this.findById(tenantId, id, actor);
   }

@@ -258,6 +258,7 @@ model Organization {
   orgAdmins             User[]
   customers             Customer[]
   invoices              CustomerInvoice[]
+  glJournalEntries      GlJournalEntry[]
 
   @@index([tenantId])
   @@map("organizations")
@@ -1686,4 +1687,97 @@ model HowItWorksVideo {
 
   @@index([sortOrder])
   @@map("how_it_works_videos")
+}
+
+// ---------------------------------------------------------------------------
+// Finance / General Ledger (Module 14)
+// ---------------------------------------------------------------------------
+
+enum GlAccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+/// A fixed, minimal chart of accounts seeded per tenant (see
+/// GlAccountRepository.ensureDefaultAccounts) - not tenant-editable in v1.
+/// Every automatic posting (payroll disbursement, customer invoicing) and
+/// every manual journal entry references one of these by code.
+model GlAccount {
+  id       String        @id @default(uuid())
+  tenantId String        @map("tenant_id")
+  code     String
+  name     String
+  type     GlAccountType
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  journalLines GlJournalLine[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("gl_accounts")
+}
+
+/// PAY_RUN_DISBURSED/CUSTOMER_INVOICE_SENT/CUSTOMER_INVOICE_PAID are each
+/// posted automatically, exactly once per source event - see the
+/// (sourceType, sourceId) unique constraint below, which is this table's
+/// idempotency guard against a re-fired event double-posting. CUSTOMER_
+/// INVOICE_SENT and CUSTOMER_INVOICE_PAID share the same sourceId (the
+/// invoice's own id) but stay distinct rows because sourceType differs.
+enum GlJournalEntrySourceType {
+  PAY_RUN_DISBURSED
+  CUSTOMER_INVOICE_SENT
+  CUSTOMER_INVOICE_PAID
+  MANUAL
+}
+
+model GlJournalEntry {
+  id             String                   @id @default(uuid())
+  tenantId       String                   @map("tenant_id")
+  organizationId String                   @map("organization_id")
+  entryDate      DateTime                 @map("entry_date")
+  description    String
+  sourceType     GlJournalEntrySourceType @map("source_type")
+  /// PayRun.id for PAY_RUN_DISBURSED, CustomerInvoice.id for both
+  /// CUSTOMER_INVOICE_* values, or a fresh uuid for MANUAL entries.
+  sourceId       String                   @map("source_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  createdBy String?  @map("created_by")
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  lines        GlJournalLine[]
+
+  @@unique([sourceType, sourceId])
+  @@index([tenantId])
+  @@index([organizationId])
+  @@index([entryDate])
+  @@map("gl_journal_entries")
+}
+
+/// One debit or credit leg of a GlJournalEntry. debit/credit are both
+/// non-negative; exactly one of the pair is nonzero per line, never both -
+/// see FinanceService/computePayrollJournalLines etc, which never emit a
+/// line with both set.
+model GlJournalLine {
+  id             String  @id @default(uuid())
+  tenantId       String  @map("tenant_id")
+  journalEntryId String  @map("journal_entry_id")
+  accountId      String  @map("account_id")
+  debit          Decimal @default(0)
+  credit         Decimal @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  journalEntry GlJournalEntry @relation(fields: [journalEntryId], references: [id])
+  account      GlAccount      @relation(fields: [accountId], references: [id])
+
+  @@index([tenantId])
+  @@index([journalEntryId])
+  @@index([accountId])
+  @@map("gl_journal_lines")
 }

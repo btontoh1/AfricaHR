@@ -53,6 +53,17 @@ describe('PayRunService', () => {
       payeTax: new Prisma.Decimal(89),
       ssnitEmployee: new Prisma.Decimal(55),
       ssnitEmployer: new Prisma.Decimal(130),
+      ghanaTier2PensionEmployer: new Prisma.Decimal(0),
+      kenyaShifEmployee: new Prisma.Decimal(0),
+      kenyaHousingLevyEmployee: new Prisma.Decimal(0),
+      kenyaHousingLevyEmployer: new Prisma.Decimal(0),
+      nigeriaNsitfEmployer: new Prisma.Decimal(0),
+      nigeriaNhisEmployee: new Prisma.Decimal(0),
+      nigeriaNhisEmployer: new Prisma.Decimal(0),
+      benefitsEmployeeDeduction: new Prisma.Decimal(0),
+      benefitsEmployerCost: new Prisma.Decimal(0),
+      unpaidLeaveDeduction: new Prisma.Decimal(0),
+      overtimePay: new Prisma.Decimal(0),
       totalDeductions: new Prisma.Decimal(144),
       netPay: new Prisma.Decimal(856),
       currency: 'GHS',
@@ -988,7 +999,13 @@ describe('PayRunService', () => {
         expect.objectContaining({ paystackRecipientCode: 'RCP_abc' }),
       );
       expect(payslips.recordDisbursementResult).not.toHaveBeenCalled();
-      expect(eventEmitter.emit).not.toHaveBeenCalled();
+      // The pay run itself was still successfully marked PAID (that's what
+      // this test is exercising - the Paystack failure happens downstream
+      // of that), so the GL-posting event still fires; no
+      // payslip-disbursement-failure event does, since nothing was ever
+      // resolved as FAILED here (it's left PENDING for reconciliation).
+      expect(eventEmitter.emit).toHaveBeenCalledTimes(1);
+      expect(eventEmitter.emit).toHaveBeenCalledWith('payroll.pay_run.disbursed', expect.any(Object));
     });
 
     it('never calls Paystack for a payslip whose disbursement was already claimed by a concurrent request', async () => {

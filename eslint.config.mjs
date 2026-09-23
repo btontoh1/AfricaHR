@@ -45,6 +45,7 @@ export default [
                         { sourceTag: "scope:billing", onlyDependOnLibsWithTags: ["scope:billing", "scope:platform"] },
                         { sourceTag: "scope:invoicing", onlyDependOnLibsWithTags: ["scope:invoicing", "scope:platform"] },
                         { sourceTag: "scope:how-it-works", onlyDependOnLibsWithTags: ["scope:how-it-works", "scope:platform"] },
+                        { sourceTag: "scope:finance", onlyDependOnLibsWithTags: ["scope:finance", "scope:platform"] },
 
                         { sourceTag: "type:app", onlyDependOnLibsWithTags: ["*"] },
                         { sourceTag: "type:e2e", onlyDependOnLibsWithTags: ["*"] },

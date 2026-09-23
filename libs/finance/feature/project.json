@@ -1,0 +1,19 @@
+{
+  "name": "finance-feature",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/finance/feature/src",
+  "projectType": "library",
+  "tags": ["scope:finance", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/finance/feature",
+        "main": "libs/finance/feature/src/index.ts",
+        "tsConfig": "libs/finance/feature/tsconfig.lib.json",
+        "assets": ["libs/finance/feature/*.md"]
+      }
+    }
+  }
+}

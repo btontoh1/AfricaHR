@@ -98,7 +98,12 @@
       "@africahr/invoicing-feature": ["./libs/invoicing/feature/src/index.ts"],
       "@africahr/how-it-works-feature": [
         "./libs/how-it-works/feature/src/index.ts"
-      ]
+      ],
+      "@africahr/finance-domain": ["./libs/finance/domain/src/index.ts"],
+      "@africahr/finance-data-access": [
+        "./libs/finance/data-access/src/index.ts"
+      ],
+      "@africahr/finance-feature": ["./libs/finance/feature/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

@@ -59,6 +59,8 @@ enum AddOnModule {
   /// platform admin opts a tenant OUT rather than in.
   RECRUITMENT
   PERFORMANCE
+  /// Opt-in, off by default - same convention as INVOICING.
+  FINANCE
 }
 
 /// The SaaS account. Platform-root table — no tenantId, no RLS.

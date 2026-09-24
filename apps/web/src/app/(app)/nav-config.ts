@@ -77,8 +77,11 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
   // General ledger reports (FINANCE_READ) are TENANT_ADMIN-only - unlike
   // most of the "Reports" group, HR_MANAGER/PAYROLL_MANAGER/PAYROLL_OFFICER
   // don't hold this permission (see system-role.ts), so hasAdminAccess alone
-  // would be too broad here.
-  const hasFinanceAccess = isTenantMember && user.role === 'TENANT_ADMIN';
+  // would be too broad here. Also gated behind the tenant's paid FINANCE
+  // add-on (see AddOnGuard) - role alone isn't enough, same enforcement the
+  // backend applies on FinanceController.
+  const hasFinanceAccess =
+    isTenantMember && user.role === 'TENANT_ADMIN' && enabledAddOns.includes('FINANCE');
   const hasEmployeesAccess = hasAdminAccess || isOrgAdmin;
   // PAYROLL_MANAGER is admin-ish but doesn't hold LEAVE_READ/LEAVE_MANAGE.
   const hasLeaveAdminAccess =

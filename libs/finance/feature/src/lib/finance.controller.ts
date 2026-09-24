@@ -1,12 +1,15 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { AddOnModule } from '@prisma/client';
 import {
+  AddOnGuard,
   assertTenantScope,
   CurrentUser,
   JwtAuthGuard,
   Permission,
   PermissionsGuard,
   RequestUser,
+  RequireAddOn,
   RequirePermissions,
 } from '@africahr/platform-auth';
 import { FinanceService } from './finance.service';
@@ -18,9 +21,13 @@ import { GlAccountResponseDto } from './dto/gl-account-response.dto';
 import { ProfitAndLossResponseDto } from './dto/profit-and-loss-response.dto';
 import { CashFlowResponseDto } from './dto/cash-flow-response.dto';
 
+// AddOnGuard runs after PermissionsGuard - order matters (NestJS runs
+// @UseGuards left to right), so a caller without the base role permission
+// gets that error rather than a leaked add-on/paywall message.
 @ApiTags('finance')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, AddOnGuard)
+@RequireAddOn(AddOnModule.FINANCE)
 @Controller('tenants/:tenantId/finance')
 export class FinanceController {
   constructor(

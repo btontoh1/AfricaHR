@@ -3,6 +3,7 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
 import type {
+  BulkUpdateOrganizationAddressesInput,
   CreateOrganizationInput,
   CreateOrganizationUnitInput,
   RequestOrganizationLogoUploadInput,
@@ -89,6 +90,25 @@ export function useUpdateOrganization(tenantId: string, id: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: organizationKey(tenantId, id) });
       queryClient.invalidateQueries({ queryKey: organizationsKey(tenantId) });
+    },
+  });
+}
+
+export function useBulkImportOrganizationAddresses(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: BulkUpdateOrganizationAddressesInput) => {
+      const { data, error } = await apiClient.POST(
+        '/api/tenants/{tenantId}/organizations/bulk-import-addresses',
+        { params: { path: { tenantId } }, body: input },
+      );
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (result) => {
+      if (result.updated > 0) {
+        queryClient.invalidateQueries({ queryKey: organizationsKey(tenantId) });
+      }
     },
   });
 }

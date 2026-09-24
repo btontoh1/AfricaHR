@@ -7,6 +7,7 @@ import { StorageModule } from '@africahr/platform-storage';
 import { TenancyDataAccessModule } from '@africahr/tenancy-data-access';
 import { TenantService } from './tenant.service';
 import { OrganizationService } from './organization.service';
+import { OrganizationBulkImportService } from './organization-bulk-import.service';
 import { OrganizationUnitService } from './organization-unit.service';
 import { OrganizationVerificationDocumentService } from './organization-verification-document.service';
 import { PlatformDashboardService } from './platform-dashboard.service';
@@ -57,6 +58,7 @@ import { DemoRequestAdminController } from './demo-request-admin.controller';
   providers: [
     TenantService,
     OrganizationService,
+    OrganizationBulkImportService,
     OrganizationUnitService,
     OrganizationVerificationDocumentService,
     PlatformDashboardService,

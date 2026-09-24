@@ -334,6 +334,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/organizations/bulk-import-addresses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["OrganizationController_bulkImportAddresses"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/organizations/{id}": {
         parameters: {
             query?: never;
@@ -3224,6 +3240,20 @@ export interface components {
              */
             metadata?: Record<string, never>;
         };
+        BulkUpdateOrganizationAddressesDto: {
+            /** @description Raw CSV content, including the header row - columns: id, address */
+            csv: string;
+        };
+        OrganizationAddressImportRowErrorDto: {
+            /** @description 1-indexed row number as it would appear in a spreadsheet (header is row 1) */
+            row: number;
+            message: string;
+        };
+        OrganizationAddressImportResultDto: {
+            /** @description Number of organizations whose address was updated */
+            updated: number;
+            errors: components["schemas"]["OrganizationAddressImportRowErrorDto"][];
+        };
         UpdateOrganizationDto: {
             /** @example Acme Ghana Ltd */
             legalName?: string;
@@ -5613,6 +5643,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrganizationResponseDto"];
+                };
+            };
+        };
+    };
+    OrganizationController_bulkImportAddresses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkUpdateOrganizationAddressesDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationAddressImportResultDto"];
                 };
             };
         };

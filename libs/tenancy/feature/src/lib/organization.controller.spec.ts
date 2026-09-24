@@ -2,11 +2,13 @@ import { ForbiddenException } from '@nestjs/common';
 import { RequestUser, SystemRole } from '@africahr/platform-auth';
 import { OrganizationController } from './organization.controller';
 import { OrganizationService } from './organization.service';
+import { OrganizationBulkImportService } from './organization-bulk-import.service';
 import { OrganizationVerificationDocumentService } from './organization-verification-document.service';
 
 describe('OrganizationController', () => {
   let controller: OrganizationController;
   let organizations: jest.Mocked<OrganizationService>;
+  let bulkImport: jest.Mocked<OrganizationBulkImportService>;
   let verificationDocuments: jest.Mocked<OrganizationVerificationDocumentService>;
 
   const tenantAdmin: RequestUser = {
@@ -28,13 +30,17 @@ describe('OrganizationController', () => {
       submitForVerification: jest.fn(),
     } as unknown as jest.Mocked<OrganizationService>;
 
+    bulkImport = {
+      updateAddresses: jest.fn(),
+    } as unknown as jest.Mocked<OrganizationBulkImportService>;
+
     verificationDocuments = {
       requestUpload: jest.fn(),
       listByOrganization: jest.fn(),
       getViewUrl: jest.fn(),
     } as unknown as jest.Mocked<OrganizationVerificationDocumentService>;
 
-    controller = new OrganizationController(organizations, verificationDocuments);
+    controller = new OrganizationController(organizations, bulkImport, verificationDocuments);
   });
 
   it('creates within the route tenant when the actor matches', () => {
@@ -50,6 +56,23 @@ describe('OrganizationController', () => {
 
     expect(() => controller.create('tenant-2', dto, tenantAdmin)).toThrow(ForbiddenException);
     expect(organizations.create).not.toHaveBeenCalled();
+  });
+
+  it('bulk-imports addresses within the route tenant when the actor matches', () => {
+    controller.bulkImportAddresses('tenant-1', { csv: 'id,address\norg-1,New address' }, tenantAdmin);
+
+    expect(bulkImport.updateAddresses).toHaveBeenCalledWith(
+      'tenant-1',
+      'id,address\norg-1,New address',
+      'admin-1',
+    );
+  });
+
+  it('rejects bulk-importing addresses on a different tenant', () => {
+    expect(() =>
+      controller.bulkImportAddresses('tenant-2', { csv: 'id,address\norg-1,New address' }, tenantAdmin),
+    ).toThrow(ForbiddenException);
+    expect(bulkImport.updateAddresses).not.toHaveBeenCalled();
   });
 
   it('updates within the route tenant when the actor matches', () => {

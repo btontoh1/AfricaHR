@@ -11,10 +11,13 @@ import {
   RequirePermissions,
 } from '@africahr/platform-auth';
 import { OrganizationService } from './organization.service';
+import { OrganizationBulkImportService } from './organization-bulk-import.service';
 import { OrganizationVerificationDocumentService } from './organization-verification-document.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { OrganizationResponseDto } from './dto/organization-response.dto';
+import { BulkUpdateOrganizationAddressesDto } from './dto/bulk-update-organization-addresses.dto';
+import { OrganizationAddressImportResultDto } from './dto/organization-address-import-result.dto';
 import { RequestVerificationDocumentUploadDto } from './dto/request-verification-document-upload.dto';
 import { RequestVerificationDocumentUploadResponseDto } from './dto/request-verification-document-upload-response.dto';
 import { OrganizationVerificationDocumentResponseDto } from './dto/organization-verification-document-response.dto';
@@ -30,6 +33,7 @@ import { OrganizationLogoUrlResponseDto } from './dto/organization-logo-url-resp
 export class OrganizationController {
   constructor(
     private readonly organizations: OrganizationService,
+    private readonly bulkImport: OrganizationBulkImportService,
     private readonly verificationDocuments: OrganizationVerificationDocumentService,
   ) {}
 
@@ -43,6 +47,19 @@ export class OrganizationController {
   ) {
     assertTenantScope(actor, tenantId);
     return this.organizations.create(tenantId, dto, actor.sub);
+  }
+
+  /** Row-level partial success: invalid/failing rows are reported back rather than aborting the whole batch - see OrganizationBulkImportService. */
+  @Post('bulk-import-addresses')
+  @RequirePermissions(Permission.ORGANIZATION_MANAGE)
+  @ApiOkResponse({ type: OrganizationAddressImportResultDto })
+  bulkImportAddresses(
+    @Param('tenantId') tenantId: string,
+    @Body() dto: BulkUpdateOrganizationAddressesDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.bulkImport.updateAddresses(tenantId, dto.csv, actor.sub);
   }
 
   @Get()

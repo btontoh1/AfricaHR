@@ -6,3 +6,4 @@ export * from './lib/compute-reversal-journal-lines';
 export * from './lib/validate-balanced-entry';
 export * from './lib/compute-profit-and-loss';
 export * from './lib/compute-cash-flow';
+export * from './lib/compute-balance-sheet';

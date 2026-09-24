@@ -20,6 +20,7 @@ import { JournalEntryResponseDto } from './dto/journal-entry-response.dto';
 import { GlAccountResponseDto } from './dto/gl-account-response.dto';
 import { ProfitAndLossResponseDto } from './dto/profit-and-loss-response.dto';
 import { CashFlowResponseDto } from './dto/cash-flow-response.dto';
+import { BalanceSheetResponseDto } from './dto/balance-sheet-response.dto';
 
 // AddOnGuard runs after PermissionsGuard - order matters (NestJS runs
 // @UseGuards left to right), so a caller without the base role permission
@@ -125,5 +126,20 @@ export class FinanceController {
   ) {
     assertTenantScope(actor, tenantId);
     return this.reports.cashFlow(tenantId, { organizationId, from: new Date(from), to: new Date(to) });
+  }
+
+  @Get('reports/balance-sheet')
+  @RequirePermissions(Permission.FINANCE_READ)
+  @ApiOkResponse({ type: BalanceSheetResponseDto })
+  @ApiQuery({ name: 'organizationId', required: false })
+  @ApiQuery({ name: 'asOf', required: true })
+  balanceSheet(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() actor: RequestUser,
+    @Query('asOf') asOf: string,
+    @Query('organizationId') organizationId?: string,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.reports.balanceSheet(tenantId, { organizationId, asOf: new Date(asOf) });
   }
 }

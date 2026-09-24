@@ -121,3 +121,20 @@ export function useCashFlowReport(
     enabled: Boolean(filters.from && filters.to),
   });
 }
+
+export function useBalanceSheetReport(
+  tenantId: string,
+  filters: { organizationId?: string; asOf: string },
+) {
+  return useQuery({
+    queryKey: ['finance', 'balance-sheet', tenantId, filters.organizationId ?? '', filters.asOf],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/reports/balance-sheet', {
+        params: { path: { tenantId }, query: filters },
+      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: Boolean(filters.asOf),
+  });
+}

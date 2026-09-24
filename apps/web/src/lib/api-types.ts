@@ -3034,6 +3034,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/finance/reports/balance-sheet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_balanceSheet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4826,6 +4842,20 @@ export interface components {
             to: string;
             /** @description One entry per currency the tenant has posted cash activity in - never blended together. */
             byCurrency: components["schemas"]["CashFlowByCurrencyDto"][];
+        };
+        BalanceSheetByCurrencyDto: {
+            currency: string;
+            totalAssets: number;
+            totalLiabilities: number;
+            /** @description Retained earnings since inception (cumulative revenue minus cumulative expense as of the balance sheet date) - there is no dedicated Equity account in the default chart of accounts. */
+            totalEquity: number;
+        };
+        BalanceSheetResponseDto: {
+            organizationId?: string;
+            /** @description The balance sheet date - a snapshot as of this point in time, not a period */
+            asOf: string;
+            /** @description One entry per currency the tenant has posted activity in - never blended together. */
+            byCurrency: components["schemas"]["BalanceSheetByCurrencyDto"][];
         };
     };
     responses: never;
@@ -10603,6 +10633,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CashFlowResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_balanceSheet: {
+        parameters: {
+            query: {
+                asOf: string;
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BalanceSheetResponseDto"];
                 };
             };
         };

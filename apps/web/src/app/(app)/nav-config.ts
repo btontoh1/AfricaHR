@@ -30,6 +30,7 @@ import {
   TrendingUp,
   LineChart,
   Coins,
+  Scale,
   BookText,
   Layers,
   Bell,
@@ -304,6 +305,9 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
           : []),
         ...(hasFinanceAccess
           ? [{ label: 'Cash Flow', href: '/reports/cash-flow', icon: Coins }]
+          : []),
+        ...(hasFinanceAccess
+          ? [{ label: 'Balance Sheet', href: '/reports/balance-sheet', icon: Scale }]
           : []),
       ],
     },

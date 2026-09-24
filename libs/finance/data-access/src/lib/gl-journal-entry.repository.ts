@@ -172,4 +172,25 @@ export class GlJournalEntryRepository {
       }),
     );
   }
+
+  /** A balance sheet is a snapshot as of a date, not a period - every line
+   * from account inception through asOf, unlike listLinesInRange's bounded
+   * window (see computeBalanceSheet's own doc comment for why). */
+  listLinesUpTo(
+    tenantId: string,
+    query: { organizationId?: string; asOf: Date },
+  ): Promise<GlJournalLineWithAccount[]> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.glJournalLine.findMany({
+        where: {
+          tenantId,
+          journalEntry: {
+            organizationId: query.organizationId,
+            entryDate: { lte: query.asOf },
+          },
+        },
+        include: { account: true, journalEntry: { select: { currency: true } } },
+      }),
+    );
+  }
 }

@@ -1,13 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { GlAccountRepository, GlJournalEntryRepository } from '@africahr/finance-data-access';
-import { computeCashFlow, computeProfitAndLoss, GlAccountCode } from '@africahr/finance-domain';
+import { computeBalanceSheet, computeCashFlow, computeProfitAndLoss, GlAccountCode } from '@africahr/finance-domain';
 import { ProfitAndLossResponseDto } from './dto/profit-and-loss-response.dto';
 import { CashFlowResponseDto } from './dto/cash-flow-response.dto';
+import { BalanceSheetResponseDto } from './dto/balance-sheet-response.dto';
 
 export interface ReportRange {
   organizationId?: string;
   from: Date;
   to: Date;
+}
+
+export interface BalanceSheetQuery {
+  organizationId?: string;
+  asOf: Date;
 }
 
 @Injectable()
@@ -51,6 +57,24 @@ export class FinanceReportsService {
       organizationId: range.organizationId,
       from: range.from.toISOString(),
       to: range.to.toISOString(),
+      byCurrency,
+    };
+  }
+
+  async balanceSheet(tenantId: string, query: BalanceSheetQuery): Promise<BalanceSheetResponseDto> {
+    await this.accounts.ensureDefaultAccounts(tenantId);
+    const lines = await this.journalEntries.listLinesUpTo(tenantId, query);
+    const byCurrency = computeBalanceSheet(
+      lines.map((line) => ({
+        currency: line.journalEntry.currency,
+        accountType: line.account.type,
+        debit: Number(line.debit),
+        credit: Number(line.credit),
+      })),
+    );
+    return {
+      organizationId: query.organizationId,
+      asOf: query.asOf.toISOString(),
       byCurrency,
     };
   }

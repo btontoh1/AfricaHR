@@ -92,6 +92,22 @@ describe('GlJournalEntryRepository', () => {
     });
   });
 
+  describe('listLinesUpTo', () => {
+    it('filters by tenant, organization, and entry date up to asOf, with no lower bound', async () => {
+      const asOf = new Date('2026-01-31');
+
+      await repository.listLinesUpTo('tenant-1', { organizationId: 'org-1', asOf });
+
+      expect(tx.glJournalLine.findMany).toHaveBeenCalledWith({
+        where: {
+          tenantId: 'tenant-1',
+          journalEntry: { organizationId: 'org-1', entryDate: { lte: asOf } },
+        },
+        include: { account: true, journalEntry: { select: { currency: true } } },
+      });
+    });
+  });
+
   describe('findById', () => {
     it('scopes the lookup to the tenant', async () => {
       tx.glJournalEntry.findFirst.mockResolvedValue({ id: 'entry-1' });

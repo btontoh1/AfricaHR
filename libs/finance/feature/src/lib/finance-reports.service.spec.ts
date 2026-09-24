@@ -14,6 +14,7 @@ describe('FinanceReportsService', () => {
     } as unknown as jest.Mocked<GlAccountRepository>;
     journalEntries = {
       listLinesInRange: jest.fn(),
+      listLinesUpTo: jest.fn(),
     } as unknown as jest.Mocked<GlJournalEntryRepository>;
     service = new FinanceReportsService(accounts, journalEntries);
   });
@@ -109,6 +110,42 @@ describe('FinanceReportsService', () => {
       const report = await service.cashFlow('tenant-1', { from, to });
 
       expect(report.byCurrency).toEqual([{ currency: 'GHS', netCashChange: 300 }]);
+    });
+  });
+
+  describe('balanceSheet', () => {
+    it('computes asset/liability/equity balances as of the given date', async () => {
+      journalEntries.listLinesUpTo.mockResolvedValue([
+        {
+          debit: new Prisma.Decimal(5000),
+          credit: new Prisma.Decimal(0),
+          account: { type: 'ASSET', code: GlAccountCode.CASH_AND_BANK },
+          journalEntry: { currency: 'GHS' },
+        },
+        {
+          debit: new Prisma.Decimal(0),
+          credit: new Prisma.Decimal(1000),
+          account: { type: 'LIABILITY', code: GlAccountCode.TAX_PAYABLE },
+          journalEntry: { currency: 'GHS' },
+        },
+        {
+          debit: new Prisma.Decimal(0),
+          credit: new Prisma.Decimal(4000),
+          account: { type: 'REVENUE', code: GlAccountCode.REVENUE },
+          journalEntry: { currency: 'GHS' },
+        },
+      ] as never);
+
+      const asOf = new Date('2026-01-31');
+      const report = await service.balanceSheet('tenant-1', { organizationId: 'org-1', asOf });
+
+      expect(accounts.ensureDefaultAccounts).toHaveBeenCalledWith('tenant-1');
+      expect(journalEntries.listLinesUpTo).toHaveBeenCalledWith('tenant-1', { organizationId: 'org-1', asOf });
+      expect(report).toEqual({
+        organizationId: 'org-1',
+        asOf: asOf.toISOString(),
+        byCurrency: [{ currency: 'GHS', totalAssets: 5000, totalLiabilities: 1000, totalEquity: 4000 }],
+      });
     });
   });
 });

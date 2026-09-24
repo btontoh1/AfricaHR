@@ -121,6 +121,7 @@ export function OrganizationDetail({
           <Field label="Country" value={organization.countryCode} />
           <Field label="Registration number" value={organization.registrationNumber} />
           <Field label="Tax identification number" value={organization.taxIdentificationNumber} />
+          <Field label="Address" value={organization.address} />
         </CardContent>
       </Card>
 

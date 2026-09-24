@@ -3169,6 +3169,8 @@ export interface components {
             countryCode: string;
             registrationNumber: string;
             taxIdentificationNumber?: string;
+            /** @description Shown as the employer's address on payslips */
+            address?: string;
             /** @enum {string} */
             verificationStatus: "UNVERIFIED" | "PENDING_REVIEW" | "VERIFIED" | "REJECTED";
             /** @description Reviewer note, set on rejection */
@@ -3210,6 +3212,11 @@ export interface components {
             /** @example C0012345678 */
             taxIdentificationNumber?: string;
             /**
+             * @description Shown as the employer's address on payslips
+             * @example 12 Independence Ave, Accra, Ghana
+             */
+            address?: string;
+            /**
              * @description Country-specific registration fields without a dedicated column
              * @example {
              *       "ssnitEmployerNumber": "SS123456"
@@ -3231,6 +3238,11 @@ export interface components {
             registrationNumber?: string;
             /** @example C0012345678 */
             taxIdentificationNumber?: string;
+            /**
+             * @description Shown as the employer's address on payslips
+             * @example 12 Independence Ave, Accra, Ghana
+             */
+            address?: string;
             /**
              * @description Country-specific registration fields without a dedicated column
              * @example {
@@ -3758,6 +3770,10 @@ export interface components {
             employeeId: string;
             employeeFirstName: string;
             employeeLastName: string;
+            /** @description The employing organization's legal name */
+            organizationName: string;
+            /** @description The employing organization's address, if one has been set */
+            organizationAddress?: string;
             /** @enum {string} */
             status: "DRAFT" | "APPROVED" | "PAID";
             countryCode: string;

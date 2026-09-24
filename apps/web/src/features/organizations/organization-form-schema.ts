@@ -7,6 +7,7 @@ export const organizationFormSchema = z.object({
   countryCode: z.string().regex(/^[A-Z]{2}$/, '2-letter code, e.g. GH'),
   registrationNumber: z.string().min(1, 'Registration number is required').max(100),
   taxIdentificationNumber: z.string().max(100).optional().or(z.literal('')),
+  address: z.string().max(500).optional().or(z.literal('')),
 });
 
 export type OrganizationFormValues = z.infer<typeof organizationFormSchema>;

@@ -24,6 +24,9 @@ export class OrganizationResponseDto {
   @ApiPropertyOptional()
   taxIdentificationNumber?: string | null;
 
+  @ApiPropertyOptional({ description: "Shown as the employer's address on payslips" })
+  address?: string | null;
+
   @ApiProperty({ enum: OrganizationVerificationStatus })
   verificationStatus!: OrganizationVerificationStatus;
 

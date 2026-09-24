@@ -50,6 +50,15 @@ export function MyPayslipDetail({ tenantId, payslipId }: { tenantId: string; pay
   return (
     <div className="space-y-6">
       <Card>
+        <CardContent className="pt-6">
+          <div className="text-lg font-semibold">{payslip.organizationName}</div>
+          {payslip.organizationAddress && (
+            <div className="text-sm text-muted-foreground">{payslip.organizationAddress}</div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardHeader>
           <CardTitle>Breakdown</CardTitle>
         </CardHeader>

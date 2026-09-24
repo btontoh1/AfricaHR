@@ -27,6 +27,12 @@ export class PayslipResponseDto {
   @ApiProperty()
   employeeLastName!: string;
 
+  @ApiProperty({ description: "The employing organization's legal name" })
+  organizationName!: string;
+
+  @ApiPropertyOptional({ description: "The employing organization's address, if one has been set" })
+  organizationAddress?: string | null;
+
   @ApiProperty({ enum: Object.values(PayslipStatus) })
   status!: PayslipStatus;
 

@@ -38,6 +38,7 @@ export class OrganizationService {
       countryCode: dto.countryCode,
       registrationNumber: dto.registrationNumber,
       taxIdentificationNumber: dto.taxIdentificationNumber,
+      address: dto.address,
       metadata: dto.metadata as Prisma.InputJsonValue | undefined,
       createdBy: actorId,
     });
@@ -79,6 +80,7 @@ export class OrganizationService {
       countryCode: dto.countryCode,
       registrationNumber: dto.registrationNumber,
       taxIdentificationNumber: dto.taxIdentificationNumber,
+      address: dto.address,
       metadata: dto.metadata as Prisma.InputJsonValue | undefined,
       updatedBy: actorId,
     });

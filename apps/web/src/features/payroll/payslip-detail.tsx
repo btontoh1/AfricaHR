@@ -60,6 +60,15 @@ export function PayslipDetail({ tenantId, payslipId }: { tenantId: string; paysl
       <PageHeader title="Payslip" description={employeeName} backHref={`/payroll/${payslip.payRunId}`} />
 
       <Card>
+        <CardContent className="pt-6">
+          <div className="text-lg font-semibold">{payslip.organizationName}</div>
+          {payslip.organizationAddress && (
+            <div className="text-sm text-muted-foreground">{payslip.organizationAddress}</div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardHeader>
           <CardTitle>Breakdown</CardTitle>
         </CardHeader>

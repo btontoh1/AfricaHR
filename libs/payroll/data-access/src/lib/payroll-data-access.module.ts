@@ -6,6 +6,7 @@ import { PayRunRepository } from './pay-run.repository';
 import { PayslipRepository } from './payslip.repository';
 import { PayslipLineItemRepository } from './payslip-line-item.repository';
 import { PayrollEmployeeRepository } from './payroll-employee.repository';
+import { PayrollOrganizationRepository } from './payroll-organization.repository';
 import { PayrollDisbursementRepository } from './payroll-disbursement.repository';
 import { PayrollBenefitEnrollmentRepository } from './payroll-benefit-enrollment.repository';
 import { PayrollLeaveRequestRepository } from './payroll-leave-request.repository';
@@ -20,6 +21,7 @@ import { PayrollAttendanceRecordRepository } from './payroll-attendance-record.r
     PayslipRepository,
     PayslipLineItemRepository,
     PayrollEmployeeRepository,
+    PayrollOrganizationRepository,
     PayrollDisbursementRepository,
     PayrollBenefitEnrollmentRepository,
     PayrollLeaveRequestRepository,
@@ -32,6 +34,7 @@ import { PayrollAttendanceRecordRepository } from './payroll-attendance-record.r
     PayslipRepository,
     PayslipLineItemRepository,
     PayrollEmployeeRepository,
+    PayrollOrganizationRepository,
     PayrollDisbursementRepository,
     PayrollBenefitEnrollmentRepository,
     PayrollLeaveRequestRepository,

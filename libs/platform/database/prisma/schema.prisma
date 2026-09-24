@@ -219,6 +219,10 @@ model Organization {
   countryCode             String  @map("country_code")
   registrationNumber      String  @map("registration_number")
   taxIdentificationNumber String? @map("tax_identification_number")
+  /// Free-form postal/physical address, shown as the employer's address on
+  /// payslips (see PayslipResponseDto). Single string, not structured
+  /// street/city/postal fields - same convention as Customer.billingAddress.
+  address                 String?
   /// Country-specific registration fields that don't warrant a dedicated
   /// column yet (e.g. Ghana SSNIT employer number).
   metadata                Json?

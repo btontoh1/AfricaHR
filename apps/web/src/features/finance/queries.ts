@@ -1,8 +1,13 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
-import type { CreateGlAccountInput, CreateManualJournalEntryInput, UpdateGlAccountInput } from './types';
+import type {
+  CreateGlAccountInput,
+  CreateManualJournalEntryInput,
+  SetPeriodCloseInput,
+  UpdateGlAccountInput,
+} from './types';
 
 function journalEntriesListKey(tenantId: string) {
   return ['finance', 'journal-entries', tenantId] as const;
@@ -153,5 +158,53 @@ export function useBalanceSheetReport(
       return data;
     },
     enabled: Boolean(filters.asOf),
+  });
+}
+
+function periodCloseQueryOptions(tenantId: string, organizationId: string) {
+  return {
+    queryKey: ['finance', 'period-close', tenantId, organizationId],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/period-close', {
+        params: { path: { tenantId }, query: { organizationId } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: Boolean(organizationId),
+  };
+}
+
+export function usePeriodClose(tenantId: string, organizationId: string) {
+  return useQuery(periodCloseQueryOptions(tenantId, organizationId));
+}
+
+/** Resolves every organization's period-close status in one screen - same fan-out pattern as useAllOrganizationUnits. */
+export function usePeriodCloses(tenantId: string, organizationIds: string[]) {
+  return useQueries({
+    queries: organizationIds.map((organizationId) => periodCloseQueryOptions(tenantId, organizationId)),
+    combine: (results) => ({
+      data: results.map((result) => result.data),
+      isLoading: results.some((result) => result.isLoading),
+    }),
+  });
+}
+
+export function useSetPeriodClose(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: SetPeriodCloseInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/period-close', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({
+        queryKey: ['finance', 'period-close', tenantId, result.organizationId],
+      });
+    },
   });
 }

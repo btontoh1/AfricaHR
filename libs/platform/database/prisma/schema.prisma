@@ -265,6 +265,7 @@ model Organization {
   customers             Customer[]
   invoices              CustomerInvoice[]
   glJournalEntries      GlJournalEntry[]
+  glPeriodClose         GlPeriodClose?
 
   @@index([tenantId])
   @@map("organizations")
@@ -1817,4 +1818,30 @@ model GlJournalLine {
   @@index([journalEntryId])
   @@index([accountId])
   @@map("gl_journal_lines")
+}
+
+/// Locks manual journal entry posting/voiding on or before a given date, per
+/// organization - see FinanceService's period-close checks in
+/// createManualEntry/voidEntry. "Closed through" semantics (like a
+/// watermark), not discrete named periods: closing again only ever extends
+/// the date forward (FinanceService.setPeriodClose rejects an earlier one) -
+/// there's no reopen in v1. Automatic postings (payroll disbursement,
+/// customer invoicing) are deliberately NOT checked against this - they're
+/// driven by a real business event that already happened and can't be
+/// rescheduled, so blocking them would just leave a silent gap in the
+/// ledger rather than protect anything.
+model GlPeriodClose {
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  organizationId String   @unique @map("organization_id")
+  closedThrough  DateTime @map("closed_through")
+  closedAt       DateTime @default(now()) @map("closed_at")
+  /// Closing User's id - bare String like GlJournalEntry.createdBy, no
+  /// @relation (same convention as every other audit-trail field here).
+  closedBy       String?  @map("closed_by")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([tenantId])
+  @@map("gl_period_closes")
 }

@@ -1,27 +1,32 @@
 import { randomUUID } from 'crypto';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { GlPeriodClose, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import { RequestUser } from '@africahr/platform-auth';
 import {
   GlAccountRepository,
   GlJournalEntryRepository,
   GlJournalEntryWithLines,
+  GlPeriodCloseRepository,
 } from '@africahr/finance-data-access';
 import {
+  canExtendPeriodClose,
   computeInvoicePaidJournalLines,
   computeInvoiceSentJournalLines,
   computePayrollJournalLines,
   computeReversalJournalLines,
   isBalancedEntry,
+  isDateWithinClosedPeriod,
   JournalLineAmount,
   PayRunPayrollTotals,
 } from '@africahr/finance-domain';
 import { CreateManualJournalEntryDto } from './dto/create-manual-journal-entry.dto';
 import { CreateGlAccountDto } from './dto/create-gl-account.dto';
 import { UpdateGlAccountDto } from './dto/update-gl-account.dto';
+import { SetPeriodCloseDto } from './dto/set-period-close.dto';
 import { JournalEntryResponseDto } from './dto/journal-entry-response.dto';
 import { GlAccountResponseDto } from './dto/gl-account-response.dto';
+import { PeriodCloseResponseDto } from './dto/period-close-response.dto';
 
 function translateOrganizationReferenceError(error: unknown, organizationId: string): never {
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
@@ -32,6 +37,21 @@ function translateOrganizationReferenceError(error: unknown, organizationId: str
 
 function toAccountResponseDto(account: { id: string; code: string; name: string; type: string }): GlAccountResponseDto {
   return { id: account.id, code: account.code, name: account.name, type: account.type };
+}
+
+function toPeriodCloseResponseDto(
+  organizationId: string,
+  close: { closedThrough: Date; closedAt: Date; closedBy: string | null } | null,
+): PeriodCloseResponseDto {
+  if (!close) {
+    return { organizationId, closedThrough: null, closedAt: null, closedBy: null };
+  }
+  return {
+    organizationId,
+    closedThrough: close.closedThrough.toISOString(),
+    closedAt: close.closedAt.toISOString(),
+    closedBy: close.closedBy,
+  };
 }
 
 function toJournalEntryResponseDto(entry: GlJournalEntryWithLines): JournalEntryResponseDto {
@@ -77,6 +97,7 @@ export class FinanceService {
   constructor(
     private readonly accounts: GlAccountRepository,
     private readonly journalEntries: GlJournalEntryRepository,
+    private readonly periodCloses: GlPeriodCloseRepository,
     private readonly audit: AuditService,
   ) {}
 
@@ -183,6 +204,14 @@ export class FinanceService {
       throw new BadRequestException('Journal entry does not balance - total debits must equal total credits');
     }
 
+    const entryDate = new Date(dto.entryDate);
+    const close = await this.periodCloses.findByOrganization(tenantId, dto.organizationId);
+    if (isDateWithinClosedPeriod(entryDate, close?.closedThrough ?? null)) {
+      throw new BadRequestException(
+        `Cannot post to a closed period - this organization's books are closed through ${close?.closedThrough.toISOString().slice(0, 10)}`,
+      );
+    }
+
     await this.accounts.ensureDefaultAccounts(tenantId);
     const accountIds = await this.accounts.mapCodesToIds(
       tenantId,
@@ -193,7 +222,7 @@ export class FinanceService {
     try {
       entry = await this.journalEntries.createIfNotExists(tenantId, {
         organizationId: dto.organizationId,
-        entryDate: new Date(dto.entryDate),
+        entryDate,
         description: dto.description,
         currency: dto.currency,
         sourceType: 'MANUAL',
@@ -252,6 +281,12 @@ export class FinanceService {
     }
     if (original.voidedAt) {
       throw new ConflictException('This entry has already been voided');
+    }
+    const close = await this.periodCloses.findByOrganization(tenantId, original.organizationId);
+    if (isDateWithinClosedPeriod(original.entryDate, close?.closedThrough ?? null)) {
+      throw new BadRequestException(
+        `Cannot void an entry in a closed period - this organization's books are closed through ${close?.closedThrough.toISOString().slice(0, 10)}. Post a new correcting entry in an open period instead.`,
+      );
     }
 
     const reversalLines = computeReversalJournalLines(
@@ -363,5 +398,52 @@ export class FinanceService {
   async listJournalEntries(tenantId: string, organizationId?: string): Promise<JournalEntryResponseDto[]> {
     const entries = await this.journalEntries.list(tenantId, organizationId);
     return entries.map(toJournalEntryResponseDto);
+  }
+
+  async getPeriodClose(tenantId: string, organizationId: string): Promise<PeriodCloseResponseDto> {
+    const close = await this.periodCloses.findByOrganization(tenantId, organizationId);
+    return toPeriodCloseResponseDto(organizationId, close);
+  }
+
+  /**
+   * Locks manual journal entry posting/voiding on or before closedThrough
+   * for this organization - see isDateWithinClosedPeriod's callers in
+   * createManualEntry/voidEntry. Only ever moves forward (canExtendPeriodClose);
+   * a closedThrough earlier than the current one is rejected outright rather
+   * than silently reopening the period.
+   */
+  async setPeriodClose(
+    tenantId: string,
+    dto: SetPeriodCloseDto,
+    actor: RequestUser,
+  ): Promise<PeriodCloseResponseDto> {
+    const existing = await this.periodCloses.findByOrganization(tenantId, dto.organizationId);
+    const closedThrough = new Date(dto.closedThrough);
+    if (!canExtendPeriodClose(existing?.closedThrough ?? null, closedThrough)) {
+      throw new BadRequestException(
+        `Cannot move the close date earlier than the current close (${existing?.closedThrough.toISOString().slice(0, 10)})`,
+      );
+    }
+
+    let close: GlPeriodClose | undefined;
+    try {
+      close = await this.periodCloses.upsert(tenantId, dto.organizationId, closedThrough, actor.sub);
+    } catch (error) {
+      translateOrganizationReferenceError(error, dto.organizationId);
+    }
+    if (!close) {
+      throw new Error('Period close upsert unexpectedly returned nothing');
+    }
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actor.sub ?? null,
+      action: 'finance.period_close.set',
+      resourceType: 'GlPeriodClose',
+      resourceId: dto.organizationId,
+      metadata: { closedThrough: dto.closedThrough },
+    });
+
+    return toPeriodCloseResponseDto(dto.organizationId, close);
   }
 }

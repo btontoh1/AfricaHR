@@ -17,11 +17,13 @@ import { FinanceReportsService } from './finance-reports.service';
 import { CreateManualJournalEntryDto } from './dto/create-manual-journal-entry.dto';
 import { CreateGlAccountDto } from './dto/create-gl-account.dto';
 import { UpdateGlAccountDto } from './dto/update-gl-account.dto';
+import { SetPeriodCloseDto } from './dto/set-period-close.dto';
 import { JournalEntryResponseDto } from './dto/journal-entry-response.dto';
 import { GlAccountResponseDto } from './dto/gl-account-response.dto';
 import { ProfitAndLossResponseDto } from './dto/profit-and-loss-response.dto';
 import { CashFlowResponseDto } from './dto/cash-flow-response.dto';
 import { BalanceSheetResponseDto } from './dto/balance-sheet-response.dto';
+import { PeriodCloseResponseDto } from './dto/period-close-response.dto';
 
 // AddOnGuard runs after PermissionsGuard - order matters (NestJS runs
 // @UseGuards left to right), so a caller without the base role permission
@@ -154,5 +156,30 @@ export class FinanceController {
   ) {
     assertTenantScope(actor, tenantId);
     return this.reports.balanceSheet(tenantId, { organizationId, asOf: new Date(asOf) });
+  }
+
+  @Get('period-close')
+  @RequirePermissions(Permission.FINANCE_READ)
+  @ApiOkResponse({ type: PeriodCloseResponseDto })
+  @ApiQuery({ name: 'organizationId', required: true })
+  getPeriodClose(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() actor: RequestUser,
+    @Query('organizationId') organizationId: string,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.getPeriodClose(tenantId, organizationId);
+  }
+
+  @Post('period-close')
+  @RequirePermissions(Permission.FINANCE_MANAGE)
+  @ApiOkResponse({ type: PeriodCloseResponseDto })
+  setPeriodClose(
+    @Param('tenantId') tenantId: string,
+    @Body() dto: SetPeriodCloseDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.setPeriodClose(tenantId, dto, actor);
   }
 }

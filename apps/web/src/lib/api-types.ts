@@ -3050,6 +3050,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/finance/period-close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_getPeriodClose"];
+        put?: never;
+        post: operations["FinanceController_setPeriodClose"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4867,6 +4883,18 @@ export interface components {
             asOf: string;
             /** @description One entry per currency the tenant has posted activity in - never blended together. */
             byCurrency: components["schemas"]["BalanceSheetByCurrencyDto"][];
+        };
+        PeriodCloseResponseDto: {
+            organizationId: string;
+            /** @description Null if this organization has never been closed - every manual entry date is postable/voidable */
+            closedThrough?: string;
+            closedAt?: string;
+            closedBy?: string;
+        };
+        SetPeriodCloseDto: {
+            organizationId: string;
+            /** @description Manual journal entries dated on or before this date can no longer be posted or voided */
+            closedThrough: string;
         };
     };
     responses: never;
@@ -10693,6 +10721,54 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BalanceSheetResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_getPeriodClose: {
+        parameters: {
+            query: {
+                organizationId: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PeriodCloseResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_setPeriodClose: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPeriodCloseDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PeriodCloseResponseDto"];
                 };
             };
         };

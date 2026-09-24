@@ -8,3 +8,5 @@ export type ManualJournalEntryLineInput = components['schemas']['ManualJournalEn
 export type UpdateGlAccountInput = components['schemas']['UpdateGlAccountDto'];
 export type CreateGlAccountInput = components['schemas']['CreateGlAccountDto'];
 export type GlAccountType = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE';
+export type PeriodClose = components['schemas']['PeriodCloseResponseDto'];
+export type SetPeriodCloseInput = components['schemas']['SetPeriodCloseDto'];

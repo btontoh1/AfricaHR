@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, NotFoundException } from '@nest
 import { Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import { RequestUser, SystemRole } from '@africahr/platform-auth';
-import { GlAccountRepository, GlJournalEntryRepository } from '@africahr/finance-data-access';
+import { GlAccountRepository, GlJournalEntryRepository, GlPeriodCloseRepository } from '@africahr/finance-data-access';
 import { GlAccountCode } from '@africahr/finance-domain';
 import { FinanceService } from './finance.service';
 
@@ -10,6 +10,7 @@ describe('FinanceService', () => {
   let service: FinanceService;
   let accounts: jest.Mocked<GlAccountRepository>;
   let journalEntries: jest.Mocked<GlJournalEntryRepository>;
+  let periodCloses: jest.Mocked<GlPeriodCloseRepository>;
   let audit: jest.Mocked<AuditService>;
 
   const actor: RequestUser = {
@@ -48,9 +49,14 @@ describe('FinanceService', () => {
       voidEntry: jest.fn(),
     } as unknown as jest.Mocked<GlJournalEntryRepository>;
 
+    periodCloses = {
+      findByOrganization: jest.fn().mockResolvedValue(null),
+      upsert: jest.fn(),
+    } as unknown as jest.Mocked<GlPeriodCloseRepository>;
+
     audit = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
 
-    service = new FinanceService(accounts, journalEntries, audit);
+    service = new FinanceService(accounts, journalEntries, periodCloses, audit);
   });
 
   describe('postPayrollDisbursement', () => {
@@ -196,6 +202,34 @@ describe('FinanceService', () => {
       journalEntries.createIfNotExists.mockRejectedValue(fkError);
 
       await expect(service.createManualEntry('tenant-1', dto, actor)).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects posting to a date on or before the organization\'s closed-through date', async () => {
+      periodCloses.findByOrganization.mockResolvedValue({
+        closedThrough: new Date('2026-03-31'),
+      } as never);
+      const backdated = { ...dto, entryDate: '2026-03-15' };
+
+      await expect(service.createManualEntry('tenant-1', backdated, actor)).rejects.toThrow(BadRequestException);
+      expect(journalEntries.createIfNotExists).not.toHaveBeenCalled();
+    });
+
+    it('allows posting to a date after the organization\'s closed-through date', async () => {
+      periodCloses.findByOrganization.mockResolvedValue({
+        closedThrough: new Date('2026-02-28'),
+      } as never);
+      journalEntries.createIfNotExists.mockResolvedValue({
+        id: 'entry-5',
+        organizationId: 'org-1',
+        entryDate: new Date('2026-03-01'),
+        description: 'Office rent',
+        currency: 'GHS',
+        sourceType: 'MANUAL',
+        sourceId: 'generated-uuid',
+        lines: [],
+      } as never);
+
+      await expect(service.createManualEntry('tenant-1', dto, actor)).resolves.toBeDefined();
     });
   });
 
@@ -366,6 +400,88 @@ describe('FinanceService', () => {
       journalEntries.voidEntry.mockResolvedValue(null);
 
       await expect(service.voidEntry('tenant-1', 'entry-1', actor)).rejects.toThrow(ConflictException);
+    });
+
+    it("rejects voiding an entry dated on or before the organization's closed-through date", async () => {
+      journalEntries.findById.mockResolvedValue(
+        makeManualEntry({ entryDate: new Date('2026-03-15') }) as never,
+      );
+      periodCloses.findByOrganization.mockResolvedValue({
+        closedThrough: new Date('2026-03-31'),
+      } as never);
+
+      await expect(service.voidEntry('tenant-1', 'entry-1', actor)).rejects.toThrow(BadRequestException);
+      expect(journalEntries.voidEntry).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getPeriodClose', () => {
+    it('returns a not-closed shape when no close has ever been set', async () => {
+      const result = await service.getPeriodClose('tenant-1', 'org-1');
+
+      expect(result).toEqual({ organizationId: 'org-1', closedThrough: null, closedAt: null, closedBy: null });
+    });
+
+    it('returns the current close details', async () => {
+      periodCloses.findByOrganization.mockResolvedValue({
+        closedThrough: new Date('2026-03-31'),
+        closedAt: new Date('2026-04-01'),
+        closedBy: 'user-1',
+      } as never);
+
+      const result = await service.getPeriodClose('tenant-1', 'org-1');
+
+      expect(result).toEqual({
+        organizationId: 'org-1',
+        closedThrough: new Date('2026-03-31').toISOString(),
+        closedAt: new Date('2026-04-01').toISOString(),
+        closedBy: 'user-1',
+      });
+    });
+  });
+
+  describe('setPeriodClose', () => {
+    it('closes the period and records an audit entry', async () => {
+      periodCloses.upsert.mockResolvedValue({
+        closedThrough: new Date('2026-03-31'),
+        closedAt: new Date('2026-04-01'),
+        closedBy: 'user-1',
+      } as never);
+
+      const result = await service.setPeriodClose(
+        'tenant-1',
+        { organizationId: 'org-1', closedThrough: '2026-03-31' },
+        actor,
+      );
+
+      expect(periodCloses.upsert).toHaveBeenCalledWith('tenant-1', 'org-1', new Date('2026-03-31'), 'user-1');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ tenantId: 'tenant-1', action: 'finance.period_close.set', resourceId: 'org-1' }),
+      );
+      expect(result.closedThrough).toBe(new Date('2026-03-31').toISOString());
+    });
+
+    it('rejects moving the close date earlier than the current close', async () => {
+      periodCloses.findByOrganization.mockResolvedValue({
+        closedThrough: new Date('2026-03-31'),
+      } as never);
+
+      await expect(
+        service.setPeriodClose('tenant-1', { organizationId: 'org-1', closedThrough: '2026-02-28' }, actor),
+      ).rejects.toThrow(BadRequestException);
+      expect(periodCloses.upsert).not.toHaveBeenCalled();
+    });
+
+    it('translates a foreign-key violation on organizationId into a NotFoundException', async () => {
+      const fkError = Object.assign(Object.create(Prisma.PrismaClientKnownRequestError.prototype), {
+        code: 'P2003',
+        message: 'mock',
+      });
+      periodCloses.upsert.mockRejectedValue(fkError);
+
+      await expect(
+        service.setPeriodClose('tenant-1', { organizationId: 'missing-org', closedThrough: '2026-03-31' }, actor),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

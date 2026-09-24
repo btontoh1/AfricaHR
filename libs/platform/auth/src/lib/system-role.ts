@@ -14,6 +14,12 @@ export const SystemRole = {
   // - see assertOrganizationScope. Every other role here is tenant-wide.
   ORG_ADMIN: 'ORG_ADMIN',
   EMPLOYEE: 'EMPLOYEE',
+  // Read-only, Finance-only - an external bookkeeper/accountant a tenant
+  // invites without giving them any other tenant-admin capability. No
+  // Employee record is expected or required (see UserService.create - a
+  // User never needs one). Tenant-wide like TENANT_ADMIN's own finance
+  // access (assertOrganizationScope only restricts ORG_ADMIN).
+  ACCOUNTANT: 'ACCOUNTANT',
 } as const;
 
 export type SystemRole = (typeof SystemRole)[keyof typeof SystemRole];
@@ -259,6 +265,9 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.INVOICING_READ,
   ],
   [SystemRole.EMPLOYEE]: [],
+  // Read-only Finance access and nothing else - see the role's own comment
+  // above for why (no Employee record, external bookkeeper).
+  [SystemRole.ACCOUNTANT]: [Permission.FINANCE_READ],
 };
 
 export function hasPermission(role: SystemRole, permission: Permission): boolean {

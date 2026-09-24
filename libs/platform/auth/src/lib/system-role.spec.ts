@@ -262,4 +262,14 @@ describe('hasPermission', () => {
     expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.PLATFORM_NOTIFICATION_READ)).toBe(false);
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.PLATFORM_NOTIFICATION_READ)).toBe(false);
   });
+
+  it('grants accountants read-only finance access and nothing else', () => {
+    expect(hasPermission(SystemRole.ACCOUNTANT, Permission.FINANCE_READ)).toBe(true);
+    expect(hasPermission(SystemRole.ACCOUNTANT, Permission.FINANCE_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.ACCOUNTANT, Permission.EMPLOYEE_READ)).toBe(false);
+    expect(hasPermission(SystemRole.ACCOUNTANT, Permission.PAYROLL_READ)).toBe(false);
+    expect(hasPermission(SystemRole.ACCOUNTANT, Permission.ORGANIZATION_READ)).toBe(false);
+    expect(hasPermission(SystemRole.ACCOUNTANT, Permission.REPORTING_READ)).toBe(false);
+    expect(hasPermission(SystemRole.ACCOUNTANT, Permission.INVOICING_READ)).toBe(false);
+  });
 });

@@ -16,6 +16,10 @@ const ASSIGNABLE_ROLES = [
   'PAYROLL_MANAGER',
   'PAYROLL_OFFICER',
   'EMPLOYEE',
+  // Read-only, Finance-only - for an external bookkeeper/accountant. No
+  // organizationId needed (tenant-wide, like TENANT_ADMIN's own finance
+  // access), so it belongs here rather than alongside ORG_ADMIN below.
+  'ACCOUNTANT',
 ] as const;
 
 // CreateUserForm's role picker, unlike the inline one above, also offers

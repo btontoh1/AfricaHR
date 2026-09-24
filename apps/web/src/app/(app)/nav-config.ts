@@ -72,18 +72,32 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
   const isTenantMember = Boolean(user.tenantId);
   const isPlatformAdmin = user.role === 'PLATFORM_ADMIN';
   const isOrgAdmin = user.role === 'ORG_ADMIN';
-  // ORG_ADMIN is deliberately excluded from the tenant-wide admin surface
-  // (Organizations, Team Members, Payroll, Reports, ...) - it only gets
-  // Employees, scoped to its own organization (see hasEmployeesAccess).
-  const hasAdminAccess = isTenantMember && user.role !== 'EMPLOYEE' && !isOrgAdmin;
-  // General ledger reports (FINANCE_READ) are TENANT_ADMIN-only - unlike
-  // most of the "Reports" group, HR_MANAGER/PAYROLL_MANAGER/PAYROLL_OFFICER
-  // don't hold this permission (see system-role.ts), so hasAdminAccess alone
-  // would be too broad here. Also gated behind the tenant's paid FINANCE
-  // add-on (see AddOnGuard) - role alone isn't enough, same enforcement the
-  // backend applies on FinanceController.
+  // Read-only, Finance-only - an external bookkeeper with no other
+  // tenant-admin capability and (usually) no Employee record. Excluded from
+  // hasAdminAccess below the same way isOrgAdmin is, since that check is
+  // exclusion-based (role !== EMPLOYEE) and would otherwise treat a brand
+  // new role as admin-ish by default.
+  const isAccountant = user.role === 'ACCOUNTANT';
+  // ORG_ADMIN and ACCOUNTANT are deliberately excluded from the tenant-wide
+  // admin surface (Organizations, Team Members, Payroll, Reports, ...) -
+  // ORG_ADMIN only gets Employees scoped to its own organization (see
+  // hasEmployeesAccess), and ACCOUNTANT only gets Finance (see
+  // hasFinanceAccess below).
+  const hasAdminAccess = isTenantMember && user.role !== 'EMPLOYEE' && !isOrgAdmin && !isAccountant;
+  // General ledger reports (FINANCE_READ) are TENANT_ADMIN/ACCOUNTANT-only -
+  // unlike most of the "Reports" group, HR_MANAGER/PAYROLL_MANAGER/
+  // PAYROLL_OFFICER don't hold this permission (see system-role.ts), so
+  // hasAdminAccess alone would be too broad here. Also gated behind the
+  // tenant's paid FINANCE add-on (see AddOnGuard) - role alone isn't enough,
+  // same enforcement the backend applies on FinanceController.
   const hasFinanceAccess =
-    isTenantMember && user.role === 'TENANT_ADMIN' && enabledAddOns.includes('FINANCE');
+    isTenantMember && (user.role === 'TENANT_ADMIN' || isAccountant) && enabledAddOns.includes('FINANCE');
+  // Self-service items assume an Employee record (payslips, benefits, leave
+  // balance, ...) - an Accountant typically has none (see UserService.create),
+  // so it's excluded from these even though it's otherwise a tenant member.
+  // Notifications/My Account stay isTenantMember-only below since those are
+  // generic account features, not Employee-linked data.
+  const isEmployeeSelfService = isTenantMember && !isAccountant;
   const hasEmployeesAccess = hasAdminAccess || isOrgAdmin;
   // PAYROLL_MANAGER is admin-ish but doesn't hold LEAVE_READ/LEAVE_MANAGE.
   const hasLeaveAdminAccess =
@@ -161,20 +175,20 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
     {
       label: 'Time & Leave',
       items: [
-        ...(isTenantMember ? [{ label: 'Leave', href: '/leave', icon: CalendarDays }] : []),
+        ...(isEmployeeSelfService ? [{ label: 'Leave', href: '/leave', icon: CalendarDays }] : []),
         ...(hasLeaveAdminAccess
           ? [{ label: 'Leave Requests', href: '/leave/requests', icon: ClipboardCheck }]
           : []),
         // Direct-manager tier, visible to every tenant member same as Team
         // Reviews — a dynamic Employee.managerId relationship, not a role
         // permission (see TeamLeaveRequestController).
-        ...(isTenantMember
+        ...(isEmployeeSelfService
           ? [{ label: 'Team Leave Requests', href: '/leave/requests/team', icon: Users2 }]
           : []),
         ...(hasLeaveAdminAccess
           ? [{ label: 'Leave Types', href: '/leave/types', icon: ListTree }]
           : []),
-        ...(isTenantMember ? [{ label: 'Attendance', href: '/attendance', icon: Clock }] : []),
+        ...(isEmployeeSelfService ? [{ label: 'Attendance', href: '/attendance', icon: Clock }] : []),
         ...(hasAttendanceAdminAccess
           ? [{ label: 'Attendance Records', href: '/attendance/records', icon: History }]
           : []),
@@ -187,11 +201,11 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
       label: 'Payroll & Benefits',
       items: [
         ...(hasAdminAccess ? [{ label: 'Payroll', href: '/payroll', icon: Banknote }] : []),
-        ...(isTenantMember ? [{ label: 'My Payslips', href: '/payslips', icon: Receipt }] : []),
-        ...(isTenantMember
+        ...(isEmployeeSelfService ? [{ label: 'My Payslips', href: '/payslips', icon: Receipt }] : []),
+        ...(isEmployeeSelfService
           ? [{ label: 'Payment Details', href: '/payment-method', icon: Landmark }]
           : []),
-        ...(isTenantMember
+        ...(isEmployeeSelfService
           ? [{ label: 'Benefits', href: '/benefits', icon: HeartHandshake }]
           : []),
         ...(hasBenefitsAdminAccess
@@ -225,18 +239,18 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
       items: !hasPerformanceAddOn
         ? []
         : [
-            ...(isTenantMember
+            ...(isEmployeeSelfService
               ? [{ label: 'My Goals', href: '/performance/goals', icon: Target }]
               : []),
             ...(hasPerformanceAdminAccess
               ? [{ label: 'All Goals', href: '/performance/goals/all', icon: ClipboardList }]
               : []),
-            ...(isTenantMember
+            ...(isEmployeeSelfService
               ? [{ label: 'My Reviews', href: '/performance/reviews', icon: FileText }]
               : []),
             // Visible to every tenant member: manager-ness is a dynamic
             // per-employee relationship, not a role permission.
-            ...(isTenantMember
+            ...(isEmployeeSelfService
               ? [{ label: 'Team Reviews', href: '/performance/reviews/team', icon: Users2 }]
               : []),
             ...(hasPerformanceAdminAccess
@@ -263,7 +277,7 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
               : []),
             // Hiring-manager tier, visible to every tenant member same as Team
             // Reviews - a dynamic JobRequisition.hiringManagerId relationship.
-            ...(isTenantMember
+            ...(isEmployeeSelfService
               ? [
                   {
                     label: 'My Requisitions',
@@ -272,7 +286,7 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
                   },
                 ]
               : []),
-            ...(isTenantMember
+            ...(isEmployeeSelfService
               ? [{ label: 'My Applications', href: '/recruitment/applications/mine', icon: FileInput }]
               : []),
           ],

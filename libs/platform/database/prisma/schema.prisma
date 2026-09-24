@@ -345,6 +345,10 @@ enum SystemRole {
   /// app-level (assertOrganizationScope) rather than a new RLS dimension.
   ORG_ADMIN
   EMPLOYEE
+  /// Read-only, Finance-only - an external bookkeeper/accountant, no
+  /// Employee record expected or required. See SystemRole.ts (platform-auth)
+  /// for the full reasoning.
+  ACCOUNTANT
 }
 
 enum MfaMethod {

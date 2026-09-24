@@ -208,3 +208,38 @@ export function useSetPeriodClose(tenantId: string) {
     },
   });
 }
+
+/** Same-origin, proxied through /api/* like every other request - the
+ * browser includes auth cookies automatically for a plain navigation/anchor
+ * click, no fetch() or bearer token handling needed here. Same convention
+ * as invoices' getInvoicePdfUrl. organizationId is required - a report PDF
+ * is always one organization's own letterhead, never "all organizations". */
+export function getProfitAndLossPdfUrl(
+  tenantId: string,
+  filters: { organizationId: string; from: string; to: string },
+  download: boolean,
+): string {
+  const params = new URLSearchParams({ organizationId: filters.organizationId, from: filters.from, to: filters.to });
+  if (download) params.set('download', 'true');
+  return `/api/tenants/${tenantId}/finance/reports/profit-and-loss/pdf?${params.toString()}`;
+}
+
+export function getCashFlowPdfUrl(
+  tenantId: string,
+  filters: { organizationId: string; from: string; to: string },
+  download: boolean,
+): string {
+  const params = new URLSearchParams({ organizationId: filters.organizationId, from: filters.from, to: filters.to });
+  if (download) params.set('download', 'true');
+  return `/api/tenants/${tenantId}/finance/reports/cash-flow/pdf?${params.toString()}`;
+}
+
+export function getBalanceSheetPdfUrl(
+  tenantId: string,
+  filters: { organizationId: string; asOf: string },
+  download: boolean,
+): string {
+  const params = new URLSearchParams({ organizationId: filters.organizationId, asOf: filters.asOf });
+  if (download) params.set('download', 'true');
+  return `/api/tenants/${tenantId}/finance/reports/balance-sheet/pdf?${params.toString()}`;
+}

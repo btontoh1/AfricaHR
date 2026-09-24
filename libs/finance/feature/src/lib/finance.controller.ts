@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { AddOnModule } from '@prisma/client';
 import {
@@ -126,6 +127,40 @@ export class FinanceController {
     return this.reports.profitAndLoss(tenantId, { organizationId, from: new Date(from), to: new Date(to) });
   }
 
+  // organizationId is required here (unlike the JSON endpoint above) - a
+  // PDF is always one organization's own letterhead, see
+  // FinanceReportsService.requireOrganization. download=true sends
+  // Content-Disposition: attachment (browser saves the file); the default
+  // (inline) opens in the browser's own PDF viewer, same convention as
+  // invoicing's CustomerInvoiceController.downloadPdf.
+  @Get('reports/profit-and-loss/pdf')
+  @RequirePermissions(Permission.FINANCE_READ)
+  @ApiQuery({ name: 'organizationId', required: true })
+  @ApiQuery({ name: 'from', required: true })
+  @ApiQuery({ name: 'to', required: true })
+  async downloadProfitAndLossPdf(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() actor: RequestUser,
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @Res() res: Response,
+    @Query('organizationId') organizationId?: string,
+    @Query('download') download?: string,
+  ): Promise<void> {
+    assertTenantScope(actor, tenantId);
+    const pdfBuffer = await this.reports.profitAndLossPdf(tenantId, {
+      organizationId,
+      from: new Date(from),
+      to: new Date(to),
+    });
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `${download === 'true' ? 'attachment' : 'inline'}; filename="profit-and-loss.pdf"`,
+      'Content-Length': pdfBuffer.length,
+    });
+    res.send(pdfBuffer);
+  }
+
   @Get('reports/cash-flow')
   @RequirePermissions(Permission.FINANCE_READ)
   @ApiOkResponse({ type: CashFlowResponseDto })
@@ -143,6 +178,34 @@ export class FinanceController {
     return this.reports.cashFlow(tenantId, { organizationId, from: new Date(from), to: new Date(to) });
   }
 
+  @Get('reports/cash-flow/pdf')
+  @RequirePermissions(Permission.FINANCE_READ)
+  @ApiQuery({ name: 'organizationId', required: true })
+  @ApiQuery({ name: 'from', required: true })
+  @ApiQuery({ name: 'to', required: true })
+  async downloadCashFlowPdf(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() actor: RequestUser,
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @Res() res: Response,
+    @Query('organizationId') organizationId?: string,
+    @Query('download') download?: string,
+  ): Promise<void> {
+    assertTenantScope(actor, tenantId);
+    const pdfBuffer = await this.reports.cashFlowPdf(tenantId, {
+      organizationId,
+      from: new Date(from),
+      to: new Date(to),
+    });
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `${download === 'true' ? 'attachment' : 'inline'}; filename="cash-flow.pdf"`,
+      'Content-Length': pdfBuffer.length,
+    });
+    res.send(pdfBuffer);
+  }
+
   @Get('reports/balance-sheet')
   @RequirePermissions(Permission.FINANCE_READ)
   @ApiOkResponse({ type: BalanceSheetResponseDto })
@@ -156,6 +219,28 @@ export class FinanceController {
   ) {
     assertTenantScope(actor, tenantId);
     return this.reports.balanceSheet(tenantId, { organizationId, asOf: new Date(asOf) });
+  }
+
+  @Get('reports/balance-sheet/pdf')
+  @RequirePermissions(Permission.FINANCE_READ)
+  @ApiQuery({ name: 'organizationId', required: true })
+  @ApiQuery({ name: 'asOf', required: true })
+  async downloadBalanceSheetPdf(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() actor: RequestUser,
+    @Query('asOf') asOf: string,
+    @Res() res: Response,
+    @Query('organizationId') organizationId?: string,
+    @Query('download') download?: string,
+  ): Promise<void> {
+    assertTenantScope(actor, tenantId);
+    const pdfBuffer = await this.reports.balanceSheetPdf(tenantId, { organizationId, asOf: new Date(asOf) });
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `${download === 'true' ? 'attachment' : 'inline'}; filename="balance-sheet.pdf"`,
+      'Content-Length': pdfBuffer.length,
+    });
+    res.send(pdfBuffer);
   }
 
   @Get('period-close')

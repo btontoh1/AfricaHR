@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { Scale } from 'lucide-react';
-import { useBalanceSheetReport } from './queries';
+import { getBalanceSheetPdfUrl, useBalanceSheetReport } from './queries';
+import { ReportPdfButtons } from './report-pdf-buttons';
 import { OrganizationFilter, ALL_ORGANIZATIONS } from '@/features/reporting/organization-filter';
 import { StatCard } from '@/features/reporting/stat-card';
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -46,6 +47,12 @@ export function BalanceSheetReport({ tenantId }: { tenantId: string }) {
         account yet, so Equity is shown as retained earnings — cumulative revenue minus expense since the
         general ledger began.
       </p>
+
+      <ReportPdfButtons
+        organizationSelected={organizationId !== ALL_ORGANIZATIONS}
+        viewUrl={getBalanceSheetPdfUrl(tenantId, { organizationId, asOf }, false)}
+        downloadUrl={getBalanceSheetPdfUrl(tenantId, { organizationId, asOf }, true)}
+      />
 
       {isLoading && <CardSkeleton />}
 

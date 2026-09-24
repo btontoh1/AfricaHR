@@ -1,12 +1,20 @@
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { GlAccountRepository, GlJournalEntryRepository } from '@africahr/finance-data-access';
+import {
+  FinanceOrganizationRepository,
+  GlAccountRepository,
+  GlJournalEntryRepository,
+} from '@africahr/finance-data-access';
 import { GlAccountCode } from '@africahr/finance-domain';
 import { FinanceReportsService } from './finance-reports.service';
+import { FinanceReportPdfService } from './finance-report-pdf.service';
 
 describe('FinanceReportsService', () => {
   let service: FinanceReportsService;
   let accounts: jest.Mocked<GlAccountRepository>;
   let journalEntries: jest.Mocked<GlJournalEntryRepository>;
+  let organizations: jest.Mocked<FinanceOrganizationRepository>;
+  let pdf: jest.Mocked<FinanceReportPdfService>;
 
   beforeEach(() => {
     accounts = {
@@ -16,7 +24,15 @@ describe('FinanceReportsService', () => {
       listLinesInRange: jest.fn(),
       listLinesUpTo: jest.fn(),
     } as unknown as jest.Mocked<GlJournalEntryRepository>;
-    service = new FinanceReportsService(accounts, journalEntries);
+    organizations = {
+      findById: jest.fn().mockResolvedValue({ id: 'org-1', legalName: 'Acme Ghana Ltd', address: null }),
+    } as unknown as jest.Mocked<FinanceOrganizationRepository>;
+    pdf = {
+      renderProfitAndLoss: jest.fn().mockResolvedValue(Buffer.from('pdf')),
+      renderCashFlow: jest.fn().mockResolvedValue(Buffer.from('pdf')),
+      renderBalanceSheet: jest.fn().mockResolvedValue(Buffer.from('pdf')),
+    } as unknown as jest.Mocked<FinanceReportPdfService>;
+    service = new FinanceReportsService(accounts, journalEntries, organizations, pdf);
   });
 
   describe('profitAndLoss', () => {
@@ -146,6 +162,81 @@ describe('FinanceReportsService', () => {
         asOf: asOf.toISOString(),
         byCurrency: [{ currency: 'GHS', totalAssets: 5000, totalLiabilities: 1000, totalEquity: 4000 }],
       });
+    });
+  });
+
+  describe('profitAndLossPdf', () => {
+    it('rejects when no organizationId is given', async () => {
+      await expect(
+        service.profitAndLossPdf('tenant-1', { from: new Date('2026-01-01'), to: new Date('2026-01-31') }),
+      ).rejects.toThrow(BadRequestException);
+      expect(organizations.findById).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when the organization does not exist', async () => {
+      organizations.findById.mockResolvedValue(null);
+
+      await expect(
+        service.profitAndLossPdf('tenant-1', {
+          organizationId: 'missing-org',
+          from: new Date('2026-01-01'),
+          to: new Date('2026-01-31'),
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('renders the report for the organization and returns the PDF buffer', async () => {
+      journalEntries.listLinesInRange.mockResolvedValue([]);
+
+      const result = await service.profitAndLossPdf('tenant-1', {
+        organizationId: 'org-1',
+        from: new Date('2026-01-01'),
+        to: new Date('2026-01-31'),
+      });
+
+      expect(pdf.renderProfitAndLoss).toHaveBeenCalledWith(
+        { id: 'org-1', legalName: 'Acme Ghana Ltd', address: null },
+        expect.objectContaining({ organizationId: 'org-1' }),
+      );
+      expect(result).toEqual(Buffer.from('pdf'));
+    });
+  });
+
+  describe('cashFlowPdf', () => {
+    it('rejects when no organizationId is given', async () => {
+      await expect(
+        service.cashFlowPdf('tenant-1', { from: new Date('2026-01-01'), to: new Date('2026-01-31') }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('renders the report for the organization and returns the PDF buffer', async () => {
+      journalEntries.listLinesInRange.mockResolvedValue([]);
+
+      const result = await service.cashFlowPdf('tenant-1', {
+        organizationId: 'org-1',
+        from: new Date('2026-01-01'),
+        to: new Date('2026-01-31'),
+      });
+
+      expect(pdf.renderCashFlow).toHaveBeenCalled();
+      expect(result).toEqual(Buffer.from('pdf'));
+    });
+  });
+
+  describe('balanceSheetPdf', () => {
+    it('rejects when no organizationId is given', async () => {
+      await expect(service.balanceSheetPdf('tenant-1', { asOf: new Date('2026-01-31') })).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('renders the report for the organization and returns the PDF buffer', async () => {
+      journalEntries.listLinesUpTo.mockResolvedValue([]);
+
+      const result = await service.balanceSheetPdf('tenant-1', { organizationId: 'org-1', asOf: new Date('2026-01-31') });
+
+      expect(pdf.renderBalanceSheet).toHaveBeenCalled();
+      expect(result).toEqual(Buffer.from('pdf'));
     });
   });
 });

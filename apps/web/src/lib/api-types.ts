@@ -3018,6 +3018,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/finance/reports/profit-and-loss/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_downloadProfitAndLossPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/finance/reports/cash-flow": {
         parameters: {
             query?: never;
@@ -3034,6 +3050,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/finance/reports/cash-flow/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_downloadCashFlowPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/finance/reports/balance-sheet": {
         parameters: {
             query?: never;
@@ -3042,6 +3074,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["FinanceController_balanceSheet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/reports/balance-sheet/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_downloadBalanceSheetPdf"];
         put?: never;
         post?: never;
         delete?: never;
@@ -10676,6 +10724,30 @@ export interface operations {
             };
         };
     };
+    FinanceController_downloadProfitAndLossPdf: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                organizationId: string;
+                download: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     FinanceController_cashFlow: {
         parameters: {
             query: {
@@ -10701,6 +10773,30 @@ export interface operations {
             };
         };
     };
+    FinanceController_downloadCashFlowPdf: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                organizationId: string;
+                download: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     FinanceController_balanceSheet: {
         parameters: {
             query: {
@@ -10722,6 +10818,29 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["BalanceSheetResponseDto"];
                 };
+            };
+        };
+    };
+    FinanceController_downloadBalanceSheetPdf: {
+        parameters: {
+            query: {
+                asOf: string;
+                organizationId: string;
+                download: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

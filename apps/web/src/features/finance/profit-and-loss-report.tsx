@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { LineChart } from 'lucide-react';
-import { useProfitAndLossReport } from './queries';
+import { getProfitAndLossPdfUrl, useProfitAndLossReport } from './queries';
+import { ReportPdfButtons } from './report-pdf-buttons';
 import { getDefaultDateRange } from '@/features/reporting/date-range';
 import { OrganizationFilter, ALL_ORGANIZATIONS } from '@/features/reporting/organization-filter';
 import { StatCard } from '@/features/reporting/stat-card';
@@ -53,6 +54,12 @@ export function ProfitAndLossReport({ tenantId }: { tenantId: string }) {
         invoicing, plus any manual journal entries recorded. Not a complete P&amp;L until other costs
         (rent, subscriptions, etc) are entered too.
       </p>
+
+      <ReportPdfButtons
+        organizationSelected={organizationId !== ALL_ORGANIZATIONS}
+        viewUrl={getProfitAndLossPdfUrl(tenantId, { organizationId, from, to }, false)}
+        downloadUrl={getProfitAndLossPdfUrl(tenantId, { organizationId, from, to }, true)}
+      />
 
       {isLoading && <CardSkeleton />}
 

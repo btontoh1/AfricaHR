@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { Coins } from 'lucide-react';
-import { useCashFlowReport } from './queries';
+import { getCashFlowPdfUrl, useCashFlowReport } from './queries';
+import { ReportPdfButtons } from './report-pdf-buttons';
 import { getDefaultDateRange } from '@/features/reporting/date-range';
 import { OrganizationFilter, ALL_ORGANIZATIONS } from '@/features/reporting/organization-filter';
 import { StatCard } from '@/features/reporting/stat-card';
@@ -53,6 +54,12 @@ export function CashFlowReport({ tenantId }: { tenantId: string }) {
         accounts-payable, investing, or financing activity yet to split out into the other standard
         cash-flow sections.
       </p>
+
+      <ReportPdfButtons
+        organizationSelected={organizationId !== ALL_ORGANIZATIONS}
+        viewUrl={getCashFlowPdfUrl(tenantId, { organizationId, from, to }, false)}
+        downloadUrl={getCashFlowPdfUrl(tenantId, { organizationId, from, to }, true)}
+      />
 
       {isLoading && <CardSkeleton />}
 

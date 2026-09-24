@@ -161,6 +161,23 @@ export function useBalanceSheetReport(
   });
 }
 
+export function useTrialBalanceReport(
+  tenantId: string,
+  filters: { organizationId?: string; asOf: string },
+) {
+  return useQuery({
+    queryKey: ['finance', 'trial-balance', tenantId, filters.organizationId ?? '', filters.asOf],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/reports/trial-balance', {
+        params: { path: { tenantId }, query: filters },
+      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: Boolean(filters.asOf),
+  });
+}
+
 function periodCloseQueryOptions(tenantId: string, organizationId: string) {
   return {
     queryKey: ['finance', 'period-close', tenantId, organizationId],
@@ -242,4 +259,14 @@ export function getBalanceSheetPdfUrl(
   const params = new URLSearchParams({ organizationId: filters.organizationId, asOf: filters.asOf });
   if (download) params.set('download', 'true');
   return `/api/tenants/${tenantId}/finance/reports/balance-sheet/pdf?${params.toString()}`;
+}
+
+export function getTrialBalancePdfUrl(
+  tenantId: string,
+  filters: { organizationId: string; asOf: string },
+  download: boolean,
+): string {
+  const params = new URLSearchParams({ organizationId: filters.organizationId, asOf: filters.asOf });
+  if (download) params.set('download', 'true');
+  return `/api/tenants/${tenantId}/finance/reports/trial-balance/pdf?${params.toString()}`;
 }

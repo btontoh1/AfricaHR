@@ -31,6 +31,7 @@ import {
   LineChart,
   Coins,
   Scale,
+  Rows3,
   BookText,
   Layers,
   Bell,
@@ -308,6 +309,9 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
           : []),
         ...(hasFinanceAccess
           ? [{ label: 'Balance Sheet', href: '/reports/balance-sheet', icon: Scale }]
+          : []),
+        ...(hasFinanceAccess
+          ? [{ label: 'Trial Balance', href: '/reports/trial-balance', icon: Rows3 }]
           : []),
       ],
     },

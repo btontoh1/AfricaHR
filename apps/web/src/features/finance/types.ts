@@ -10,3 +10,4 @@ export type CreateGlAccountInput = components['schemas']['CreateGlAccountDto'];
 export type GlAccountType = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE';
 export type PeriodClose = components['schemas']['PeriodCloseResponseDto'];
 export type SetPeriodCloseInput = components['schemas']['SetPeriodCloseDto'];
+export type TrialBalanceReport = components['schemas']['TrialBalanceResponseDto'];

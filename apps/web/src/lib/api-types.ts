@@ -3098,6 +3098,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/finance/reports/trial-balance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_trialBalance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/reports/trial-balance/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_downloadTrialBalancePdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/finance/period-close": {
         parameters: {
             query?: never;
@@ -4931,6 +4963,27 @@ export interface components {
             asOf: string;
             /** @description One entry per currency the tenant has posted activity in - never blended together. */
             byCurrency: components["schemas"]["BalanceSheetByCurrencyDto"][];
+        };
+        TrialBalanceAccountRowDto: {
+            accountCode: string;
+            accountName: string;
+            debit: number;
+            credit: number;
+        };
+        TrialBalanceByCurrencyDto: {
+            currency: string;
+            /** @description Only accounts with any activity - not every account in the chart of accounts */
+            accounts: components["schemas"]["TrialBalanceAccountRowDto"][];
+            /** @description Always equal to totalCredit - proves the ledger balances as of this date */
+            totalDebit: number;
+            totalCredit: number;
+        };
+        TrialBalanceResponseDto: {
+            organizationId?: string;
+            /** @description A snapshot as of this point in time, not a period */
+            asOf: string;
+            /** @description One entry per currency the tenant has posted activity in - never blended together. */
+            byCurrency: components["schemas"]["TrialBalanceByCurrencyDto"][];
         };
         PeriodCloseResponseDto: {
             organizationId: string;
@@ -10822,6 +10875,53 @@ export interface operations {
         };
     };
     FinanceController_downloadBalanceSheetPdf: {
+        parameters: {
+            query: {
+                asOf: string;
+                organizationId: string;
+                download: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    FinanceController_trialBalance: {
+        parameters: {
+            query: {
+                asOf: string;
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrialBalanceResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_downloadTrialBalancePdf: {
         parameters: {
             query: {
                 asOf: string;

@@ -5,6 +5,7 @@ import { FinanceOrganizationInfo } from '@africahr/finance-data-access';
 import { BalanceSheetResponseDto } from './dto/balance-sheet-response.dto';
 import { CashFlowResponseDto } from './dto/cash-flow-response.dto';
 import { ProfitAndLossResponseDto } from './dto/profit-and-loss-response.dto';
+import { TrialBalanceResponseDto } from './dto/trial-balance-response.dto';
 
 // No .tsx/JSX here on purpose - the API's build pipeline (webpack via
 // nx run api:build) has no JSX toolchain configured, same reasoning as
@@ -36,6 +37,27 @@ const styles = StyleSheet.create({
   totalLabel: { fontSize: 11, fontWeight: 700 },
   totalValue: { fontSize: 11, fontWeight: 700 },
   footnote: { marginTop: 24, fontSize: 8, color: '#888888' },
+  tableHeaderRow: {
+    flexDirection: 'row',
+    borderBottom: '1pt solid #333333',
+    paddingBottom: 6,
+    marginBottom: 2,
+  },
+  tableRow: {
+    flexDirection: 'row',
+    paddingVertical: 4,
+    borderBottom: '0.5pt solid #dddddd',
+  },
+  tableHeaderText: { fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: '#555555' },
+  colAccount: { flex: 3 },
+  colDebit: { flex: 1, textAlign: 'right' },
+  colCredit: { flex: 1, textAlign: 'right' },
+  tableTotalRow: {
+    flexDirection: 'row',
+    paddingTop: 6,
+    marginTop: 4,
+    borderTop: '1pt solid #333333',
+  },
 });
 
 function formatMoney(amount: number, currency: string): string {
@@ -164,6 +186,55 @@ export class FinanceReportPdfService {
         Text,
         { style: styles.footnote },
         'Equity is retained earnings since inception (cumulative revenue minus expense) - there is no dedicated Equity account in the default chart of accounts.',
+      ),
+    );
+    return renderToBuffer(h(Document, null, page));
+  }
+
+  async renderTrialBalance(
+    organization: FinanceOrganizationInfo,
+    report: TrialBalanceResponseDto,
+  ): Promise<Buffer> {
+    const meta = `As of ${formatDate(report.asOf)}`;
+    const sections = report.byCurrency.map((byCurrency) =>
+      h(
+        View,
+        { key: byCurrency.currency, style: styles.currencySection },
+        h(Text, { style: styles.currencyHeading }, byCurrency.currency),
+        h(
+          View,
+          { style: styles.tableHeaderRow },
+          h(Text, { style: [styles.colAccount, styles.tableHeaderText] }, 'Account'),
+          h(Text, { style: [styles.colDebit, styles.tableHeaderText] }, 'Debit'),
+          h(Text, { style: [styles.colCredit, styles.tableHeaderText] }, 'Credit'),
+        ),
+        ...byCurrency.accounts.map((account) =>
+          h(
+            View,
+            { key: account.accountCode, style: styles.tableRow },
+            h(Text, { style: styles.colAccount }, `${account.accountCode} — ${account.accountName}`),
+            h(Text, { style: styles.colDebit }, account.debit > 0 ? formatMoney(account.debit, byCurrency.currency) : ''),
+            h(Text, { style: styles.colCredit }, account.credit > 0 ? formatMoney(account.credit, byCurrency.currency) : ''),
+          ),
+        ),
+        h(
+          View,
+          { style: styles.tableTotalRow },
+          h(Text, { style: [styles.colAccount, styles.totalLabel] }, 'Total'),
+          h(Text, { style: [styles.colDebit, styles.totalValue] }, formatMoney(byCurrency.totalDebit, byCurrency.currency)),
+          h(Text, { style: [styles.colCredit, styles.totalValue] }, formatMoney(byCurrency.totalCredit, byCurrency.currency)),
+        ),
+      ),
+    );
+    const page = h(
+      Page,
+      { size: 'A4', style: styles.page },
+      renderHeader(organization, 'Trial Balance', meta),
+      ...sections,
+      h(
+        Text,
+        { style: styles.footnote },
+        'Only accounts with any activity are listed. Total debit and total credit are always equal - that equality is what a trial balance proves.',
       ),
     );
     return renderToBuffer(h(Document, null, page));

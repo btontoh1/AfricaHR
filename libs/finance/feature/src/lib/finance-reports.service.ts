@@ -4,10 +4,17 @@ import {
   GlAccountRepository,
   GlJournalEntryRepository,
 } from '@africahr/finance-data-access';
-import { computeBalanceSheet, computeCashFlow, computeProfitAndLoss, GlAccountCode } from '@africahr/finance-domain';
+import {
+  computeBalanceSheet,
+  computeCashFlow,
+  computeProfitAndLoss,
+  computeTrialBalance,
+  GlAccountCode,
+} from '@africahr/finance-domain';
 import { ProfitAndLossResponseDto } from './dto/profit-and-loss-response.dto';
 import { CashFlowResponseDto } from './dto/cash-flow-response.dto';
 import { BalanceSheetResponseDto } from './dto/balance-sheet-response.dto';
+import { TrialBalanceResponseDto } from './dto/trial-balance-response.dto';
 import { FinanceReportPdfService } from './finance-report-pdf.service';
 
 export interface ReportRange {
@@ -98,6 +105,25 @@ export class FinanceReportsService {
     };
   }
 
+  async trialBalance(tenantId: string, query: BalanceSheetQuery): Promise<TrialBalanceResponseDto> {
+    await this.accounts.ensureDefaultAccounts(tenantId);
+    const lines = await this.journalEntries.listLinesUpTo(tenantId, query);
+    const byCurrency = computeTrialBalance(
+      lines.map((line) => ({
+        currency: line.journalEntry.currency,
+        accountCode: line.account.code,
+        accountName: line.account.name,
+        debit: Number(line.debit),
+        credit: Number(line.credit),
+      })),
+    );
+    return {
+      organizationId: query.organizationId,
+      asOf: query.asOf.toISOString(),
+      byCurrency,
+    };
+  }
+
   async profitAndLossPdf(tenantId: string, range: ReportRange): Promise<Buffer> {
     const organization = await this.requireOrganization(tenantId, range.organizationId);
     const report = await this.profitAndLoss(tenantId, range);
@@ -114,5 +140,11 @@ export class FinanceReportsService {
     const organization = await this.requireOrganization(tenantId, query.organizationId);
     const report = await this.balanceSheet(tenantId, query);
     return this.pdf.renderBalanceSheet(organization, report);
+  }
+
+  async trialBalancePdf(tenantId: string, query: BalanceSheetQuery): Promise<Buffer> {
+    const organization = await this.requireOrganization(tenantId, query.organizationId);
+    const report = await this.trialBalance(tenantId, query);
+    return this.pdf.renderTrialBalance(organization, report);
   }
 }

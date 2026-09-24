@@ -24,6 +24,7 @@ import { GlAccountResponseDto } from './dto/gl-account-response.dto';
 import { ProfitAndLossResponseDto } from './dto/profit-and-loss-response.dto';
 import { CashFlowResponseDto } from './dto/cash-flow-response.dto';
 import { BalanceSheetResponseDto } from './dto/balance-sheet-response.dto';
+import { TrialBalanceResponseDto } from './dto/trial-balance-response.dto';
 import { PeriodCloseResponseDto } from './dto/period-close-response.dto';
 
 // AddOnGuard runs after PermissionsGuard - order matters (NestJS runs
@@ -238,6 +239,43 @@ export class FinanceController {
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': `${download === 'true' ? 'attachment' : 'inline'}; filename="balance-sheet.pdf"`,
+      'Content-Length': pdfBuffer.length,
+    });
+    res.send(pdfBuffer);
+  }
+
+  @Get('reports/trial-balance')
+  @RequirePermissions(Permission.FINANCE_READ)
+  @ApiOkResponse({ type: TrialBalanceResponseDto })
+  @ApiQuery({ name: 'organizationId', required: false })
+  @ApiQuery({ name: 'asOf', required: true })
+  trialBalance(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() actor: RequestUser,
+    @Query('asOf') asOf: string,
+    @Query('organizationId') organizationId?: string,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.reports.trialBalance(tenantId, { organizationId, asOf: new Date(asOf) });
+  }
+
+  @Get('reports/trial-balance/pdf')
+  @RequirePermissions(Permission.FINANCE_READ)
+  @ApiQuery({ name: 'organizationId', required: true })
+  @ApiQuery({ name: 'asOf', required: true })
+  async downloadTrialBalancePdf(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() actor: RequestUser,
+    @Query('asOf') asOf: string,
+    @Res() res: Response,
+    @Query('organizationId') organizationId?: string,
+    @Query('download') download?: string,
+  ): Promise<void> {
+    assertTenantScope(actor, tenantId);
+    const pdfBuffer = await this.reports.trialBalancePdf(tenantId, { organizationId, asOf: new Date(asOf) });
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `${download === 'true' ? 'attachment' : 'inline'}; filename="trial-balance.pdf"`,
       'Content-Length': pdfBuffer.length,
     });
     res.send(pdfBuffer);

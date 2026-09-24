@@ -8,3 +8,4 @@ export * from './lib/compute-profit-and-loss';
 export * from './lib/compute-cash-flow';
 export * from './lib/compute-balance-sheet';
 export * from './lib/period-close';
+export * from './lib/compute-trial-balance';

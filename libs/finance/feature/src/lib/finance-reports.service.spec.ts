@@ -31,6 +31,7 @@ describe('FinanceReportsService', () => {
       renderProfitAndLoss: jest.fn().mockResolvedValue(Buffer.from('pdf')),
       renderCashFlow: jest.fn().mockResolvedValue(Buffer.from('pdf')),
       renderBalanceSheet: jest.fn().mockResolvedValue(Buffer.from('pdf')),
+      renderTrialBalance: jest.fn().mockResolvedValue(Buffer.from('pdf')),
     } as unknown as jest.Mocked<FinanceReportPdfService>;
     service = new FinanceReportsService(accounts, journalEntries, organizations, pdf);
   });
@@ -165,6 +166,46 @@ describe('FinanceReportsService', () => {
     });
   });
 
+  describe('trialBalance', () => {
+    it('nets each account to whichever side it balances on, as of the given date', async () => {
+      journalEntries.listLinesUpTo.mockResolvedValue([
+        {
+          debit: new Prisma.Decimal(5000),
+          credit: new Prisma.Decimal(2000),
+          account: { code: GlAccountCode.CASH_AND_BANK, name: 'Cash and Bank' },
+          journalEntry: { currency: 'GHS' },
+        },
+        {
+          debit: new Prisma.Decimal(0),
+          credit: new Prisma.Decimal(3000),
+          account: { code: GlAccountCode.REVENUE, name: 'Revenue' },
+          journalEntry: { currency: 'GHS' },
+        },
+      ] as never);
+
+      const asOf = new Date('2026-01-31');
+      const report = await service.trialBalance('tenant-1', { organizationId: 'org-1', asOf });
+
+      expect(accounts.ensureDefaultAccounts).toHaveBeenCalledWith('tenant-1');
+      expect(journalEntries.listLinesUpTo).toHaveBeenCalledWith('tenant-1', { organizationId: 'org-1', asOf });
+      expect(report).toEqual({
+        organizationId: 'org-1',
+        asOf: asOf.toISOString(),
+        byCurrency: [
+          {
+            currency: 'GHS',
+            accounts: [
+              { accountCode: GlAccountCode.CASH_AND_BANK, accountName: 'Cash and Bank', debit: 3000, credit: 0 },
+              { accountCode: GlAccountCode.REVENUE, accountName: 'Revenue', debit: 0, credit: 3000 },
+            ],
+            totalDebit: 3000,
+            totalCredit: 3000,
+          },
+        ],
+      });
+    });
+  });
+
   describe('profitAndLossPdf', () => {
     it('rejects when no organizationId is given', async () => {
       await expect(
@@ -236,6 +277,23 @@ describe('FinanceReportsService', () => {
       const result = await service.balanceSheetPdf('tenant-1', { organizationId: 'org-1', asOf: new Date('2026-01-31') });
 
       expect(pdf.renderBalanceSheet).toHaveBeenCalled();
+      expect(result).toEqual(Buffer.from('pdf'));
+    });
+  });
+
+  describe('trialBalancePdf', () => {
+    it('rejects when no organizationId is given', async () => {
+      await expect(service.trialBalancePdf('tenant-1', { asOf: new Date('2026-01-31') })).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('renders the report for the organization and returns the PDF buffer', async () => {
+      journalEntries.listLinesUpTo.mockResolvedValue([]);
+
+      const result = await service.trialBalancePdf('tenant-1', { organizationId: 'org-1', asOf: new Date('2026-01-31') });
+
+      expect(pdf.renderTrialBalance).toHaveBeenCalled();
       expect(result).toEqual(Buffer.from('pdf'));
     });
   });

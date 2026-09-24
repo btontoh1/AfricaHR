@@ -8,6 +8,7 @@ import { FinanceReportPdfService } from './finance-report-pdf.service';
 import { FinanceController } from './finance.controller';
 import { PayrollGlPostingListener } from './payroll-gl-posting.listener';
 import { InvoicingGlPostingListener } from './invoicing-gl-posting.listener';
+import { ApGlPostingListener } from './ap-gl-posting.listener';
 
 @Module({
   imports: [FinanceDataAccessModule, PlatformAuthModule, AuditModule],
@@ -18,6 +19,7 @@ import { InvoicingGlPostingListener } from './invoicing-gl-posting.listener';
     FinanceReportPdfService,
     PayrollGlPostingListener,
     InvoicingGlPostingListener,
+    ApGlPostingListener,
   ],
   exports: [FinanceService, FinanceReportsService],
 })

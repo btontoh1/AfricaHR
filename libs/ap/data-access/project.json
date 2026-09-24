@@ -1,0 +1,19 @@
+{
+  "name": "ap-data-access",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/ap/data-access/src",
+  "projectType": "library",
+  "tags": ["scope:ap", "type:data-access"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/ap/data-access",
+        "main": "libs/ap/data-access/src/index.ts",
+        "tsConfig": "libs/ap/data-access/tsconfig.lib.json",
+        "assets": ["libs/ap/data-access/*.md"]
+      }
+    }
+  }
+}

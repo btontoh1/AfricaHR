@@ -3146,6 +3146,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/vendors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["VendorController_list"];
+        put?: never;
+        post: operations["VendorController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/vendors/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["VendorController_findById"];
+        put?: never;
+        post?: never;
+        delete: operations["VendorController_softDelete"];
+        options?: never;
+        head?: never;
+        patch: operations["VendorController_update"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/vendor-bills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["VendorBillController_list"];
+        put?: never;
+        post: operations["VendorBillController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/vendor-bills/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["VendorBillController_findById"];
+        put?: never;
+        post?: never;
+        delete: operations["VendorBillController_softDelete"];
+        options?: never;
+        head?: never;
+        patch: operations["VendorBillController_update"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/vendor-bills/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["VendorBillController_updateStatus"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4891,7 +4971,7 @@ export interface components {
         };
         ManualJournalEntryLineDto: {
             /** @enum {string} */
-            accountCode: "1000" | "1100" | "2000" | "2100" | "4000" | "5000";
+            accountCode: "1000" | "1100" | "2000" | "2100" | "2200" | "4000" | "5000" | "5900";
             /** @description Set exactly one of debit/credit per line, never both. */
             debit?: number;
             credit?: number;
@@ -4996,6 +5076,98 @@ export interface components {
             organizationId: string;
             /** @description Manual journal entries dated on or before this date can no longer be posted or voided */
             closedThrough: string;
+        };
+        CreateVendorDto: {
+            organizationId: string;
+            name: string;
+            email?: string;
+            phone?: string;
+            address?: string;
+        };
+        VendorResponseDto: {
+            id: string;
+            organizationId: string;
+            name: string;
+            email?: string;
+            phone?: string;
+            address?: string;
+            createdAt: string;
+            updatedAt: string;
+        };
+        UpdateVendorDto: {
+            name?: string;
+            email?: string;
+            phone?: string;
+            address?: string;
+        };
+        BillLineItemDto: {
+            description: string;
+            quantity: number;
+            unitPrice: number;
+        };
+        CreateVendorBillDto: {
+            organizationId: string;
+            vendorId: string;
+            /** @description The vendor's own invoice/bill number, for matching against the paper they sent */
+            vendorReference?: string;
+            billDate: string;
+            dueDate: string;
+            /** @example GHS */
+            currency: string;
+            notes?: string;
+            /**
+             * @description Percent, e.g. 15 for 15%
+             * @default 0
+             */
+            taxRate: number;
+            lineItems: components["schemas"]["BillLineItemDto"][];
+        };
+        VendorBillLineItemResponseDto: {
+            id: string;
+            description: string;
+            quantity: string;
+            unitPrice: string;
+            amount: string;
+            sortOrder: number;
+        };
+        VendorBillResponseDto: {
+            id: string;
+            organizationId: string;
+            vendorId: string;
+            vendorName: string;
+            billNumber: string;
+            vendorReference?: string;
+            billDate: string;
+            dueDate: string;
+            currency: string;
+            /** @enum {string} */
+            status: "DRAFT" | "APPROVED" | "PAID" | "OVERDUE" | "CANCELLED";
+            notes?: string;
+            taxRate: string;
+            subtotal: string;
+            taxAmount: string;
+            total: string;
+            approvedAt?: string;
+            paidAt?: string;
+            lineItems: components["schemas"]["VendorBillLineItemResponseDto"][];
+            createdAt: string;
+            updatedAt: string;
+        };
+        UpdateVendorBillDto: {
+            vendorId?: string;
+            vendorReference?: string;
+            billDate?: string;
+            dueDate?: string;
+            /** @example GHS */
+            currency?: string;
+            notes?: string;
+            /** @description Percent, e.g. 15 for 15% */
+            taxRate?: number;
+            lineItems?: components["schemas"]["BillLineItemDto"][];
+        };
+        UpdateBillStatusDto: {
+            /** @enum {string} */
+            status: "DRAFT" | "APPROVED" | "PAID" | "OVERDUE" | "CANCELLED";
         };
     };
     responses: never;
@@ -10988,6 +11160,266 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PeriodCloseResponseDto"];
+                };
+            };
+        };
+    };
+    VendorController_list: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorResponseDto"][];
+                };
+            };
+        };
+    };
+    VendorController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateVendorDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorResponseDto"];
+                };
+            };
+        };
+    };
+    VendorController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorResponseDto"];
+                };
+            };
+        };
+    };
+    VendorController_softDelete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorResponseDto"];
+                };
+            };
+        };
+    };
+    VendorController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateVendorDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorResponseDto"];
+                };
+            };
+        };
+    };
+    VendorBillController_list: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorBillResponseDto"][];
+                };
+            };
+        };
+    };
+    VendorBillController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateVendorBillDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorBillResponseDto"];
+                };
+            };
+        };
+    };
+    VendorBillController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorBillResponseDto"];
+                };
+            };
+        };
+    };
+    VendorBillController_softDelete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    VendorBillController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateVendorBillDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorBillResponseDto"];
+                };
+            };
+        };
+    };
+    VendorBillController_updateStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBillStatusDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorBillResponseDto"];
                 };
             };
         };

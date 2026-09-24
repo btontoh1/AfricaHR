@@ -15,6 +15,8 @@ import {
   computeInvoiceSentJournalLines,
   computePayrollJournalLines,
   computeReversalJournalLines,
+  computeVendorBillApprovedJournalLines,
+  computeVendorBillPaidJournalLines,
   isBalancedEntry,
   isDateWithinClosedPeriod,
   JournalLineAmount,
@@ -92,6 +94,14 @@ export interface CustomerInvoiceAmountsForPosting {
   total: number;
 }
 
+export interface VendorBillAmountsForPosting {
+  organizationId: string;
+  billId: string;
+  entryDate: Date;
+  currency: string;
+  total: number;
+}
+
 @Injectable()
 export class FinanceService {
   constructor(
@@ -153,6 +163,34 @@ export class FinanceService {
     });
   }
 
+  async postVendorBillApproved(tenantId: string, input: VendorBillAmountsForPosting): Promise<void> {
+    await this.accounts.ensureDefaultAccounts(tenantId);
+    const lines = computeVendorBillApprovedJournalLines(input);
+    await this.postLines(tenantId, {
+      organizationId: input.organizationId,
+      entryDate: input.entryDate,
+      description: `Vendor bill approved (${input.billId})`,
+      currency: input.currency,
+      sourceType: 'VENDOR_BILL_APPROVED',
+      sourceId: input.billId,
+      lines,
+    });
+  }
+
+  async postVendorBillPaid(tenantId: string, input: VendorBillAmountsForPosting): Promise<void> {
+    await this.accounts.ensureDefaultAccounts(tenantId);
+    const lines = computeVendorBillPaidJournalLines(input);
+    await this.postLines(tenantId, {
+      organizationId: input.organizationId,
+      entryDate: input.entryDate,
+      description: `Vendor bill paid (${input.billId})`,
+      currency: input.currency,
+      sourceType: 'VENDOR_BILL_PAID',
+      sourceId: input.billId,
+      lines,
+    });
+  }
+
   private async postLines(
     tenantId: string,
     input: {
@@ -160,7 +198,12 @@ export class FinanceService {
       entryDate: Date;
       description: string;
       currency: string;
-      sourceType: 'PAY_RUN_DISBURSED' | 'CUSTOMER_INVOICE_SENT' | 'CUSTOMER_INVOICE_PAID';
+      sourceType:
+        | 'PAY_RUN_DISBURSED'
+        | 'CUSTOMER_INVOICE_SENT'
+        | 'CUSTOMER_INVOICE_PAID'
+        | 'VENDOR_BILL_APPROVED'
+        | 'VENDOR_BILL_PAID';
       sourceId: string;
       lines: JournalLineAmount[];
     },

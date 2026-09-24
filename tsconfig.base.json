@@ -103,7 +103,10 @@
       "@africahr/finance-data-access": [
         "./libs/finance/data-access/src/index.ts"
       ],
-      "@africahr/finance-feature": ["./libs/finance/feature/src/index.ts"]
+      "@africahr/finance-feature": ["./libs/finance/feature/src/index.ts"],
+      "@africahr/ap-domain": ["./libs/ap/domain/src/index.ts"],
+      "@africahr/ap-data-access": ["./libs/ap/data-access/src/index.ts"],
+      "@africahr/ap-feature": ["./libs/ap/feature/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

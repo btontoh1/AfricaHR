@@ -16,6 +16,7 @@ import { BillingFeatureModule } from '@africahr/billing-feature';
 import { InvoicingFeatureModule } from '@africahr/invoicing-feature';
 import { HowItWorksFeatureModule } from '@africahr/how-it-works-feature';
 import { FinanceFeatureModule } from '@africahr/finance-feature';
+import { ApFeatureModule } from '@africahr/ap-feature';
 import { SetupModule } from './setup/setup.module';
 import { TenantAuthModule } from './tenant-auth/tenant-auth.module';
 
@@ -40,6 +41,7 @@ import { TenantAuthModule } from './tenant-auth/tenant-auth.module';
     InvoicingFeatureModule,
     HowItWorksFeatureModule,
     FinanceFeatureModule,
+    ApFeatureModule,
   ],
 })
 export class AppModule {}

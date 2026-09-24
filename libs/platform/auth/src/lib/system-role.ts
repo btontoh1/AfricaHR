@@ -125,6 +125,14 @@ export const Permission = {
   // customer invoicing is.
   FINANCE_MANAGE: 'finance:manage',
   FINANCE_READ: 'finance:read',
+  // Vendor bills (Accounts Payable) - the AP mirror of INVOICING_MANAGE/READ,
+  // same reasoning and same role distribution: Vendor/VendorBill are
+  // organization-scoped external-party transactions (an org's own vendors),
+  // not tenant-spanning GL configuration, so this stays separate from
+  // FINANCE_MANAGE/READ's PLATFORM_ADMIN/TENANT_ADMIN-only restriction and is
+  // handed to ORG_ADMIN/HR_MANAGER too.
+  AP_MANAGE: 'ap:manage',
+  AP_READ: 'ap:read',
   // Platform-admin only: the "How it works" tutorial catalog is the same
   // curated content shown to every tenant, so only the platform admin
   // curates it - no tenant-level counterpart, same reasoning as
@@ -167,6 +175,8 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.INVOICING_READ,
     Permission.FINANCE_MANAGE,
     Permission.FINANCE_READ,
+    Permission.AP_MANAGE,
+    Permission.AP_READ,
     Permission.PLATFORM_BILLING_MANAGE,
     Permission.PLATFORM_AUDIT_READ,
     Permission.PLATFORM_DISBURSEMENT_READ,
@@ -203,6 +213,8 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.INVOICING_READ,
     Permission.FINANCE_MANAGE,
     Permission.FINANCE_READ,
+    Permission.AP_MANAGE,
+    Permission.AP_READ,
   ],
   [SystemRole.HR_MANAGER]: [
     Permission.ORGANIZATION_READ,
@@ -225,6 +237,8 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.NOTIFICATIONS_READ,
     Permission.INVOICING_MANAGE,
     Permission.INVOICING_READ,
+    Permission.AP_MANAGE,
+    Permission.AP_READ,
   ],
   [SystemRole.PAYROLL_MANAGER]: [
     Permission.ORGANIZATION_READ,
@@ -252,10 +266,11 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
   // TENANT_ADMIN/HR_MANAGER-only for now. USER_READ (not MANAGE) mirrors
   // HR_MANAGER's own grant - both need to list tenant users to link one to
   // an Employee.userId (granting portal access), but neither can invite,
-  // deactivate, or change the role of a User themselves. INVOICING is the
-  // one exception to "employee management only": it's the organization's
-  // own external billing tool, not an internal HR function, so it's
-  // in scope even though leave/attendance/payroll aren't.
+  // deactivate, or change the role of a User themselves. INVOICING/AP are
+  // the exceptions to "employee management only": they're the organization's
+  // own external billing tools (customers it invoices, vendors it owes), not
+  // an internal HR function, so they're in scope even though
+  // leave/attendance/payroll aren't.
   [SystemRole.ORG_ADMIN]: [
     Permission.ORGANIZATION_READ,
     Permission.USER_READ,
@@ -263,6 +278,8 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.EMPLOYEE_READ,
     Permission.INVOICING_MANAGE,
     Permission.INVOICING_READ,
+    Permission.AP_MANAGE,
+    Permission.AP_READ,
   ],
   [SystemRole.EMPLOYEE]: [],
   // Read-only Finance access and nothing else - see the role's own comment

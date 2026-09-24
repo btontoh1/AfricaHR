@@ -28,8 +28,10 @@ describe('FinanceService', () => {
     [GlAccountCode.ACCOUNTS_RECEIVABLE, 'acc-ar'],
     [GlAccountCode.PAYROLL_LIABILITIES_PAYABLE, 'acc-payroll-liab'],
     [GlAccountCode.TAX_PAYABLE, 'acc-tax'],
+    [GlAccountCode.ACCOUNTS_PAYABLE, 'acc-ap'],
     [GlAccountCode.REVENUE, 'acc-revenue'],
     [GlAccountCode.PAYROLL_EXPENSE, 'acc-payroll-exp'],
+    [GlAccountCode.GENERAL_EXPENSE, 'acc-general-exp'],
   ]);
 
   beforeEach(() => {
@@ -117,6 +119,41 @@ describe('FinanceService', () => {
 
       const call = journalEntries.createIfNotExists.mock.calls[0][1];
       expect(call.sourceType).toBe('CUSTOMER_INVOICE_PAID');
+      expect(call.lines).toHaveLength(2);
+    });
+  });
+
+  describe('postVendorBillApproved / postVendorBillPaid', () => {
+    it('posts General Expense/Accounts Payable on approved', async () => {
+      journalEntries.createIfNotExists.mockResolvedValue({ id: 'entry-4' } as never);
+
+      await service.postVendorBillApproved('tenant-1', {
+        organizationId: 'org-1',
+        billId: 'bill-1',
+        entryDate: new Date('2026-02-01'),
+        currency: 'GHS',
+        total: 1150,
+      });
+
+      const call = journalEntries.createIfNotExists.mock.calls[0][1];
+      expect(call.sourceType).toBe('VENDOR_BILL_APPROVED');
+      expect(call.sourceId).toBe('bill-1');
+      expect(call.lines).toHaveLength(2);
+    });
+
+    it('posts Accounts Payable/Cash on paid', async () => {
+      journalEntries.createIfNotExists.mockResolvedValue({ id: 'entry-5' } as never);
+
+      await service.postVendorBillPaid('tenant-1', {
+        organizationId: 'org-1',
+        billId: 'bill-1',
+        entryDate: new Date('2026-02-15'),
+        currency: 'GHS',
+        total: 1150,
+      });
+
+      const call = journalEntries.createIfNotExists.mock.calls[0][1];
+      expect(call.sourceType).toBe('VENDOR_BILL_PAID');
       expect(call.lines).toHaveLength(2);
     });
   });

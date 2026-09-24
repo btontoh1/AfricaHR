@@ -45,6 +45,8 @@ import {
   Presentation,
   Contact,
   PlayCircle,
+  Truck,
+  FileMinus2,
 } from 'lucide-react';
 import type { SessionUser } from '@/lib/session';
 
@@ -124,6 +126,15 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
     isTenantMember &&
     (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER' || isOrgAdmin) &&
     enabledAddOns.includes('INVOICING');
+  // Accounts Payable (vendor bills) - the AP mirror of hasInvoicingAccess,
+  // same role distribution (see Permission.AP_MANAGE/AP_READ). Gated behind
+  // the FINANCE add-on rather than its own toggle - it's presented as part
+  // of the finance suite alongside Journal Entries/Chart of Accounts, not a
+  // separate purchase, and its postings land in the same GL either way.
+  const hasApAccess =
+    isTenantMember &&
+    (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER' || isOrgAdmin) &&
+    enabledAddOns.includes('FINANCE');
   // Unlike INVOICING, these gate an entire nav group (including the
   // self-service items every tenant member would otherwise see
   // unconditionally, e.g. "My Goals"/"My Requisitions") since the backend
@@ -221,6 +232,13 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
       items: [
         ...(hasInvoicingAccess ? [{ label: 'Customers', href: '/customers', icon: Contact }] : []),
         ...(hasInvoicingAccess ? [{ label: 'Invoices', href: '/invoices', icon: Receipt }] : []),
+      ],
+    },
+    {
+      label: 'Accounts Payable',
+      items: [
+        ...(hasApAccess ? [{ label: 'Vendors', href: '/vendors', icon: Truck }] : []),
+        ...(hasApAccess ? [{ label: 'Bills', href: '/vendor-bills', icon: FileMinus2 }] : []),
       ],
     },
     {

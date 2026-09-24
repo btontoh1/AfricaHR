@@ -264,6 +264,8 @@ model Organization {
   orgAdmins             User[]
   customers             Customer[]
   invoices              CustomerInvoice[]
+  vendors               Vendor[]
+  vendorBills           VendorBill[]
   glJournalEntries      GlJournalEntry[]
   glPeriodClose         GlPeriodClose?
 
@@ -1675,6 +1677,112 @@ model CustomerInvoiceLineItem {
 }
 
 // ---------------------------------------------------------------------------
+// Accounts Payable (Module 14) - vendor bills, the AP mirror of
+// Customer/CustomerInvoice's AR. See VendorBillStatus and VendorBill's own
+// doc comments for the mirrored status lifecycle and GL posting.
+// ---------------------------------------------------------------------------
+
+model Vendor {
+  id             String  @id @default(uuid())
+  tenantId       String  @map("tenant_id")
+  organizationId String  @map("organization_id")
+  name           String
+  email          String?
+  phone          String?
+  address        String?
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  bills        VendorBill[]
+
+  @@index([tenantId])
+  @@index([organizationId])
+  @@map("vendors")
+}
+
+enum VendorBillStatus {
+  DRAFT
+  APPROVED
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+/// Bills an organization receives from its own Vendors - the AP mirror of
+/// CustomerInvoice's AR. billNumber is this app's own internal sequence
+/// (BILL-0001, ...), unique per organization same as CustomerInvoice's
+/// invoiceNumber; vendorReference is the vendor's own invoice/bill number,
+/// free text, for matching against the paper/PDF the vendor sent. subtotal/
+/// taxAmount/total are computed from line items at write time and stored,
+/// same reasoning as CustomerInvoice. APPROVED is this model's equivalent of
+/// CustomerInvoiceStatus.SENT - the point at which the bill becomes a real
+/// liability and posts to the GL (see VendorBillService/FinanceService);
+/// a DRAFT bill is just a working copy, not yet owed to anyone.
+model VendorBill {
+  id              String           @id @default(uuid())
+  tenantId        String           @map("tenant_id")
+  organizationId  String           @map("organization_id")
+  vendorId        String           @map("vendor_id")
+  billNumber      String           @map("bill_number")
+  vendorReference String?          @map("vendor_reference")
+  billDate        DateTime         @map("bill_date")
+  dueDate         DateTime         @map("due_date")
+  currency        String
+  status          VendorBillStatus @default(DRAFT)
+  notes           String?
+  taxRate         Decimal          @default(0) @map("tax_rate")
+  subtotal        Decimal
+  taxAmount       Decimal          @map("tax_amount")
+  total           Decimal
+  approvedAt      DateTime?        @map("approved_at")
+  paidAt          DateTime?        @map("paid_at")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  organization Organization         @relation(fields: [organizationId], references: [id])
+  vendor       Vendor               @relation(fields: [vendorId], references: [id])
+  lineItems    VendorBillLineItem[]
+
+  @@unique([organizationId, billNumber])
+  @@index([tenantId])
+  @@index([organizationId])
+  @@index([vendorId])
+  @@map("vendor_bills")
+}
+
+/// Immutable once written - a bill edit deletes and recreates its line
+/// items wholesale rather than patching individual rows, same convention as
+/// CustomerInvoiceLineItem.
+model VendorBillLineItem {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  billId      String   @map("bill_id")
+  description String
+  quantity    Decimal
+  unitPrice   Decimal  @map("unit_price")
+  amount      Decimal
+  sortOrder   Int      @default(0) @map("sort_order")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  createdBy String?  @map("created_by")
+
+  bill VendorBill @relation(fields: [billId], references: [id])
+
+  @@index([tenantId])
+  @@index([billId])
+  @@map("vendor_bill_line_items")
+}
+
+// ---------------------------------------------------------------------------
 // How It Works videos (Module 13)
 // ---------------------------------------------------------------------------
 
@@ -1751,6 +1859,10 @@ enum GlJournalEntrySourceType {
   PAY_RUN_DISBURSED
   CUSTOMER_INVOICE_SENT
   CUSTOMER_INVOICE_PAID
+  /// VendorBill's AP mirror of CUSTOMER_INVOICE_SENT/PAID - posted when a
+  /// bill is APPROVED (becomes a payable) and again when it's PAID.
+  VENDOR_BILL_APPROVED
+  VENDOR_BILL_PAID
   MANUAL
 }
 

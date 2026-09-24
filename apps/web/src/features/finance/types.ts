@@ -6,3 +6,5 @@ export type JournalEntryLine = components['schemas']['JournalEntryLineResponseDt
 export type CreateManualJournalEntryInput = components['schemas']['CreateManualJournalEntryDto'];
 export type ManualJournalEntryLineInput = components['schemas']['ManualJournalEntryLineDto'];
 export type UpdateGlAccountInput = components['schemas']['UpdateGlAccountDto'];
+export type CreateGlAccountInput = components['schemas']['CreateGlAccountDto'];
+export type GlAccountType = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE';

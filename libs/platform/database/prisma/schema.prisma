@@ -1707,10 +1707,12 @@ enum GlAccountType {
   EXPENSE
 }
 
-/// A fixed, minimal chart of accounts seeded per tenant (see
-/// GlAccountRepository.ensureDefaultAccounts) - not tenant-editable in v1.
-/// Every automatic posting (payroll disbursement, customer invoicing) and
-/// every manual journal entry references one of these by code.
+/// A minimal chart of accounts, seeded per tenant with six defaults (see
+/// GlAccountRepository.ensureDefaultAccounts) - a tenant can add further
+/// accounts of its own (GlAccountRepository.create) for use in manual
+/// journal entries. Automatic posting (payroll disbursement, customer
+/// invoicing) only ever targets the six fixed default codes, never a
+/// tenant-added one - see FinanceService.postLines.
 model GlAccount {
   id       String        @id @default(uuid())
   tenantId String        @map("tenant_id")

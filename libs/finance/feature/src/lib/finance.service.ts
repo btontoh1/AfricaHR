@@ -18,6 +18,7 @@ import {
   PayRunPayrollTotals,
 } from '@africahr/finance-domain';
 import { CreateManualJournalEntryDto } from './dto/create-manual-journal-entry.dto';
+import { CreateGlAccountDto } from './dto/create-gl-account.dto';
 import { UpdateGlAccountDto } from './dto/update-gl-account.dto';
 import { JournalEntryResponseDto } from './dto/journal-entry-response.dto';
 import { GlAccountResponseDto } from './dto/gl-account-response.dto';
@@ -294,7 +295,41 @@ export class FinanceService {
   }
 
   /**
-   * The only edit the chart of accounts supports - see GlAccountRepository.
+   * Adds a tenant-defined account for use in manual journal entries - see
+   * GlAccountRepository.create's own doc comment for why automatic posting
+   * never targets one of these.
+   */
+  async createAccount(
+    tenantId: string,
+    dto: CreateGlAccountDto,
+    actor: RequestUser,
+  ): Promise<GlAccountResponseDto> {
+    await this.accounts.ensureDefaultAccounts(tenantId);
+
+    let account;
+    try {
+      account = await this.accounts.create(tenantId, dto);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException(`Account code "${dto.code}" is already in use`);
+      }
+      throw error;
+    }
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actor.sub ?? null,
+      action: 'finance.account.created',
+      resourceType: 'GlAccount',
+      resourceId: account.id,
+      metadata: { code: dto.code, name: dto.name, type: dto.type },
+    });
+
+    return toAccountResponseDto(account);
+  }
+
+  /**
+   * The only edit an existing account supports - see GlAccountRepository.
    * updateName's own doc comment for why code/type stay fixed.
    */
   async renameAccount(

@@ -4,11 +4,11 @@ import { GlAccountRepository } from './gl-account.repository';
 
 describe('GlAccountRepository', () => {
   let repository: GlAccountRepository;
-  let tx: { glAccount: { upsert: jest.Mock; findMany: jest.Mock; update: jest.Mock } };
+  let tx: { glAccount: { upsert: jest.Mock; findMany: jest.Mock; update: jest.Mock; create: jest.Mock } };
   let prisma: { withTenantContext: jest.Mock };
 
   beforeEach(() => {
-    tx = { glAccount: { upsert: jest.fn(), findMany: jest.fn(), update: jest.fn() } };
+    tx = { glAccount: { upsert: jest.fn(), findMany: jest.fn(), update: jest.fn(), create: jest.fn() } };
     prisma = { withTenantContext: jest.fn((_tenantId, fn) => fn(tx)) };
     repository = new GlAccountRepository(prisma as unknown as PrismaService);
   });
@@ -62,6 +62,19 @@ describe('GlAccountRepository', () => {
         data: { name: 'Operating Account' },
       });
       expect(result.name).toBe('Operating Account');
+    });
+  });
+
+  describe('create', () => {
+    it('creates a tenant-scoped account with the given code, name, and type', async () => {
+      tx.glAccount.create.mockResolvedValue({ id: 'acc-rent', code: '5100', name: 'Rent Expense', type: 'EXPENSE' });
+
+      const result = await repository.create('tenant-1', { code: '5100', name: 'Rent Expense', type: 'EXPENSE' });
+
+      expect(tx.glAccount.create).toHaveBeenCalledWith({
+        data: { tenantId: 'tenant-1', code: '5100', name: 'Rent Expense', type: 'EXPENSE' },
+      });
+      expect(result.name).toBe('Rent Expense');
     });
   });
 });

@@ -2947,7 +2947,7 @@ export interface paths {
         };
         get: operations["FinanceController_listAccounts"];
         put?: never;
-        post?: never;
+        post: operations["FinanceController_createAccount"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4777,6 +4777,17 @@ export interface components {
             code: string;
             name: string;
             type: string;
+        };
+        CreateGlAccountDto: {
+            /**
+             * @description Unique per tenant - not tied to any numbering convention
+             * @example 5100
+             */
+            code: string;
+            /** @example Rent Expense */
+            name: string;
+            /** @enum {string} */
+            type: "ASSET" | "LIABILITY" | "EQUITY" | "REVENUE" | "EXPENSE";
         };
         UpdateGlAccountDto: {
             /** @description Display name only - the account code and type are fixed. */
@@ -10487,6 +10498,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GlAccountResponseDto"][];
+                };
+            };
+        };
+    };
+    FinanceController_createAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateGlAccountDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GlAccountResponseDto"];
                 };
             };
         };

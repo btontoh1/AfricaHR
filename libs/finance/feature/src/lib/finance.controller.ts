@@ -15,6 +15,7 @@ import {
 import { FinanceService } from './finance.service';
 import { FinanceReportsService } from './finance-reports.service';
 import { CreateManualJournalEntryDto } from './dto/create-manual-journal-entry.dto';
+import { CreateGlAccountDto } from './dto/create-gl-account.dto';
 import { UpdateGlAccountDto } from './dto/update-gl-account.dto';
 import { JournalEntryResponseDto } from './dto/journal-entry-response.dto';
 import { GlAccountResponseDto } from './dto/gl-account-response.dto';
@@ -42,6 +43,18 @@ export class FinanceController {
   listAccounts(@Param('tenantId') tenantId: string, @CurrentUser() actor: RequestUser) {
     assertTenantScope(actor, tenantId);
     return this.finance.listAccounts(tenantId);
+  }
+
+  @Post('accounts')
+  @RequirePermissions(Permission.FINANCE_MANAGE)
+  @ApiOkResponse({ type: GlAccountResponseDto })
+  createAccount(
+    @Param('tenantId') tenantId: string,
+    @Body() dto: CreateGlAccountDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.createAccount(tenantId, dto, actor);
   }
 
   @Patch('accounts/:id')

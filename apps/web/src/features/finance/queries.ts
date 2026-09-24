@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
-import type { CreateManualJournalEntryInput, UpdateGlAccountInput } from './types';
+import type { CreateGlAccountInput, CreateManualJournalEntryInput, UpdateGlAccountInput } from './types';
 
 function journalEntriesListKey(tenantId: string) {
   return ['finance', 'journal-entries', tenantId] as const;
@@ -21,6 +21,23 @@ export function useAccounts(tenantId: string) {
       });
       if (error) throw error;
       return data;
+    },
+  });
+}
+
+export function useCreateAccount(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateGlAccountInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/accounts', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: accountsListKey(tenantId) });
     },
   });
 }

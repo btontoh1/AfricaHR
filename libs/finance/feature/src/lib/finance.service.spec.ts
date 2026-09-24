@@ -37,6 +37,7 @@ describe('FinanceService', () => {
       listByTenant: jest.fn(),
       mapCodesToIds: jest.fn().mockResolvedValue(accountIdByCode),
       updateName: jest.fn(),
+      create: jest.fn(),
     } as unknown as jest.Mocked<GlAccountRepository>;
 
     journalEntries = {
@@ -195,6 +196,46 @@ describe('FinanceService', () => {
       journalEntries.createIfNotExists.mockRejectedValue(fkError);
 
       await expect(service.createManualEntry('tenant-1', dto, actor)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('createAccount', () => {
+    it('creates a new account and records an audit entry', async () => {
+      accounts.create.mockResolvedValue({
+        id: 'acc-rent',
+        code: '5100',
+        name: 'Rent Expense',
+        type: 'EXPENSE',
+      } as never);
+
+      const result = await service.createAccount(
+        'tenant-1',
+        { code: '5100', name: 'Rent Expense', type: 'EXPENSE' },
+        actor,
+      );
+
+      expect(accounts.ensureDefaultAccounts).toHaveBeenCalledWith('tenant-1');
+      expect(accounts.create).toHaveBeenCalledWith('tenant-1', {
+        code: '5100',
+        name: 'Rent Expense',
+        type: 'EXPENSE',
+      });
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ tenantId: 'tenant-1', action: 'finance.account.created', resourceId: 'acc-rent' }),
+      );
+      expect(result).toEqual({ id: 'acc-rent', code: '5100', name: 'Rent Expense', type: 'EXPENSE' });
+    });
+
+    it('translates a duplicate code (P2002) into a ConflictException', async () => {
+      const duplicateError = Object.assign(Object.create(Prisma.PrismaClientKnownRequestError.prototype), {
+        code: 'P2002',
+        message: 'mock',
+      });
+      accounts.create.mockRejectedValue(duplicateError);
+
+      await expect(
+        service.createAccount('tenant-1', { code: GlAccountCode.CASH_AND_BANK, name: 'Dup', type: 'ASSET' }, actor),
+      ).rejects.toThrow(ConflictException);
     });
   });
 

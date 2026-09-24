@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { GlAccount } from '@prisma/client';
+import { GlAccount, GlAccountType } from '@prisma/client';
 import { PrismaService } from '@africahr/platform-database';
 import { DEFAULT_CHART_OF_ACCOUNTS } from '@africahr/finance-domain';
 
@@ -30,6 +30,20 @@ export class GlAccountRepository {
   listByTenant(tenantId: string): Promise<GlAccount[]> {
     return this.prisma.withTenantContext(tenantId, (tx) =>
       tx.glAccount.findMany({ where: { tenantId }, orderBy: { code: 'asc' } }),
+    );
+  }
+
+  /**
+   * Adds a tenant-defined account alongside the six defaults - for manual
+   * journal entries only, never targeted by automatic posting (see
+   * FinanceService.postLines, which only ever resolves the fixed
+   * GlAccountCode values). `code` is unique per tenant (schema's
+   * @@unique([tenantId, code])); a collision surfaces as Prisma's P2002,
+   * which FinanceService.createAccount translates to a ConflictException.
+   */
+  create(tenantId: string, input: { code: string; name: string; type: GlAccountType }): Promise<GlAccount> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.glAccount.create({ data: { tenantId, code: input.code, name: input.name, type: input.type } }),
     );
   }
 

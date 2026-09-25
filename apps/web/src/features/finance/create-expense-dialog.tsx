@@ -204,8 +204,7 @@ export function CreateExpenseDialog({ tenantId }: { tenantId: string }) {
                       <SelectContent>
                         {ALL_CURRENCIES.map((currency) => (
                           <SelectItem key={currency.code} value={currency.code}>
-                            <span className="mr-1">{currency.symbol}</span>
-                            {currency.code}
+                            {currency.code} <span className="text-muted-foreground">({currency.symbol})</span>
                           </SelectItem>
                         ))}
                       </SelectContent>

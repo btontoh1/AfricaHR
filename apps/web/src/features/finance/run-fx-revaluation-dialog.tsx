@@ -147,8 +147,8 @@ export function RunFxRevaluationDialog({
                       <SelectContent>
                         {ALL_CURRENCIES.map((currency) => (
                           <SelectItem key={currency.code} value={currency.code}>
-                            <span className="mr-1">{currency.symbol}</span>
-                            {currency.code} — {currency.name}
+                            {currency.code} — {currency.name}{' '}
+                            <span className="text-muted-foreground">({currency.symbol})</span>
                           </SelectItem>
                         ))}
                       </SelectContent>

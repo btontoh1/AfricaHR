@@ -22,11 +22,3 @@
 {$APEX_DOMAIN} {
 	redir https://{$APP_DOMAIN}{uri} permanent
 }
-
-# Legacy domain, still pointed at this server from an earlier stage of the
-# product - redirect it to the canonical APP_DOMAIN instead of letting it
-# serve a duplicate copy of the site (which splits SEO signal between two
-# hostnames and confuses search engines about which one is canonical).
-parothealth.com, www.parothealth.com, app.parothealth.com {
-	redir https://{$APP_DOMAIN}{uri} permanent
-}

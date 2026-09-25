@@ -3,6 +3,7 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
 import type {
+  CreateBankReconciliationInput,
   CreateGlAccountInput,
   CreateManualJournalEntryInput,
   SetBudgetInput,
@@ -333,6 +334,107 @@ export function useBudgetVsActualReport(tenantId: string, filters: { organizatio
       return data;
     },
     enabled: Boolean(filters.fiscalYear),
+  });
+}
+
+function reconciliationsListKey(tenantId: string) {
+  return ['finance', 'bank-reconciliations', tenantId] as const;
+}
+
+function reconciliationDetailKey(tenantId: string, id: string) {
+  return ['finance', 'bank-reconciliations', tenantId, id] as const;
+}
+
+export function useBankReconciliations(tenantId: string, organizationId?: string) {
+  return useQuery({
+    queryKey: [...reconciliationsListKey(tenantId), organizationId ?? ''],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/bank-reconciliations', {
+        params: { path: { tenantId }, query: organizationId ? { organizationId } : undefined },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useCreateBankReconciliation(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateBankReconciliationInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/bank-reconciliations', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: reconciliationsListKey(tenantId) });
+    },
+  });
+}
+
+export function useBankReconciliationDetail(tenantId: string, id: string) {
+  return useQuery({
+    queryKey: reconciliationDetailKey(tenantId, id),
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/bank-reconciliations/{id}', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: Boolean(id),
+  });
+}
+
+export function useToggleReconciliationLine(tenantId: string, id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (lineId: string) => {
+      const { data, error } = await apiClient.POST(
+        '/api/tenants/{tenantId}/finance/bank-reconciliations/{id}/lines/{lineId}/toggle',
+        { params: { path: { tenantId, id, lineId } } },
+      );
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: reconciliationDetailKey(tenantId, id) });
+    },
+  });
+}
+
+export function useCompleteBankReconciliation(tenantId: string, id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/bank-reconciliations/{id}/complete', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: reconciliationDetailKey(tenantId, id) });
+      queryClient.invalidateQueries({ queryKey: reconciliationsListKey(tenantId) });
+    },
+  });
+}
+
+export function useDeleteBankReconciliation(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await apiClient.DELETE('/api/tenants/{tenantId}/finance/bank-reconciliations/{id}', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: reconciliationsListKey(tenantId) });
+    },
   });
 }
 

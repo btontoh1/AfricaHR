@@ -11,3 +11,4 @@ export * from './lib/compute-balance-sheet';
 export * from './lib/period-close';
 export * from './lib/compute-trial-balance';
 export * from './lib/compute-budget-vs-actual';
+export * from './lib/compute-bank-reconciliation';

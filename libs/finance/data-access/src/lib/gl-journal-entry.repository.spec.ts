@@ -13,14 +13,14 @@ describe('GlJournalEntryRepository', () => {
   let repository: GlJournalEntryRepository;
   let tx: {
     glJournalEntry: { create: jest.Mock; findMany: jest.Mock; findFirst: jest.Mock; update: jest.Mock };
-    glJournalLine: { findMany: jest.Mock };
+    glJournalLine: { findMany: jest.Mock; findFirst: jest.Mock; update: jest.Mock; updateMany: jest.Mock };
   };
   let prisma: { withTenantContext: jest.Mock };
 
   beforeEach(() => {
     tx = {
       glJournalEntry: { create: jest.fn(), findMany: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
-      glJournalLine: { findMany: jest.fn() },
+      glJournalLine: { findMany: jest.fn(), findFirst: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
     };
     prisma = { withTenantContext: jest.fn((_tenantId, fn) => fn(tx)) };
     repository = new GlJournalEntryRepository(prisma as unknown as PrismaService);
@@ -161,6 +161,95 @@ describe('GlJournalEntryRepository', () => {
 
       expect(result).toBeNull();
       expect(tx.glJournalEntry.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('listCashLinesForReconciliation', () => {
+    it('scopes to Cash and Bank lines, the organization/currency, on or before the statement date, unclaimed or claimed by this reconciliation', async () => {
+      const statementDate = new Date('2026-01-31');
+
+      await repository.listCashLinesForReconciliation('tenant-1', {
+        organizationId: 'org-1',
+        currency: 'GHS',
+        statementDate,
+        reconciliationId: 'rec-1',
+      });
+
+      expect(tx.glJournalLine.findMany).toHaveBeenCalledWith({
+        where: {
+          tenantId: 'tenant-1',
+          account: { code: '1000' },
+          journalEntry: { organizationId: 'org-1', currency: 'GHS', entryDate: { lte: statementDate } },
+          OR: [{ reconciliationId: null }, { reconciliationId: 'rec-1' }],
+        },
+        include: {
+          account: true,
+          journalEntry: { select: { currency: true, organizationId: true, entryDate: true, description: true } },
+        },
+        orderBy: { journalEntry: { entryDate: 'asc' } },
+      });
+    });
+  });
+
+  describe('findLineById', () => {
+    it('scopes the lookup to the tenant', async () => {
+      await repository.findLineById('tenant-1', 'line-1');
+
+      expect(tx.glJournalLine.findFirst).toHaveBeenCalledWith({
+        where: { id: 'line-1', tenantId: 'tenant-1' },
+        include: {
+          account: true,
+          journalEntry: { select: { currency: true, organizationId: true, entryDate: true, description: true } },
+        },
+      });
+    });
+  });
+
+  describe('setLineReconciliation', () => {
+    it('claims a line by setting its reconciliationId', async () => {
+      await repository.setLineReconciliation('tenant-1', 'line-1', 'rec-1');
+
+      expect(tx.glJournalLine.update).toHaveBeenCalledWith({
+        where: { id: 'line-1' },
+        data: { reconciliationId: 'rec-1' },
+        include: {
+          account: true,
+          journalEntry: { select: { currency: true, organizationId: true, entryDate: true, description: true } },
+        },
+      });
+    });
+
+    it('releases a line by setting reconciliationId to null', async () => {
+      await repository.setLineReconciliation('tenant-1', 'line-1', null);
+
+      expect(tx.glJournalLine.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { reconciliationId: null } }),
+      );
+    });
+  });
+
+  describe('listClearedLines', () => {
+    it('lists every line claimed by a reconciliation', async () => {
+      await repository.listClearedLines('tenant-1', 'rec-1');
+
+      expect(tx.glJournalLine.findMany).toHaveBeenCalledWith({
+        where: { tenantId: 'tenant-1', reconciliationId: 'rec-1' },
+        include: {
+          account: true,
+          journalEntry: { select: { currency: true, organizationId: true, entryDate: true, description: true } },
+        },
+      });
+    });
+  });
+
+  describe('releaseClearedLines', () => {
+    it('releases every line claimed by a reconciliation back to unclaimed', async () => {
+      await repository.releaseClearedLines('tenant-1', 'rec-1');
+
+      expect(tx.glJournalLine.updateMany).toHaveBeenCalledWith({
+        where: { tenantId: 'tenant-1', reconciliationId: 'rec-1' },
+        data: { reconciliationId: null },
+      });
     });
   });
 });

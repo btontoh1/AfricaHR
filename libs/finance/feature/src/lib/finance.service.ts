@@ -1,25 +1,31 @@
 import { randomUUID } from 'crypto';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { GlPeriodClose, Prisma } from '@prisma/client';
+import { BankReconciliationStatus, GlPeriodClose, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import { RequestUser } from '@africahr/platform-auth';
 import {
+  BankReconciliationRepository,
   GlAccountRepository,
   GlBudgetRepository,
   GlJournalEntryRepository,
   GlJournalEntryWithLines,
+  GlJournalLineForReconciliation,
   GlPeriodCloseRepository,
 } from '@africahr/finance-data-access';
 import {
   canExtendPeriodClose,
+  computeClearedBalance,
   computeInvoicePaidJournalLines,
   computeInvoiceSentJournalLines,
   computePayrollJournalLines,
+  computeReconciliationDifference,
   computeReversalJournalLines,
   computeVendorBillApprovedJournalLines,
   computeVendorBillPaidJournalLines,
+  GlAccountCode,
   isBalancedEntry,
   isDateWithinClosedPeriod,
+  isReconciliationBalanced,
   JournalLineAmount,
   PayRunPayrollTotals,
 } from '@africahr/finance-domain';
@@ -28,10 +34,12 @@ import { CreateGlAccountDto } from './dto/create-gl-account.dto';
 import { UpdateGlAccountDto } from './dto/update-gl-account.dto';
 import { SetPeriodCloseDto } from './dto/set-period-close.dto';
 import { SetBudgetDto } from './dto/set-budget.dto';
+import { CreateBankReconciliationDto } from './dto/create-bank-reconciliation.dto';
 import { JournalEntryResponseDto } from './dto/journal-entry-response.dto';
 import { GlAccountResponseDto } from './dto/gl-account-response.dto';
 import { BudgetResponseDto } from './dto/budget-response.dto';
 import { PeriodCloseResponseDto } from './dto/period-close-response.dto';
+import { BankReconciliationDetailResponseDto, BankReconciliationResponseDto } from './dto/bank-reconciliation-response.dto';
 
 function translateOrganizationReferenceError(error: unknown, organizationId: string): never {
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
@@ -81,6 +89,44 @@ function toBudgetResponseDto(budget: {
     amount: budget.amount.toString(),
     createdAt: budget.createdAt.toISOString(),
     updatedAt: budget.updatedAt.toISOString(),
+  };
+}
+
+function toBankReconciliationResponseDto(reconciliation: {
+  id: string;
+  organizationId: string;
+  currency: string;
+  statementDate: Date;
+  statementEndingBalance: { toString(): string };
+  status: BankReconciliationStatus;
+  completedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}): BankReconciliationResponseDto {
+  return {
+    id: reconciliation.id,
+    organizationId: reconciliation.organizationId,
+    currency: reconciliation.currency,
+    statementDate: reconciliation.statementDate.toISOString(),
+    statementEndingBalance: reconciliation.statementEndingBalance.toString(),
+    status: reconciliation.status,
+    completedAt: reconciliation.completedAt ? reconciliation.completedAt.toISOString() : null,
+    createdAt: reconciliation.createdAt.toISOString(),
+    updatedAt: reconciliation.updatedAt.toISOString(),
+  };
+}
+
+function toBankReconciliationLineResponseDto(
+  line: GlJournalLineForReconciliation,
+  reconciliationId: string,
+): BankReconciliationDetailResponseDto['lines'][number] {
+  return {
+    id: line.id,
+    entryDate: line.journalEntry.entryDate.toISOString(),
+    description: line.journalEntry.description,
+    debit: line.debit.toString(),
+    credit: line.credit.toString(),
+    cleared: line.reconciliationId === reconciliationId,
   };
 }
 
@@ -137,6 +183,7 @@ export class FinanceService {
     private readonly journalEntries: GlJournalEntryRepository,
     private readonly periodCloses: GlPeriodCloseRepository,
     private readonly budgets: GlBudgetRepository,
+    private readonly bankReconciliations: BankReconciliationRepository,
     private readonly audit: AuditService,
   ) {}
 
@@ -588,5 +635,181 @@ export class FinanceService {
       resourceId: id,
       metadata: { organizationId: budget.organizationId, accountCode: budget.account.code, fiscalYear: budget.fiscalYear },
     });
+  }
+
+  async createReconciliation(
+    tenantId: string,
+    dto: CreateBankReconciliationDto,
+    actor: RequestUser,
+  ): Promise<BankReconciliationResponseDto> {
+    let reconciliation;
+    try {
+      reconciliation = await this.bankReconciliations.create(tenantId, {
+        organizationId: dto.organizationId,
+        currency: dto.currency,
+        statementDate: new Date(dto.statementDate),
+        statementEndingBalance: dto.statementEndingBalance,
+        createdBy: actor.sub,
+      });
+    } catch (error) {
+      translateOrganizationReferenceError(error, dto.organizationId);
+    }
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actor.sub ?? null,
+      action: 'finance.bank_reconciliation.created',
+      resourceType: 'BankReconciliation',
+      resourceId: reconciliation.id,
+      metadata: { organizationId: dto.organizationId, currency: dto.currency, statementDate: dto.statementDate },
+    });
+
+    return toBankReconciliationResponseDto(reconciliation);
+  }
+
+  async listReconciliations(tenantId: string, organizationId?: string): Promise<BankReconciliationResponseDto[]> {
+    const reconciliations = await this.bankReconciliations.list(tenantId, organizationId);
+    return reconciliations.map(toBankReconciliationResponseDto);
+  }
+
+  /**
+   * The candidate lines are every Cash and Bank line up to the statement
+   * date that's unclaimed or already claimed by this reconciliation (see
+   * GlJournalEntryRepository.listCashLinesForReconciliation) - not just the
+   * ones currently cleared, so the person reconciling can see everything
+   * they still need to decide on, not just their progress so far.
+   */
+  async getReconciliationDetail(tenantId: string, id: string): Promise<BankReconciliationDetailResponseDto> {
+    const reconciliation = await this.findReconciliationOrThrow(tenantId, id);
+
+    const lines = await this.journalEntries.listCashLinesForReconciliation(tenantId, {
+      organizationId: reconciliation.organizationId,
+      currency: reconciliation.currency,
+      statementDate: reconciliation.statementDate,
+      reconciliationId: id,
+    });
+    const clearedLines = lines.filter((line) => line.reconciliationId === id);
+    const clearedBalance = computeClearedBalance(
+      clearedLines.map((line) => ({ debit: Number(line.debit), credit: Number(line.credit) })),
+    );
+    const statementEndingBalance = Number(reconciliation.statementEndingBalance);
+
+    return {
+      ...toBankReconciliationResponseDto(reconciliation),
+      lines: lines.map((line) => toBankReconciliationLineResponseDto(line, id)),
+      clearedBalance,
+      difference: computeReconciliationDifference(clearedBalance, statementEndingBalance),
+      isBalanced: isReconciliationBalanced(clearedBalance, statementEndingBalance),
+    };
+  }
+
+  /**
+   * Toggles one line between cleared (claimed by this reconciliation) and
+   * unclaimed - never lets a line already claimed by a *different*
+   * reconciliation be touched (see GlJournalEntryRepository.
+   * listCashLinesForReconciliation's own doc comment for why that can only
+   * be an earlier, already-completed one), and never allows any change once
+   * this reconciliation itself is COMPLETED.
+   */
+  async toggleLine(
+    tenantId: string,
+    reconciliationId: string,
+    lineId: string,
+    actor: RequestUser,
+  ): Promise<BankReconciliationDetailResponseDto['lines'][number]> {
+    const reconciliation = await this.findReconciliationOrThrow(tenantId, reconciliationId);
+    if (reconciliation.status === BankReconciliationStatus.COMPLETED) {
+      throw new BadRequestException('This reconciliation is already completed - it cannot be changed');
+    }
+
+    const line = await this.journalEntries.findLineById(tenantId, lineId);
+    if (!line) {
+      throw new NotFoundException(`Journal line "${lineId}" not found`);
+    }
+    if (line.account.code !== GlAccountCode.CASH_AND_BANK) {
+      throw new BadRequestException('Only Cash and Bank lines can be cleared in a reconciliation');
+    }
+    if (line.reconciliationId && line.reconciliationId !== reconciliationId) {
+      throw new ConflictException('This line is already cleared in a different reconciliation');
+    }
+
+    const nextReconciliationId = line.reconciliationId === reconciliationId ? null : reconciliationId;
+    const updated = await this.journalEntries.setLineReconciliation(tenantId, lineId, nextReconciliationId);
+
+    void actor;
+    return toBankReconciliationLineResponseDto(updated, reconciliationId);
+  }
+
+  /**
+   * Locks the reconciliation - only allowed once its cleared lines' net
+   * balance exactly matches the statement's own ending balance (see
+   * finance-domain's isReconciliationBalanced). One-way, same convention as
+   * GlPeriodClose: no reopening in v1.
+   */
+  async completeReconciliation(tenantId: string, id: string, actor: RequestUser): Promise<BankReconciliationResponseDto> {
+    const reconciliation = await this.findReconciliationOrThrow(tenantId, id);
+    if (reconciliation.status === BankReconciliationStatus.COMPLETED) {
+      throw new ConflictException('This reconciliation has already been completed');
+    }
+
+    const clearedLines = await this.journalEntries.listClearedLines(tenantId, id);
+    const clearedBalance = computeClearedBalance(
+      clearedLines.map((line) => ({ debit: Number(line.debit), credit: Number(line.credit) })),
+    );
+    const statementEndingBalance = Number(reconciliation.statementEndingBalance);
+    if (!isReconciliationBalanced(clearedBalance, statementEndingBalance)) {
+      throw new BadRequestException(
+        `Cannot complete - the cleared balance (${clearedBalance}) does not match the statement ending balance (${statementEndingBalance})`,
+      );
+    }
+
+    const completed = await this.bankReconciliations.updateStatus(tenantId, id, BankReconciliationStatus.COMPLETED, {
+      completedAt: new Date(),
+      updatedBy: actor.sub,
+    });
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actor.sub ?? null,
+      action: 'finance.bank_reconciliation.completed',
+      resourceType: 'BankReconciliation',
+      resourceId: id,
+      metadata: { clearedBalance, statementEndingBalance },
+    });
+
+    return toBankReconciliationResponseDto(completed);
+  }
+
+  /**
+   * Only an IN_PROGRESS reconciliation can be deleted - a COMPLETED one is
+   * a locked historical record, same as a closed period. Releases every
+   * line it had claimed back to unclaimed first, so they're eligible for a
+   * future reconciliation again.
+   */
+  async deleteReconciliation(tenantId: string, id: string, actor: RequestUser): Promise<void> {
+    const reconciliation = await this.findReconciliationOrThrow(tenantId, id);
+    if (reconciliation.status === BankReconciliationStatus.COMPLETED) {
+      throw new BadRequestException('A completed reconciliation cannot be deleted');
+    }
+
+    await this.journalEntries.releaseClearedLines(tenantId, id);
+    await this.bankReconciliations.delete(tenantId, id);
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actor.sub ?? null,
+      action: 'finance.bank_reconciliation.deleted',
+      resourceType: 'BankReconciliation',
+      resourceId: id,
+      metadata: { organizationId: reconciliation.organizationId, currency: reconciliation.currency },
+    });
+  }
+
+  private async findReconciliationOrThrow(tenantId: string, id: string) {
+    const reconciliation = await this.bankReconciliations.findById(tenantId, id);
+    if (!reconciliation) {
+      throw new NotFoundException(`Bank reconciliation "${id}" not found`);
+    }
+    return reconciliation;
   }
 }

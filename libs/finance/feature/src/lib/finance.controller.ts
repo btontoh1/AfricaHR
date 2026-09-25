@@ -20,6 +20,7 @@ import { CreateGlAccountDto } from './dto/create-gl-account.dto';
 import { UpdateGlAccountDto } from './dto/update-gl-account.dto';
 import { SetPeriodCloseDto } from './dto/set-period-close.dto';
 import { SetBudgetDto } from './dto/set-budget.dto';
+import { CreateBankReconciliationDto } from './dto/create-bank-reconciliation.dto';
 import { JournalEntryResponseDto } from './dto/journal-entry-response.dto';
 import { GlAccountResponseDto } from './dto/gl-account-response.dto';
 import { ProfitAndLossResponseDto } from './dto/profit-and-loss-response.dto';
@@ -29,6 +30,7 @@ import { TrialBalanceResponseDto } from './dto/trial-balance-response.dto';
 import { BudgetVsActualResponseDto } from './dto/budget-vs-actual-response.dto';
 import { PeriodCloseResponseDto } from './dto/period-close-response.dto';
 import { BudgetResponseDto } from './dto/budget-response.dto';
+import { BankReconciliationDetailResponseDto, BankReconciliationResponseDto } from './dto/bank-reconciliation-response.dto';
 
 // AddOnGuard runs after PermissionsGuard - order matters (NestJS runs
 // @UseGuards left to right), so a caller without the base role permission
@@ -357,5 +359,70 @@ export class FinanceController {
   ) {
     assertTenantScope(actor, tenantId);
     return this.finance.setPeriodClose(tenantId, dto, actor);
+  }
+
+  @Get('bank-reconciliations')
+  @RequirePermissions(Permission.FINANCE_READ)
+  @ApiOkResponse({ type: BankReconciliationResponseDto, isArray: true })
+  @ApiQuery({ name: 'organizationId', required: false })
+  listReconciliations(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() actor: RequestUser,
+    @Query('organizationId') organizationId?: string,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.listReconciliations(tenantId, organizationId);
+  }
+
+  @Post('bank-reconciliations')
+  @RequirePermissions(Permission.FINANCE_MANAGE)
+  @ApiOkResponse({ type: BankReconciliationResponseDto })
+  createReconciliation(
+    @Param('tenantId') tenantId: string,
+    @Body() dto: CreateBankReconciliationDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.createReconciliation(tenantId, dto, actor);
+  }
+
+  @Get('bank-reconciliations/:id')
+  @RequirePermissions(Permission.FINANCE_READ)
+  @ApiOkResponse({ type: BankReconciliationDetailResponseDto })
+  getReconciliationDetail(@Param('tenantId') tenantId: string, @Param('id') id: string, @CurrentUser() actor: RequestUser) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.getReconciliationDetail(tenantId, id);
+  }
+
+  @Post('bank-reconciliations/:id/lines/:lineId/toggle')
+  @RequirePermissions(Permission.FINANCE_MANAGE)
+  toggleReconciliationLine(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Param('lineId') lineId: string,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.toggleLine(tenantId, id, lineId, actor);
+  }
+
+  @Post('bank-reconciliations/:id/complete')
+  @RequirePermissions(Permission.FINANCE_MANAGE)
+  @ApiOkResponse({ type: BankReconciliationResponseDto })
+  completeReconciliation(@Param('tenantId') tenantId: string, @Param('id') id: string, @CurrentUser() actor: RequestUser) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.completeReconciliation(tenantId, id, actor);
+  }
+
+  @Delete('bank-reconciliations/:id')
+  @RequirePermissions(Permission.FINANCE_MANAGE)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteReconciliation(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: RequestUser,
+  ): Promise<void> {
+    assertTenantScope(actor, tenantId);
+    await this.finance.deleteReconciliation(tenantId, id, actor);
   }
 }

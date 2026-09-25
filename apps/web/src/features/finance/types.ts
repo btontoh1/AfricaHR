@@ -14,3 +14,7 @@ export type TrialBalanceReport = components['schemas']['TrialBalanceResponseDto'
 export type Budget = components['schemas']['BudgetResponseDto'];
 export type SetBudgetInput = components['schemas']['SetBudgetDto'];
 export type BudgetVsActualReport = components['schemas']['BudgetVsActualResponseDto'];
+export type BankReconciliation = components['schemas']['BankReconciliationResponseDto'];
+export type BankReconciliationDetail = components['schemas']['BankReconciliationDetailResponseDto'];
+export type BankReconciliationLine = components['schemas']['BankReconciliationLineResponseDto'];
+export type CreateBankReconciliationInput = components['schemas']['CreateBankReconciliationDto'];

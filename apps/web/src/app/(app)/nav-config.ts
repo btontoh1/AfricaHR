@@ -49,6 +49,7 @@ import {
   FileMinus2,
   PiggyBank,
   GitCompare,
+  ListChecks,
 } from 'lucide-react';
 import type { SessionUser } from '@/lib/session';
 
@@ -253,6 +254,9 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
           ? [{ label: 'Chart of Accounts', href: '/finance/accounts', icon: Layers }]
           : []),
         ...(hasFinanceAccess ? [{ label: 'Budgets', href: '/finance/budgets', icon: PiggyBank }] : []),
+        ...(hasFinanceAccess
+          ? [{ label: 'Bank Reconciliation', href: '/finance/bank-reconciliations', icon: ListChecks }]
+          : []),
       ],
     },
     {

@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import { RequestUser, SystemRole } from '@africahr/platform-auth';
 import {
+  BankReconciliationRepository,
   GlAccountRepository,
   GlBudgetRepository,
   GlJournalEntryRepository,
@@ -17,6 +18,7 @@ describe('FinanceService', () => {
   let journalEntries: jest.Mocked<GlJournalEntryRepository>;
   let periodCloses: jest.Mocked<GlPeriodCloseRepository>;
   let budgets: jest.Mocked<GlBudgetRepository>;
+  let bankReconciliations: jest.Mocked<BankReconciliationRepository>;
   let audit: jest.Mocked<AuditService>;
 
   const actor: RequestUser = {
@@ -56,6 +58,11 @@ describe('FinanceService', () => {
       listLinesInRange: jest.fn(),
       findById: jest.fn(),
       voidEntry: jest.fn(),
+      listCashLinesForReconciliation: jest.fn().mockResolvedValue([]),
+      findLineById: jest.fn(),
+      setLineReconciliation: jest.fn(),
+      listClearedLines: jest.fn().mockResolvedValue([]),
+      releaseClearedLines: jest.fn(),
     } as unknown as jest.Mocked<GlJournalEntryRepository>;
 
     periodCloses = {
@@ -70,9 +77,17 @@ describe('FinanceService', () => {
       delete: jest.fn(),
     } as unknown as jest.Mocked<GlBudgetRepository>;
 
+    bankReconciliations = {
+      create: jest.fn(),
+      findById: jest.fn(),
+      list: jest.fn(),
+      updateStatus: jest.fn(),
+      delete: jest.fn(),
+    } as unknown as jest.Mocked<BankReconciliationRepository>;
+
     audit = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
 
-    service = new FinanceService(accounts, journalEntries, periodCloses, budgets, audit);
+    service = new FinanceService(accounts, journalEntries, periodCloses, budgets, bankReconciliations, audit);
   });
 
   describe('postPayrollDisbursement', () => {
@@ -622,6 +637,294 @@ describe('FinanceService', () => {
       expect(budgets.delete).toHaveBeenCalledWith('tenant-1', 'budget-1');
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'finance.budget.deleted', resourceId: 'budget-1' }),
+      );
+    });
+  });
+
+  describe('createReconciliation', () => {
+    const dto = {
+      organizationId: 'org-1',
+      currency: 'GHS',
+      statementDate: '2026-03-31',
+      statementEndingBalance: 5000,
+    };
+
+    it('creates the reconciliation and audits on success', async () => {
+      bankReconciliations.create.mockResolvedValue({
+        id: 'rec-1',
+        organizationId: 'org-1',
+        currency: 'GHS',
+        statementDate: new Date('2026-03-31'),
+        statementEndingBalance: { toString: () => '5000' },
+        status: 'IN_PROGRESS',
+        completedAt: null,
+        createdAt: new Date('2026-04-01'),
+        updatedAt: new Date('2026-04-01'),
+      } as never);
+
+      const result = await service.createReconciliation('tenant-1', dto, actor);
+
+      expect(bankReconciliations.create).toHaveBeenCalledWith('tenant-1', {
+        organizationId: 'org-1',
+        currency: 'GHS',
+        statementDate: new Date('2026-03-31'),
+        statementEndingBalance: 5000,
+        createdBy: 'user-1',
+      });
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'finance.bank_reconciliation.created', resourceId: 'rec-1' }),
+      );
+      expect(result.id).toBe('rec-1');
+      expect(result.statementEndingBalance).toBe('5000');
+    });
+
+    it('translates a foreign-key violation on organizationId into a NotFoundException', async () => {
+      const fkError = Object.assign(Object.create(Prisma.PrismaClientKnownRequestError.prototype), {
+        code: 'P2003',
+        message: 'mock',
+      });
+      bankReconciliations.create.mockRejectedValue(fkError);
+
+      await expect(service.createReconciliation('tenant-1', { ...dto, organizationId: 'missing-org' }, actor)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('listReconciliations', () => {
+    it('lists reconciliations scoped to the tenant and organization', async () => {
+      bankReconciliations.list.mockResolvedValue([]);
+
+      await service.listReconciliations('tenant-1', 'org-1');
+
+      expect(bankReconciliations.list).toHaveBeenCalledWith('tenant-1', 'org-1');
+    });
+  });
+
+  describe('getReconciliationDetail', () => {
+    it('throws NotFoundException when the reconciliation does not exist', async () => {
+      bankReconciliations.findById.mockResolvedValue(null);
+
+      await expect(service.getReconciliationDetail('tenant-1', 'missing')).rejects.toThrow(NotFoundException);
+    });
+
+    it('computes the cleared balance, difference, and balanced flag from cleared lines only', async () => {
+      bankReconciliations.findById.mockResolvedValue({
+        id: 'rec-1',
+        organizationId: 'org-1',
+        currency: 'GHS',
+        statementDate: new Date('2026-03-31'),
+        statementEndingBalance: { toString: () => '500' },
+        status: 'IN_PROGRESS',
+        completedAt: null,
+        createdAt: new Date('2026-04-01'),
+        updatedAt: new Date('2026-04-01'),
+      } as never);
+      journalEntries.listCashLinesForReconciliation.mockResolvedValue([
+        {
+          id: 'line-1',
+          reconciliationId: 'rec-1',
+          debit: new Prisma.Decimal(500),
+          credit: new Prisma.Decimal(0),
+          journalEntry: { entryDate: new Date('2026-03-15'), description: 'Customer payment' },
+        },
+        {
+          id: 'line-2',
+          reconciliationId: null,
+          debit: new Prisma.Decimal(0),
+          credit: new Prisma.Decimal(200),
+          journalEntry: { entryDate: new Date('2026-03-20'), description: 'Bank fee' },
+        },
+      ] as never);
+
+      const result = await service.getReconciliationDetail('tenant-1', 'rec-1');
+
+      expect(result.lines).toHaveLength(2);
+      expect(result.lines[0].cleared).toBe(true);
+      expect(result.lines[1].cleared).toBe(false);
+      expect(result.clearedBalance).toBe(500);
+      expect(result.difference).toBe(0);
+      expect(result.isBalanced).toBe(true);
+    });
+  });
+
+  describe('toggleLine', () => {
+    function makeReconciliation(overrides: Record<string, unknown> = {}) {
+      return {
+        id: 'rec-1',
+        organizationId: 'org-1',
+        currency: 'GHS',
+        statementDate: new Date('2026-03-31'),
+        statementEndingBalance: { toString: () => '500' },
+        status: 'IN_PROGRESS',
+        completedAt: null,
+        createdAt: new Date('2026-04-01'),
+        updatedAt: new Date('2026-04-01'),
+        ...overrides,
+      };
+    }
+
+    function makeLine(overrides: Record<string, unknown> = {}) {
+      return {
+        id: 'line-1',
+        reconciliationId: null,
+        debit: new Prisma.Decimal(500),
+        credit: new Prisma.Decimal(0),
+        account: { code: GlAccountCode.CASH_AND_BANK },
+        journalEntry: { entryDate: new Date('2026-03-15'), description: 'Customer payment' },
+        ...overrides,
+      };
+    }
+
+    it('throws NotFoundException when the reconciliation does not exist', async () => {
+      bankReconciliations.findById.mockResolvedValue(null);
+
+      await expect(service.toggleLine('tenant-1', 'missing', 'line-1', actor)).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects toggling a line on an already-completed reconciliation', async () => {
+      bankReconciliations.findById.mockResolvedValue(makeReconciliation({ status: 'COMPLETED' }) as never);
+
+      await expect(service.toggleLine('tenant-1', 'rec-1', 'line-1', actor)).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws NotFoundException when the line does not exist', async () => {
+      bankReconciliations.findById.mockResolvedValue(makeReconciliation() as never);
+      journalEntries.findLineById.mockResolvedValue(null);
+
+      await expect(service.toggleLine('tenant-1', 'rec-1', 'missing-line', actor)).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects a non Cash and Bank line', async () => {
+      bankReconciliations.findById.mockResolvedValue(makeReconciliation() as never);
+      journalEntries.findLineById.mockResolvedValue(
+        makeLine({ account: { code: GlAccountCode.PAYROLL_EXPENSE } }) as never,
+      );
+
+      await expect(service.toggleLine('tenant-1', 'rec-1', 'line-1', actor)).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects a line already cleared in a different reconciliation', async () => {
+      bankReconciliations.findById.mockResolvedValue(makeReconciliation() as never);
+      journalEntries.findLineById.mockResolvedValue(makeLine({ reconciliationId: 'other-rec' }) as never);
+
+      await expect(service.toggleLine('tenant-1', 'rec-1', 'line-1', actor)).rejects.toThrow(ConflictException);
+    });
+
+    it('clears an unclaimed line', async () => {
+      bankReconciliations.findById.mockResolvedValue(makeReconciliation() as never);
+      journalEntries.findLineById.mockResolvedValue(makeLine() as never);
+      journalEntries.setLineReconciliation.mockResolvedValue(makeLine({ reconciliationId: 'rec-1' }) as never);
+
+      const result = await service.toggleLine('tenant-1', 'rec-1', 'line-1', actor);
+
+      expect(journalEntries.setLineReconciliation).toHaveBeenCalledWith('tenant-1', 'line-1', 'rec-1');
+      expect(result.cleared).toBe(true);
+    });
+
+    it('unclears a line already cleared by this reconciliation', async () => {
+      bankReconciliations.findById.mockResolvedValue(makeReconciliation() as never);
+      journalEntries.findLineById.mockResolvedValue(makeLine({ reconciliationId: 'rec-1' }) as never);
+      journalEntries.setLineReconciliation.mockResolvedValue(makeLine({ reconciliationId: null }) as never);
+
+      const result = await service.toggleLine('tenant-1', 'rec-1', 'line-1', actor);
+
+      expect(journalEntries.setLineReconciliation).toHaveBeenCalledWith('tenant-1', 'line-1', null);
+      expect(result.cleared).toBe(false);
+    });
+  });
+
+  describe('completeReconciliation', () => {
+    function makeReconciliation(overrides: Record<string, unknown> = {}) {
+      return {
+        id: 'rec-1',
+        organizationId: 'org-1',
+        currency: 'GHS',
+        statementDate: new Date('2026-03-31'),
+        statementEndingBalance: { toString: () => '500' },
+        status: 'IN_PROGRESS',
+        completedAt: null,
+        createdAt: new Date('2026-04-01'),
+        updatedAt: new Date('2026-04-01'),
+        ...overrides,
+      };
+    }
+
+    it('throws NotFoundException when the reconciliation does not exist', async () => {
+      bankReconciliations.findById.mockResolvedValue(null);
+
+      await expect(service.completeReconciliation('tenant-1', 'missing', actor)).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects completing an already-completed reconciliation', async () => {
+      bankReconciliations.findById.mockResolvedValue(makeReconciliation({ status: 'COMPLETED' }) as never);
+
+      await expect(service.completeReconciliation('tenant-1', 'rec-1', actor)).rejects.toThrow(ConflictException);
+    });
+
+    it('rejects completing when the cleared balance does not match the statement', async () => {
+      bankReconciliations.findById.mockResolvedValue(makeReconciliation() as never);
+      journalEntries.listClearedLines.mockResolvedValue([
+        { debit: new Prisma.Decimal(400), credit: new Prisma.Decimal(0) },
+      ] as never);
+
+      await expect(service.completeReconciliation('tenant-1', 'rec-1', actor)).rejects.toThrow(BadRequestException);
+      expect(bankReconciliations.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('completes and audits when the cleared balance matches the statement', async () => {
+      bankReconciliations.findById.mockResolvedValue(makeReconciliation() as never);
+      journalEntries.listClearedLines.mockResolvedValue([
+        { debit: new Prisma.Decimal(500), credit: new Prisma.Decimal(0) },
+      ] as never);
+      bankReconciliations.updateStatus.mockResolvedValue(makeReconciliation({ status: 'COMPLETED' }) as never);
+
+      const result = await service.completeReconciliation('tenant-1', 'rec-1', actor);
+
+      expect(bankReconciliations.updateStatus).toHaveBeenCalledWith('tenant-1', 'rec-1', 'COMPLETED', {
+        completedAt: expect.any(Date),
+        updatedBy: 'user-1',
+      });
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'finance.bank_reconciliation.completed', resourceId: 'rec-1' }),
+      );
+      expect(result.status).toBe('COMPLETED');
+    });
+  });
+
+  describe('deleteReconciliation', () => {
+    it('throws NotFoundException when the reconciliation does not exist', async () => {
+      bankReconciliations.findById.mockResolvedValue(null);
+
+      await expect(service.deleteReconciliation('tenant-1', 'missing', actor)).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects deleting a completed reconciliation', async () => {
+      bankReconciliations.findById.mockResolvedValue({
+        id: 'rec-1',
+        organizationId: 'org-1',
+        currency: 'GHS',
+        status: 'COMPLETED',
+      } as never);
+
+      await expect(service.deleteReconciliation('tenant-1', 'rec-1', actor)).rejects.toThrow(BadRequestException);
+      expect(journalEntries.releaseClearedLines).not.toHaveBeenCalled();
+    });
+
+    it('releases cleared lines, deletes, and audits on success', async () => {
+      bankReconciliations.findById.mockResolvedValue({
+        id: 'rec-1',
+        organizationId: 'org-1',
+        currency: 'GHS',
+        status: 'IN_PROGRESS',
+      } as never);
+
+      await service.deleteReconciliation('tenant-1', 'rec-1', actor);
+
+      expect(journalEntries.releaseClearedLines).toHaveBeenCalledWith('tenant-1', 'rec-1');
+      expect(bankReconciliations.delete).toHaveBeenCalledWith('tenant-1', 'rec-1');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'finance.bank_reconciliation.deleted', resourceId: 'rec-1' }),
       );
     });
   });

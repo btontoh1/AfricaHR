@@ -269,6 +269,7 @@ model Organization {
   glJournalEntries      GlJournalEntry[]
   glPeriodClose         GlPeriodClose?
   glBudgets             GlBudget[]
+  bankReconciliations   BankReconciliation[]
 
   @@index([tenantId])
   @@map("organizations")
@@ -1878,6 +1879,46 @@ model GlBudget {
   @@map("gl_budgets")
 }
 
+enum BankReconciliationStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+/// Confirms the GL's Cash and Bank account balance against a real bank
+/// statement for one organization/currency/statement date. Deliberately
+/// minimal: no imported statement line matching, no per-transaction bank
+/// reference numbers - just the statement's ending balance, and a
+/// yes/no "cleared" toggle (see GlJournalLine.reconciliationId) on every
+/// Cash and Bank journal line up to that date. It's balanced when the sum
+/// of cleared lines equals statementEndingBalance (see finance-domain's
+/// computeClearedBalance/isReconciliationBalanced) - completing one is
+/// only allowed once that holds (see FinanceService.completeReconciliation).
+/// COMPLETED is a one-way lock, same convention as GlPeriodClose - no
+/// reopening in v1; an IN_PROGRESS one can still be deleted to start over,
+/// which frees its lines' reconciliationId back to null.
+model BankReconciliation {
+  id                     String                    @id @default(uuid())
+  tenantId               String                    @map("tenant_id")
+  organizationId         String                    @map("organization_id")
+  currency               String
+  statementDate          DateTime                  @map("statement_date")
+  statementEndingBalance Decimal                   @map("statement_ending_balance")
+  status                 BankReconciliationStatus  @default(IN_PROGRESS)
+  completedAt            DateTime?                 @map("completed_at")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  clearedLines GlJournalLine[]
+
+  @@index([tenantId])
+  @@index([organizationId])
+  @@map("bank_reconciliations")
+}
+
 /// PAY_RUN_DISBURSED/CUSTOMER_INVOICE_SENT/CUSTOMER_INVOICE_PAID are each
 /// posted automatically, exactly once per source event - see the
 /// (sourceType, sourceId) unique constraint below, which is this table's
@@ -1960,14 +2001,25 @@ model GlJournalLine {
   debit          Decimal @default(0)
   credit         Decimal @default(0)
 
+  /// Set once this line has been marked "cleared" against a bank statement
+  /// in the given reconciliation - see BankReconciliation's own doc comment.
+  /// Only meaningful for Cash and Bank lines (nothing enforces that at the
+  /// database level; BankReconciliationService is what only ever offers
+  /// Cash and Bank lines as candidates). A line clears at most once, ever -
+  /// ReconciliationService never lets a line already claimed by a different
+  /// (especially a COMPLETED) reconciliation be re-toggled.
+  reconciliationId String? @map("reconciliation_id")
+
   createdAt DateTime @default(now()) @map("created_at")
 
-  journalEntry GlJournalEntry @relation(fields: [journalEntryId], references: [id])
-  account      GlAccount      @relation(fields: [accountId], references: [id])
+  journalEntry  GlJournalEntry      @relation(fields: [journalEntryId], references: [id])
+  account       GlAccount           @relation(fields: [accountId], references: [id])
+  reconciliation BankReconciliation? @relation(fields: [reconciliationId], references: [id])
 
   @@index([tenantId])
   @@index([journalEntryId])
   @@index([accountId])
+  @@index([reconciliationId])
   @@map("gl_journal_lines")
 }
 

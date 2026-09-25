@@ -10,3 +10,5 @@ export * from './lib/dto/cash-flow-response.dto';
 export * from './lib/dto/set-budget.dto';
 export * from './lib/dto/budget-response.dto';
 export * from './lib/dto/budget-vs-actual-response.dto';
+export * from './lib/dto/create-bank-reconciliation.dto';
+export * from './lib/dto/bank-reconciliation-response.dto';

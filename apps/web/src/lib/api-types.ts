@@ -3194,6 +3194,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/finance/bank-reconciliations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_listReconciliations"];
+        put?: never;
+        post: operations["FinanceController_createReconciliation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/bank-reconciliations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_getReconciliationDetail"];
+        put?: never;
+        post?: never;
+        delete: operations["FinanceController_deleteReconciliation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/bank-reconciliations/{id}/lines/{lineId}/toggle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["FinanceController_toggleReconciliationLine"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/bank-reconciliations/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["FinanceController_completeReconciliation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/vendors": {
         parameters: {
             query?: never;
@@ -5174,6 +5238,55 @@ export interface components {
             organizationId: string;
             /** @description Manual journal entries dated on or before this date can no longer be posted or voided */
             closedThrough: string;
+        };
+        BankReconciliationResponseDto: {
+            id: string;
+            organizationId: string;
+            currency: string;
+            statementDate: string;
+            statementEndingBalance: string;
+            /** @enum {string} */
+            status: "IN_PROGRESS" | "COMPLETED";
+            completedAt?: string;
+            createdAt: string;
+            updatedAt: string;
+        };
+        CreateBankReconciliationDto: {
+            organizationId: string;
+            /** @example GHS */
+            currency: string;
+            /** @description The bank statement date - every Cash and Bank line on or before this date is eligible to clear */
+            statementDate: string;
+            /** @description The bank statement's own ending balance - what the reconciliation's cleared lines must sum to before it can be completed */
+            statementEndingBalance: number;
+        };
+        BankReconciliationLineResponseDto: {
+            id: string;
+            entryDate: string;
+            description: string;
+            debit: string;
+            credit: string;
+            /** @description Whether this line is cleared in this reconciliation */
+            cleared: boolean;
+        };
+        BankReconciliationDetailResponseDto: {
+            id: string;
+            organizationId: string;
+            currency: string;
+            statementDate: string;
+            statementEndingBalance: string;
+            /** @enum {string} */
+            status: "IN_PROGRESS" | "COMPLETED";
+            completedAt?: string;
+            createdAt: string;
+            updatedAt: string;
+            /** @description Every Cash and Bank line on or before the statement date that is unclaimed or claimed by this reconciliation */
+            lines: components["schemas"]["BankReconciliationLineResponseDto"][];
+            /** @description Net balance of every line currently marked cleared */
+            clearedBalance: number;
+            /** @description clearedBalance - statementEndingBalance - zero when balanced */
+            difference: number;
+            isBalanced: boolean;
         };
         CreateVendorDto: {
             organizationId: string;
@@ -11351,6 +11464,139 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PeriodCloseResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_listReconciliations: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BankReconciliationResponseDto"][];
+                };
+            };
+        };
+    };
+    FinanceController_createReconciliation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBankReconciliationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BankReconciliationResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_getReconciliationDetail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BankReconciliationDetailResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_deleteReconciliation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    FinanceController_toggleReconciliationLine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    FinanceController_completeReconciliation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BankReconciliationResponseDto"];
                 };
             };
         };

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { GlJournalEntrySourceType, Prisma } from '@prisma/client';
 import { PrismaService } from '@africahr/platform-database';
+import { GlAccountCode } from '@africahr/finance-domain';
 
 export type GlJournalEntryWithLines = Prisma.GlJournalEntryGetPayload<{
   include: { lines: { include: { account: true } } };
@@ -8,6 +9,10 @@ export type GlJournalEntryWithLines = Prisma.GlJournalEntryGetPayload<{
 
 export type GlJournalLineWithAccount = Prisma.GlJournalLineGetPayload<{
   include: { account: true; journalEntry: { select: { currency: true } } };
+}>;
+
+export type GlJournalLineForReconciliation = Prisma.GlJournalLineGetPayload<{
+  include: { account: true; journalEntry: { select: { currency: true; organizationId: true; entryDate: true; description: true } } };
 }>;
 
 export interface CreateJournalEntryLineInput {
@@ -191,6 +196,97 @@ export class GlJournalEntryRepository {
         },
         include: { account: true, journalEntry: { select: { currency: true } } },
       }),
+    );
+  }
+
+  /**
+   * Cash and Bank lines eligible for a reconciliation - dated on or before
+   * the statement date, in this organization/currency, and either not yet
+   * claimed by any reconciliation or already claimed by this one (so an
+   * in-progress reconciliation's own previously-cleared lines still show up
+   * when its detail page is reopened). A line claimed by a *different*
+   * reconciliation (necessarily an earlier, already-completed one - see
+   * BankReconciliationService) never appears here again.
+   */
+  listCashLinesForReconciliation(
+    tenantId: string,
+    query: { organizationId: string; currency: string; statementDate: Date; reconciliationId: string },
+  ): Promise<GlJournalLineForReconciliation[]> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.glJournalLine.findMany({
+        where: {
+          tenantId,
+          account: { code: GlAccountCode.CASH_AND_BANK },
+          journalEntry: {
+            organizationId: query.organizationId,
+            currency: query.currency,
+            entryDate: { lte: query.statementDate },
+          },
+          OR: [{ reconciliationId: null }, { reconciliationId: query.reconciliationId }],
+        },
+        include: {
+          account: true,
+          journalEntry: { select: { currency: true, organizationId: true, entryDate: true, description: true } },
+        },
+        orderBy: { journalEntry: { entryDate: 'asc' } },
+      }),
+    );
+  }
+
+  findLineById(tenantId: string, lineId: string): Promise<GlJournalLineForReconciliation | null> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.glJournalLine.findFirst({
+        where: { id: lineId, tenantId },
+        include: {
+          account: true,
+          journalEntry: { select: { currency: true, organizationId: true, entryDate: true, description: true } },
+        },
+      }),
+    );
+  }
+
+  /** Claims (reconciliationId set) or releases (reconciliationId null) one
+   * line - BankReconciliationService is what enforces a line can only ever
+   * be claimed by one reconciliation at a time. */
+  setLineReconciliation(
+    tenantId: string,
+    lineId: string,
+    reconciliationId: string | null,
+  ): Promise<GlJournalLineForReconciliation> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.glJournalLine.update({
+        where: { id: lineId },
+        data: { reconciliationId },
+        include: {
+          account: true,
+          journalEntry: { select: { currency: true, organizationId: true, entryDate: true, description: true } },
+        },
+      }),
+    );
+  }
+
+  /** Every cleared line for one reconciliation - used to compute the
+   * cleared balance (see finance-domain's computeClearedBalance) and to
+   * release them all back to null when an in-progress reconciliation is
+   * deleted. */
+  listClearedLines(tenantId: string, reconciliationId: string): Promise<GlJournalLineForReconciliation[]> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.glJournalLine.findMany({
+        where: { tenantId, reconciliationId },
+        include: {
+          account: true,
+          journalEntry: { select: { currency: true, organizationId: true, entryDate: true, description: true } },
+        },
+      }),
+    );
+  }
+
+  /** Releases every line a reconciliation had claimed back to unclaimed -
+   * called when an IN_PROGRESS reconciliation is deleted, so its lines
+   * become eligible for a future reconciliation again. */
+  releaseClearedLines(tenantId: string, reconciliationId: string): Promise<Prisma.BatchPayload> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.glJournalLine.updateMany({ where: { tenantId, reconciliationId }, data: { reconciliationId: null } }),
     );
   }
 }

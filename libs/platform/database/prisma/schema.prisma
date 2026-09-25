@@ -268,6 +268,7 @@ model Organization {
   vendorBills           VendorBill[]
   glJournalEntries      GlJournalEntry[]
   glPeriodClose         GlPeriodClose?
+  glBudgets             GlBudget[]
 
   @@index([tenantId])
   @@map("organizations")
@@ -1837,10 +1838,44 @@ model GlAccount {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   journalLines GlJournalLine[]
+  budgets      GlBudget[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
   @@map("gl_accounts")
+}
+
+/// A budgeted amount for one account, one organization, one fiscal year
+/// (calendar year - Jan 1 through Dec 31, no custom fiscal-year-start
+/// support in v1), one currency - same per-currency segmentation as every
+/// finance report (see finance-domain's computeBudgetVsActual), since an
+/// organization posting in more than one currency can't budget them as one
+/// blended figure any more than it can report them that way. Unique per
+/// (organization, account, fiscalYear, currency) - setting a budget again
+/// for the same combination overwrites the amount (see FinanceService.
+/// setBudget's upsert), it doesn't create a second row.
+model GlBudget {
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  organizationId String   @map("organization_id")
+  accountId      String   @map("account_id")
+  fiscalYear     Int      @map("fiscal_year")
+  currency       String
+  amount         Decimal
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  account      GlAccount    @relation(fields: [accountId], references: [id])
+
+  @@unique([tenantId, organizationId, accountId, fiscalYear, currency])
+  @@index([tenantId])
+  @@index([organizationId])
+  @@index([accountId])
+  @@map("gl_budgets")
 }
 
 /// PAY_RUN_DISBURSED/CUSTOMER_INVOICE_SENT/CUSTOMER_INVOICE_PAID are each

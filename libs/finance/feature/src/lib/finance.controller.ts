@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { AddOnModule } from '@prisma/client';
@@ -19,13 +19,16 @@ import { CreateManualJournalEntryDto } from './dto/create-manual-journal-entry.d
 import { CreateGlAccountDto } from './dto/create-gl-account.dto';
 import { UpdateGlAccountDto } from './dto/update-gl-account.dto';
 import { SetPeriodCloseDto } from './dto/set-period-close.dto';
+import { SetBudgetDto } from './dto/set-budget.dto';
 import { JournalEntryResponseDto } from './dto/journal-entry-response.dto';
 import { GlAccountResponseDto } from './dto/gl-account-response.dto';
 import { ProfitAndLossResponseDto } from './dto/profit-and-loss-response.dto';
 import { CashFlowResponseDto } from './dto/cash-flow-response.dto';
 import { BalanceSheetResponseDto } from './dto/balance-sheet-response.dto';
 import { TrialBalanceResponseDto } from './dto/trial-balance-response.dto';
+import { BudgetVsActualResponseDto } from './dto/budget-vs-actual-response.dto';
 import { PeriodCloseResponseDto } from './dto/period-close-response.dto';
+import { BudgetResponseDto } from './dto/budget-response.dto';
 
 // AddOnGuard runs after PermissionsGuard - order matters (NestJS runs
 // @UseGuards left to right), so a caller without the base role permission
@@ -279,6 +282,56 @@ export class FinanceController {
       'Content-Length': pdfBuffer.length,
     });
     res.send(pdfBuffer);
+  }
+
+  @Get('reports/budget-vs-actual')
+  @RequirePermissions(Permission.FINANCE_READ)
+  @ApiOkResponse({ type: BudgetVsActualResponseDto })
+  @ApiQuery({ name: 'organizationId', required: false })
+  @ApiQuery({ name: 'fiscalYear', required: true })
+  budgetVsActual(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() actor: RequestUser,
+    @Query('fiscalYear') fiscalYear: string,
+    @Query('organizationId') organizationId?: string,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.reports.budgetVsActual(tenantId, { organizationId, fiscalYear: Number(fiscalYear) });
+  }
+
+  @Get('budgets')
+  @RequirePermissions(Permission.FINANCE_READ)
+  @ApiOkResponse({ type: BudgetResponseDto, isArray: true })
+  @ApiQuery({ name: 'organizationId', required: false })
+  @ApiQuery({ name: 'fiscalYear', required: false })
+  listBudgets(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() actor: RequestUser,
+    @Query('organizationId') organizationId?: string,
+    @Query('fiscalYear') fiscalYear?: string,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.listBudgets(tenantId, organizationId, fiscalYear ? Number(fiscalYear) : undefined);
+  }
+
+  @Post('budgets')
+  @RequirePermissions(Permission.FINANCE_MANAGE)
+  @ApiOkResponse({ type: BudgetResponseDto })
+  setBudget(@Param('tenantId') tenantId: string, @Body() dto: SetBudgetDto, @CurrentUser() actor: RequestUser) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.setBudget(tenantId, dto, actor);
+  }
+
+  @Delete('budgets/:id')
+  @RequirePermissions(Permission.FINANCE_MANAGE)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteBudget(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: RequestUser,
+  ): Promise<void> {
+    assertTenantScope(actor, tenantId);
+    await this.finance.deleteBudget(tenantId, id, actor);
   }
 
   @Get('period-close')

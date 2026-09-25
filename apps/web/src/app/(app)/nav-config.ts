@@ -47,6 +47,8 @@ import {
   PlayCircle,
   Truck,
   FileMinus2,
+  PiggyBank,
+  GitCompare,
 } from 'lucide-react';
 import type { SessionUser } from '@/lib/session';
 
@@ -250,6 +252,7 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
         ...(hasFinanceAccess
           ? [{ label: 'Chart of Accounts', href: '/finance/accounts', icon: Layers }]
           : []),
+        ...(hasFinanceAccess ? [{ label: 'Budgets', href: '/finance/budgets', icon: PiggyBank }] : []),
       ],
     },
     {
@@ -344,6 +347,9 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
           : []),
         ...(hasFinanceAccess
           ? [{ label: 'Trial Balance', href: '/reports/trial-balance', icon: Rows3 }]
+          : []),
+        ...(hasFinanceAccess
+          ? [{ label: 'Budget vs Actual', href: '/reports/budget-vs-actual', icon: GitCompare }]
           : []),
       ],
     },

@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import {
   FinanceOrganizationRepository,
   GlAccountRepository,
+  GlBudgetRepository,
   GlJournalEntryRepository,
 } from '@africahr/finance-data-access';
 import { GlAccountCode } from '@africahr/finance-domain';
@@ -13,6 +14,7 @@ describe('FinanceReportsService', () => {
   let service: FinanceReportsService;
   let accounts: jest.Mocked<GlAccountRepository>;
   let journalEntries: jest.Mocked<GlJournalEntryRepository>;
+  let budgets: jest.Mocked<GlBudgetRepository>;
   let organizations: jest.Mocked<FinanceOrganizationRepository>;
   let pdf: jest.Mocked<FinanceReportPdfService>;
 
@@ -24,6 +26,9 @@ describe('FinanceReportsService', () => {
       listLinesInRange: jest.fn(),
       listLinesUpTo: jest.fn(),
     } as unknown as jest.Mocked<GlJournalEntryRepository>;
+    budgets = {
+      list: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<GlBudgetRepository>;
     organizations = {
       findById: jest.fn().mockResolvedValue({ id: 'org-1', legalName: 'Acme Ghana Ltd', address: null }),
     } as unknown as jest.Mocked<FinanceOrganizationRepository>;
@@ -33,7 +38,7 @@ describe('FinanceReportsService', () => {
       renderBalanceSheet: jest.fn().mockResolvedValue(Buffer.from('pdf')),
       renderTrialBalance: jest.fn().mockResolvedValue(Buffer.from('pdf')),
     } as unknown as jest.Mocked<FinanceReportPdfService>;
-    service = new FinanceReportsService(accounts, journalEntries, organizations, pdf);
+    service = new FinanceReportsService(accounts, journalEntries, budgets, organizations, pdf);
   });
 
   describe('profitAndLoss', () => {
@@ -200,6 +205,60 @@ describe('FinanceReportsService', () => {
             ],
             totalDebit: 3000,
             totalCredit: 3000,
+          },
+        ],
+      });
+    });
+  });
+
+  describe('budgetVsActual', () => {
+    it('compares each budgeted account to its actual activity for the full calendar year', async () => {
+      budgets.list.mockResolvedValue([
+        {
+          accountId: 'acc-1',
+          account: { code: GlAccountCode.GENERAL_EXPENSE, name: 'General Expense', type: 'EXPENSE' },
+          currency: 'GHS',
+          amount: new Prisma.Decimal(1000),
+        },
+      ] as never);
+      journalEntries.listLinesInRange.mockResolvedValue([
+        {
+          accountId: 'acc-1',
+          debit: new Prisma.Decimal(800),
+          credit: new Prisma.Decimal(0),
+          account: { type: 'EXPENSE' },
+          journalEntry: { currency: 'GHS' },
+        },
+      ] as never);
+
+      const report = await service.budgetVsActual('tenant-1', { organizationId: 'org-1', fiscalYear: 2026 });
+
+      expect(accounts.ensureDefaultAccounts).toHaveBeenCalledWith('tenant-1');
+      expect(budgets.list).toHaveBeenCalledWith('tenant-1', { organizationId: 'org-1', fiscalYear: 2026 });
+      expect(journalEntries.listLinesInRange).toHaveBeenCalledWith('tenant-1', {
+        organizationId: 'org-1',
+        from: new Date(Date.UTC(2026, 0, 1)),
+        to: new Date(Date.UTC(2026, 11, 31, 23, 59, 59, 999)),
+      });
+      expect(report).toEqual({
+        organizationId: 'org-1',
+        fiscalYear: 2026,
+        byCurrency: [
+          {
+            currency: 'GHS',
+            rows: [
+              {
+                accountCode: GlAccountCode.GENERAL_EXPENSE,
+                accountName: 'General Expense',
+                budgetAmount: 1000,
+                actualAmount: 800,
+                varianceAmount: -200,
+                variancePercent: -20,
+              },
+            ],
+            totalBudget: 1000,
+            totalActual: 800,
+            totalVariance: -200,
           },
         ],
       });

@@ -5,6 +5,7 @@ import { AuditService } from '@africahr/platform-audit';
 import { RequestUser } from '@africahr/platform-auth';
 import {
   GlAccountRepository,
+  GlBudgetRepository,
   GlJournalEntryRepository,
   GlJournalEntryWithLines,
   GlPeriodCloseRepository,
@@ -26,8 +27,10 @@ import { CreateManualJournalEntryDto } from './dto/create-manual-journal-entry.d
 import { CreateGlAccountDto } from './dto/create-gl-account.dto';
 import { UpdateGlAccountDto } from './dto/update-gl-account.dto';
 import { SetPeriodCloseDto } from './dto/set-period-close.dto';
+import { SetBudgetDto } from './dto/set-budget.dto';
 import { JournalEntryResponseDto } from './dto/journal-entry-response.dto';
 import { GlAccountResponseDto } from './dto/gl-account-response.dto';
+import { BudgetResponseDto } from './dto/budget-response.dto';
 import { PeriodCloseResponseDto } from './dto/period-close-response.dto';
 
 function translateOrganizationReferenceError(error: unknown, organizationId: string): never {
@@ -53,6 +56,31 @@ function toPeriodCloseResponseDto(
     closedThrough: close.closedThrough.toISOString(),
     closedAt: close.closedAt.toISOString(),
     closedBy: close.closedBy,
+  };
+}
+
+function toBudgetResponseDto(budget: {
+  id: string;
+  organizationId: string;
+  accountId: string;
+  account: { code: string; name: string };
+  fiscalYear: number;
+  currency: string;
+  amount: { toString(): string };
+  createdAt: Date;
+  updatedAt: Date;
+}): BudgetResponseDto {
+  return {
+    id: budget.id,
+    organizationId: budget.organizationId,
+    accountId: budget.accountId,
+    accountCode: budget.account.code,
+    accountName: budget.account.name,
+    fiscalYear: budget.fiscalYear,
+    currency: budget.currency,
+    amount: budget.amount.toString(),
+    createdAt: budget.createdAt.toISOString(),
+    updatedAt: budget.updatedAt.toISOString(),
   };
 }
 
@@ -108,6 +136,7 @@ export class FinanceService {
     private readonly accounts: GlAccountRepository,
     private readonly journalEntries: GlJournalEntryRepository,
     private readonly periodCloses: GlPeriodCloseRepository,
+    private readonly budgets: GlBudgetRepository,
     private readonly audit: AuditService,
   ) {}
 
@@ -488,5 +517,76 @@ export class FinanceService {
     });
 
     return toPeriodCloseResponseDto(dto.organizationId, close);
+  }
+
+  /**
+   * Sets or overwrites the budgeted amount for one account/organization/
+   * fiscalYear/currency - see GlBudgetRepository.upsert's own doc comment
+   * for why this is an overwrite, not a new row, when called again for the
+   * same combination.
+   */
+  async setBudget(tenantId: string, dto: SetBudgetDto, actor: RequestUser): Promise<BudgetResponseDto> {
+    const account = await this.accounts.findById(tenantId, dto.accountId);
+    if (!account) {
+      throw new NotFoundException(`Account "${dto.accountId}" not found`);
+    }
+
+    let budget;
+    try {
+      budget = await this.budgets.upsert(tenantId, {
+        organizationId: dto.organizationId,
+        accountId: dto.accountId,
+        fiscalYear: dto.fiscalYear,
+        currency: dto.currency,
+        amount: dto.amount,
+        updatedBy: actor.sub,
+      });
+    } catch (error) {
+      translateOrganizationReferenceError(error, dto.organizationId);
+    }
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actor.sub ?? null,
+      action: 'finance.budget.set',
+      resourceType: 'GlBudget',
+      resourceId: budget.id,
+      metadata: {
+        organizationId: dto.organizationId,
+        accountCode: account.code,
+        fiscalYear: dto.fiscalYear,
+        currency: dto.currency,
+        amount: dto.amount,
+      },
+    });
+
+    return toBudgetResponseDto(budget);
+  }
+
+  async listBudgets(
+    tenantId: string,
+    organizationId: string | undefined,
+    fiscalYear: number | undefined,
+  ): Promise<BudgetResponseDto[]> {
+    const budgets = await this.budgets.list(tenantId, { organizationId, fiscalYear });
+    return budgets.map(toBudgetResponseDto);
+  }
+
+  async deleteBudget(tenantId: string, id: string, actor: RequestUser): Promise<void> {
+    const budget = await this.budgets.findById(tenantId, id);
+    if (!budget) {
+      throw new NotFoundException(`Budget "${id}" not found`);
+    }
+
+    await this.budgets.delete(tenantId, id);
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actor.sub ?? null,
+      action: 'finance.budget.deleted',
+      resourceType: 'GlBudget',
+      resourceId: id,
+      metadata: { organizationId: budget.organizationId, accountCode: budget.account.code, fiscalYear: budget.fiscalYear },
+    });
   }
 }

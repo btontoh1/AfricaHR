@@ -2,10 +2,12 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import {
   FinanceOrganizationRepository,
   GlAccountRepository,
+  GlBudgetRepository,
   GlJournalEntryRepository,
 } from '@africahr/finance-data-access';
 import {
   computeBalanceSheet,
+  computeBudgetVsActual,
   computeCashFlow,
   computeProfitAndLoss,
   computeTrialBalance,
@@ -15,6 +17,7 @@ import { ProfitAndLossResponseDto } from './dto/profit-and-loss-response.dto';
 import { CashFlowResponseDto } from './dto/cash-flow-response.dto';
 import { BalanceSheetResponseDto } from './dto/balance-sheet-response.dto';
 import { TrialBalanceResponseDto } from './dto/trial-balance-response.dto';
+import { BudgetVsActualResponseDto } from './dto/budget-vs-actual-response.dto';
 import { FinanceReportPdfService } from './finance-report-pdf.service';
 
 export interface ReportRange {
@@ -33,6 +36,7 @@ export class FinanceReportsService {
   constructor(
     private readonly accounts: GlAccountRepository,
     private readonly journalEntries: GlJournalEntryRepository,
+    private readonly budgets: GlBudgetRepository,
     private readonly organizations: FinanceOrganizationRepository,
     private readonly pdf: FinanceReportPdfService,
   ) {}
@@ -120,6 +124,57 @@ export class FinanceReportsService {
     return {
       organizationId: query.organizationId,
       asOf: query.asOf.toISOString(),
+      byCurrency,
+    };
+  }
+
+  /**
+   * fiscalYear is always the full calendar year (Jan 1 - Dec 31) - no
+   * partial-year "as of today" support in v1, same scope cut as GlBudget
+   * itself not tracking a custom fiscal-year start. Only accounts with a
+   * budget row for this organization/year appear - see
+   * computeBudgetVsActual's own doc comment for why activity on an
+   * unbudgeted account is silently excluded rather than shown as "no
+   * budget."
+   */
+  async budgetVsActual(
+    tenantId: string,
+    query: { organizationId?: string; fiscalYear: number },
+  ): Promise<BudgetVsActualResponseDto> {
+    await this.accounts.ensureDefaultAccounts(tenantId);
+    const budgets = await this.budgets.list(tenantId, {
+      organizationId: query.organizationId,
+      fiscalYear: query.fiscalYear,
+    });
+    const from = new Date(Date.UTC(query.fiscalYear, 0, 1));
+    const to = new Date(Date.UTC(query.fiscalYear, 11, 31, 23, 59, 59, 999));
+    const lines = await this.journalEntries.listLinesInRange(tenantId, {
+      organizationId: query.organizationId,
+      from,
+      to,
+    });
+
+    const byCurrency = computeBudgetVsActual(
+      budgets.map((budget) => ({
+        accountId: budget.accountId,
+        accountCode: budget.account.code,
+        accountName: budget.account.name,
+        accountType: budget.account.type,
+        currency: budget.currency,
+        budgetAmount: Number(budget.amount),
+      })),
+      lines.map((line) => ({
+        accountId: line.accountId,
+        accountType: line.account.type,
+        currency: line.journalEntry.currency,
+        debit: Number(line.debit),
+        credit: Number(line.credit),
+      })),
+    );
+
+    return {
+      organizationId: query.organizationId,
+      fiscalYear: query.fiscalYear,
       byCurrency,
     };
   }

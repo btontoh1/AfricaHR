@@ -2,7 +2,12 @@ import { BadRequestException, ConflictException, NotFoundException } from '@nest
 import { Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import { RequestUser, SystemRole } from '@africahr/platform-auth';
-import { GlAccountRepository, GlJournalEntryRepository, GlPeriodCloseRepository } from '@africahr/finance-data-access';
+import {
+  GlAccountRepository,
+  GlBudgetRepository,
+  GlJournalEntryRepository,
+  GlPeriodCloseRepository,
+} from '@africahr/finance-data-access';
 import { GlAccountCode } from '@africahr/finance-domain';
 import { FinanceService } from './finance.service';
 
@@ -11,6 +16,7 @@ describe('FinanceService', () => {
   let accounts: jest.Mocked<GlAccountRepository>;
   let journalEntries: jest.Mocked<GlJournalEntryRepository>;
   let periodCloses: jest.Mocked<GlPeriodCloseRepository>;
+  let budgets: jest.Mocked<GlBudgetRepository>;
   let audit: jest.Mocked<AuditService>;
 
   const actor: RequestUser = {
@@ -41,6 +47,7 @@ describe('FinanceService', () => {
       mapCodesToIds: jest.fn().mockResolvedValue(accountIdByCode),
       updateName: jest.fn(),
       create: jest.fn(),
+      findById: jest.fn(),
     } as unknown as jest.Mocked<GlAccountRepository>;
 
     journalEntries = {
@@ -56,9 +63,16 @@ describe('FinanceService', () => {
       upsert: jest.fn(),
     } as unknown as jest.Mocked<GlPeriodCloseRepository>;
 
+    budgets = {
+      upsert: jest.fn(),
+      findById: jest.fn(),
+      list: jest.fn(),
+      delete: jest.fn(),
+    } as unknown as jest.Mocked<GlBudgetRepository>;
+
     audit = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
 
-    service = new FinanceService(accounts, journalEntries, periodCloses, audit);
+    service = new FinanceService(accounts, journalEntries, periodCloses, budgets, audit);
   });
 
   describe('postPayrollDisbursement', () => {
@@ -519,6 +533,96 @@ describe('FinanceService', () => {
       await expect(
         service.setPeriodClose('tenant-1', { organizationId: 'missing-org', closedThrough: '2026-03-31' }, actor),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('setBudget', () => {
+    const dto = { organizationId: 'org-1', accountId: 'acc-1', fiscalYear: 2026, currency: 'GHS', amount: 1000 };
+
+    it('rejects when the account does not belong to this tenant', async () => {
+      accounts.findById.mockResolvedValue(null);
+
+      await expect(service.setBudget('tenant-1', dto, actor)).rejects.toThrow(NotFoundException);
+      expect(budgets.upsert).not.toHaveBeenCalled();
+    });
+
+    it('upserts the budget and audits on success', async () => {
+      accounts.findById.mockResolvedValue({ id: 'acc-1', code: '5900', name: 'General Expense', type: 'EXPENSE' } as never);
+      budgets.upsert.mockResolvedValue({
+        id: 'budget-1',
+        organizationId: 'org-1',
+        accountId: 'acc-1',
+        account: { code: '5900', name: 'General Expense' },
+        fiscalYear: 2026,
+        currency: 'GHS',
+        amount: { toString: () => '1000' },
+        createdAt: new Date('2026-01-01'),
+        updatedAt: new Date('2026-01-01'),
+      } as never);
+
+      const result = await service.setBudget('tenant-1', dto, actor);
+
+      expect(budgets.upsert).toHaveBeenCalledWith('tenant-1', {
+        organizationId: 'org-1',
+        accountId: 'acc-1',
+        fiscalYear: 2026,
+        currency: 'GHS',
+        amount: 1000,
+        updatedBy: 'user-1',
+      });
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'finance.budget.set', resourceId: 'budget-1' }),
+      );
+      expect(result.accountCode).toBe('5900');
+      expect(result.amount).toBe('1000');
+    });
+
+    it('translates a foreign-key violation on organizationId into a NotFoundException', async () => {
+      accounts.findById.mockResolvedValue({ id: 'acc-1', code: '5900', name: 'General Expense', type: 'EXPENSE' } as never);
+      const fkError = Object.assign(Object.create(Prisma.PrismaClientKnownRequestError.prototype), {
+        code: 'P2003',
+        message: 'mock',
+      });
+      budgets.upsert.mockRejectedValue(fkError);
+
+      await expect(service.setBudget('tenant-1', { ...dto, organizationId: 'missing-org' }, actor)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('listBudgets', () => {
+    it('lists budgets scoped to the tenant, organization, and fiscal year', async () => {
+      budgets.list.mockResolvedValue([]);
+
+      await service.listBudgets('tenant-1', 'org-1', 2026);
+
+      expect(budgets.list).toHaveBeenCalledWith('tenant-1', { organizationId: 'org-1', fiscalYear: 2026 });
+    });
+  });
+
+  describe('deleteBudget', () => {
+    it('throws NotFoundException when the budget does not exist', async () => {
+      budgets.findById.mockResolvedValue(null);
+
+      await expect(service.deleteBudget('tenant-1', 'missing', actor)).rejects.toThrow(NotFoundException);
+      expect(budgets.delete).not.toHaveBeenCalled();
+    });
+
+    it('deletes and audits on success', async () => {
+      budgets.findById.mockResolvedValue({
+        id: 'budget-1',
+        organizationId: 'org-1',
+        fiscalYear: 2026,
+        account: { code: '5900' },
+      } as never);
+
+      await service.deleteBudget('tenant-1', 'budget-1', actor);
+
+      expect(budgets.delete).toHaveBeenCalledWith('tenant-1', 'budget-1');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'finance.budget.deleted', resourceId: 'budget-1' }),
+      );
     });
   });
 });

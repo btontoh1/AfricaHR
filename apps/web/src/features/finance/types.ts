@@ -11,3 +11,6 @@ export type GlAccountType = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPE
 export type PeriodClose = components['schemas']['PeriodCloseResponseDto'];
 export type SetPeriodCloseInput = components['schemas']['SetPeriodCloseDto'];
 export type TrialBalanceReport = components['schemas']['TrialBalanceResponseDto'];
+export type Budget = components['schemas']['BudgetResponseDto'];
+export type SetBudgetInput = components['schemas']['SetBudgetDto'];
+export type BudgetVsActualReport = components['schemas']['BudgetVsActualResponseDto'];

@@ -7,3 +7,6 @@ export * from './lib/dto/journal-entry-response.dto';
 export * from './lib/dto/gl-account-response.dto';
 export * from './lib/dto/profit-and-loss-response.dto';
 export * from './lib/dto/cash-flow-response.dto';
+export * from './lib/dto/set-budget.dto';
+export * from './lib/dto/budget-response.dto';
+export * from './lib/dto/budget-vs-actual-response.dto';

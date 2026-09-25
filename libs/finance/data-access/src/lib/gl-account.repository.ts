@@ -33,6 +33,13 @@ export class GlAccountRepository {
     );
   }
 
+  /** Used by FinanceService.setBudget to validate an accountId belongs to
+   * this tenant before budgeting against it, with a friendly 404 rather
+   * than relying on the account_id foreign key's own violation. */
+  findById(tenantId: string, id: string): Promise<GlAccount | null> {
+    return this.prisma.withTenantContext(tenantId, (tx) => tx.glAccount.findFirst({ where: { id, tenantId } }));
+  }
+
   /**
    * Adds a tenant-defined account alongside the six defaults - for manual
    * journal entries only, never targeted by automatic posting (see

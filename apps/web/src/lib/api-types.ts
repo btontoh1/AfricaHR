@@ -3130,6 +3130,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/finance/reports/budget-vs-actual": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_budgetVsActual"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/budgets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_listBudgets"];
+        put?: never;
+        post: operations["FinanceController_setBudget"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/budgets/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["FinanceController_deleteBudget"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/finance/period-close": {
         parameters: {
             query?: never;
@@ -5064,6 +5112,56 @@ export interface components {
             asOf: string;
             /** @description One entry per currency the tenant has posted activity in - never blended together. */
             byCurrency: components["schemas"]["TrialBalanceByCurrencyDto"][];
+        };
+        BudgetVsActualRowDto: {
+            accountCode: string;
+            accountName: string;
+            budgetAmount: number;
+            actualAmount: number;
+            /** @description actualAmount - budgetAmount - positive means over budget */
+            varianceAmount: number;
+            /** @description Null when budgetAmount is 0 */
+            variancePercent: number | null;
+        };
+        BudgetVsActualByCurrencyDto: {
+            currency: string;
+            /** @description Only accounts that have a budget set for this year - not every account in the chart of accounts */
+            rows: components["schemas"]["BudgetVsActualRowDto"][];
+            totalBudget: number;
+            totalActual: number;
+            totalVariance: number;
+        };
+        BudgetVsActualResponseDto: {
+            organizationId?: string;
+            fiscalYear: number;
+            /** @description One entry per currency that has a budget set for this year - never blended together. */
+            byCurrency: components["schemas"]["BudgetVsActualByCurrencyDto"][];
+        };
+        BudgetResponseDto: {
+            id: string;
+            organizationId: string;
+            accountId: string;
+            accountCode: string;
+            accountName: string;
+            fiscalYear: number;
+            currency: string;
+            amount: string;
+            createdAt: string;
+            updatedAt: string;
+        };
+        SetBudgetDto: {
+            organizationId: string;
+            /** @description A GlAccount id from this tenant's chart of accounts */
+            accountId: string;
+            /**
+             * @description Calendar year (Jan 1 - Dec 31) - no custom fiscal-year-start support
+             * @example 2026
+             */
+            fiscalYear: number;
+            /** @example GHS */
+            currency: string;
+            /** @description Setting a budget again for the same account/year/currency overwrites this amount */
+            amount: number;
         };
         PeriodCloseResponseDto: {
             organizationId: string;
@@ -11109,6 +11207,99 @@ export interface operations {
         requestBody?: never;
         responses: {
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    FinanceController_budgetVsActual: {
+        parameters: {
+            query: {
+                fiscalYear: string;
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetVsActualResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_listBudgets: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+                fiscalYear?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetResponseDto"][];
+                };
+            };
+        };
+    };
+    FinanceController_setBudget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetBudgetDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_deleteBudget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };

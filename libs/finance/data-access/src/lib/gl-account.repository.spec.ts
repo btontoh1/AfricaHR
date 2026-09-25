@@ -4,11 +4,13 @@ import { GlAccountRepository } from './gl-account.repository';
 
 describe('GlAccountRepository', () => {
   let repository: GlAccountRepository;
-  let tx: { glAccount: { upsert: jest.Mock; findMany: jest.Mock; update: jest.Mock; create: jest.Mock } };
+  let tx: { glAccount: { upsert: jest.Mock; findMany: jest.Mock; findFirst: jest.Mock; update: jest.Mock; create: jest.Mock } };
   let prisma: { withTenantContext: jest.Mock };
 
   beforeEach(() => {
-    tx = { glAccount: { upsert: jest.fn(), findMany: jest.fn(), update: jest.fn(), create: jest.fn() } };
+    tx = {
+      glAccount: { upsert: jest.fn(), findMany: jest.fn(), findFirst: jest.fn(), update: jest.fn(), create: jest.fn() },
+    };
     prisma = { withTenantContext: jest.fn((_tenantId, fn) => fn(tx)) };
     repository = new GlAccountRepository(prisma as unknown as PrismaService);
   });
@@ -75,6 +77,16 @@ describe('GlAccountRepository', () => {
         data: { tenantId: 'tenant-1', code: '5100', name: 'Rent Expense', type: 'EXPENSE' },
       });
       expect(result.name).toBe('Rent Expense');
+    });
+  });
+
+  describe('findById', () => {
+    it('scopes the lookup to the tenant', async () => {
+      await repository.findById('tenant-1', 'acc-1');
+
+      expect(tx.glAccount.findFirst).toHaveBeenCalledWith({
+        where: { id: 'acc-1', tenantId: 'tenant-1' },
+      });
     });
   });
 });

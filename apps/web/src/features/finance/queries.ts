@@ -5,6 +5,7 @@ import { apiClient } from '@/lib/api-client';
 import type {
   CreateGlAccountInput,
   CreateManualJournalEntryInput,
+  SetBudgetInput,
   SetPeriodCloseInput,
   UpdateGlAccountInput,
 } from './types';
@@ -259,6 +260,80 @@ export function getBalanceSheetPdfUrl(
   const params = new URLSearchParams({ organizationId: filters.organizationId, asOf: filters.asOf });
   if (download) params.set('download', 'true');
   return `/api/tenants/${tenantId}/finance/reports/balance-sheet/pdf?${params.toString()}`;
+}
+
+function budgetsListKey(tenantId: string) {
+  return ['finance', 'budgets', tenantId] as const;
+}
+
+export function useBudgets(tenantId: string, filters: { organizationId?: string; fiscalYear?: number }) {
+  return useQuery({
+    queryKey: [...budgetsListKey(tenantId), filters.organizationId ?? '', filters.fiscalYear ?? ''],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/budgets', {
+        params: {
+          path: { tenantId },
+          query: {
+            organizationId: filters.organizationId,
+            fiscalYear: filters.fiscalYear ? String(filters.fiscalYear) : undefined,
+          },
+        },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useSetBudget(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: SetBudgetInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/budgets', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: budgetsListKey(tenantId) });
+      queryClient.invalidateQueries({ queryKey: ['finance', 'budget-vs-actual', tenantId] });
+    },
+  });
+}
+
+export function useDeleteBudget(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await apiClient.DELETE('/api/tenants/{tenantId}/finance/budgets/{id}', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: budgetsListKey(tenantId) });
+      queryClient.invalidateQueries({ queryKey: ['finance', 'budget-vs-actual', tenantId] });
+    },
+  });
+}
+
+export function useBudgetVsActualReport(tenantId: string, filters: { organizationId?: string; fiscalYear: number }) {
+  return useQuery({
+    queryKey: ['finance', 'budget-vs-actual', tenantId, filters.organizationId ?? '', filters.fiscalYear],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/reports/budget-vs-actual', {
+        params: {
+          path: { tenantId },
+          query: { organizationId: filters.organizationId, fiscalYear: String(filters.fiscalYear) },
+        },
+      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: Boolean(filters.fiscalYear),
+  });
 }
 
 export function getTrialBalancePdfUrl(

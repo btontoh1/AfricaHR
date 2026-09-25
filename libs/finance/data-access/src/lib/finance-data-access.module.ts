@@ -9,6 +9,8 @@ import { GlRecurringJournalEntryRepository } from './gl-recurring-journal-entry.
 import { GlHomeCurrencyRepository } from './gl-home-currency.repository';
 import { GlFxRevaluationRepository } from './gl-fx-revaluation.repository';
 import { FinanceOrganizationRepository } from './finance-organization.repository';
+import { GlFixedAssetRepository } from './gl-fixed-asset.repository';
+import { GlDepreciationRunRepository } from './gl-depreciation-run.repository';
 
 @Module({
   imports: [PrismaModule],
@@ -22,6 +24,8 @@ import { FinanceOrganizationRepository } from './finance-organization.repository
     GlHomeCurrencyRepository,
     GlFxRevaluationRepository,
     FinanceOrganizationRepository,
+    GlFixedAssetRepository,
+    GlDepreciationRunRepository,
   ],
   exports: [
     GlAccountRepository,
@@ -33,6 +37,8 @@ import { FinanceOrganizationRepository } from './finance-organization.repository
     GlHomeCurrencyRepository,
     GlFxRevaluationRepository,
     FinanceOrganizationRepository,
+    GlFixedAssetRepository,
+    GlDepreciationRunRepository,
   ],
 })
 export class FinanceDataAccessModule {}

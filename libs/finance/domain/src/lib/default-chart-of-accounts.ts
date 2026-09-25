@@ -31,6 +31,19 @@ export const GlAccountCode = {
   // pair, matching this chart's "one fixed bucket per source type"
   // convention everywhere else.
   FX_GAIN_LOSS: '4900',
+  // Cost-basis bucket for every fixed asset combined, not one account per
+  // asset - same "one fixed bucket, not one row per real-world thing"
+  // convention as GENERAL_EXPENSE. Individual assets are tracked by their
+  // own GlFixedAsset row; this account only ever holds the sum of their
+  // costs. See compute-fixed-asset-depreciation.ts.
+  FIXED_ASSETS: '1500',
+  // A contra-asset - carries a credit balance that nets against
+  // FIXED_ASSETS on the balance sheet (both are type ASSET; this chart has
+  // no separate "contra" type, so the net book value falls out of summing
+  // debit-credit across both accounts, same computation every other ASSET
+  // account already gets).
+  ACCUMULATED_DEPRECIATION: '1550',
+  DEPRECIATION_EXPENSE: '5200',
 } as const;
 
 export type GlAccountCode = (typeof GlAccountCode)[keyof typeof GlAccountCode];
@@ -65,14 +78,18 @@ export const DEFAULT_CHART_OF_ACCOUNTS: readonly DefaultGlAccount[] = [
   { code: GlAccountCode.PAYROLL_EXPENSE, name: 'Payroll Expense', type: 'EXPENSE' },
   { code: GlAccountCode.GENERAL_EXPENSE, name: 'General Expense', type: 'EXPENSE' },
   { code: GlAccountCode.FX_GAIN_LOSS, name: 'FX Gain/Loss', type: 'REVENUE' },
+  { code: GlAccountCode.FIXED_ASSETS, name: 'Fixed Assets', type: 'ASSET' },
+  { code: GlAccountCode.ACCUMULATED_DEPRECIATION, name: 'Accumulated Depreciation', type: 'ASSET' },
+  { code: GlAccountCode.DEPRECIATION_EXPENSE, name: 'Depreciation Expense', type: 'EXPENSE' },
 ];
 
 /**
- * The monetary (ASSET/LIABILITY) accounts FX revaluation ever adjusts,
- * each with its own normal-balance direction - see
- * compute-fx-revaluation.ts. Every ASSET/LIABILITY account in this minimal
- * chart is monetary (there's no inventory or fixed-asset code), so this is
- * just those five with their types restated for that computation's use.
+ * The monetary (ASSET/LIABILITY) accounts FX revaluation ever adjusts, each
+ * with its own normal-balance direction - see compute-fx-revaluation.ts.
+ * Deliberately excludes FIXED_ASSETS/ACCUMULATED_DEPRECIATION - a fixed
+ * asset's cost is a historical, non-monetary amount (same reasoning
+ * standard accounting uses to exclude PP&E from monetary revaluation),
+ * not a foreign-currency claim that moves with the exchange rate.
  */
 export const MONETARY_ACCOUNT_TYPES: Readonly<Record<string, 'ASSET' | 'LIABILITY'>> = {
   [GlAccountCode.CASH_AND_BANK]: 'ASSET',

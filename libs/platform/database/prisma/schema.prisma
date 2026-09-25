@@ -273,6 +273,8 @@ model Organization {
   recurringJournalEntries GlRecurringJournalEntry[]
   glHomeCurrency          GlHomeCurrency?
   glFxRevaluations        GlFxRevaluation[]
+  glFixedAssets           GlFixedAsset[]
+  glDepreciationRuns      GlDepreciationRun[]
 
   @@index([tenantId])
   @@map("organizations")
@@ -2043,6 +2045,85 @@ model GlFxRevaluation {
   @@map("gl_fx_revaluations")
 }
 
+enum FixedAssetStatus {
+  ACTIVE
+  /// Accumulated depreciation has reached its depreciable base (cost minus
+  /// salvage value) - runDepreciation stops scheduling it once it reaches
+  /// this state. Terminal, same as DISPOSED.
+  FULLY_DEPRECIATED
+  /// Set by FinanceService.disposeFixedAsset - stops future depreciation
+  /// immediately, regardless of how much of the depreciable base remains.
+  /// v1 doesn't post a disposal gain/loss entry (that needs a sale
+  /// proceeds figure this feature doesn't collect) - disposing only ever
+  /// stops the schedule, it never touches the ledger.
+  DISPOSED
+}
+
+/// A depreciable asset - its cost, schedule, and running total are tracked
+/// here; libs/finance/domain's compute-fixed-asset-depreciation.ts is the
+/// straight-line math runDepreciation applies against it every period.
+/// Creating one immediately posts the acquisition entry (Dr FIXED_ASSETS /
+/// Cr CASH_AND_BANK) - v1 assumes every asset is bought for cash, no
+/// accounts-payable purchase path. One row per real-world asset (unlike
+/// FIXED_ASSETS/ACCUMULATED_DEPRECIATION, which are shared cost/contra
+/// buckets across every asset an organization owns).
+model GlFixedAsset {
+  id                      String           @id @default(uuid())
+  tenantId                String           @map("tenant_id")
+  organizationId          String           @map("organization_id")
+  description             String
+  currency                String
+  cost                    Decimal
+  salvageValue            Decimal          @default(0) @map("salvage_value")
+  usefulLifeMonths        Int              @map("useful_life_months")
+  acquisitionDate         DateTime         @map("acquisition_date")
+  status                  FixedAssetStatus @default(ACTIVE)
+  accumulatedDepreciation Decimal          @default(0) @map("accumulated_depreciation")
+  /// Null once FULLY_DEPRECIATED or DISPOSED - runDepreciation only ever
+  /// considers assets where this is set and due.
+  nextDepreciationDate    DateTime?        @map("next_depreciation_date")
+  lastDepreciationDate    DateTime?        @map("last_depreciation_date")
+  disposedAt              DateTime?        @map("disposed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([tenantId])
+  @@index([organizationId, currency])
+  @@map("gl_fixed_assets")
+}
+
+/// One row per runDepreciation call for one (organization, currency,
+/// asOfDate) - see the unique constraint below, same idempotency shape as
+/// GlFxRevaluation. totalDepreciation/assetCount summarize every asset the
+/// run actually posted for; journalEntryId is null only when nothing was
+/// due (assetCount 0).
+model GlDepreciationRun {
+  id                String   @id @default(uuid())
+  tenantId          String   @map("tenant_id")
+  organizationId    String   @map("organization_id")
+  currency          String
+  asOfDate          DateTime @map("as_of_date")
+  totalDepreciation Decimal  @map("total_depreciation")
+  assetCount        Int      @map("asset_count")
+  journalEntryId    String?  @map("journal_entry_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  createdBy String?  @map("created_by")
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  journalEntry GlJournalEntry? @relation(fields: [journalEntryId], references: [id])
+
+  @@unique([organizationId, currency, asOfDate])
+  @@index([tenantId])
+  @@index([organizationId, currency])
+  @@map("gl_depreciation_runs")
+}
+
 /// PAY_RUN_DISBURSED/CUSTOMER_INVOICE_SENT/CUSTOMER_INVOICE_PAID are each
 /// posted automatically, exactly once per source event - see the
 /// (sourceType, sourceId) unique constraint below, which is this table's
@@ -2076,6 +2157,14 @@ enum GlJournalEntrySourceType {
   /// already run for that exact organization/currency/date is a safe
   /// no-op, same idempotency shape as every other automatic posting here.
   FX_REVALUATION
+  /// Posted once, at creation, by FinanceService.createFixedAsset -
+  /// sourceId is the GlFixedAsset's own id, so it can never collide or
+  /// double-post even if creation were somehow retried.
+  FIXED_ASSET_ACQUIRED
+  /// Posted by FinanceService.runDepreciation - sourceId is
+  /// "<organizationId>:<currency>:<asOfDate>", same idempotency shape as
+  /// FX_REVALUATION.
+  DEPRECIATION_RUN
 }
 
 model GlJournalEntry {
@@ -2113,11 +2202,12 @@ model GlJournalEntry {
   createdAt DateTime @default(now()) @map("created_at")
   createdBy String?  @map("created_by")
 
-  organization   Organization      @relation(fields: [organizationId], references: [id])
-  lines          GlJournalLine[]
-  reversalOf     GlJournalEntry?   @relation("GlJournalEntryReversal", fields: [reversalOfId], references: [id])
-  reversedBy     GlJournalEntry?   @relation("GlJournalEntryReversal")
-  fxRevaluations GlFxRevaluation[]
+  organization     Organization        @relation(fields: [organizationId], references: [id])
+  lines            GlJournalLine[]
+  reversalOf       GlJournalEntry?     @relation("GlJournalEntryReversal", fields: [reversalOfId], references: [id])
+  reversedBy       GlJournalEntry?     @relation("GlJournalEntryReversal")
+  fxRevaluations   GlFxRevaluation[]
+  depreciationRuns GlDepreciationRun[]
 
   @@unique([sourceType, sourceId])
   @@index([tenantId])

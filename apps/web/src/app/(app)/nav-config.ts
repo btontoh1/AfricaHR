@@ -52,6 +52,7 @@ import {
   ListChecks,
   Repeat,
   ArrowLeftRight,
+  Package,
 } from 'lucide-react';
 import type { SessionUser } from '@/lib/session';
 
@@ -264,6 +265,9 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
           : []),
         ...(hasFinanceAccess
           ? [{ label: 'FX Revaluation', href: '/finance/fx-revaluation', icon: ArrowLeftRight }]
+          : []),
+        ...(hasFinanceAccess
+          ? [{ label: 'Fixed Assets', href: '/finance/fixed-assets', icon: Package }]
           : []),
       ],
     },

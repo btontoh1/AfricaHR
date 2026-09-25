@@ -14,3 +14,5 @@ export * from './lib/compute-budget-vs-actual';
 export * from './lib/compute-bank-reconciliation';
 export * from './lib/recurring-journal-entry-schedule';
 export * from './lib/compute-fx-revaluation';
+export * from './lib/compute-fixed-asset-depreciation';
+export * from './lib/money';

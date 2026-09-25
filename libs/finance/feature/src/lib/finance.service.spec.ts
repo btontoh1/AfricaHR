@@ -6,6 +6,8 @@ import {
   BankReconciliationRepository,
   GlAccountRepository,
   GlBudgetRepository,
+  GlDepreciationRunRepository,
+  GlFixedAssetRepository,
   GlFxRevaluationRepository,
   GlHomeCurrencyRepository,
   GlJournalEntryRepository,
@@ -25,6 +27,8 @@ describe('FinanceService', () => {
   let recurringEntries: jest.Mocked<GlRecurringJournalEntryRepository>;
   let homeCurrencies: jest.Mocked<GlHomeCurrencyRepository>;
   let fxRevaluations: jest.Mocked<GlFxRevaluationRepository>;
+  let fixedAssets: jest.Mocked<GlFixedAssetRepository>;
+  let depreciationRuns: jest.Mocked<GlDepreciationRunRepository>;
   let audit: jest.Mocked<AuditService>;
 
   const actor: RequestUser = {
@@ -47,6 +51,9 @@ describe('FinanceService', () => {
     [GlAccountCode.PAYROLL_EXPENSE, 'acc-payroll-exp'],
     [GlAccountCode.GENERAL_EXPENSE, 'acc-general-exp'],
     [GlAccountCode.FX_GAIN_LOSS, 'acc-fx-gain-loss'],
+    [GlAccountCode.FIXED_ASSETS, 'acc-fixed-assets'],
+    [GlAccountCode.ACCUMULATED_DEPRECIATION, 'acc-accumulated-depreciation'],
+    [GlAccountCode.DEPRECIATION_EXPENSE, 'acc-depreciation-expense'],
   ]);
 
   beforeEach(() => {
@@ -114,6 +121,21 @@ describe('FinanceService', () => {
       list: jest.fn(),
     } as unknown as jest.Mocked<GlFxRevaluationRepository>;
 
+    fixedAssets = {
+      create: jest.fn(),
+      findById: jest.fn(),
+      list: jest.fn(),
+      listDueForDepreciation: jest.fn().mockResolvedValue([]),
+      updateAfterDepreciation: jest.fn(),
+      dispose: jest.fn(),
+    } as unknown as jest.Mocked<GlFixedAssetRepository>;
+
+    depreciationRuns = {
+      create: jest.fn(),
+      findByDate: jest.fn().mockResolvedValue(null),
+      list: jest.fn(),
+    } as unknown as jest.Mocked<GlDepreciationRunRepository>;
+
     audit = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
 
     service = new FinanceService(
@@ -125,6 +147,8 @@ describe('FinanceService', () => {
       recurringEntries,
       homeCurrencies,
       fxRevaluations,
+      fixedAssets,
+      depreciationRuns,
       audit,
     );
   });
@@ -1338,6 +1362,347 @@ describe('FinanceService', () => {
       await service.listFxRevaluations('tenant-1', 'org-1');
 
       expect(fxRevaluations.list).toHaveBeenCalledWith('tenant-1', 'org-1');
+    });
+  });
+
+  describe('createFixedAsset', () => {
+    const dto = {
+      organizationId: 'org-1',
+      description: 'Delivery van',
+      currency: 'GHS',
+      cost: 12000,
+      salvageValue: 2400,
+      usefulLifeMonths: 24,
+      acquisitionDate: '2026-03-15',
+    };
+
+    it('rejects when salvageValue is not less than cost', async () => {
+      await expect(service.createFixedAsset('tenant-1', { ...dto, salvageValue: 12000 }, actor)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(fixedAssets.create).not.toHaveBeenCalled();
+    });
+
+    it('creates the asset, posts the acquisition entry, and derives nextDepreciationDate from acquisitionDate', async () => {
+      fixedAssets.create.mockResolvedValue({
+        id: 'asset-1',
+        organizationId: 'org-1',
+        description: 'Delivery van',
+        currency: 'GHS',
+        cost: { toString: () => '12000' },
+        salvageValue: { toString: () => '2400' },
+        usefulLifeMonths: 24,
+        acquisitionDate: new Date('2026-03-15'),
+        status: 'ACTIVE',
+        accumulatedDepreciation: { toString: () => '0' },
+        nextDepreciationDate: new Date('2026-03-15'),
+        lastDepreciationDate: null,
+        disposedAt: null,
+        createdAt: new Date('2026-03-15'),
+      } as never);
+      journalEntries.createIfNotExists.mockResolvedValue({ id: 'entry-1' } as never);
+
+      const result = await service.createFixedAsset('tenant-1', dto, actor);
+
+      expect(fixedAssets.create).toHaveBeenCalledWith('tenant-1', {
+        organizationId: 'org-1',
+        description: 'Delivery van',
+        currency: 'GHS',
+        cost: 12000,
+        salvageValue: 2400,
+        usefulLifeMonths: 24,
+        acquisitionDate: new Date('2026-03-15'),
+        nextDepreciationDate: new Date('2026-03-15'),
+        createdBy: 'user-1',
+      });
+      expect(journalEntries.createIfNotExists).toHaveBeenCalledWith('tenant-1', {
+        organizationId: 'org-1',
+        entryDate: new Date('2026-03-15'),
+        description: 'Fixed asset acquired - Delivery van',
+        currency: 'GHS',
+        sourceType: 'FIXED_ASSET_ACQUIRED',
+        sourceId: 'asset-1',
+        createdBy: 'user-1',
+        lines: [
+          { accountId: 'acc-fixed-assets', debit: 12000, credit: 0 },
+          { accountId: 'acc-cash', debit: 0, credit: 12000 },
+        ],
+      });
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'finance.fixed_asset.created', resourceId: 'asset-1' }),
+      );
+      expect(result.netBookValue).toBe('12000');
+    });
+
+    it('defaults salvageValue to 0 when omitted', async () => {
+      const withoutSalvage = { ...dto };
+      delete (withoutSalvage as { salvageValue?: number }).salvageValue;
+      fixedAssets.create.mockResolvedValue({
+        id: 'asset-2',
+        organizationId: 'org-1',
+        description: 'Delivery van',
+        currency: 'GHS',
+        cost: { toString: () => '12000' },
+        salvageValue: { toString: () => '0' },
+        usefulLifeMonths: 24,
+        acquisitionDate: new Date('2026-03-15'),
+        status: 'ACTIVE',
+        accumulatedDepreciation: { toString: () => '0' },
+        nextDepreciationDate: new Date('2026-03-15'),
+        lastDepreciationDate: null,
+        disposedAt: null,
+        createdAt: new Date('2026-03-15'),
+      } as never);
+
+      await service.createFixedAsset('tenant-1', withoutSalvage, actor);
+
+      expect(fixedAssets.create).toHaveBeenCalledWith('tenant-1', expect.objectContaining({ salvageValue: 0 }));
+    });
+
+    it('translates a foreign-key violation on organizationId into a NotFoundException', async () => {
+      const fkError = Object.assign(Object.create(Prisma.PrismaClientKnownRequestError.prototype), {
+        code: 'P2003',
+        message: 'mock',
+      });
+      fixedAssets.create.mockRejectedValue(fkError);
+
+      await expect(
+        service.createFixedAsset('tenant-1', { ...dto, organizationId: 'missing-org' }, actor),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('listFixedAssets', () => {
+    it('lists fixed assets scoped to the tenant and organization', async () => {
+      fixedAssets.list.mockResolvedValue([]);
+
+      await service.listFixedAssets('tenant-1', 'org-1');
+
+      expect(fixedAssets.list).toHaveBeenCalledWith('tenant-1', 'org-1');
+    });
+  });
+
+  describe('disposeFixedAsset', () => {
+    function makeFixedAsset(overrides: Record<string, unknown> = {}) {
+      return {
+        id: 'asset-1',
+        organizationId: 'org-1',
+        description: 'Delivery van',
+        currency: 'GHS',
+        cost: { toString: () => '12000' },
+        salvageValue: { toString: () => '2400' },
+        usefulLifeMonths: 24,
+        acquisitionDate: new Date('2026-03-15'),
+        status: 'ACTIVE',
+        accumulatedDepreciation: { toString: () => '0' },
+        nextDepreciationDate: new Date('2026-03-15'),
+        lastDepreciationDate: null,
+        disposedAt: null,
+        createdAt: new Date('2026-03-15'),
+        ...overrides,
+      };
+    }
+
+    it('rejects when the asset does not exist', async () => {
+      fixedAssets.findById.mockResolvedValue(null);
+
+      await expect(service.disposeFixedAsset('tenant-1', 'missing', {}, actor)).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects when the asset has already been disposed', async () => {
+      fixedAssets.findById.mockResolvedValue(makeFixedAsset({ status: 'DISPOSED' }) as never);
+
+      await expect(service.disposeFixedAsset('tenant-1', 'asset-1', {}, actor)).rejects.toThrow(ConflictException);
+      expect(fixedAssets.dispose).not.toHaveBeenCalled();
+    });
+
+    it('disposes the asset, defaulting disposedAt to now when omitted', async () => {
+      fixedAssets.findById
+        .mockResolvedValueOnce(makeFixedAsset({ status: 'ACTIVE' }) as never)
+        .mockResolvedValueOnce(
+          makeFixedAsset({ status: 'DISPOSED', disposedAt: new Date('2026-06-01'), nextDepreciationDate: null }) as never,
+        );
+
+      const result = await service.disposeFixedAsset('tenant-1', 'asset-1', {}, actor);
+
+      expect(fixedAssets.dispose).toHaveBeenCalledWith('tenant-1', 'asset-1', expect.any(Date), 'user-1');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'finance.fixed_asset.disposed', resourceId: 'asset-1' }),
+      );
+      expect(result.status).toBe('DISPOSED');
+    });
+
+    it('uses the given disposedAt when provided', async () => {
+      fixedAssets.findById
+        .mockResolvedValueOnce(makeFixedAsset({ status: 'ACTIVE' }) as never)
+        .mockResolvedValueOnce(makeFixedAsset({ status: 'DISPOSED', disposedAt: new Date('2026-06-01') }) as never);
+
+      await service.disposeFixedAsset('tenant-1', 'asset-1', { disposedAt: '2026-06-01' }, actor);
+
+      expect(fixedAssets.dispose).toHaveBeenCalledWith('tenant-1', 'asset-1', new Date('2026-06-01'), 'user-1');
+    });
+  });
+
+  describe('runDepreciation', () => {
+    const dto = { organizationId: 'org-1', currency: 'GHS', asOfDate: '2026-04-30' };
+
+    function makeAsset(overrides: Record<string, unknown> = {}) {
+      return {
+        id: 'asset-1',
+        cost: 12000,
+        salvageValue: 0,
+        usefulLifeMonths: 24,
+        accumulatedDepreciation: 0,
+        nextDepreciationDate: new Date('2026-04-15'),
+        acquisitionDate: new Date('2026-03-15'),
+        ...overrides,
+      };
+    }
+
+    it('rejects when depreciation for this exact date has already been run', async () => {
+      depreciationRuns.findByDate.mockResolvedValue({ id: 'run-1' } as never);
+
+      await expect(service.runDepreciation('tenant-1', dto, actor)).rejects.toThrow(ConflictException);
+      expect(fixedAssets.listDueForDepreciation).not.toHaveBeenCalled();
+    });
+
+    it('records a zero-asset run and posts nothing when nothing is due', async () => {
+      fixedAssets.listDueForDepreciation.mockResolvedValue([]);
+      depreciationRuns.create.mockResolvedValue({
+        id: 'run-1',
+        organizationId: 'org-1',
+        currency: 'GHS',
+        asOfDate: new Date('2026-04-30'),
+        totalDepreciation: { toString: () => '0' },
+        assetCount: 0,
+        journalEntryId: null,
+        createdAt: new Date('2026-04-30'),
+      } as never);
+
+      const result = await service.runDepreciation('tenant-1', dto, actor);
+
+      expect(journalEntries.createIfNotExists).not.toHaveBeenCalled();
+      expect(depreciationRuns.create).toHaveBeenCalledWith('tenant-1', {
+        organizationId: 'org-1',
+        currency: 'GHS',
+        asOfDate: new Date('2026-04-30'),
+        totalDepreciation: 0,
+        assetCount: 0,
+        journalEntryId: undefined,
+        createdBy: 'user-1',
+      });
+      expect(result.assetCount).toBe(0);
+    });
+
+    it('posts one combined entry for all due assets and advances each schedule, flipping a fully-depreciated asset to FULLY_DEPRECIATED', async () => {
+      fixedAssets.listDueForDepreciation.mockResolvedValue([
+        makeAsset({ id: 'asset-1', cost: 12000, salvageValue: 0, usefulLifeMonths: 24, accumulatedDepreciation: 0 }),
+        makeAsset({
+          id: 'asset-2',
+          cost: 1000,
+          salvageValue: 0,
+          usefulLifeMonths: 2,
+          accumulatedDepreciation: 500,
+          nextDepreciationDate: new Date('2026-04-15'),
+          acquisitionDate: new Date('2026-02-15'),
+        }),
+      ] as never);
+      journalEntries.createIfNotExists.mockResolvedValue({ id: 'entry-1' } as never);
+      depreciationRuns.create.mockResolvedValue({
+        id: 'run-1',
+        organizationId: 'org-1',
+        currency: 'GHS',
+        asOfDate: new Date('2026-04-30'),
+        totalDepreciation: { toString: () => '1000' },
+        assetCount: 2,
+        journalEntryId: 'entry-1',
+        createdAt: new Date('2026-04-30'),
+      } as never);
+
+      const result = await service.runDepreciation('tenant-1', dto, actor);
+
+      expect(journalEntries.createIfNotExists).toHaveBeenCalledWith('tenant-1', {
+        organizationId: 'org-1',
+        entryDate: new Date('2026-04-30'),
+        description: 'Depreciation - GHS as of 2026-04-30',
+        currency: 'GHS',
+        sourceType: 'DEPRECIATION_RUN',
+        sourceId: 'org-1:GHS:2026-04-30',
+        createdBy: 'user-1',
+        lines: [
+          { accountId: 'acc-depreciation-expense', debit: 1000, credit: 0 },
+          { accountId: 'acc-accumulated-depreciation', debit: 0, credit: 1000 },
+        ],
+      });
+      expect(fixedAssets.updateAfterDepreciation).toHaveBeenCalledWith(
+        'tenant-1',
+        'asset-1',
+        {
+          accumulatedDepreciation: 500,
+          lastDepreciationDate: new Date('2026-04-15'),
+          nextDepreciationDate: new Date('2026-05-15'),
+          status: 'ACTIVE',
+        },
+        'user-1',
+      );
+      expect(fixedAssets.updateAfterDepreciation).toHaveBeenCalledWith(
+        'tenant-1',
+        'asset-2',
+        {
+          accumulatedDepreciation: 1000,
+          lastDepreciationDate: new Date('2026-04-15'),
+          nextDepreciationDate: null,
+          status: 'FULLY_DEPRECIATED',
+        },
+        'user-1',
+      );
+      expect(depreciationRuns.create).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ totalDepreciation: 1000, assetCount: 2, journalEntryId: 'entry-1' }),
+      );
+      expect(result.totalDepreciation).toBe('1000');
+    });
+
+    it('skips an asset with nothing left to depreciate without posting for it', async () => {
+      fixedAssets.listDueForDepreciation.mockResolvedValue([
+        makeAsset({ id: 'asset-1', cost: 1000, salvageValue: 0, usefulLifeMonths: 2, accumulatedDepreciation: 1000 }),
+      ] as never);
+      depreciationRuns.create.mockResolvedValue({
+        id: 'run-1',
+        organizationId: 'org-1',
+        currency: 'GHS',
+        asOfDate: new Date('2026-04-30'),
+        totalDepreciation: { toString: () => '0' },
+        assetCount: 0,
+        journalEntryId: null,
+        createdAt: new Date('2026-04-30'),
+      } as never);
+
+      await service.runDepreciation('tenant-1', dto, actor);
+
+      expect(fixedAssets.updateAfterDepreciation).not.toHaveBeenCalled();
+      expect(journalEntries.createIfNotExists).not.toHaveBeenCalled();
+    });
+
+    it('translates a concurrent duplicate-date write (P2002) into a ConflictException', async () => {
+      fixedAssets.listDueForDepreciation.mockResolvedValue([]);
+      const duplicateError = Object.assign(Object.create(Prisma.PrismaClientKnownRequestError.prototype), {
+        code: 'P2002',
+        message: 'mock',
+      });
+      depreciationRuns.create.mockRejectedValue(duplicateError);
+
+      await expect(service.runDepreciation('tenant-1', dto, actor)).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('listDepreciationRuns', () => {
+    it('lists depreciation runs scoped to the tenant and organization', async () => {
+      depreciationRuns.list.mockResolvedValue([]);
+
+      await service.listDepreciationRuns('tenant-1', 'org-1');
+
+      expect(depreciationRuns.list).toHaveBeenCalledWith('tenant-1', 'org-1');
     });
   });
 });

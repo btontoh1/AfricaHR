@@ -4,9 +4,12 @@ import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/rea
 import { apiClient } from '@/lib/api-client';
 import type {
   CreateBankReconciliationInput,
+  CreateFixedAssetInput,
   CreateGlAccountInput,
   CreateManualJournalEntryInput,
   CreateRecurringJournalEntryInput,
+  DisposeFixedAssetInput,
+  RunDepreciationInput,
   RunFxRevaluationInput,
   SetBudgetInput,
   SetHomeCurrencyInput,
@@ -596,6 +599,92 @@ export function useRunFxRevaluation(tenantId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: fxRevaluationsListKey(tenantId) });
+    },
+  });
+}
+
+function fixedAssetsListKey(tenantId: string) {
+  return ['finance', 'fixed-assets', tenantId] as const;
+}
+
+export function useFixedAssets(tenantId: string, organizationId?: string) {
+  return useQuery({
+    queryKey: [...fixedAssetsListKey(tenantId), organizationId ?? ''],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/fixed-assets', {
+        params: { path: { tenantId }, query: organizationId ? { organizationId } : undefined },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useCreateFixedAsset(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateFixedAssetInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/fixed-assets', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: fixedAssetsListKey(tenantId) });
+    },
+  });
+}
+
+export function useDisposeFixedAsset(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...input }: DisposeFixedAssetInput & { id: string }) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/fixed-assets/{id}/dispose', {
+        params: { path: { tenantId, id } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: fixedAssetsListKey(tenantId) });
+    },
+  });
+}
+
+function depreciationRunsListKey(tenantId: string) {
+  return ['finance', 'depreciation-runs', tenantId] as const;
+}
+
+export function useDepreciationRuns(tenantId: string, organizationId?: string) {
+  return useQuery({
+    queryKey: [...depreciationRunsListKey(tenantId), organizationId ?? ''],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/depreciation-runs', {
+        params: { path: { tenantId }, query: organizationId ? { organizationId } : undefined },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useRunDepreciation(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: RunDepreciationInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/depreciation-runs', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: fixedAssetsListKey(tenantId) });
+      queryClient.invalidateQueries({ queryKey: depreciationRunsListKey(tenantId) });
     },
   });
 }

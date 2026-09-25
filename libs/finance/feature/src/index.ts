@@ -19,3 +19,8 @@ export * from './lib/dto/set-home-currency.dto';
 export * from './lib/dto/home-currency-response.dto';
 export * from './lib/dto/run-fx-revaluation.dto';
 export * from './lib/dto/fx-revaluation-response.dto';
+export * from './lib/dto/create-fixed-asset.dto';
+export * from './lib/dto/fixed-asset-response.dto';
+export * from './lib/dto/dispose-fixed-asset.dto';
+export * from './lib/dto/run-depreciation.dto';
+export * from './lib/dto/depreciation-run-response.dto';

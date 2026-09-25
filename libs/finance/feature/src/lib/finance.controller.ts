@@ -38,6 +38,11 @@ import { BankReconciliationDetailResponseDto, BankReconciliationResponseDto } fr
 import { RecurringJournalEntryResponseDto } from './dto/recurring-journal-entry-response.dto';
 import { HomeCurrencyResponseDto } from './dto/home-currency-response.dto';
 import { FxRevaluationResponseDto } from './dto/fx-revaluation-response.dto';
+import { CreateFixedAssetDto } from './dto/create-fixed-asset.dto';
+import { DisposeFixedAssetDto } from './dto/dispose-fixed-asset.dto';
+import { RunDepreciationDto } from './dto/run-depreciation.dto';
+import { FixedAssetResponseDto } from './dto/fixed-asset-response.dto';
+import { DepreciationRunResponseDto } from './dto/depreciation-run-response.dto';
 
 // AddOnGuard runs after PermissionsGuard - order matters (NestJS runs
 // @UseGuards left to right), so a caller without the base role permission
@@ -527,5 +532,60 @@ export class FinanceController {
   ) {
     assertTenantScope(actor, tenantId);
     return this.finance.runFxRevaluation(tenantId, dto, actor);
+  }
+
+  @Get('fixed-assets')
+  @RequirePermissions(Permission.FINANCE_READ)
+  @ApiOkResponse({ type: FixedAssetResponseDto, isArray: true })
+  @ApiQuery({ name: 'organizationId', required: false })
+  listFixedAssets(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() actor: RequestUser,
+    @Query('organizationId') organizationId?: string,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.listFixedAssets(tenantId, organizationId);
+  }
+
+  @Post('fixed-assets')
+  @RequirePermissions(Permission.FINANCE_MANAGE)
+  @ApiOkResponse({ type: FixedAssetResponseDto })
+  createFixedAsset(@Param('tenantId') tenantId: string, @Body() dto: CreateFixedAssetDto, @CurrentUser() actor: RequestUser) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.createFixedAsset(tenantId, dto, actor);
+  }
+
+  @Post('fixed-assets/:id/dispose')
+  @RequirePermissions(Permission.FINANCE_MANAGE)
+  @ApiOkResponse({ type: FixedAssetResponseDto })
+  disposeFixedAsset(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: DisposeFixedAssetDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.disposeFixedAsset(tenantId, id, dto, actor);
+  }
+
+  @Get('depreciation-runs')
+  @RequirePermissions(Permission.FINANCE_READ)
+  @ApiOkResponse({ type: DepreciationRunResponseDto, isArray: true })
+  @ApiQuery({ name: 'organizationId', required: false })
+  listDepreciationRuns(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() actor: RequestUser,
+    @Query('organizationId') organizationId?: string,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.listDepreciationRuns(tenantId, organizationId);
+  }
+
+  @Post('depreciation-runs')
+  @RequirePermissions(Permission.FINANCE_MANAGE)
+  @ApiOkResponse({ type: DepreciationRunResponseDto })
+  runDepreciation(@Param('tenantId') tenantId: string, @Body() dto: RunDepreciationDto, @CurrentUser() actor: RequestUser) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.runDepreciation(tenantId, dto, actor);
   }
 }

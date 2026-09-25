@@ -7,6 +7,8 @@ import {
   BankReconciliationRepository,
   GlAccountRepository,
   GlBudgetRepository,
+  GlDepreciationRunRepository,
+  GlFixedAssetRepository,
   GlFxRevaluationRepository,
   GlHomeCurrencyRepository,
   GlJournalEntryRepository,
@@ -20,24 +22,29 @@ import {
 import {
   canExtendPeriodClose,
   computeClearedBalance,
+  computeDepreciationForPeriod,
   computeFirstRunDate,
   computeFxRevaluationLines,
   computeInvoicePaidJournalLines,
   computeInvoiceSentJournalLines,
+  computeNextRunDate,
   computePayrollJournalLines,
   computeRateDelta,
   computeReconciliationDifference,
   computeReversalJournalLines,
   computeVendorBillApprovedJournalLines,
   computeVendorBillPaidJournalLines,
+  depreciationDayOfMonth,
   GlAccountCode,
   isBalancedEntry,
   isDateWithinClosedPeriod,
+  isFullyDepreciated,
   isReconciliationBalanced,
   JournalLineAmount,
   MonetaryAccountBalance,
   MONETARY_ACCOUNT_TYPES,
   PayRunPayrollTotals,
+  roundCurrency,
 } from '@africahr/finance-domain';
 import { CreateManualJournalEntryDto } from './dto/create-manual-journal-entry.dto';
 import { CreateGlAccountDto } from './dto/create-gl-account.dto';
@@ -57,6 +64,11 @@ import { BankReconciliationDetailResponseDto, BankReconciliationResponseDto } fr
 import { RecurringJournalEntryResponseDto } from './dto/recurring-journal-entry-response.dto';
 import { HomeCurrencyResponseDto } from './dto/home-currency-response.dto';
 import { FxRevaluationResponseDto } from './dto/fx-revaluation-response.dto';
+import { CreateFixedAssetDto } from './dto/create-fixed-asset.dto';
+import { DisposeFixedAssetDto } from './dto/dispose-fixed-asset.dto';
+import { RunDepreciationDto } from './dto/run-depreciation.dto';
+import { FixedAssetResponseDto } from './dto/fixed-asset-response.dto';
+import { DepreciationRunResponseDto } from './dto/depreciation-run-response.dto';
 
 function translateOrganizationReferenceError(error: unknown, organizationId: string): never {
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
@@ -205,6 +217,64 @@ function toFxRevaluationResponseDto(revaluation: {
   };
 }
 
+function toFixedAssetResponseDto(asset: {
+  id: string;
+  organizationId: string;
+  description: string;
+  currency: string;
+  cost: { toString(): string };
+  salvageValue: { toString(): string };
+  usefulLifeMonths: number;
+  acquisitionDate: Date;
+  status: string;
+  accumulatedDepreciation: { toString(): string };
+  nextDepreciationDate: Date | null;
+  lastDepreciationDate: Date | null;
+  disposedAt: Date | null;
+  createdAt: Date;
+}): FixedAssetResponseDto {
+  const netBookValue = roundCurrency(Number(asset.cost) - Number(asset.accumulatedDepreciation));
+  return {
+    id: asset.id,
+    organizationId: asset.organizationId,
+    description: asset.description,
+    currency: asset.currency,
+    cost: asset.cost.toString(),
+    salvageValue: asset.salvageValue.toString(),
+    usefulLifeMonths: asset.usefulLifeMonths,
+    acquisitionDate: asset.acquisitionDate.toISOString(),
+    status: asset.status,
+    accumulatedDepreciation: asset.accumulatedDepreciation.toString(),
+    netBookValue: netBookValue.toString(),
+    nextDepreciationDate: asset.nextDepreciationDate ? asset.nextDepreciationDate.toISOString() : null,
+    lastDepreciationDate: asset.lastDepreciationDate ? asset.lastDepreciationDate.toISOString() : null,
+    disposedAt: asset.disposedAt ? asset.disposedAt.toISOString() : null,
+    createdAt: asset.createdAt.toISOString(),
+  };
+}
+
+function toDepreciationRunResponseDto(run: {
+  id: string;
+  organizationId: string;
+  currency: string;
+  asOfDate: Date;
+  totalDepreciation: { toString(): string };
+  assetCount: number;
+  journalEntryId: string | null;
+  createdAt: Date;
+}): DepreciationRunResponseDto {
+  return {
+    id: run.id,
+    organizationId: run.organizationId,
+    currency: run.currency,
+    asOfDate: run.asOfDate.toISOString(),
+    totalDepreciation: run.totalDepreciation.toString(),
+    assetCount: run.assetCount,
+    journalEntryId: run.journalEntryId,
+    createdAt: run.createdAt.toISOString(),
+  };
+}
+
 function toJournalEntryResponseDto(entry: GlJournalEntryWithLines): JournalEntryResponseDto {
   return {
     id: entry.id,
@@ -262,6 +332,8 @@ export class FinanceService {
     private readonly recurringEntries: GlRecurringJournalEntryRepository,
     private readonly homeCurrencies: GlHomeCurrencyRepository,
     private readonly fxRevaluations: GlFxRevaluationRepository,
+    private readonly fixedAssets: GlFixedAssetRepository,
+    private readonly depreciationRuns: GlDepreciationRunRepository,
     private readonly audit: AuditService,
   ) {}
 
@@ -1154,5 +1226,224 @@ export class FinanceService {
   async listFxRevaluations(tenantId: string, organizationId?: string): Promise<FxRevaluationResponseDto[]> {
     const revaluations = await this.fxRevaluations.list(tenantId, organizationId);
     return revaluations.map(toFxRevaluationResponseDto);
+  }
+
+  /**
+   * Registers a fixed asset and immediately posts its acquisition entry (Dr
+   * FIXED_ASSETS / Cr CASH_AND_BANK) - see default-chart-of-accounts.ts for
+   * why every asset shares those two accounts rather than getting its own.
+   * Idempotent by the asset's own id as sourceId, same shape as every other
+   * one-shot automatic posting in this service.
+   */
+  async createFixedAsset(tenantId: string, dto: CreateFixedAssetDto, actor: RequestUser): Promise<FixedAssetResponseDto> {
+    const salvageValue = dto.salvageValue ?? 0;
+    if (salvageValue >= dto.cost) {
+      throw new BadRequestException('salvageValue must be less than cost');
+    }
+
+    await this.accounts.ensureDefaultAccounts(tenantId);
+    const accountIds = await this.accounts.mapCodesToIds(tenantId, [GlAccountCode.FIXED_ASSETS, GlAccountCode.CASH_AND_BANK]);
+
+    const acquisitionDate = new Date(dto.acquisitionDate);
+    let asset;
+    try {
+      asset = await this.fixedAssets.create(tenantId, {
+        organizationId: dto.organizationId,
+        description: dto.description,
+        currency: dto.currency,
+        cost: dto.cost,
+        salvageValue,
+        usefulLifeMonths: dto.usefulLifeMonths,
+        acquisitionDate,
+        nextDepreciationDate: computeFirstRunDate(acquisitionDate, depreciationDayOfMonth(acquisitionDate)),
+        createdBy: actor.sub,
+      });
+    } catch (error) {
+      translateOrganizationReferenceError(error, dto.organizationId);
+    }
+
+    await this.journalEntries.createIfNotExists(tenantId, {
+      organizationId: dto.organizationId,
+      entryDate: acquisitionDate,
+      description: `Fixed asset acquired - ${dto.description}`,
+      currency: dto.currency,
+      sourceType: 'FIXED_ASSET_ACQUIRED',
+      sourceId: asset.id,
+      createdBy: actor.sub,
+      lines: [
+        { accountId: accountIds.get(GlAccountCode.FIXED_ASSETS) as string, debit: dto.cost, credit: 0 },
+        { accountId: accountIds.get(GlAccountCode.CASH_AND_BANK) as string, debit: 0, credit: dto.cost },
+      ],
+    });
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actor.sub ?? null,
+      action: 'finance.fixed_asset.created',
+      resourceType: 'GlFixedAsset',
+      resourceId: asset.id,
+      metadata: { organizationId: dto.organizationId, description: dto.description, cost: dto.cost, currency: dto.currency },
+    });
+
+    return toFixedAssetResponseDto(asset);
+  }
+
+  async listFixedAssets(tenantId: string, organizationId?: string): Promise<FixedAssetResponseDto[]> {
+    const assets = await this.fixedAssets.list(tenantId, organizationId);
+    return assets.map(toFixedAssetResponseDto);
+  }
+
+  /**
+   * Retires an asset without posting a disposal gain/loss entry (a
+   * deliberate v1 scope-cut - see GlFixedAssetRepository.dispose) and stops
+   * it from ever being picked up by a future runDepreciation call. This is
+   * the only way to retire an asset - see GlFixedAssetRepository's own doc
+   * comment for why there is no delete.
+   */
+  async disposeFixedAsset(tenantId: string, id: string, dto: DisposeFixedAssetDto, actor: RequestUser): Promise<FixedAssetResponseDto> {
+    const asset = await this.fixedAssets.findById(tenantId, id);
+    if (!asset) {
+      throw new NotFoundException(`Fixed asset "${id}" not found`);
+    }
+    if (asset.status === 'DISPOSED') {
+      throw new ConflictException('This asset has already been disposed');
+    }
+
+    const disposedAt = dto.disposedAt ? new Date(dto.disposedAt) : new Date();
+    await this.fixedAssets.dispose(tenantId, id, disposedAt, actor.sub);
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actor.sub ?? null,
+      action: 'finance.fixed_asset.disposed',
+      resourceType: 'GlFixedAsset',
+      resourceId: id,
+      metadata: { organizationId: asset.organizationId },
+    });
+
+    const disposed = await this.fixedAssets.findById(tenantId, id);
+    return toFixedAssetResponseDto(disposed as NonNullable<typeof disposed>);
+  }
+
+  /**
+   * Depreciates every ACTIVE asset in (organizationId, currency) whose
+   * schedule is due by asOfDate, posting one combined entry (Dr
+   * DEPRECIATION_EXPENSE / Cr ACCUMULATED_DEPRECIATION) for the period's
+   * total rather than one line per asset - same "one shared bucket"
+   * convention as the accounts themselves. On-demand and idempotent per
+   * (organization, currency, asOfDate), same shape as runFxRevaluation, not
+   * a cron sweep. A run with nothing due still records a zero-asset
+   * GlDepreciationRun row (no journal entry) so the history shows it ran
+   * rather than looking like it silently failed.
+   */
+  async runDepreciation(tenantId: string, dto: RunDepreciationDto, actor: RequestUser): Promise<DepreciationRunResponseDto> {
+    const asOfDate = new Date(dto.asOfDate);
+    const existing = await this.depreciationRuns.findByDate(tenantId, dto.organizationId, dto.currency, asOfDate);
+    if (existing) {
+      throw new ConflictException(`Depreciation for ${dto.currency} as of ${dto.asOfDate} has already been run`);
+    }
+
+    await this.accounts.ensureDefaultAccounts(tenantId);
+    const dueAssets = await this.fixedAssets.listDueForDepreciation(tenantId, dto.organizationId, dto.currency, asOfDate);
+
+    const postings: { assetId: string; amount: number; periodDate: Date; acquisitionDate: Date; cost: number; salvageValue: number; newAccumulated: number }[] = [];
+    let totalDepreciation = 0;
+    for (const asset of dueAssets) {
+      const amount = computeDepreciationForPeriod(
+        Number(asset.cost),
+        Number(asset.salvageValue),
+        asset.usefulLifeMonths,
+        Number(asset.accumulatedDepreciation),
+      );
+      if (amount <= 0) {
+        continue;
+      }
+      totalDepreciation = roundCurrency(totalDepreciation + amount);
+      postings.push({
+        assetId: asset.id,
+        amount,
+        // nextDepreciationDate is guaranteed set - listDueForDepreciation only
+        // ever returns ACTIVE assets, which always have one (see the model's
+        // own doc comment).
+        periodDate: asset.nextDepreciationDate as Date,
+        acquisitionDate: asset.acquisitionDate,
+        cost: Number(asset.cost),
+        salvageValue: Number(asset.salvageValue),
+        newAccumulated: roundCurrency(Number(asset.accumulatedDepreciation) + amount),
+      });
+    }
+
+    let journalEntryId: string | null = null;
+    if (postings.length > 0) {
+      const accountIds = await this.accounts.mapCodesToIds(tenantId, [
+        GlAccountCode.DEPRECIATION_EXPENSE,
+        GlAccountCode.ACCUMULATED_DEPRECIATION,
+      ]);
+      const entry = await this.journalEntries.createIfNotExists(tenantId, {
+        organizationId: dto.organizationId,
+        entryDate: asOfDate,
+        description: `Depreciation - ${dto.currency} as of ${dto.asOfDate}`,
+        currency: dto.currency,
+        sourceType: 'DEPRECIATION_RUN',
+        sourceId: `${dto.organizationId}:${dto.currency}:${dto.asOfDate}`,
+        createdBy: actor.sub,
+        lines: [
+          { accountId: accountIds.get(GlAccountCode.DEPRECIATION_EXPENSE) as string, debit: totalDepreciation, credit: 0 },
+          { accountId: accountIds.get(GlAccountCode.ACCUMULATED_DEPRECIATION) as string, debit: 0, credit: totalDepreciation },
+        ],
+      });
+      journalEntryId = entry ? entry.id : null;
+
+      for (const posting of postings) {
+        const fullyDepreciated = isFullyDepreciated(posting.cost, posting.salvageValue, posting.newAccumulated);
+        await this.fixedAssets.updateAfterDepreciation(
+          tenantId,
+          posting.assetId,
+          {
+            accumulatedDepreciation: posting.newAccumulated,
+            lastDepreciationDate: posting.periodDate,
+            nextDepreciationDate: fullyDepreciated
+              ? null
+              : computeNextRunDate(posting.periodDate, depreciationDayOfMonth(posting.acquisitionDate)),
+            status: fullyDepreciated ? 'FULLY_DEPRECIATED' : 'ACTIVE',
+          },
+          actor.sub,
+        );
+      }
+    }
+
+    let run;
+    try {
+      run = await this.depreciationRuns.create(tenantId, {
+        organizationId: dto.organizationId,
+        currency: dto.currency,
+        asOfDate,
+        totalDepreciation,
+        assetCount: postings.length,
+        journalEntryId: journalEntryId ?? undefined,
+        createdBy: actor.sub,
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException(`Depreciation for ${dto.currency} as of ${dto.asOfDate} has already been run`);
+      }
+      throw error;
+    }
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actor.sub ?? null,
+      action: 'finance.depreciation.run',
+      resourceType: 'GlDepreciationRun',
+      resourceId: run.id,
+      metadata: { organizationId: dto.organizationId, currency: dto.currency, totalDepreciation, assetCount: postings.length },
+    });
+
+    return toDepreciationRunResponseDto(run);
+  }
+
+  async listDepreciationRuns(tenantId: string, organizationId?: string): Promise<DepreciationRunResponseDto[]> {
+    const runs = await this.depreciationRuns.list(tenantId, organizationId);
+    return runs.map(toDepreciationRunResponseDto);
   }
 }

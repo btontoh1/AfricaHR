@@ -3322,6 +3322,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/finance/fixed-assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_listFixedAssets"];
+        put?: never;
+        post: operations["FinanceController_createFixedAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/fixed-assets/{id}/dispose": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["FinanceController_disposeFixedAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/depreciation-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_listDepreciationRuns"];
+        put?: never;
+        post: operations["FinanceController_runDepreciation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/vendors": {
         parameters: {
             query?: never;
@@ -5147,7 +5195,7 @@ export interface components {
         };
         ManualJournalEntryLineDto: {
             /** @enum {string} */
-            accountCode: "1000" | "1100" | "2000" | "2100" | "2200" | "4000" | "5000" | "5900" | "4900";
+            accountCode: "1000" | "1100" | "2000" | "2100" | "2200" | "4000" | "5000" | "5900" | "4900" | "1500" | "1550" | "5200";
             /** @description Set exactly one of debit/credit per line, never both. */
             debit?: number;
             credit?: number;
@@ -5439,6 +5487,68 @@ export interface components {
             asOfDate: string;
             /** @description Units of the home currency per 1 unit of currency, as of asOfDate */
             rate: number;
+        };
+        FixedAssetResponseDto: {
+            id: string;
+            organizationId: string;
+            description: string;
+            currency: string;
+            cost: string;
+            salvageValue: string;
+            usefulLifeMonths: number;
+            acquisitionDate: string;
+            /** @enum {string} */
+            status: "ACTIVE" | "FULLY_DEPRECIATED" | "DISPOSED";
+            accumulatedDepreciation: string;
+            /** @description cost minus accumulatedDepreciation - not persisted, computed on read */
+            netBookValue: string;
+            /** @description Null once FULLY_DEPRECIATED or DISPOSED */
+            nextDepreciationDate?: string;
+            /** @description Null until the first depreciation run includes this asset */
+            lastDepreciationDate?: string;
+            /** @description Set only once status is DISPOSED */
+            disposedAt?: string;
+            createdAt: string;
+        };
+        CreateFixedAssetDto: {
+            organizationId: string;
+            description: string;
+            /** @example GHS */
+            currency: string;
+            /** @description Historical acquisition cost - posts Dr FIXED_ASSETS / Cr CASH_AND_BANK for this amount immediately */
+            cost: number;
+            /**
+             * @description Estimated residual value at the end of usefulLifeMonths - depreciation never reduces the asset below this
+             * @default 0
+             */
+            salvageValue: number;
+            /** @description Straight-line depreciation is spread evenly across this many months */
+            usefulLifeMonths: number;
+            /** @description The depreciation posting day-of-month is derived from this date (capped at 28) */
+            acquisitionDate: string;
+        };
+        DisposeFixedAssetDto: {
+            /** @description Defaults to now if omitted */
+            disposedAt?: string;
+        };
+        DepreciationRunResponseDto: {
+            id: string;
+            organizationId: string;
+            currency: string;
+            asOfDate: string;
+            totalDepreciation: string;
+            /** @description How many assets were due and included in this run */
+            assetCount: number;
+            /** @description Null when nothing was due (assetCount 0) */
+            journalEntryId?: string;
+            createdAt: string;
+        };
+        RunDepreciationDto: {
+            organizationId: string;
+            /** @example GHS */
+            currency: string;
+            /** @description Every ACTIVE asset in this organization/currency whose schedule is due by this date is depreciated for one period */
+            asOfDate: string;
         };
         CreateVendorDto: {
             organizationId: string;
@@ -11939,6 +12049,128 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FxRevaluationResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_listFixedAssets: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FixedAssetResponseDto"][];
+                };
+            };
+        };
+    };
+    FinanceController_createFixedAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateFixedAssetDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FixedAssetResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_disposeFixedAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DisposeFixedAssetDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FixedAssetResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_listDepreciationRuns: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepreciationRunResponseDto"][];
+                };
+            };
+        };
+    };
+    FinanceController_runDepreciation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunDepreciationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepreciationRunResponseDto"];
                 };
             };
         };

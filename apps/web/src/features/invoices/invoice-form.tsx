@@ -214,7 +214,8 @@ export function InvoiceForm({ tenantId, invoice }: { tenantId: string; invoice?:
                     <SelectContent>
                       {ALL_CURRENCIES.map((currency) => (
                         <SelectItem key={currency.code} value={currency.code}>
-                          {currency.symbol} {currency.code} — {currency.name}
+                          <span className="mr-1">{currency.symbol}</span>
+                          {currency.code} — {currency.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -37,6 +37,7 @@ export interface CustomerInvoiceStatusChangedEvent {
   tenantId: string;
   organizationId: string;
   invoiceId: string;
+  invoiceNumber: string;
   fromStatus: string;
   toStatus: string;
   /** ISO timestamp of the transition (sentAt/paidAt). */
@@ -241,6 +242,7 @@ export class CustomerInvoiceService {
       tenantId,
       organizationId: existing.organizationId,
       invoiceId: id,
+      invoiceNumber: existing.invoiceNumber,
       fromStatus: existing.status,
       toStatus: status,
       entryDate: transitionedAt.toISOString(),

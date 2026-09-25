@@ -9,6 +9,7 @@ describe('InvoicingGlPostingListener', () => {
     tenantId: 'tenant-1',
     organizationId: 'org-1',
     invoiceId: 'inv-1',
+    invoiceNumber: 'INV-0001',
     entryDate: '2026-02-01T00:00:00.000Z',
     currency: 'GHS',
     subtotal: 1000,

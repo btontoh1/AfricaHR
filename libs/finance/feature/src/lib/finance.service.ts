@@ -8,6 +8,7 @@ import {
   ExpenseRepository,
   GlAccountRepository,
   GlBudgetRepository,
+  GlCostCenterRepository,
   GlDepreciationRunRepository,
   GlFixedAssetRepository,
   GlFxRevaluationRepository,
@@ -75,6 +76,8 @@ import { DepreciationRunResponseDto } from './dto/depreciation-run-response.dto'
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { ReimburseExpenseDto } from './dto/reimburse-expense.dto';
 import { ExpenseResponseDto } from './dto/expense-response.dto';
+import { CreateCostCenterDto } from './dto/create-cost-center.dto';
+import { CostCenterResponseDto } from './dto/cost-center-response.dto';
 
 function translateOrganizationReferenceError(error: unknown, organizationId: string): never {
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
@@ -309,7 +312,17 @@ function toExpenseResponseDto(expense: {
   };
 }
 
-function toJournalEntryResponseDto(entry: GlJournalEntryWithLines): JournalEntryResponseDto {
+/**
+ * userNames resolves createdBy/approvedBy ids to a display name - see
+ * GlJournalEntryRepository.resolveUserNames. Automatic postings (payroll,
+ * AP, invoicing) never carry a createdBy, so those show "System" rather
+ * than blank; a manual entry whose creator can't be resolved (e.g. a
+ * deleted user) falls back to the raw id rather than losing the value.
+ */
+function toJournalEntryResponseDto(
+  entry: GlJournalEntryWithLines,
+  userNames: Map<string, string> = new Map(),
+): JournalEntryResponseDto {
   return {
     id: entry.id,
     organizationId: entry.organizationId,
@@ -320,6 +333,14 @@ function toJournalEntryResponseDto(entry: GlJournalEntryWithLines): JournalEntry
     sourceId: entry.sourceId,
     voidedAt: entry.voidedAt ? entry.voidedAt.toISOString() : null,
     reversalOfId: entry.reversalOfId,
+    createdAt: entry.createdAt.toISOString(),
+    preparedByName: entry.createdBy ? (userNames.get(entry.createdBy) ?? entry.createdBy) : 'System',
+    approvedAt: entry.approvedAt ? entry.approvedAt.toISOString() : null,
+    approvedByName: entry.approvedBy ? (userNames.get(entry.approvedBy) ?? entry.approvedBy) : null,
+    organizationUnitId: entry.organizationUnitId,
+    organizationUnitName: entry.organizationUnit?.name ?? null,
+    costCenterId: entry.costCenterId,
+    costCenterName: entry.costCenter?.name ?? null,
     lines: entry.lines.map((line) => ({
       accountCode: line.account.code,
       accountName: line.account.name,
@@ -333,6 +354,10 @@ export interface PayRunDisbursedForPosting {
   organizationId: string;
   payRunId: string;
   payDate: Date;
+  /** Used only to make the entry's description readable - PayRun itself
+   * has no separate "number" to reference instead. */
+  periodStart: Date;
+  periodEnd: Date;
   currency: string;
   totals: PayRunPayrollTotals;
 }
@@ -340,6 +365,8 @@ export interface PayRunDisbursedForPosting {
 export interface CustomerInvoiceAmountsForPosting {
   organizationId: string;
   invoiceId: string;
+  /** e.g. "INV-0001" - used only to make the entry's description readable. */
+  invoiceNumber: string;
   entryDate: Date;
   currency: string;
   subtotal: number;
@@ -350,6 +377,8 @@ export interface CustomerInvoiceAmountsForPosting {
 export interface VendorBillAmountsForPosting {
   organizationId: string;
   billId: string;
+  /** e.g. "BILL-0001" - used only to make the entry's description readable. */
+  billNumber: string;
   entryDate: Date;
   currency: string;
   total: number;
@@ -358,6 +387,9 @@ export interface VendorBillAmountsForPosting {
 export interface VendorPaymentAmountsForPosting {
   organizationId: string;
   paymentId: string;
+  /** Used only to make the entry's description readable - VendorPayment has
+   * no number sequence of its own, unlike bills/invoices. */
+  vendorName: string;
   entryDate: Date;
   currency: string;
   amount: number;
@@ -377,6 +409,7 @@ export class FinanceService {
     private readonly fixedAssets: GlFixedAssetRepository,
     private readonly depreciationRuns: GlDepreciationRunRepository,
     private readonly expenses: ExpenseRepository,
+    private readonly costCenters: GlCostCenterRepository,
     private readonly audit: AuditService,
   ) {}
 
@@ -393,7 +426,7 @@ export class FinanceService {
     await this.postLines(tenantId, {
       organizationId: input.organizationId,
       entryDate: input.payDate,
-      description: `Pay run disbursed (${input.payRunId})`,
+      description: `Payroll disbursed - ${input.periodStart.toISOString().slice(0, 10)} to ${input.periodEnd.toISOString().slice(0, 10)}`,
       currency: input.currency,
       sourceType: 'PAY_RUN_DISBURSED',
       // Composite, not the bare payRunId - see the schema's own doc comment
@@ -410,7 +443,7 @@ export class FinanceService {
     await this.postLines(tenantId, {
       organizationId: input.organizationId,
       entryDate: input.entryDate,
-      description: `Customer invoice sent (${input.invoiceId})`,
+      description: `Customer invoice sent - ${input.invoiceNumber}`,
       currency: input.currency,
       sourceType: 'CUSTOMER_INVOICE_SENT',
       sourceId: input.invoiceId,
@@ -424,7 +457,7 @@ export class FinanceService {
     await this.postLines(tenantId, {
       organizationId: input.organizationId,
       entryDate: input.entryDate,
-      description: `Customer invoice paid (${input.invoiceId})`,
+      description: `Customer invoice paid - ${input.invoiceNumber}`,
       currency: input.currency,
       sourceType: 'CUSTOMER_INVOICE_PAID',
       sourceId: input.invoiceId,
@@ -438,7 +471,7 @@ export class FinanceService {
     await this.postLines(tenantId, {
       organizationId: input.organizationId,
       entryDate: input.entryDate,
-      description: `Vendor bill approved (${input.billId})`,
+      description: `Vendor bill approved - ${input.billNumber}`,
       currency: input.currency,
       sourceType: 'VENDOR_BILL_APPROVED',
       sourceId: input.billId,
@@ -459,7 +492,7 @@ export class FinanceService {
     await this.postLines(tenantId, {
       organizationId: input.organizationId,
       entryDate: input.entryDate,
-      description: `Vendor payment (${input.paymentId})`,
+      description: `Vendor payment - ${input.vendorName}`,
       currency: input.currency,
       sourceType: 'VENDOR_PAYMENT',
       sourceId: input.paymentId,
@@ -549,6 +582,8 @@ export class FinanceService {
         sourceType: 'MANUAL',
         sourceId: randomUUID(),
         createdBy: actor.sub,
+        organizationUnitId: dto.organizationUnitId,
+        costCenterId: dto.costCenterId,
         lines: dto.lines.map((line) => ({
           accountId: accountIds.get(line.accountCode) as string,
           debit: line.debit ?? 0,
@@ -573,7 +608,8 @@ export class FinanceService {
       metadata: { organizationId: dto.organizationId, sourceType: 'MANUAL' },
     });
 
-    return toJournalEntryResponseDto(entry);
+    const userNames = await this.journalEntries.resolveUserNames(tenantId, [entry.createdBy]);
+    return toJournalEntryResponseDto(entry, userNames);
   }
 
   /**
@@ -641,7 +677,8 @@ export class FinanceService {
       metadata: { reversalEntryId: reversal.id },
     });
 
-    return toJournalEntryResponseDto(reversal);
+    const userNames = await this.journalEntries.resolveUserNames(tenantId, [reversal.createdBy]);
+    return toJournalEntryResponseDto(reversal, userNames);
   }
 
   async listAccounts(tenantId: string): Promise<GlAccountResponseDto[]> {
@@ -718,7 +755,9 @@ export class FinanceService {
 
   async listJournalEntries(tenantId: string, organizationId?: string): Promise<JournalEntryResponseDto[]> {
     const entries = await this.journalEntries.list(tenantId, organizationId);
-    return entries.map(toJournalEntryResponseDto);
+    const userIds = entries.flatMap((entry) => [entry.createdBy, entry.approvedBy]);
+    const userNames = await this.journalEntries.resolveUserNames(tenantId, userIds);
+    return entries.map((entry) => toJournalEntryResponseDto(entry, userNames));
   }
 
   async getPeriodClose(tenantId: string, organizationId: string): Promise<PeriodCloseResponseDto> {
@@ -1602,5 +1641,44 @@ export class FinanceService {
     });
 
     return toExpenseResponseDto(updated);
+  }
+
+  async createCostCenter(
+    tenantId: string,
+    dto: CreateCostCenterDto,
+    actor: RequestUser,
+  ): Promise<CostCenterResponseDto> {
+    let costCenter;
+    try {
+      costCenter = await this.costCenters.create(tenantId, {
+        organizationId: dto.organizationId,
+        name: dto.name,
+        code: dto.code,
+        createdBy: actor.sub,
+      });
+    } catch (error) {
+      translateOrganizationReferenceError(error, dto.organizationId);
+    }
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actor.sub ?? null,
+      action: 'finance.cost_center.created',
+      resourceType: 'GlCostCenter',
+      resourceId: costCenter.id,
+      metadata: { organizationId: dto.organizationId },
+    });
+
+    return { id: costCenter.id, organizationId: costCenter.organizationId, name: costCenter.name, code: costCenter.code };
+  }
+
+  async listCostCenters(tenantId: string, organizationId?: string): Promise<CostCenterResponseDto[]> {
+    const costCenters = await this.costCenters.list(tenantId, organizationId);
+    return costCenters.map((costCenter) => ({
+      id: costCenter.id,
+      organizationId: costCenter.organizationId,
+      name: costCenter.name,
+      code: costCenter.code,
+    }));
   }
 }

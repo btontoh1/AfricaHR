@@ -55,6 +55,7 @@ import {
   Package,
   HandCoins,
   ReceiptText,
+  Tags,
 } from 'lucide-react';
 import type { SessionUser } from '@/lib/session';
 
@@ -262,6 +263,7 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
         ...(hasFinanceAccess
           ? [{ label: 'Chart of Accounts', href: '/finance/accounts', icon: Layers }]
           : []),
+        ...(hasFinanceAccess ? [{ label: 'Cost Centers', href: '/finance/cost-centers', icon: Tags }] : []),
         ...(hasFinanceAccess ? [{ label: 'Budgets', href: '/finance/budgets', icon: PiggyBank }] : []),
         ...(hasFinanceAccess
           ? [{ label: 'Bank Reconciliation', href: '/finance/bank-reconciliations', icon: ListChecks }]

@@ -3402,6 +3402,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/finance/cost-centers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_listCostCenters"];
+        put?: never;
+        post: operations["FinanceController_createCostCenter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/vendors": {
         parameters: {
             query?: never;
@@ -5271,6 +5287,10 @@ export interface components {
             /** @example GHS */
             currency: string;
             lines: components["schemas"]["ManualJournalEntryLineDto"][];
+            /** @description Department this entry belongs to - an OrganizationUnit id. */
+            organizationUnitId?: string;
+            /** @description Cost center this entry belongs to. */
+            costCenterId?: string;
         };
         JournalEntryLineResponseDto: {
             accountCode: string;
@@ -5290,6 +5310,17 @@ export interface components {
             voidedAt: string | null;
             /** @description Set when this entry is itself the reversal of another. */
             reversalOfId: string | null;
+            createdAt: string;
+            /** @description "System" for automatic postings, the preparer's name for manual entries. */
+            preparedByName: string | null;
+            /** @description Null until the (not yet built) approval workflow sets it. */
+            approvedAt: string | null;
+            approvedByName: string | null;
+            organizationUnitId: string | null;
+            /** @description Department this entry is tagged with, if any. */
+            organizationUnitName: string | null;
+            costCenterId: string | null;
+            costCenterName: string | null;
             lines: components["schemas"]["JournalEntryLineResponseDto"][];
         };
         ProfitAndLossByCurrencyDto: {
@@ -5651,6 +5682,17 @@ export interface components {
         ReimburseExpenseDto: {
             /** @description Defaults to now if omitted */
             reimbursedAt?: string;
+        };
+        CostCenterResponseDto: {
+            id: string;
+            organizationId: string;
+            name: string;
+            code?: string | null;
+        };
+        CreateCostCenterDto: {
+            organizationId: string;
+            name: string;
+            code?: string;
         };
         CreateVendorDto: {
             organizationId: string;
@@ -12395,6 +12437,54 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExpenseResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_listCostCenters: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostCenterResponseDto"][];
+                };
+            };
+        };
+    };
+    FinanceController_createCostCenter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCostCenterDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostCenterResponseDto"];
                 };
             };
         };

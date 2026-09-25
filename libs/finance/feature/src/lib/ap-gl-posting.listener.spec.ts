@@ -9,6 +9,7 @@ describe('ApGlPostingListener', () => {
     tenantId: 'tenant-1',
     organizationId: 'org-1',
     billId: 'bill-1',
+    billNumber: 'BILL-0001',
     entryDate: '2026-02-01T00:00:00.000Z',
     currency: 'GHS',
     total: 1150,
@@ -18,6 +19,7 @@ describe('ApGlPostingListener', () => {
     tenantId: 'tenant-1',
     organizationId: 'org-1',
     paymentId: 'payment-1',
+    vendorName: 'Acme Ltd',
     entryDate: '2026-02-01T00:00:00.000Z',
     currency: 'GHS',
     amount: 1150,
@@ -56,6 +58,7 @@ describe('ApGlPostingListener', () => {
       expect(finance.postVendorPayment).toHaveBeenCalledWith('tenant-1', {
         organizationId: 'org-1',
         paymentId: 'payment-1',
+        vendorName: 'Acme Ltd',
         entryDate: new Date('2026-02-01T00:00:00.000Z'),
         currency: 'GHS',
         amount: 1150,

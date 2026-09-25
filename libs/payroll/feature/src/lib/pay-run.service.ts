@@ -113,6 +113,10 @@ export interface PayRunDisbursedEvent {
   payRunId: string;
   /** ISO date (YYYY-MM-DD). */
   payDate: string;
+  /** ISO dates (YYYY-MM-DD) - used only to make the resulting journal
+   * entry's description readable, since PayRun has no separate "number". */
+  periodStart: string;
+  periodEnd: string;
   /** One entry per currency present among this pay run's payslips - almost
    * always exactly one (an Organization has one country), but PayRun itself
    * carries no currency column, so this is never assumed. */
@@ -476,6 +480,8 @@ export class PayRunService {
       organizationId: payRun.organizationId,
       payRunId: id,
       payDate: payRun.payDate.toISOString().slice(0, 10),
+      periodStart: payRun.periodStart.toISOString().slice(0, 10),
+      periodEnd: payRun.periodEnd.toISOString().slice(0, 10),
       byCurrency: [...totalsByCurrency.values()],
     };
     this.eventEmitter.emit(PAY_RUN_DISBURSED_EVENT, disbursedEvent);

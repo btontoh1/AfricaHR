@@ -4,7 +4,7 @@ import { PrismaService } from '@africahr/platform-database';
 import { GlAccountCode } from '@africahr/finance-domain';
 
 export type GlJournalEntryWithLines = Prisma.GlJournalEntryGetPayload<{
-  include: { lines: { include: { account: true } } };
+  include: { lines: { include: { account: true } }; organizationUnit: true; costCenter: true };
 }>;
 
 export type GlJournalLineWithAccount = Prisma.GlJournalLineGetPayload<{
@@ -31,6 +31,10 @@ export interface CreateJournalEntryInput {
   createdBy?: string;
   /** Only set when this entry is itself a reversal - see voidEntry below. */
   reversalOfId?: string;
+  /** Cost-accounting dimensions - manual entries only today, see the
+   * schema's own doc comment on GlJournalEntry.organizationUnitId. */
+  organizationUnitId?: string;
+  costCenterId?: string;
   lines: CreateJournalEntryLineInput[];
 }
 
@@ -63,6 +67,8 @@ export class GlJournalEntryRepository {
             sourceId: input.sourceId,
             createdBy: input.createdBy,
             reversalOfId: input.reversalOfId,
+            organizationUnitId: input.organizationUnitId,
+            costCenterId: input.costCenterId,
             lines: {
               create: input.lines.map((line) => ({
                 tenantId,
@@ -72,7 +78,7 @@ export class GlJournalEntryRepository {
               })),
             },
           },
-          include: { lines: { include: { account: true } } },
+          include: { lines: { include: { account: true } }, organizationUnit: true, costCenter: true },
         }),
       );
     } catch (error) {
@@ -87,7 +93,7 @@ export class GlJournalEntryRepository {
     return this.prisma.withTenantContext(tenantId, (tx) =>
       tx.glJournalEntry.findFirst({
         where: { id, tenantId },
-        include: { lines: { include: { account: true } } },
+        include: { lines: { include: { account: true } }, organizationUnit: true, costCenter: true },
       }),
     );
   }
@@ -119,6 +125,8 @@ export class GlJournalEntryRepository {
             sourceId: reversal.sourceId,
             reversalOfId: originalId,
             createdBy: reversal.createdBy,
+            organizationUnitId: reversal.organizationUnitId,
+            costCenterId: reversal.costCenterId,
             lines: {
               create: reversal.lines.map((line) => ({
                 tenantId,
@@ -128,7 +136,7 @@ export class GlJournalEntryRepository {
               })),
             },
           },
-          include: { lines: { include: { account: true } } },
+          include: { lines: { include: { account: true } }, organizationUnit: true, costCenter: true },
         });
         await tx.glJournalEntry.update({
           where: { id: originalId },
@@ -148,7 +156,7 @@ export class GlJournalEntryRepository {
     return this.prisma.withTenantContext(tenantId, (tx) =>
       tx.glJournalEntry.findMany({
         where: { tenantId, organizationId },
-        include: { lines: { include: { account: true } } },
+        include: { lines: { include: { account: true } }, organizationUnit: true, costCenter: true },
         orderBy: { entryDate: 'desc' },
       }),
     );
@@ -288,5 +296,29 @@ export class GlJournalEntryRepository {
     return this.prisma.withTenantContext(tenantId, (tx) =>
       tx.glJournalLine.updateMany({ where: { tenantId, reconciliationId }, data: { reconciliationId: null } }),
     );
+  }
+
+  /**
+   * Batch-resolves user ids (createdBy/approvedBy) to a "First Last" display
+   * name, for rendering Prepared by/Approved by. The users table carries a
+   * tenant_isolation RLS policy same as everything else, so this must run
+   * through withTenantContext like any other tenant-scoped read - a plain
+   * this.prisma.user.findMany() here would see zero rows (current_setting
+   * returns null with no GUC set, and `tenant_id = null` never matches).
+   * An id not found (e.g. a deleted user) is simply absent from the
+   * returned map - the caller falls back to "System".
+   */
+  async resolveUserNames(tenantId: string, userIds: Array<string | null | undefined>): Promise<Map<string, string>> {
+    const distinctIds = [...new Set(userIds.filter((id): id is string => Boolean(id)))];
+    if (distinctIds.length === 0) {
+      return new Map();
+    }
+    const users = await this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.user.findMany({
+        where: { tenantId, id: { in: distinctIds } },
+        select: { id: true, firstName: true, lastName: true, email: true },
+      }),
+    );
+    return new Map(users.map((user) => [user.id, `${user.firstName} ${user.lastName}`.trim() || user.email]));
   }
 }

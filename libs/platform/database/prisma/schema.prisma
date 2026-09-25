@@ -277,6 +277,7 @@ model Organization {
   glFixedAssets           GlFixedAsset[]
   glDepreciationRuns      GlDepreciationRun[]
   expenses                Expense[]
+  glCostCenters           GlCostCenter[]
 
   @@index([tenantId])
   @@map("organizations")
@@ -327,6 +328,7 @@ model OrganizationUnit {
   children        OrganizationUnit[] @relation("OrganizationUnitToParent")
   employees       Employee[]
   jobRequisitions JobRequisition[]
+  journalEntries  GlJournalEntry[]
 
   @@index([tenantId])
   @@index([organizationId])
@@ -2352,7 +2354,25 @@ model GlJournalEntry {
   createdAt DateTime @default(now()) @map("created_at")
   createdBy String?  @map("created_by")
 
+  /// Set once this entry has gone through the (not-yet-built) approval
+  /// workflow - both null for every entry today, automatic and manual
+  /// alike. Added now as the foundation other work is expected to build on;
+  /// nothing currently sets them, so the UI shows "-" until an approve
+  /// action exists.
+  approvedAt DateTime? @map("approved_at")
+  approvedBy String?   @map("approved_by")
+
+  /// Optional cost-accounting dimensions, set on manual entries only today
+  /// (automatic postings from payroll/AP/invoicing don't carry a
+  /// department/cost center of their own). Reuses OrganizationUnit rather
+  /// than inventing a separate "department" concept - it's the same
+  /// employee-facing org-structure tree already used elsewhere.
+  organizationUnitId String? @map("organization_unit_id")
+  costCenterId       String? @map("cost_center_id")
+
   organization     Organization        @relation(fields: [organizationId], references: [id])
+  organizationUnit OrganizationUnit?   @relation(fields: [organizationUnitId], references: [id])
+  costCenter       GlCostCenter?       @relation(fields: [costCenterId], references: [id])
   lines            GlJournalLine[]
   reversalOf       GlJournalEntry?     @relation("GlJournalEntryReversal", fields: [reversalOfId], references: [id])
   reversedBy       GlJournalEntry?     @relation("GlJournalEntryReversal")
@@ -2363,7 +2383,37 @@ model GlJournalEntry {
   @@index([tenantId])
   @@index([organizationId])
   @@index([entryDate])
+  @@index([organizationUnitId])
+  @@index([costCenterId])
   @@map("gl_journal_entries")
+}
+
+/// A lightweight cost-accounting bucket ("Marketing Campaign Q1", "Head
+/// Office") that a manual journal entry can optionally be tagged with,
+/// independent of OrganizationUnit (which mirrors reporting-line structure,
+/// not spend tracking). Deliberately minimal - name + optional code, no
+/// hierarchy, no budget of its own - unlike OrganizationUnit this has no
+/// other use in the product yet, so it isn't worth more than that until a
+/// real need shows up.
+model GlCostCenter {
+  id             String  @id @default(uuid())
+  tenantId       String  @map("tenant_id")
+  organizationId String  @map("organization_id")
+  name           String
+  code           String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  organization   Organization     @relation(fields: [organizationId], references: [id])
+  journalEntries GlJournalEntry[]
+
+  @@unique([organizationId, name])
+  @@index([tenantId])
+  @@index([organizationId])
+  @@map("gl_cost_centers")
 }
 
 /// One debit or credit leg of a GlJournalEntry. debit/credit are both

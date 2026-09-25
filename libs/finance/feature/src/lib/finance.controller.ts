@@ -46,6 +46,8 @@ import { DepreciationRunResponseDto } from './dto/depreciation-run-response.dto'
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { ReimburseExpenseDto } from './dto/reimburse-expense.dto';
 import { ExpenseResponseDto } from './dto/expense-response.dto';
+import { CreateCostCenterDto } from './dto/create-cost-center.dto';
+import { CostCenterResponseDto } from './dto/cost-center-response.dto';
 
 // AddOnGuard runs after PermissionsGuard - order matters (NestJS runs
 // @UseGuards left to right), so a caller without the base role permission
@@ -624,5 +626,30 @@ export class FinanceController {
   ) {
     assertTenantScope(actor, tenantId);
     return this.finance.markExpenseReimbursed(tenantId, id, dto, actor);
+  }
+
+  @Get('cost-centers')
+  @RequirePermissions(Permission.FINANCE_READ)
+  @ApiOkResponse({ type: CostCenterResponseDto, isArray: true })
+  @ApiQuery({ name: 'organizationId', required: false })
+  listCostCenters(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() actor: RequestUser,
+    @Query('organizationId') organizationId?: string,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.listCostCenters(tenantId, organizationId);
+  }
+
+  @Post('cost-centers')
+  @RequirePermissions(Permission.FINANCE_MANAGE)
+  @ApiOkResponse({ type: CostCenterResponseDto })
+  createCostCenter(
+    @Param('tenantId') tenantId: string,
+    @Body() dto: CreateCostCenterDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.createCostCenter(tenantId, dto, actor);
   }
 }

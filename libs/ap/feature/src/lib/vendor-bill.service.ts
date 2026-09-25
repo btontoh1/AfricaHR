@@ -43,6 +43,7 @@ export interface VendorBillStatusChangedEvent {
   tenantId: string;
   organizationId: string;
   billId: string;
+  billNumber: string;
   fromStatus: string;
   toStatus: string;
   /** ISO timestamp of the transition (approvedAt). */
@@ -250,6 +251,7 @@ export class VendorBillService {
       tenantId,
       organizationId: existing.organizationId,
       billId: id,
+      billNumber: existing.billNumber,
       fromStatus: existing.status,
       toStatus: status,
       entryDate: transitionedAt.toISOString(),

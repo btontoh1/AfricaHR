@@ -32,6 +32,7 @@ export interface VendorPaymentRecordedEvent {
   tenantId: string;
   organizationId: string;
   paymentId: string;
+  vendorName: string;
   entryDate: string;
   currency: string;
   amount: number;
@@ -167,6 +168,7 @@ export class VendorPaymentService {
       tenantId,
       organizationId: dto.organizationId,
       paymentId: payment.id,
+      vendorName: vendor.name,
       entryDate: paymentDate.toISOString(),
       currency: dto.currency,
       amount: totalAmount,

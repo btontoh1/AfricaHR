@@ -12,8 +12,10 @@ import {
   type JournalEntryFormValues,
 } from './journal-entry-form-schema';
 import { AccountPicker } from './account-picker';
+import { CostCenterPicker } from './cost-center-picker';
 import type { ManualJournalEntryLineInput } from './types';
 import { OrganizationPicker } from '@/features/organizations/organization-picker';
+import { OrganizationUnitPicker } from '@/features/organizations/organization-unit-picker';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { formatCurrency } from '@/lib/format-currency';
 import { ALL_CURRENCIES } from '@/lib/currencies';
@@ -39,6 +41,8 @@ export function JournalEntryForm({ tenantId }: { tenantId: string }) {
         { accountCode: '', side: 'debit', amount: '' },
         { accountCode: '', side: 'credit', amount: '' },
       ],
+      organizationUnitId: '',
+      costCenterId: '',
     },
   });
 
@@ -46,6 +50,7 @@ export function JournalEntryForm({ tenantId }: { tenantId: string }) {
   const watchedLines = form.watch('lines');
   const balance = previewJournalEntryBalance(watchedLines);
   const watchedCurrency = form.watch('currency') || '—';
+  const watchedOrganizationId = form.watch('organizationId');
 
   async function onSubmit(values: JournalEntryFormValues) {
     try {
@@ -63,6 +68,8 @@ export function JournalEntryForm({ tenantId }: { tenantId: string }) {
           debit: line.side === 'debit' ? Number(line.amount) : undefined,
           credit: line.side === 'credit' ? Number(line.amount) : undefined,
         })),
+        organizationUnitId: values.organizationUnitId || undefined,
+        costCenterId: values.costCenterId || undefined,
       });
       toast.success('Journal entry created');
       router.push('/finance/journal-entries');
@@ -86,7 +93,15 @@ export function JournalEntryForm({ tenantId }: { tenantId: string }) {
                 <FormItem>
                   <FormLabel>Organization</FormLabel>
                   <FormControl>
-                    <OrganizationPicker tenantId={tenantId} value={field.value} onChange={field.onChange} />
+                    <OrganizationPicker
+                      tenantId={tenantId}
+                      value={field.value}
+                      onChange={(next) => {
+                        field.onChange(next);
+                        form.setValue('organizationUnitId', '');
+                        form.setValue('costCenterId', '');
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -137,6 +152,42 @@ export function JournalEntryForm({ tenantId }: { tenantId: string }) {
                   <FormLabel>Description</FormLabel>
                   <FormControl>
                     <Input placeholder="Office rent - January" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="organizationUnitId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Department (optional)</FormLabel>
+                  <FormControl>
+                    <OrganizationUnitPicker
+                      tenantId={tenantId}
+                      organizationId={watchedOrganizationId}
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="costCenterId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cost center (optional)</FormLabel>
+                  <FormControl>
+                    <CostCenterPicker
+                      tenantId={tenantId}
+                      organizationId={watchedOrganizationId}
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

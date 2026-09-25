@@ -4,6 +4,7 @@ import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/rea
 import { apiClient } from '@/lib/api-client';
 import type {
   CreateBankReconciliationInput,
+  CreateCostCenterInput,
   CreateExpenseInput,
   CreateFixedAssetInput,
   CreateGlAccountInput,
@@ -738,6 +739,40 @@ export function useReimburseExpense(tenantId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: expensesListKey(tenantId) });
+    },
+  });
+}
+
+function costCentersListKey(tenantId: string) {
+  return ['finance', 'cost-centers', tenantId] as const;
+}
+
+export function useCostCenters(tenantId: string, organizationId?: string) {
+  return useQuery({
+    queryKey: [...costCentersListKey(tenantId), organizationId ?? ''],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/cost-centers', {
+        params: { path: { tenantId }, query: organizationId ? { organizationId } : undefined },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useCreateCostCenter(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateCostCenterInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/cost-centers', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: costCentersListKey(tenantId) });
     },
   });
 }

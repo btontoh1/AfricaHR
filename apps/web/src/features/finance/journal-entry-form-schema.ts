@@ -14,6 +14,8 @@ export const journalEntryFormSchema = z.object({
   description: z.string().min(1, 'Description is required').max(500),
   currency: z.string().length(3, 'Use a 3-letter currency code (e.g. GHS)'),
   lines: z.array(journalEntryLineFormSchema).min(2, 'Add at least two lines'),
+  organizationUnitId: z.string().optional(),
+  costCenterId: z.string().optional(),
 });
 
 export type JournalEntryFormValues = z.infer<typeof journalEntryFormSchema>;

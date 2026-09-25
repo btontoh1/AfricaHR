@@ -14,6 +14,7 @@ describe('GlJournalEntryRepository', () => {
   let tx: {
     glJournalEntry: { create: jest.Mock; findMany: jest.Mock; findFirst: jest.Mock; update: jest.Mock };
     glJournalLine: { findMany: jest.Mock; findFirst: jest.Mock; update: jest.Mock; updateMany: jest.Mock };
+    user: { findMany: jest.Mock };
   };
   let prisma: { withTenantContext: jest.Mock };
 
@@ -21,8 +22,11 @@ describe('GlJournalEntryRepository', () => {
     tx = {
       glJournalEntry: { create: jest.fn(), findMany: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
       glJournalLine: { findMany: jest.fn(), findFirst: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
+      user: { findMany: jest.fn() },
     };
-    prisma = { withTenantContext: jest.fn((_tenantId, fn) => fn(tx)) };
+    prisma = {
+      withTenantContext: jest.fn((_tenantId, fn) => fn(tx)),
+    };
     repository = new GlJournalEntryRepository(prisma as unknown as PrismaService);
   });
 
@@ -54,9 +58,11 @@ describe('GlJournalEntryRepository', () => {
           sourceId: 'payrun-1',
           createdBy: undefined,
           reversalOfId: undefined,
+          organizationUnitId: undefined,
+          costCenterId: undefined,
           lines: { create: [{ tenantId: 'tenant-1', accountId: 'acc-1', debit: 100, credit: 0 }] },
         },
-        include: { lines: { include: { account: true } } },
+        include: { lines: { include: { account: true } }, organizationUnit: true, costCenter: true },
       });
     });
 
@@ -116,7 +122,7 @@ describe('GlJournalEntryRepository', () => {
 
       expect(tx.glJournalEntry.findFirst).toHaveBeenCalledWith({
         where: { id: 'entry-1', tenantId: 'tenant-1' },
-        include: { lines: { include: { account: true } } },
+        include: { lines: { include: { account: true } }, organizationUnit: true, costCenter: true },
       });
       expect(result).toEqual({ id: 'entry-1' });
     });
@@ -145,7 +151,7 @@ describe('GlJournalEntryRepository', () => {
           reversalOfId: 'original-1',
           sourceId: 'reversal-uuid',
         }),
-        include: { lines: { include: { account: true } } },
+        include: { lines: { include: { account: true } }, organizationUnit: true, costCenter: true },
       });
       expect(tx.glJournalEntry.update).toHaveBeenCalledWith({
         where: { id: 'original-1' },
@@ -250,6 +256,39 @@ describe('GlJournalEntryRepository', () => {
         where: { tenantId: 'tenant-1', reconciliationId: 'rec-1' },
         data: { reconciliationId: null },
       });
+    });
+  });
+
+  describe('resolveUserNames', () => {
+    it('returns an empty map without querying when given no ids', async () => {
+      const result = await repository.resolveUserNames('tenant-1', [null, undefined]);
+
+      expect(result.size).toBe(0);
+      expect(prisma.withTenantContext).not.toHaveBeenCalled();
+      expect(tx.user.findMany).not.toHaveBeenCalled();
+    });
+
+    it('de-duplicates ids, scopes by tenant (via withTenantContext), and maps to "First Last"', async () => {
+      tx.user.findMany.mockResolvedValue([
+        { id: 'user-1', firstName: 'John', lastName: 'Smith', email: 'john@acme.com' },
+      ]);
+
+      const result = await repository.resolveUserNames('tenant-1', ['user-1', 'user-1', null]);
+
+      expect(prisma.withTenantContext).toHaveBeenCalledWith('tenant-1', expect.any(Function));
+      expect(tx.user.findMany).toHaveBeenCalledWith({
+        where: { tenantId: 'tenant-1', id: { in: ['user-1'] } },
+        select: { id: true, firstName: true, lastName: true, email: true },
+      });
+      expect(result.get('user-1')).toBe('John Smith');
+    });
+
+    it('falls back to email when both names are blank', async () => {
+      tx.user.findMany.mockResolvedValue([{ id: 'user-1', firstName: '', lastName: '', email: 'john@acme.com' }]);
+
+      const result = await repository.resolveUserNames('tenant-1', ['user-1']);
+
+      expect(result.get('user-1')).toBe('john@acme.com');
     });
   });
 });

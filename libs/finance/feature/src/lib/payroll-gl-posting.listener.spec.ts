@@ -16,6 +16,8 @@ describe('PayrollGlPostingListener', () => {
       organizationId: 'org-1',
       payRunId: 'payrun-1',
       payDate: '2026-01-31',
+      periodStart: '2026-01-01',
+      periodEnd: '2026-01-31',
       byCurrency: [
         { currency: 'GHS', totalGrossPay: 1000, totalEmployerOnlyCost: 130, totalNetPay: 850 },
         { currency: 'NGN', totalGrossPay: 40000, totalEmployerOnlyCost: 5000, totalNetPay: 33000 },
@@ -27,6 +29,8 @@ describe('PayrollGlPostingListener', () => {
       organizationId: 'org-1',
       payRunId: 'payrun-1',
       payDate: new Date('2026-01-31'),
+      periodStart: new Date('2026-01-01'),
+      periodEnd: new Date('2026-01-31'),
       currency: 'GHS',
       totals: { totalGrossPay: 1000, totalEmployerOnlyCost: 130, totalNetPay: 850 },
     });
@@ -34,6 +38,8 @@ describe('PayrollGlPostingListener', () => {
       organizationId: 'org-1',
       payRunId: 'payrun-1',
       payDate: new Date('2026-01-31'),
+      periodStart: new Date('2026-01-01'),
+      periodEnd: new Date('2026-01-31'),
       currency: 'NGN',
       totals: { totalGrossPay: 40000, totalEmployerOnlyCost: 5000, totalNetPay: 33000 },
     });
@@ -47,6 +53,8 @@ describe('PayrollGlPostingListener', () => {
       organizationId: 'org-1',
       payRunId: 'payrun-1',
       payDate: '2026-01-31',
+      periodStart: '2026-01-01',
+      periodEnd: '2026-01-31',
       byCurrency: [
         { currency: 'GHS', totalGrossPay: 1000, totalEmployerOnlyCost: 130, totalNetPay: 850 },
         { currency: 'NGN', totalGrossPay: 40000, totalEmployerOnlyCost: 5000, totalNetPay: 33000 },

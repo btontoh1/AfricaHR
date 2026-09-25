@@ -27,3 +27,5 @@ export * from './lib/dto/depreciation-run-response.dto';
 export * from './lib/dto/create-expense.dto';
 export * from './lib/dto/reimburse-expense.dto';
 export * from './lib/dto/expense-response.dto';
+export * from './lib/dto/create-cost-center.dto';
+export * from './lib/dto/cost-center-response.dto';

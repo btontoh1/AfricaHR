@@ -7,6 +7,7 @@ import {
   ExpenseRepository,
   GlAccountRepository,
   GlBudgetRepository,
+  GlCostCenterRepository,
   GlDepreciationRunRepository,
   GlFixedAssetRepository,
   GlFxRevaluationRepository,
@@ -31,6 +32,7 @@ describe('FinanceService', () => {
   let fixedAssets: jest.Mocked<GlFixedAssetRepository>;
   let depreciationRuns: jest.Mocked<GlDepreciationRunRepository>;
   let expenses: jest.Mocked<ExpenseRepository>;
+  let costCenters: jest.Mocked<GlCostCenterRepository>;
   let audit: jest.Mocked<AuditService>;
 
   const actor: RequestUser = {
@@ -81,6 +83,7 @@ describe('FinanceService', () => {
       listClearedLines: jest.fn().mockResolvedValue([]),
       releaseClearedLines: jest.fn(),
       listLinesUpTo: jest.fn().mockResolvedValue([]),
+      resolveUserNames: jest.fn().mockResolvedValue(new Map()),
     } as unknown as jest.Mocked<GlJournalEntryRepository>;
 
     periodCloses = {
@@ -146,6 +149,12 @@ describe('FinanceService', () => {
       markReimbursed: jest.fn(),
     } as unknown as jest.Mocked<ExpenseRepository>;
 
+    costCenters = {
+      create: jest.fn(),
+      findById: jest.fn(),
+      list: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<GlCostCenterRepository>;
+
     audit = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
 
     service = new FinanceService(
@@ -160,6 +169,7 @@ describe('FinanceService', () => {
       fixedAssets,
       depreciationRuns,
       expenses,
+      costCenters,
       audit,
     );
   });
@@ -172,6 +182,8 @@ describe('FinanceService', () => {
         organizationId: 'org-1',
         payRunId: 'payrun-1',
         payDate: new Date('2026-01-31'),
+        periodStart: new Date('2026-01-01'),
+        periodEnd: new Date('2026-01-31'),
         currency: 'GHS',
         totals: { totalGrossPay: 1000, totalEmployerOnlyCost: 130, totalNetPay: 850 },
       });
@@ -181,6 +193,7 @@ describe('FinanceService', () => {
       expect(call.sourceType).toBe('PAY_RUN_DISBURSED');
       expect(call.sourceId).toBe('payrun-1:GHS');
       expect(call.currency).toBe('GHS');
+      expect(call.description).toBe('Payroll disbursed - 2026-01-01 to 2026-01-31');
       const debits = call.lines.reduce((sum, l) => sum + Number(l.debit), 0);
       const credits = call.lines.reduce((sum, l) => sum + Number(l.credit), 0);
       expect(debits).toBeCloseTo(credits, 2);
@@ -194,6 +207,7 @@ describe('FinanceService', () => {
       await service.postInvoiceSent('tenant-1', {
         organizationId: 'org-1',
         invoiceId: 'inv-1',
+        invoiceNumber: 'INV-0001',
         entryDate: new Date('2026-02-01'),
         currency: 'GHS',
         subtotal: 1000,
@@ -204,6 +218,7 @@ describe('FinanceService', () => {
       const call = journalEntries.createIfNotExists.mock.calls[0][1];
       expect(call.sourceType).toBe('CUSTOMER_INVOICE_SENT');
       expect(call.sourceId).toBe('inv-1');
+      expect(call.description).toBe('Customer invoice sent - INV-0001');
       expect(call.lines).toHaveLength(3);
     });
 
@@ -213,6 +228,7 @@ describe('FinanceService', () => {
       await service.postInvoicePaid('tenant-1', {
         organizationId: 'org-1',
         invoiceId: 'inv-1',
+        invoiceNumber: 'INV-0001',
         entryDate: new Date('2026-02-15'),
         currency: 'GHS',
         subtotal: 1000,
@@ -222,6 +238,7 @@ describe('FinanceService', () => {
 
       const call = journalEntries.createIfNotExists.mock.calls[0][1];
       expect(call.sourceType).toBe('CUSTOMER_INVOICE_PAID');
+      expect(call.description).toBe('Customer invoice paid - INV-0001');
       expect(call.lines).toHaveLength(2);
     });
   });
@@ -233,6 +250,7 @@ describe('FinanceService', () => {
       await service.postVendorBillApproved('tenant-1', {
         organizationId: 'org-1',
         billId: 'bill-1',
+        billNumber: 'BILL-0001',
         entryDate: new Date('2026-02-01'),
         currency: 'GHS',
         total: 1150,
@@ -241,6 +259,7 @@ describe('FinanceService', () => {
       const call = journalEntries.createIfNotExists.mock.calls[0][1];
       expect(call.sourceType).toBe('VENDOR_BILL_APPROVED');
       expect(call.sourceId).toBe('bill-1');
+      expect(call.description).toBe('Vendor bill approved - BILL-0001');
       expect(call.lines).toHaveLength(2);
     });
 
@@ -250,6 +269,7 @@ describe('FinanceService', () => {
       await service.postVendorPayment('tenant-1', {
         organizationId: 'org-1',
         paymentId: 'payment-1',
+        vendorName: 'Acme Ltd',
         entryDate: new Date('2026-02-15'),
         currency: 'GHS',
         amount: 1150,
@@ -258,6 +278,7 @@ describe('FinanceService', () => {
       const call = journalEntries.createIfNotExists.mock.calls[0][1];
       expect(call.sourceType).toBe('VENDOR_PAYMENT');
       expect(call.sourceId).toBe('payment-1');
+      expect(call.description).toBe('Vendor payment - Acme Ltd');
       expect(call.lines).toHaveLength(2);
     });
   });
@@ -311,6 +332,14 @@ describe('FinanceService', () => {
         currency: 'GHS',
         sourceType: 'MANUAL',
         sourceId: 'generated-uuid',
+        createdAt: new Date('2026-03-01'),
+        createdBy: 'user-1',
+        approvedAt: null,
+        approvedBy: null,
+        organizationUnitId: null,
+        organizationUnit: null,
+        costCenterId: null,
+        costCenter: null,
         lines: [
           {
             debit: new Prisma.Decimal(500),
@@ -367,6 +396,14 @@ describe('FinanceService', () => {
         currency: 'GHS',
         sourceType: 'MANUAL',
         sourceId: 'generated-uuid',
+        createdAt: new Date('2026-03-01'),
+        createdBy: 'user-1',
+        approvedAt: null,
+        approvedBy: null,
+        organizationUnitId: null,
+        organizationUnit: null,
+        costCenterId: null,
+        costCenter: null,
         lines: [],
       } as never);
 
@@ -484,6 +521,14 @@ describe('FinanceService', () => {
         sourceId: 'reversal-uuid',
         voidedAt: null,
         reversalOfId: 'entry-1',
+        createdAt: new Date('2026-03-01'),
+        createdBy: 'user-1',
+        approvedAt: null,
+        approvedBy: null,
+        organizationUnitId: null,
+        organizationUnit: null,
+        costCenterId: null,
+        costCenter: null,
         lines: [],
       } as never);
 
@@ -1900,6 +1945,114 @@ describe('FinanceService', () => {
       await service.markExpenseReimbursed('tenant-1', 'expense-1', { reimbursedAt: '2026-04-12' }, actor);
 
       expect(expenses.markReimbursed).toHaveBeenCalledWith('tenant-1', 'expense-1', new Date('2026-04-12'), 'user-1');
+    });
+  });
+
+  describe('listJournalEntries', () => {
+    it('resolves createdBy/approvedBy to display names, and falls back to "System" for automatic postings', async () => {
+      journalEntries.list.mockResolvedValue([
+        {
+          id: 'entry-1',
+          organizationId: 'org-1',
+          entryDate: new Date('2026-03-01'),
+          description: 'Office rent',
+          currency: 'GHS',
+          sourceType: 'MANUAL',
+          sourceId: 'uuid-1',
+          voidedAt: null,
+          reversalOfId: null,
+          createdAt: new Date('2026-03-01'),
+          createdBy: 'user-1',
+          approvedAt: new Date('2026-03-02'),
+          approvedBy: 'user-2',
+          organizationUnitId: 'unit-1',
+          organizationUnit: { name: 'Finance' },
+          costCenterId: 'cc-1',
+          costCenter: { name: 'Head Office' },
+          lines: [],
+        },
+        {
+          id: 'entry-2',
+          organizationId: 'org-1',
+          entryDate: new Date('2026-03-05'),
+          description: 'Vendor bill approved - BILL-0001',
+          currency: 'GHS',
+          sourceType: 'VENDOR_BILL_APPROVED',
+          sourceId: 'bill-1',
+          voidedAt: null,
+          reversalOfId: null,
+          createdAt: new Date('2026-03-05'),
+          createdBy: null,
+          approvedAt: null,
+          approvedBy: null,
+          organizationUnitId: null,
+          organizationUnit: null,
+          costCenterId: null,
+          costCenter: null,
+          lines: [],
+        },
+      ] as never);
+      journalEntries.resolveUserNames.mockResolvedValue(
+        new Map([
+          ['user-1', 'John Smith'],
+          ['user-2', 'Mary Jones'],
+        ]),
+      );
+
+      const result = await service.listJournalEntries('tenant-1');
+
+      expect(journalEntries.resolveUserNames).toHaveBeenCalledWith('tenant-1', ['user-1', 'user-2', null, null]);
+      expect(result[0]).toMatchObject({
+        preparedByName: 'John Smith',
+        approvedByName: 'Mary Jones',
+        organizationUnitName: 'Finance',
+        costCenterName: 'Head Office',
+      });
+      expect(result[1]).toMatchObject({
+        preparedByName: 'System',
+        approvedByName: null,
+        organizationUnitName: null,
+        costCenterName: null,
+      });
+    });
+  });
+
+  describe('createCostCenter / listCostCenters', () => {
+    it('creates a cost center and records an audit entry', async () => {
+      costCenters.create.mockResolvedValue({
+        id: 'cc-1',
+        organizationId: 'org-1',
+        name: 'Head Office',
+        code: 'HO',
+      } as never);
+
+      const result = await service.createCostCenter(
+        'tenant-1',
+        { organizationId: 'org-1', name: 'Head Office', code: 'HO' },
+        actor,
+      );
+
+      expect(costCenters.create).toHaveBeenCalledWith('tenant-1', {
+        organizationId: 'org-1',
+        name: 'Head Office',
+        code: 'HO',
+        createdBy: 'user-1',
+      });
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ tenantId: 'tenant-1', action: 'finance.cost_center.created', resourceId: 'cc-1' }),
+      );
+      expect(result).toEqual({ id: 'cc-1', organizationId: 'org-1', name: 'Head Office', code: 'HO' });
+    });
+
+    it('lists cost centers, scoped by organization when given', async () => {
+      costCenters.list.mockResolvedValue([
+        { id: 'cc-1', organizationId: 'org-1', name: 'Head Office', code: 'HO' },
+      ] as never);
+
+      const result = await service.listCostCenters('tenant-1', 'org-1');
+
+      expect(costCenters.list).toHaveBeenCalledWith('tenant-1', 'org-1');
+      expect(result).toEqual([{ id: 'cc-1', organizationId: 'org-1', name: 'Head Office', code: 'HO' }]);
     });
   });
 });

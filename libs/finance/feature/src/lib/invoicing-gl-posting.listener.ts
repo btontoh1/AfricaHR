@@ -13,6 +13,8 @@ export interface CustomerInvoiceStatusChangedEventPayload {
   tenantId: string;
   organizationId: string;
   invoiceId: string;
+  /** e.g. "INV-0001" - used only to make the journal entry's description readable. */
+  invoiceNumber: string;
   fromStatus: string;
   toStatus: string;
   /** ISO timestamp of the transition (sentAt/paidAt). */
@@ -40,6 +42,7 @@ export class InvoicingGlPostingListener {
       const input = {
         organizationId: payload.organizationId,
         invoiceId: payload.invoiceId,
+        invoiceNumber: payload.invoiceNumber,
         entryDate: new Date(payload.entryDate),
         currency: payload.currency,
         subtotal: payload.subtotal,

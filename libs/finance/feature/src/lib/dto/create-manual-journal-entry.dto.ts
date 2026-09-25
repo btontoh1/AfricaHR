@@ -60,4 +60,14 @@ export class CreateManualJournalEntryDto {
   @ValidateNested({ each: true })
   @Type(() => ManualJournalEntryLineDto)
   lines!: ManualJournalEntryLineDto[];
+
+  @ApiPropertyOptional({ description: 'Department this entry belongs to - an OrganizationUnit id.' })
+  @IsOptional()
+  @IsUUID()
+  organizationUnitId?: string;
+
+  @ApiPropertyOptional({ description: 'Cost center this entry belongs to.' })
+  @IsOptional()
+  @IsUUID()
+  costCenterId?: string;
 }

@@ -14,6 +14,8 @@ export interface VendorBillStatusChangedEventPayload {
   tenantId: string;
   organizationId: string;
   billId: string;
+  /** e.g. "BILL-0001" - used only to make the journal entry's description readable. */
+  billNumber: string;
   fromStatus: string;
   toStatus: string;
   /** ISO timestamp of the transition (approvedAt). */
@@ -31,6 +33,8 @@ export interface VendorPaymentRecordedEventPayload {
   tenantId: string;
   organizationId: string;
   paymentId: string;
+  /** Used only to make the journal entry's description readable - VendorPayment has no number sequence of its own. */
+  vendorName: string;
   entryDate: string;
   currency: string;
   amount: number;
@@ -54,6 +58,7 @@ export class ApGlPostingListener {
       await this.finance.postVendorBillApproved(payload.tenantId, {
         organizationId: payload.organizationId,
         billId: payload.billId,
+        billNumber: payload.billNumber,
         entryDate: new Date(payload.entryDate),
         currency: payload.currency,
         total: payload.total,
@@ -72,6 +77,7 @@ export class ApGlPostingListener {
       await this.finance.postVendorPayment(payload.tenantId, {
         organizationId: payload.organizationId,
         paymentId: payload.paymentId,
+        vendorName: payload.vendorName,
         entryDate: new Date(payload.entryDate),
         currency: payload.currency,
         amount: payload.amount,

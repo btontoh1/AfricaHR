@@ -26,6 +26,10 @@ export interface PayRunDisbursedEventPayload {
   payRunId: string;
   /** ISO date (YYYY-MM-DD), the pay run's payDate. */
   payDate: string;
+  /** ISO dates (YYYY-MM-DD) - used only to make the journal entry's
+   * description readable, since PayRun has no separate "number". */
+  periodStart: string;
+  periodEnd: string;
   /** One entry per currency present among the pay run's payslips - almost
    * always exactly one (an Organization has one country), but never
    * assumed to be. One GL journal entry is posted per group. */
@@ -46,6 +50,8 @@ export class PayrollGlPostingListener {
           organizationId: payload.organizationId,
           payRunId: payload.payRunId,
           payDate: new Date(payload.payDate),
+          periodStart: new Date(payload.periodStart),
+          periodEnd: new Date(payload.periodEnd),
           currency: group.currency,
           totals: {
             totalGrossPay: group.totalGrossPay,

@@ -3,11 +3,15 @@ import {
   ArrowRight,
   Banknote,
   Briefcase,
+  Calculator,
   CalendarDays,
   CheckCircle2,
   FileText,
   HeartHandshake,
   KeyRound,
+  Landmark,
+  Package,
+  Receipt,
   ScrollText,
   ShieldCheck,
   Target,
@@ -17,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { DemoRequestDialog } from './demo-request-dialog';
 import { MarketingHeader } from './marketing-header';
 import { MarketingFooter } from './marketing-footer';
+import { StructuredData } from './structured-data';
 
 const COUNTRIES = [
   {
@@ -81,6 +86,30 @@ const FEATURES = [
     title: 'B2B invoicing',
     description:
       "Bill your own customers straight from ParotHR, with your organization's logo on every invoice PDF for a professional, branded look.",
+  },
+  {
+    icon: Calculator,
+    title: 'Full-featured accounting',
+    description:
+      'A complete chart of accounts, journal entries with void and reversal, recurring entries, and budget-vs-actual tracking - plus Profit & Loss, Balance Sheet, Cash Flow, and Trial Balance reports whenever you need them.',
+  },
+  {
+    icon: Receipt,
+    title: 'Accounts payable & expenses',
+    description:
+      'Track vendor bills through to partial or full payment, and record company or employee expenses - every posting hits the ledger automatically, so your books are always current.',
+  },
+  {
+    icon: Landmark,
+    title: 'Bank reconciliation & multi-currency',
+    description:
+      'Reconcile every bank statement line against your ledger, and let scheduled FX revaluation keep foreign-currency balances accurate as rates move.',
+  },
+  {
+    icon: Package,
+    title: 'Fixed assets',
+    description:
+      'Register equipment and property, run scheduled depreciation automatically, and record disposals - all reflected in your financial reports without manual journal entries.',
   },
 ];
 
@@ -180,6 +209,7 @@ function ProductPreview() {
 export function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <StructuredData />
       <MarketingHeader />
 
       <main className="flex-1">
@@ -196,8 +226,9 @@ export function LandingPage() {
                 HR &amp; payroll built for how African businesses actually work.
               </h1>
               <p className="mt-5 max-w-xl text-lg text-muted-foreground text-balance">
-                Employees, payroll, leave, recruitment, and performance in one system - with the statutory
-                rules for each country handled automatically instead of bolted on afterward.
+                Employees, payroll, leave, recruitment, and performance - plus full double-entry accounting,
+                accounts payable, and financial reporting - in one system, with the statutory rules for each
+                country handled automatically instead of bolted on afterward.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <Button asChild size="lg">
@@ -255,10 +286,11 @@ export function LandingPage() {
             <div className="max-w-xl">
               <p className="text-sm font-semibold tracking-wide text-primary uppercase">Features</p>
               <h2 className="mt-2 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-                Everything HR needs, one system
+                Everything HR and finance needs, one system
               </h2>
               <p className="mt-4 text-muted-foreground">
-                Every module shares the same employee record, so nothing gets re-entered or falls out of sync.
+                Every module shares the same employee record and the same ledger, so nothing gets re-entered
+                or falls out of sync.
               </p>
             </div>
             <div className="mt-12 overflow-hidden rounded-2xl border border-border">

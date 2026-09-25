@@ -13,6 +13,8 @@ const PUBLIC_PATHS = [
   '/terms',
   '/privacy',
   '/refund-policy',
+  '/sitemap.xml',
+  '/robots.txt',
 ];
 
 // Fast, cookie-presence-only gate — not a full JWT verification (Edge

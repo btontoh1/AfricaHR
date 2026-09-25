@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { AlertCircle, ShieldCheck, Users, Wallet } from 'lucide-react';
@@ -7,6 +8,13 @@ import { Logo } from '@/components/logo';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { LoginForm } from '../login-form';
+
+// One near-duplicate page per tenant slug - keep these out of search results
+// entirely rather than let them compete with (or dilute) the generic /login
+// page.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 const highlights = [
   { icon: Users, text: 'One system for employees, payroll, and performance' },

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { AlertCircle } from 'lucide-react';
 import { getPublicJobRequisition } from '@/lib/public-job-requisition-lookup';
@@ -5,6 +6,26 @@ import { PublicApplicationForm } from '@/features/careers/public-application-for
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ requisitionId: string }>;
+}): Promise<Metadata> {
+  const { requisitionId } = await params;
+  const requisition = await getPublicJobRequisition(requisitionId);
+
+  if (!requisition) {
+    return { title: 'Job posting', robots: { index: false, follow: false } };
+  }
+
+  return {
+    title: requisition.title,
+    description: requisition.description
+      ? requisition.description.slice(0, 160)
+      : `Apply for ${requisition.title} - ${requisition.employmentType.replace('_', ' ').toLowerCase()}.`,
+  };
+}
 
 export default async function CareersJobPage({
   params,

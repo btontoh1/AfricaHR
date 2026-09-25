@@ -6,6 +6,8 @@ import {
   BankReconciliationRepository,
   GlAccountRepository,
   GlBudgetRepository,
+  GlFxRevaluationRepository,
+  GlHomeCurrencyRepository,
   GlJournalEntryRepository,
   GlPeriodCloseRepository,
   GlRecurringJournalEntryRepository,
@@ -21,6 +23,8 @@ describe('FinanceService', () => {
   let budgets: jest.Mocked<GlBudgetRepository>;
   let bankReconciliations: jest.Mocked<BankReconciliationRepository>;
   let recurringEntries: jest.Mocked<GlRecurringJournalEntryRepository>;
+  let homeCurrencies: jest.Mocked<GlHomeCurrencyRepository>;
+  let fxRevaluations: jest.Mocked<GlFxRevaluationRepository>;
   let audit: jest.Mocked<AuditService>;
 
   const actor: RequestUser = {
@@ -42,6 +46,7 @@ describe('FinanceService', () => {
     [GlAccountCode.REVENUE, 'acc-revenue'],
     [GlAccountCode.PAYROLL_EXPENSE, 'acc-payroll-exp'],
     [GlAccountCode.GENERAL_EXPENSE, 'acc-general-exp'],
+    [GlAccountCode.FX_GAIN_LOSS, 'acc-fx-gain-loss'],
   ]);
 
   beforeEach(() => {
@@ -65,6 +70,7 @@ describe('FinanceService', () => {
       setLineReconciliation: jest.fn(),
       listClearedLines: jest.fn().mockResolvedValue([]),
       releaseClearedLines: jest.fn(),
+      listLinesUpTo: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<GlJournalEntryRepository>;
 
     periodCloses = {
@@ -97,6 +103,17 @@ describe('FinanceService', () => {
       listDue: jest.fn(),
     } as unknown as jest.Mocked<GlRecurringJournalEntryRepository>;
 
+    homeCurrencies = {
+      upsert: jest.fn(),
+      findByOrganization: jest.fn().mockResolvedValue(null),
+    } as unknown as jest.Mocked<GlHomeCurrencyRepository>;
+
+    fxRevaluations = {
+      create: jest.fn(),
+      findLatest: jest.fn().mockResolvedValue(null),
+      list: jest.fn(),
+    } as unknown as jest.Mocked<GlFxRevaluationRepository>;
+
     audit = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
 
     service = new FinanceService(
@@ -106,6 +123,8 @@ describe('FinanceService', () => {
       budgets,
       bankReconciliations,
       recurringEntries,
+      homeCurrencies,
+      fxRevaluations,
       audit,
     );
   });
@@ -1124,6 +1143,201 @@ describe('FinanceService', () => {
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'finance.recurring_journal_entry.deleted', resourceId: 'rec-1' }),
       );
+    });
+  });
+
+  describe('getHomeCurrency', () => {
+    it('returns a null currency when never set', async () => {
+      const result = await service.getHomeCurrency('tenant-1', 'org-1');
+
+      expect(result).toEqual({ organizationId: 'org-1', currency: null });
+    });
+
+    it('returns the set currency', async () => {
+      homeCurrencies.findByOrganization.mockResolvedValue({ currency: 'GHS' } as never);
+
+      const result = await service.getHomeCurrency('tenant-1', 'org-1');
+
+      expect(result).toEqual({ organizationId: 'org-1', currency: 'GHS' });
+    });
+  });
+
+  describe('setHomeCurrency', () => {
+    it('upserts and audits on success', async () => {
+      homeCurrencies.upsert.mockResolvedValue({ currency: 'GHS' } as never);
+
+      const result = await service.setHomeCurrency('tenant-1', { organizationId: 'org-1', currency: 'GHS' }, actor);
+
+      expect(homeCurrencies.upsert).toHaveBeenCalledWith('tenant-1', 'org-1', 'GHS', 'user-1');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'finance.home_currency.set', resourceId: 'org-1' }),
+      );
+      expect(result).toEqual({ organizationId: 'org-1', currency: 'GHS' });
+    });
+
+    it('translates a foreign-key violation on organizationId into a NotFoundException', async () => {
+      const fkError = Object.assign(Object.create(Prisma.PrismaClientKnownRequestError.prototype), {
+        code: 'P2003',
+        message: 'mock',
+      });
+      homeCurrencies.upsert.mockRejectedValue(fkError);
+
+      await expect(
+        service.setHomeCurrency('tenant-1', { organizationId: 'missing-org', currency: 'GHS' }, actor),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('runFxRevaluation', () => {
+    const dto = { organizationId: 'org-1', currency: 'USD', asOfDate: '2026-03-31', rate: 11 };
+
+    function makeLine(overrides: Record<string, unknown> = {}) {
+      return {
+        account: { code: GlAccountCode.CASH_AND_BANK },
+        journalEntry: { currency: 'USD' },
+        debit: 0,
+        credit: 0,
+        ...overrides,
+      };
+    }
+
+    it('rejects when no home currency has been set', async () => {
+      await expect(service.runFxRevaluation('tenant-1', dto, actor)).rejects.toThrow(BadRequestException);
+      expect(journalEntries.listLinesUpTo).not.toHaveBeenCalled();
+    });
+
+    it('rejects revaluing the home currency against itself', async () => {
+      homeCurrencies.findByOrganization.mockResolvedValue({ currency: 'USD' } as never);
+
+      await expect(service.runFxRevaluation('tenant-1', dto, actor)).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects when a revaluation for this exact date already exists', async () => {
+      homeCurrencies.findByOrganization.mockResolvedValue({ currency: 'GHS' } as never);
+      fxRevaluations.findLatest.mockResolvedValue({ asOfDate: new Date('2026-03-31'), rate: 10 } as never);
+
+      await expect(service.runFxRevaluation('tenant-1', dto, actor)).rejects.toThrow(ConflictException);
+      expect(fxRevaluations.create).not.toHaveBeenCalled();
+    });
+
+    it('on the first ever revaluation, only establishes the baseline rate - no balance lookup, no posting', async () => {
+      homeCurrencies.findByOrganization.mockResolvedValue({ currency: 'GHS' } as never);
+      fxRevaluations.findLatest.mockResolvedValue(null);
+      fxRevaluations.create.mockResolvedValue({
+        id: 'rev-1',
+        organizationId: 'org-1',
+        currency: 'USD',
+        asOfDate: new Date('2026-03-31'),
+        rate: { toString: () => '11' },
+        previousRate: null,
+        gainLoss: null,
+        journalEntryId: null,
+        createdAt: new Date('2026-03-31'),
+      } as never);
+
+      const result = await service.runFxRevaluation('tenant-1', dto, actor);
+
+      expect(journalEntries.listLinesUpTo).not.toHaveBeenCalled();
+      expect(journalEntries.createIfNotExists).not.toHaveBeenCalled();
+      expect(fxRevaluations.create).toHaveBeenCalledWith('tenant-1', {
+        organizationId: 'org-1',
+        currency: 'USD',
+        asOfDate: new Date('2026-03-31'),
+        rate: 11,
+        previousRate: undefined,
+        gainLoss: undefined,
+        journalEntryId: undefined,
+        createdBy: 'user-1',
+      });
+      expect(result.previousRate).toBeNull();
+      expect(result.journalEntryId).toBeNull();
+    });
+
+    it('posts the adjusting entry and records the gain when the rate has moved and a balance exists', async () => {
+      homeCurrencies.findByOrganization.mockResolvedValue({ currency: 'GHS' } as never);
+      fxRevaluations.findLatest.mockResolvedValue({ asOfDate: new Date('2026-02-28'), rate: 10 } as never);
+      journalEntries.listLinesUpTo.mockResolvedValue([makeLine({ debit: 1000 })] as never);
+      journalEntries.createIfNotExists.mockResolvedValue({ id: 'entry-1' } as never);
+      fxRevaluations.create.mockResolvedValue({
+        id: 'rev-2',
+        organizationId: 'org-1',
+        currency: 'USD',
+        asOfDate: new Date('2026-03-31'),
+        rate: { toString: () => '11' },
+        previousRate: { toString: () => '10' },
+        gainLoss: { toString: () => '1000' },
+        journalEntryId: 'entry-1',
+        createdAt: new Date('2026-03-31'),
+      } as never);
+
+      const result = await service.runFxRevaluation('tenant-1', dto, actor);
+
+      expect(journalEntries.createIfNotExists).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({
+          organizationId: 'org-1',
+          entryDate: new Date('2026-03-31'),
+          currency: 'GHS',
+          sourceType: 'FX_REVALUATION',
+          sourceId: 'org-1:USD:2026-03-31',
+          lines: expect.arrayContaining([
+            { accountId: 'acc-cash', debit: 1000, credit: 0 },
+            { accountId: 'acc-fx-gain-loss', debit: 0, credit: 1000 },
+          ]),
+        }),
+      );
+      expect(fxRevaluations.create).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ previousRate: 10, gainLoss: 1000, journalEntryId: 'entry-1' }),
+      );
+      expect(result.gainLoss).toBe('1000');
+    });
+
+    it('records a zero gain and posts nothing when no monetary balance exists in this currency', async () => {
+      homeCurrencies.findByOrganization.mockResolvedValue({ currency: 'GHS' } as never);
+      fxRevaluations.findLatest.mockResolvedValue({ asOfDate: new Date('2026-02-28'), rate: 10 } as never);
+      journalEntries.listLinesUpTo.mockResolvedValue([]);
+      fxRevaluations.create.mockResolvedValue({
+        id: 'rev-3',
+        organizationId: 'org-1',
+        currency: 'USD',
+        asOfDate: new Date('2026-03-31'),
+        rate: { toString: () => '11' },
+        previousRate: { toString: () => '10' },
+        gainLoss: { toString: () => '0' },
+        journalEntryId: null,
+        createdAt: new Date('2026-03-31'),
+      } as never);
+
+      await service.runFxRevaluation('tenant-1', dto, actor);
+
+      expect(journalEntries.createIfNotExists).not.toHaveBeenCalled();
+      expect(fxRevaluations.create).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ gainLoss: 0, journalEntryId: undefined }),
+      );
+    });
+
+    it('translates a concurrent duplicate-date write (P2002) into a ConflictException', async () => {
+      homeCurrencies.findByOrganization.mockResolvedValue({ currency: 'GHS' } as never);
+      fxRevaluations.findLatest.mockResolvedValue(null);
+      const duplicateError = Object.assign(Object.create(Prisma.PrismaClientKnownRequestError.prototype), {
+        code: 'P2002',
+        message: 'mock',
+      });
+      fxRevaluations.create.mockRejectedValue(duplicateError);
+
+      await expect(service.runFxRevaluation('tenant-1', dto, actor)).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('listFxRevaluations', () => {
+    it('lists revaluations scoped to the tenant and organization', async () => {
+      fxRevaluations.list.mockResolvedValue([]);
+
+      await service.listFxRevaluations('tenant-1', 'org-1');
+
+      expect(fxRevaluations.list).toHaveBeenCalledWith('tenant-1', 'org-1');
     });
   });
 });

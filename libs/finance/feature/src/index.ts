@@ -15,3 +15,7 @@ export * from './lib/dto/bank-reconciliation-response.dto';
 export * from './lib/dto/create-recurring-journal-entry.dto';
 export * from './lib/dto/update-recurring-journal-entry.dto';
 export * from './lib/dto/recurring-journal-entry-response.dto';
+export * from './lib/dto/set-home-currency.dto';
+export * from './lib/dto/home-currency-response.dto';
+export * from './lib/dto/run-fx-revaluation.dto';
+export * from './lib/dto/fx-revaluation-response.dto';

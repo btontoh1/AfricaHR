@@ -23,6 +23,8 @@ import { SetBudgetDto } from './dto/set-budget.dto';
 import { CreateBankReconciliationDto } from './dto/create-bank-reconciliation.dto';
 import { CreateRecurringJournalEntryDto } from './dto/create-recurring-journal-entry.dto';
 import { UpdateRecurringJournalEntryDto } from './dto/update-recurring-journal-entry.dto';
+import { SetHomeCurrencyDto } from './dto/set-home-currency.dto';
+import { RunFxRevaluationDto } from './dto/run-fx-revaluation.dto';
 import { JournalEntryResponseDto } from './dto/journal-entry-response.dto';
 import { GlAccountResponseDto } from './dto/gl-account-response.dto';
 import { ProfitAndLossResponseDto } from './dto/profit-and-loss-response.dto';
@@ -34,6 +36,8 @@ import { PeriodCloseResponseDto } from './dto/period-close-response.dto';
 import { BudgetResponseDto } from './dto/budget-response.dto';
 import { BankReconciliationDetailResponseDto, BankReconciliationResponseDto } from './dto/bank-reconciliation-response.dto';
 import { RecurringJournalEntryResponseDto } from './dto/recurring-journal-entry-response.dto';
+import { HomeCurrencyResponseDto } from './dto/home-currency-response.dto';
+import { FxRevaluationResponseDto } from './dto/fx-revaluation-response.dto';
 
 // AddOnGuard runs after PermissionsGuard - order matters (NestJS runs
 // @UseGuards left to right), so a caller without the base role permission
@@ -477,5 +481,51 @@ export class FinanceController {
   ): Promise<void> {
     assertTenantScope(actor, tenantId);
     await this.finance.deleteRecurringJournalEntry(tenantId, id, actor);
+  }
+
+  @Get('home-currency')
+  @RequirePermissions(Permission.FINANCE_READ)
+  @ApiOkResponse({ type: HomeCurrencyResponseDto })
+  @ApiQuery({ name: 'organizationId', required: true })
+  getHomeCurrency(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() actor: RequestUser,
+    @Query('organizationId') organizationId: string,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.getHomeCurrency(tenantId, organizationId);
+  }
+
+  @Post('home-currency')
+  @RequirePermissions(Permission.FINANCE_MANAGE)
+  @ApiOkResponse({ type: HomeCurrencyResponseDto })
+  setHomeCurrency(@Param('tenantId') tenantId: string, @Body() dto: SetHomeCurrencyDto, @CurrentUser() actor: RequestUser) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.setHomeCurrency(tenantId, dto, actor);
+  }
+
+  @Get('fx-revaluations')
+  @RequirePermissions(Permission.FINANCE_READ)
+  @ApiOkResponse({ type: FxRevaluationResponseDto, isArray: true })
+  @ApiQuery({ name: 'organizationId', required: false })
+  listFxRevaluations(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() actor: RequestUser,
+    @Query('organizationId') organizationId?: string,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.listFxRevaluations(tenantId, organizationId);
+  }
+
+  @Post('fx-revaluations')
+  @RequirePermissions(Permission.FINANCE_MANAGE)
+  @ApiOkResponse({ type: FxRevaluationResponseDto })
+  runFxRevaluation(
+    @Param('tenantId') tenantId: string,
+    @Body() dto: RunFxRevaluationDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.runFxRevaluation(tenantId, dto, actor);
   }
 }

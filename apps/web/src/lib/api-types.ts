@@ -3290,6 +3290,38 @@ export interface paths {
         patch: operations["FinanceController_setRecurringJournalEntryActive"];
         trace?: never;
     };
+    "/api/tenants/{tenantId}/finance/home-currency": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_getHomeCurrency"];
+        put?: never;
+        post: operations["FinanceController_setHomeCurrency"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/fx-revaluations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_listFxRevaluations"];
+        put?: never;
+        post: operations["FinanceController_runFxRevaluation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/vendors": {
         parameters: {
             query?: never;
@@ -5115,7 +5147,7 @@ export interface components {
         };
         ManualJournalEntryLineDto: {
             /** @enum {string} */
-            accountCode: "1000" | "1100" | "2000" | "2100" | "2200" | "4000" | "5000" | "5900";
+            accountCode: "1000" | "1100" | "2000" | "2100" | "2200" | "4000" | "5000" | "5900" | "4900";
             /** @description Set exactly one of debit/credit per line, never both. */
             debit?: number;
             credit?: number;
@@ -5368,6 +5400,45 @@ export interface components {
         };
         UpdateRecurringJournalEntryDto: {
             isActive: boolean;
+        };
+        HomeCurrencyResponseDto: {
+            organizationId: string;
+            /** @description Null if this organization has never had a home currency set - FX revaluation cannot run for it yet */
+            currency?: string;
+        };
+        SetHomeCurrencyDto: {
+            organizationId: string;
+            /**
+             * @description The currency every FX revaluation for this organization converts foreign balances into
+             * @example GHS
+             */
+            currency: string;
+        };
+        FxRevaluationResponseDto: {
+            id: string;
+            organizationId: string;
+            currency: string;
+            asOfDate: string;
+            rate: string;
+            /** @description Null on the very first revaluation ever run for this organization/currency - it only establishes the baseline rate */
+            previousRate?: string;
+            /** @description Home-currency amount; null when previousRate is null, or 0 when no monetary balance in this currency existed as of asOfDate */
+            gainLoss?: string;
+            /** @description Null when nothing was posted (first run, or every monetary balance was zero) */
+            journalEntryId?: string;
+            createdAt: string;
+        };
+        RunFxRevaluationDto: {
+            organizationId: string;
+            /**
+             * @description The foreign currency being revalued - must differ from the organization's home currency
+             * @example USD
+             */
+            currency: string;
+            /** @description Every monetary account balance in this currency is revalued as of this date */
+            asOfDate: string;
+            /** @description Units of the home currency per 1 unit of currency, as of asOfDate */
+            rate: number;
         };
         CreateVendorDto: {
             organizationId: string;
@@ -11772,6 +11843,102 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RecurringJournalEntryResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_getHomeCurrency: {
+        parameters: {
+            query: {
+                organizationId: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HomeCurrencyResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_setHomeCurrency: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetHomeCurrencyDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HomeCurrencyResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_listFxRevaluations: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FxRevaluationResponseDto"][];
+                };
+            };
+        };
+    };
+    FinanceController_runFxRevaluation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunFxRevaluationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FxRevaluationResponseDto"];
                 };
             };
         };

@@ -23,3 +23,7 @@ export type RecurringJournalEntryLine = components['schemas']['RecurringJournalE
 export type CreateRecurringJournalEntryInput = components['schemas']['CreateRecurringJournalEntryDto'];
 export type RecurringJournalEntryLineInput = components['schemas']['RecurringJournalEntryLineDto'];
 export type UpdateRecurringJournalEntryInput = components['schemas']['UpdateRecurringJournalEntryDto'];
+export type HomeCurrency = components['schemas']['HomeCurrencyResponseDto'];
+export type SetHomeCurrencyInput = components['schemas']['SetHomeCurrencyDto'];
+export type FxRevaluation = components['schemas']['FxRevaluationResponseDto'];
+export type RunFxRevaluationInput = components['schemas']['RunFxRevaluationDto'];

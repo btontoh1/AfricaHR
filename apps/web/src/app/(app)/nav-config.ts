@@ -51,6 +51,7 @@ import {
   GitCompare,
   ListChecks,
   Repeat,
+  ArrowLeftRight,
 } from 'lucide-react';
 import type { SessionUser } from '@/lib/session';
 
@@ -260,6 +261,9 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
         ...(hasFinanceAccess ? [{ label: 'Budgets', href: '/finance/budgets', icon: PiggyBank }] : []),
         ...(hasFinanceAccess
           ? [{ label: 'Bank Reconciliation', href: '/finance/bank-reconciliations', icon: ListChecks }]
+          : []),
+        ...(hasFinanceAccess
+          ? [{ label: 'FX Revaluation', href: '/finance/fx-revaluation', icon: ArrowLeftRight }]
           : []),
       ],
     },

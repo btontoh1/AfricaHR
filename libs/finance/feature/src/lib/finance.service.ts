@@ -7,9 +7,12 @@ import {
   BankReconciliationRepository,
   GlAccountRepository,
   GlBudgetRepository,
+  GlFxRevaluationRepository,
+  GlHomeCurrencyRepository,
   GlJournalEntryRepository,
   GlJournalEntryWithLines,
   GlJournalLineForReconciliation,
+  GlJournalLineWithAccount,
   GlPeriodCloseRepository,
   GlRecurringJournalEntryRepository,
   GlRecurringJournalEntryWithLines,
@@ -18,9 +21,11 @@ import {
   canExtendPeriodClose,
   computeClearedBalance,
   computeFirstRunDate,
+  computeFxRevaluationLines,
   computeInvoicePaidJournalLines,
   computeInvoiceSentJournalLines,
   computePayrollJournalLines,
+  computeRateDelta,
   computeReconciliationDifference,
   computeReversalJournalLines,
   computeVendorBillApprovedJournalLines,
@@ -30,6 +35,8 @@ import {
   isDateWithinClosedPeriod,
   isReconciliationBalanced,
   JournalLineAmount,
+  MonetaryAccountBalance,
+  MONETARY_ACCOUNT_TYPES,
   PayRunPayrollTotals,
 } from '@africahr/finance-domain';
 import { CreateManualJournalEntryDto } from './dto/create-manual-journal-entry.dto';
@@ -40,12 +47,16 @@ import { SetBudgetDto } from './dto/set-budget.dto';
 import { CreateBankReconciliationDto } from './dto/create-bank-reconciliation.dto';
 import { CreateRecurringJournalEntryDto } from './dto/create-recurring-journal-entry.dto';
 import { UpdateRecurringJournalEntryDto } from './dto/update-recurring-journal-entry.dto';
+import { SetHomeCurrencyDto } from './dto/set-home-currency.dto';
+import { RunFxRevaluationDto } from './dto/run-fx-revaluation.dto';
 import { JournalEntryResponseDto } from './dto/journal-entry-response.dto';
 import { GlAccountResponseDto } from './dto/gl-account-response.dto';
 import { BudgetResponseDto } from './dto/budget-response.dto';
 import { PeriodCloseResponseDto } from './dto/period-close-response.dto';
 import { BankReconciliationDetailResponseDto, BankReconciliationResponseDto } from './dto/bank-reconciliation-response.dto';
 import { RecurringJournalEntryResponseDto } from './dto/recurring-journal-entry-response.dto';
+import { HomeCurrencyResponseDto } from './dto/home-currency-response.dto';
+import { FxRevaluationResponseDto } from './dto/fx-revaluation-response.dto';
 
 function translateOrganizationReferenceError(error: unknown, organizationId: string): never {
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
@@ -163,6 +174,37 @@ function toRecurringJournalEntryResponseDto(
   };
 }
 
+function toHomeCurrencyResponseDto(
+  organizationId: string,
+  homeCurrency: { currency: string } | null,
+): HomeCurrencyResponseDto {
+  return { organizationId, currency: homeCurrency?.currency ?? null };
+}
+
+function toFxRevaluationResponseDto(revaluation: {
+  id: string;
+  organizationId: string;
+  currency: string;
+  asOfDate: Date;
+  rate: { toString(): string };
+  previousRate: { toString(): string } | null;
+  gainLoss: { toString(): string } | null;
+  journalEntryId: string | null;
+  createdAt: Date;
+}): FxRevaluationResponseDto {
+  return {
+    id: revaluation.id,
+    organizationId: revaluation.organizationId,
+    currency: revaluation.currency,
+    asOfDate: revaluation.asOfDate.toISOString(),
+    rate: revaluation.rate.toString(),
+    previousRate: revaluation.previousRate ? revaluation.previousRate.toString() : null,
+    gainLoss: revaluation.gainLoss ? revaluation.gainLoss.toString() : null,
+    journalEntryId: revaluation.journalEntryId,
+    createdAt: revaluation.createdAt.toISOString(),
+  };
+}
+
 function toJournalEntryResponseDto(entry: GlJournalEntryWithLines): JournalEntryResponseDto {
   return {
     id: entry.id,
@@ -218,6 +260,8 @@ export class FinanceService {
     private readonly budgets: GlBudgetRepository,
     private readonly bankReconciliations: BankReconciliationRepository,
     private readonly recurringEntries: GlRecurringJournalEntryRepository,
+    private readonly homeCurrencies: GlHomeCurrencyRepository,
+    private readonly fxRevaluations: GlFxRevaluationRepository,
     private readonly audit: AuditService,
   ) {}
 
@@ -963,5 +1007,152 @@ export class FinanceService {
       resourceId: id,
       metadata: { organizationId: existing.organizationId, description: existing.description },
     });
+  }
+
+  async getHomeCurrency(tenantId: string, organizationId: string): Promise<HomeCurrencyResponseDto> {
+    const homeCurrency = await this.homeCurrencies.findByOrganization(tenantId, organizationId);
+    return toHomeCurrencyResponseDto(organizationId, homeCurrency);
+  }
+
+  /** The currency every FX revaluation for this organization converts
+   * foreign balances into - must be set before runFxRevaluation will do
+   * anything for it. Setting it again overwrites it in place; changing an
+   * established home currency doesn't retroactively touch revaluations
+   * already posted under the old one. */
+  async setHomeCurrency(tenantId: string, dto: SetHomeCurrencyDto, actor: RequestUser): Promise<HomeCurrencyResponseDto> {
+    let homeCurrency;
+    try {
+      homeCurrency = await this.homeCurrencies.upsert(tenantId, dto.organizationId, dto.currency, actor.sub);
+    } catch (error) {
+      translateOrganizationReferenceError(error, dto.organizationId);
+    }
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actor.sub ?? null,
+      action: 'finance.home_currency.set',
+      resourceType: 'GlHomeCurrency',
+      resourceId: dto.organizationId,
+      metadata: { currency: dto.currency },
+    });
+
+    return toHomeCurrencyResponseDto(dto.organizationId, homeCurrency);
+  }
+
+  /**
+   * Revalues every monetary (ASSET/LIABILITY) account's balance in
+   * `dto.currency`, as of `dto.asOfDate`, against the organization's home
+   * currency - see compute-fx-revaluation.ts for the balance-sheet-method
+   * math and GlFxRevaluation's own doc comment for why the very first run
+   * for an organization/currency only ever establishes a baseline rate.
+   * Idempotent per (organization, currency, asOfDate) two ways: an
+   * explicit check up front (for a clear error message) and the table's
+   * own unique constraint as the concurrency backstop.
+   */
+  async runFxRevaluation(tenantId: string, dto: RunFxRevaluationDto, actor: RequestUser): Promise<FxRevaluationResponseDto> {
+    const homeCurrency = await this.homeCurrencies.findByOrganization(tenantId, dto.organizationId);
+    if (!homeCurrency) {
+      throw new BadRequestException('Set a home currency for this organization before running an FX revaluation');
+    }
+    if (dto.currency === homeCurrency.currency) {
+      throw new BadRequestException("Cannot revalue an organization's home currency against itself");
+    }
+
+    const asOfDate = new Date(dto.asOfDate);
+    const previous = await this.fxRevaluations.findLatest(tenantId, dto.organizationId, dto.currency);
+    if (previous && previous.asOfDate.getTime() === asOfDate.getTime()) {
+      throw new ConflictException(`A revaluation for ${dto.currency} as of ${dto.asOfDate} has already been run`);
+    }
+    const previousRate = previous ? Number(previous.rate) : null;
+    const rateDelta = computeRateDelta(dto.rate, previousRate);
+
+    await this.accounts.ensureDefaultAccounts(tenantId);
+
+    let journalEntryId: string | null = null;
+    let gainLoss: number | null = null;
+
+    if (rateDelta !== null) {
+      const lines: GlJournalLineWithAccount[] = await this.journalEntries.listLinesUpTo(tenantId, {
+        organizationId: dto.organizationId,
+        asOf: asOfDate,
+      });
+      const relevantLines = lines.filter(
+        (line) => line.journalEntry.currency === dto.currency && line.account.code in MONETARY_ACCOUNT_TYPES,
+      );
+      const balances: MonetaryAccountBalance[] = Object.entries(MONETARY_ACCOUNT_TYPES).map(
+        ([accountCode, accountType]) => {
+          const accountLines = relevantLines.filter((line) => line.account.code === accountCode);
+          const balance = accountLines.reduce(
+            (sum, line) =>
+              sum +
+              (accountType === 'ASSET'
+                ? Number(line.debit) - Number(line.credit)
+                : Number(line.credit) - Number(line.debit)),
+            0,
+          );
+          return { accountCode: accountCode as GlAccountCode, balance };
+        },
+      );
+
+      const { lines: journalLines, netGainLoss } = computeFxRevaluationLines(balances, rateDelta);
+      gainLoss = netGainLoss;
+
+      if (journalLines.length > 0) {
+        const accountIds = await this.accounts.mapCodesToIds(
+          tenantId,
+          journalLines.map((line) => line.accountCode),
+        );
+        const entry = await this.journalEntries.createIfNotExists(tenantId, {
+          organizationId: dto.organizationId,
+          entryDate: asOfDate,
+          description: `FX revaluation - ${dto.currency} at ${dto.rate}`,
+          currency: homeCurrency.currency,
+          sourceType: 'FX_REVALUATION',
+          sourceId: `${dto.organizationId}:${dto.currency}:${dto.asOfDate}`,
+          createdBy: actor.sub,
+          lines: journalLines.map((line) => ({
+            accountId: accountIds.get(line.accountCode) as string,
+            debit: line.debit,
+            credit: line.credit,
+          })),
+        });
+        journalEntryId = entry ? entry.id : null;
+      }
+    }
+
+    let revaluation;
+    try {
+      revaluation = await this.fxRevaluations.create(tenantId, {
+        organizationId: dto.organizationId,
+        currency: dto.currency,
+        asOfDate,
+        rate: dto.rate,
+        previousRate: previousRate ?? undefined,
+        gainLoss: gainLoss ?? undefined,
+        journalEntryId: journalEntryId ?? undefined,
+        createdBy: actor.sub,
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException(`A revaluation for ${dto.currency} as of ${dto.asOfDate} has already been run`);
+      }
+      throw error;
+    }
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actor.sub ?? null,
+      action: 'finance.fx_revaluation.run',
+      resourceType: 'GlFxRevaluation',
+      resourceId: revaluation.id,
+      metadata: { organizationId: dto.organizationId, currency: dto.currency, rate: dto.rate, gainLoss },
+    });
+
+    return toFxRevaluationResponseDto(revaluation);
+  }
+
+  async listFxRevaluations(tenantId: string, organizationId?: string): Promise<FxRevaluationResponseDto[]> {
+    const revaluations = await this.fxRevaluations.list(tenantId, organizationId);
+    return revaluations.map(toFxRevaluationResponseDto);
   }
 }

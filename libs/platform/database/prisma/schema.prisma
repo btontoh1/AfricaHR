@@ -271,6 +271,8 @@ model Organization {
   glBudgets               GlBudget[]
   bankReconciliations     BankReconciliation[]
   recurringJournalEntries GlRecurringJournalEntry[]
+  glHomeCurrency          GlHomeCurrency?
+  glFxRevaluations        GlFxRevaluation[]
 
   @@index([tenantId])
   @@map("organizations")
@@ -1985,6 +1987,62 @@ model GlRecurringJournalEntryLine {
   @@map("gl_recurring_journal_entry_lines")
 }
 
+/// The currency every FX revaluation for this organization converts foreign
+/// balances into - one row per organization, set once via FinanceService.
+/// setHomeCurrency before any revaluation can run for it (see
+/// FinanceService.runFxRevaluation's own check). Deliberately its own tiny
+/// table rather than a field on Organization: Organization is owned by a
+/// different scope (tenancy), and this setting is meaningful only to
+/// Finance, same reasoning as GlPeriodClose being its own table instead of
+/// a field there.
+model GlHomeCurrency {
+  id             String @id @default(uuid())
+  tenantId       String @map("tenant_id")
+  organizationId String @unique @map("organization_id")
+  currency       String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedBy String?  @map("updated_by")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([tenantId])
+  @@map("gl_home_currencies")
+}
+
+/// One row per FX revaluation run for one (organization, currency) pair -
+/// see FinanceService.runFxRevaluation. rate/previousRate are both "units
+/// of GlHomeCurrency per 1 unit of currency"; previousRate is null on the
+/// very first revaluation ever run for this organization/currency (there's
+/// nothing yet to compare against, so no gain/loss is computed or posted -
+/// that run only establishes the baseline rate for next time). gainLoss and
+/// journalEntryId are likewise both null whenever nothing was posted
+/// (first run, or every monetary account's balance in this currency was
+/// zero as of asOfDate).
+model GlFxRevaluation {
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  organizationId String   @map("organization_id")
+  currency       String
+  asOfDate       DateTime @map("as_of_date")
+  rate           Decimal
+  previousRate   Decimal? @map("previous_rate")
+  gainLoss       Decimal? @map("gain_loss")
+  journalEntryId String?  @map("journal_entry_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  createdBy String?  @map("created_by")
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  journalEntry GlJournalEntry? @relation(fields: [journalEntryId], references: [id])
+
+  @@unique([organizationId, currency, asOfDate])
+  @@index([tenantId])
+  @@index([organizationId, currency])
+  @@map("gl_fx_revaluations")
+}
+
 /// PAY_RUN_DISBURSED/CUSTOMER_INVOICE_SENT/CUSTOMER_INVOICE_PAID are each
 /// posted automatically, exactly once per source event - see the
 /// (sourceType, sourceId) unique constraint below, which is this table's
@@ -2013,6 +2071,11 @@ enum GlJournalEntrySourceType {
   /// already posted a safe no-op, same idempotency shape as
   /// PAY_RUN_DISBURSED's "<payRunId>:<currency>".
   RECURRING_JOURNAL_ENTRY
+  /// Posted by FinanceService.runFxRevaluation - sourceId is
+  /// "<organizationId>:<currency>:<asOfDate>", so re-running a revaluation
+  /// already run for that exact organization/currency/date is a safe
+  /// no-op, same idempotency shape as every other automatic posting here.
+  FX_REVALUATION
 }
 
 model GlJournalEntry {
@@ -2050,10 +2113,11 @@ model GlJournalEntry {
   createdAt DateTime @default(now()) @map("created_at")
   createdBy String?  @map("created_by")
 
-  organization Organization    @relation(fields: [organizationId], references: [id])
-  lines        GlJournalLine[]
-  reversalOf   GlJournalEntry? @relation("GlJournalEntryReversal", fields: [reversalOfId], references: [id])
-  reversedBy   GlJournalEntry? @relation("GlJournalEntryReversal")
+  organization   Organization      @relation(fields: [organizationId], references: [id])
+  lines          GlJournalLine[]
+  reversalOf     GlJournalEntry?   @relation("GlJournalEntryReversal", fields: [reversalOfId], references: [id])
+  reversedBy     GlJournalEntry?   @relation("GlJournalEntryReversal")
+  fxRevaluations GlFxRevaluation[]
 
   @@unique([sourceType, sourceId])
   @@index([tenantId])

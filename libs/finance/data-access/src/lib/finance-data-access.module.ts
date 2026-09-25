@@ -6,6 +6,8 @@ import { GlPeriodCloseRepository } from './gl-period-close.repository';
 import { GlBudgetRepository } from './gl-budget.repository';
 import { BankReconciliationRepository } from './bank-reconciliation.repository';
 import { GlRecurringJournalEntryRepository } from './gl-recurring-journal-entry.repository';
+import { GlHomeCurrencyRepository } from './gl-home-currency.repository';
+import { GlFxRevaluationRepository } from './gl-fx-revaluation.repository';
 import { FinanceOrganizationRepository } from './finance-organization.repository';
 
 @Module({
@@ -17,6 +19,8 @@ import { FinanceOrganizationRepository } from './finance-organization.repository
     GlBudgetRepository,
     BankReconciliationRepository,
     GlRecurringJournalEntryRepository,
+    GlHomeCurrencyRepository,
+    GlFxRevaluationRepository,
     FinanceOrganizationRepository,
   ],
   exports: [
@@ -26,6 +30,8 @@ import { FinanceOrganizationRepository } from './finance-organization.repository
     GlBudgetRepository,
     BankReconciliationRepository,
     GlRecurringJournalEntryRepository,
+    GlHomeCurrencyRepository,
+    GlFxRevaluationRepository,
     FinanceOrganizationRepository,
   ],
 })

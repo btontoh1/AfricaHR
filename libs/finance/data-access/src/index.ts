@@ -4,5 +4,7 @@ export * from './lib/gl-period-close.repository';
 export * from './lib/gl-budget.repository';
 export * from './lib/bank-reconciliation.repository';
 export * from './lib/gl-recurring-journal-entry.repository';
+export * from './lib/gl-home-currency.repository';
+export * from './lib/gl-fx-revaluation.repository';
 export * from './lib/finance-organization.repository';
 export * from './lib/finance-data-access.module';

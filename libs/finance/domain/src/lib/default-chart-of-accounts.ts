@@ -24,6 +24,13 @@ export const GlAccountCode = {
   // code would silently misname postings under the tenant's own account
   // instead of seeding a distinct one.
   GENERAL_EXPENSE: '5900',
+  // Where FX revaluation's net gain/loss lands - see
+  // compute-fx-revaluation.ts. Classified REVENUE (a gain credits it, a
+  // loss debits it, same sign convention computeProfitAndLoss already
+  // applies to every REVENUE account) rather than a separate gain/loss
+  // pair, matching this chart's "one fixed bucket per source type"
+  // convention everywhere else.
+  FX_GAIN_LOSS: '4900',
 } as const;
 
 export type GlAccountCode = (typeof GlAccountCode)[keyof typeof GlAccountCode];
@@ -57,4 +64,20 @@ export const DEFAULT_CHART_OF_ACCOUNTS: readonly DefaultGlAccount[] = [
   { code: GlAccountCode.REVENUE, name: 'Revenue', type: 'REVENUE' },
   { code: GlAccountCode.PAYROLL_EXPENSE, name: 'Payroll Expense', type: 'EXPENSE' },
   { code: GlAccountCode.GENERAL_EXPENSE, name: 'General Expense', type: 'EXPENSE' },
+  { code: GlAccountCode.FX_GAIN_LOSS, name: 'FX Gain/Loss', type: 'REVENUE' },
 ];
+
+/**
+ * The monetary (ASSET/LIABILITY) accounts FX revaluation ever adjusts,
+ * each with its own normal-balance direction - see
+ * compute-fx-revaluation.ts. Every ASSET/LIABILITY account in this minimal
+ * chart is monetary (there's no inventory or fixed-asset code), so this is
+ * just those five with their types restated for that computation's use.
+ */
+export const MONETARY_ACCOUNT_TYPES: Readonly<Record<string, 'ASSET' | 'LIABILITY'>> = {
+  [GlAccountCode.CASH_AND_BANK]: 'ASSET',
+  [GlAccountCode.ACCOUNTS_RECEIVABLE]: 'ASSET',
+  [GlAccountCode.PAYROLL_LIABILITIES_PAYABLE]: 'LIABILITY',
+  [GlAccountCode.TAX_PAYABLE]: 'LIABILITY',
+  [GlAccountCode.ACCOUNTS_PAYABLE]: 'LIABILITY',
+};

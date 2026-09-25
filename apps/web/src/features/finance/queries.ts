@@ -7,7 +7,9 @@ import type {
   CreateGlAccountInput,
   CreateManualJournalEntryInput,
   CreateRecurringJournalEntryInput,
+  RunFxRevaluationInput,
   SetBudgetInput,
+  SetHomeCurrencyInput,
   SetPeriodCloseInput,
   UpdateGlAccountInput,
   UpdateRecurringJournalEntryInput,
@@ -513,6 +515,87 @@ export function useDeleteRecurringJournalEntry(tenantId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: recurringJournalEntriesListKey(tenantId) });
+    },
+  });
+}
+
+function homeCurrencyQueryOptions(tenantId: string, organizationId: string) {
+  return {
+    queryKey: ['finance', 'home-currency', tenantId, organizationId],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/home-currency', {
+        params: { path: { tenantId }, query: { organizationId } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: Boolean(organizationId),
+  };
+}
+
+export function useHomeCurrency(tenantId: string, organizationId: string) {
+  return useQuery(homeCurrencyQueryOptions(tenantId, organizationId));
+}
+
+/** Resolves every organization's home currency in one screen - same
+ * fan-out pattern as usePeriodCloses. */
+export function useHomeCurrencies(tenantId: string, organizationIds: string[]) {
+  return useQueries({
+    queries: organizationIds.map((organizationId) => homeCurrencyQueryOptions(tenantId, organizationId)),
+    combine: (results) => ({
+      data: results.map((result) => result.data),
+      isLoading: results.some((result) => result.isLoading),
+    }),
+  });
+}
+
+export function useSetHomeCurrency(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: SetHomeCurrencyInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/home-currency', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['finance', 'home-currency', tenantId, result.organizationId] });
+    },
+  });
+}
+
+function fxRevaluationsListKey(tenantId: string) {
+  return ['finance', 'fx-revaluations', tenantId] as const;
+}
+
+export function useFxRevaluations(tenantId: string, organizationId?: string) {
+  return useQuery({
+    queryKey: [...fxRevaluationsListKey(tenantId), organizationId ?? ''],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/fx-revaluations', {
+        params: { path: { tenantId }, query: organizationId ? { organizationId } : undefined },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useRunFxRevaluation(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: RunFxRevaluationInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/fx-revaluations', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: fxRevaluationsListKey(tenantId) });
     },
   });
 }

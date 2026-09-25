@@ -4,6 +4,7 @@ import { AuditService } from '@africahr/platform-audit';
 import { RequestUser, SystemRole } from '@africahr/platform-auth';
 import {
   BankReconciliationRepository,
+  ExpenseRepository,
   GlAccountRepository,
   GlBudgetRepository,
   GlDepreciationRunRepository,
@@ -29,6 +30,7 @@ describe('FinanceService', () => {
   let fxRevaluations: jest.Mocked<GlFxRevaluationRepository>;
   let fixedAssets: jest.Mocked<GlFixedAssetRepository>;
   let depreciationRuns: jest.Mocked<GlDepreciationRunRepository>;
+  let expenses: jest.Mocked<ExpenseRepository>;
   let audit: jest.Mocked<AuditService>;
 
   const actor: RequestUser = {
@@ -54,6 +56,7 @@ describe('FinanceService', () => {
     [GlAccountCode.FIXED_ASSETS, 'acc-fixed-assets'],
     [GlAccountCode.ACCUMULATED_DEPRECIATION, 'acc-accumulated-depreciation'],
     [GlAccountCode.DEPRECIATION_EXPENSE, 'acc-depreciation-expense'],
+    [GlAccountCode.EXPENSE_REIMBURSEMENTS_PAYABLE, 'acc-expense-reimbursements-payable'],
   ]);
 
   beforeEach(() => {
@@ -136,6 +139,13 @@ describe('FinanceService', () => {
       list: jest.fn(),
     } as unknown as jest.Mocked<GlDepreciationRunRepository>;
 
+    expenses = {
+      create: jest.fn(),
+      findById: jest.fn(),
+      list: jest.fn(),
+      markReimbursed: jest.fn(),
+    } as unknown as jest.Mocked<ExpenseRepository>;
+
     audit = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
 
     service = new FinanceService(
@@ -149,6 +159,7 @@ describe('FinanceService', () => {
       fxRevaluations,
       fixedAssets,
       depreciationRuns,
+      expenses,
       audit,
     );
   });
@@ -215,7 +226,7 @@ describe('FinanceService', () => {
     });
   });
 
-  describe('postVendorBillApproved / postVendorBillPaid', () => {
+  describe('postVendorBillApproved / postVendorPayment', () => {
     it('posts General Expense/Accounts Payable on approved', async () => {
       journalEntries.createIfNotExists.mockResolvedValue({ id: 'entry-4' } as never);
 
@@ -233,19 +244,20 @@ describe('FinanceService', () => {
       expect(call.lines).toHaveLength(2);
     });
 
-    it('posts Accounts Payable/Cash on paid', async () => {
+    it('posts Accounts Payable/Cash for a recorded vendor payment', async () => {
       journalEntries.createIfNotExists.mockResolvedValue({ id: 'entry-5' } as never);
 
-      await service.postVendorBillPaid('tenant-1', {
+      await service.postVendorPayment('tenant-1', {
         organizationId: 'org-1',
-        billId: 'bill-1',
+        paymentId: 'payment-1',
         entryDate: new Date('2026-02-15'),
         currency: 'GHS',
-        total: 1150,
+        amount: 1150,
       });
 
       const call = journalEntries.createIfNotExists.mock.calls[0][1];
-      expect(call.sourceType).toBe('VENDOR_BILL_PAID');
+      expect(call.sourceType).toBe('VENDOR_PAYMENT');
+      expect(call.sourceId).toBe('payment-1');
       expect(call.lines).toHaveLength(2);
     });
   });
@@ -1703,6 +1715,191 @@ describe('FinanceService', () => {
       await service.listDepreciationRuns('tenant-1', 'org-1');
 
       expect(depreciationRuns.list).toHaveBeenCalledWith('tenant-1', 'org-1');
+    });
+  });
+
+  describe('createExpense', () => {
+    const dto = {
+      organizationId: 'org-1',
+      description: 'Fuel',
+      category: 'TRAVEL' as const,
+      currency: 'GHS',
+      amount: 200,
+      expenseDate: '2026-04-01',
+      paidBy: 'COMPANY' as const,
+    };
+
+    it('credits Cash and Bank directly for a COMPANY-paid expense', async () => {
+      journalEntries.createIfNotExists.mockResolvedValue({ id: 'entry-1' } as never);
+      expenses.create.mockResolvedValue({
+        id: 'expense-1',
+        organizationId: 'org-1',
+        description: 'Fuel',
+        category: 'TRAVEL',
+        currency: 'GHS',
+        amount: { toString: () => '200' },
+        expenseDate: new Date('2026-04-01'),
+        paidBy: 'COMPANY',
+        reimbursedAt: null,
+        notes: null,
+        createdAt: new Date('2026-04-01'),
+      } as never);
+
+      const result = await service.createExpense('tenant-1', dto, actor);
+
+      expect(expenses.create).toHaveBeenCalledWith('tenant-1', {
+        organizationId: 'org-1',
+        description: 'Fuel',
+        category: 'TRAVEL',
+        currency: 'GHS',
+        amount: 200,
+        expenseDate: new Date('2026-04-01'),
+        paidBy: 'COMPANY',
+        notes: undefined,
+        createdBy: 'user-1',
+      });
+      expect(journalEntries.createIfNotExists).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({
+          sourceType: 'EXPENSE_RECORDED',
+          sourceId: 'expense-1',
+          lines: [
+            { accountId: 'acc-general-exp', debit: 200, credit: 0 },
+            { accountId: 'acc-cash', debit: 0, credit: 200 },
+          ],
+        }),
+      );
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'finance.expense.created', resourceId: 'expense-1' }),
+      );
+      expect(result.reimbursedAt).toBeNull();
+    });
+
+    it('credits Expense Reimbursements Payable for an EMPLOYEE-paid expense', async () => {
+      journalEntries.createIfNotExists.mockResolvedValue({ id: 'entry-1' } as never);
+      expenses.create.mockResolvedValue({
+        id: 'expense-2',
+        organizationId: 'org-1',
+        description: 'Fuel',
+        category: 'TRAVEL',
+        currency: 'GHS',
+        amount: { toString: () => '200' },
+        expenseDate: new Date('2026-04-01'),
+        paidBy: 'EMPLOYEE',
+        reimbursedAt: null,
+        notes: null,
+        createdAt: new Date('2026-04-01'),
+      } as never);
+
+      await service.createExpense('tenant-1', { ...dto, paidBy: 'EMPLOYEE' }, actor);
+
+      expect(journalEntries.createIfNotExists).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({
+          lines: [
+            { accountId: 'acc-general-exp', debit: 200, credit: 0 },
+            { accountId: 'acc-expense-reimbursements-payable', debit: 0, credit: 200 },
+          ],
+        }),
+      );
+    });
+
+    it('translates a foreign-key violation on organizationId into a NotFoundException', async () => {
+      const fkError = Object.assign(Object.create(Prisma.PrismaClientKnownRequestError.prototype), {
+        code: 'P2003',
+        message: 'mock',
+      });
+      expenses.create.mockRejectedValue(fkError);
+
+      await expect(service.createExpense('tenant-1', { ...dto, organizationId: 'missing-org' }, actor)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('listExpenses', () => {
+    it('lists expenses scoped to the tenant and organization', async () => {
+      expenses.list.mockResolvedValue([]);
+
+      await service.listExpenses('tenant-1', 'org-1');
+
+      expect(expenses.list).toHaveBeenCalledWith('tenant-1', 'org-1');
+    });
+  });
+
+  describe('markExpenseReimbursed', () => {
+    function makeExpense(overrides: Record<string, unknown> = {}) {
+      return {
+        id: 'expense-1',
+        organizationId: 'org-1',
+        description: 'Fuel',
+        category: 'TRAVEL',
+        currency: 'GHS',
+        amount: { toString: () => '200' },
+        expenseDate: new Date('2026-04-01'),
+        paidBy: 'EMPLOYEE',
+        reimbursedAt: null,
+        notes: null,
+        createdAt: new Date('2026-04-01'),
+        ...overrides,
+      };
+    }
+
+    it('rejects when the expense does not exist', async () => {
+      expenses.findById.mockResolvedValue(null);
+
+      await expect(service.markExpenseReimbursed('tenant-1', 'missing', {}, actor)).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects a COMPANY-paid expense - nothing is owed', async () => {
+      expenses.findById.mockResolvedValue(makeExpense({ paidBy: 'COMPANY' }) as never);
+
+      await expect(service.markExpenseReimbursed('tenant-1', 'expense-1', {}, actor)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('rejects an expense that has already been reimbursed', async () => {
+      expenses.findById.mockResolvedValue(makeExpense({ reimbursedAt: new Date('2026-04-10') }) as never);
+
+      await expect(service.markExpenseReimbursed('tenant-1', 'expense-1', {}, actor)).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    it('posts Expense Reimbursements Payable/Cash and defaults reimbursedAt to now when omitted', async () => {
+      expenses.findById.mockResolvedValue(makeExpense() as never);
+      journalEntries.createIfNotExists.mockResolvedValue({ id: 'entry-2' } as never);
+      expenses.markReimbursed.mockResolvedValue(makeExpense({ reimbursedAt: new Date('2026-04-15') }) as never);
+
+      const result = await service.markExpenseReimbursed('tenant-1', 'expense-1', {}, actor);
+
+      expect(journalEntries.createIfNotExists).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({
+          sourceType: 'EXPENSE_REIMBURSED',
+          sourceId: 'expense-1',
+          lines: [
+            { accountId: 'acc-expense-reimbursements-payable', debit: 200, credit: 0 },
+            { accountId: 'acc-cash', debit: 0, credit: 200 },
+          ],
+        }),
+      );
+      expect(expenses.markReimbursed).toHaveBeenCalledWith('tenant-1', 'expense-1', expect.any(Date), 'user-1');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'finance.expense.reimbursed', resourceId: 'expense-1' }),
+      );
+      expect(result.reimbursedAt).toBe('2026-04-15T00:00:00.000Z');
+    });
+
+    it('uses the given reimbursedAt when provided', async () => {
+      expenses.findById.mockResolvedValue(makeExpense() as never);
+      journalEntries.createIfNotExists.mockResolvedValue({ id: 'entry-2' } as never);
+      expenses.markReimbursed.mockResolvedValue(makeExpense({ reimbursedAt: new Date('2026-04-12') }) as never);
+
+      await service.markExpenseReimbursed('tenant-1', 'expense-1', { reimbursedAt: '2026-04-12' }, actor);
+
+      expect(expenses.markReimbursed).toHaveBeenCalledWith('tenant-1', 'expense-1', new Date('2026-04-12'), 'user-1');
     });
   });
 });

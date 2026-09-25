@@ -32,3 +32,6 @@ export type CreateFixedAssetInput = components['schemas']['CreateFixedAssetDto']
 export type DisposeFixedAssetInput = components['schemas']['DisposeFixedAssetDto'];
 export type DepreciationRun = components['schemas']['DepreciationRunResponseDto'];
 export type RunDepreciationInput = components['schemas']['RunDepreciationDto'];
+export type Expense = components['schemas']['ExpenseResponseDto'];
+export type CreateExpenseInput = components['schemas']['CreateExpenseDto'];
+export type ReimburseExpenseInput = components['schemas']['ReimburseExpenseDto'];

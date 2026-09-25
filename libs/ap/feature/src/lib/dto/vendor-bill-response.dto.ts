@@ -48,6 +48,12 @@ export class VendorBillResponseDto {
   @ApiProperty()
   total!: string;
 
+  @ApiProperty({ description: 'Sum of every VendorPaymentAllocation recorded against this bill' })
+  amountPaid!: string;
+
+  @ApiProperty({ description: 'total minus amountPaid - not persisted, computed on read' })
+  balanceDue!: string;
+
   @ApiPropertyOptional()
   approvedAt?: string | null;
 

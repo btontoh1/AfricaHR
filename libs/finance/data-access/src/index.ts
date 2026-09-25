@@ -9,4 +9,5 @@ export * from './lib/gl-fx-revaluation.repository';
 export * from './lib/finance-organization.repository';
 export * from './lib/gl-fixed-asset.repository';
 export * from './lib/gl-depreciation-run.repository';
+export * from './lib/expense.repository';
 export * from './lib/finance-data-access.module';

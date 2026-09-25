@@ -5,6 +5,7 @@ import { AuditService } from '@africahr/platform-audit';
 import { RequestUser } from '@africahr/platform-auth';
 import {
   BankReconciliationRepository,
+  ExpenseRepository,
   GlAccountRepository,
   GlBudgetRepository,
   GlDepreciationRunRepository,
@@ -23,6 +24,8 @@ import {
   canExtendPeriodClose,
   computeClearedBalance,
   computeDepreciationForPeriod,
+  computeExpenseRecordedJournalLines,
+  computeExpenseReimbursedJournalLines,
   computeFirstRunDate,
   computeFxRevaluationLines,
   computeInvoicePaidJournalLines,
@@ -33,7 +36,7 @@ import {
   computeReconciliationDifference,
   computeReversalJournalLines,
   computeVendorBillApprovedJournalLines,
-  computeVendorBillPaidJournalLines,
+  computeVendorPaymentJournalLines,
   depreciationDayOfMonth,
   GlAccountCode,
   isBalancedEntry,
@@ -69,6 +72,9 @@ import { DisposeFixedAssetDto } from './dto/dispose-fixed-asset.dto';
 import { RunDepreciationDto } from './dto/run-depreciation.dto';
 import { FixedAssetResponseDto } from './dto/fixed-asset-response.dto';
 import { DepreciationRunResponseDto } from './dto/depreciation-run-response.dto';
+import { CreateExpenseDto } from './dto/create-expense.dto';
+import { ReimburseExpenseDto } from './dto/reimburse-expense.dto';
+import { ExpenseResponseDto } from './dto/expense-response.dto';
 
 function translateOrganizationReferenceError(error: unknown, organizationId: string): never {
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
@@ -275,6 +281,34 @@ function toDepreciationRunResponseDto(run: {
   };
 }
 
+function toExpenseResponseDto(expense: {
+  id: string;
+  organizationId: string;
+  description: string;
+  category: string;
+  currency: string;
+  amount: { toString(): string };
+  expenseDate: Date;
+  paidBy: string;
+  reimbursedAt: Date | null;
+  notes: string | null;
+  createdAt: Date;
+}): ExpenseResponseDto {
+  return {
+    id: expense.id,
+    organizationId: expense.organizationId,
+    description: expense.description,
+    category: expense.category,
+    currency: expense.currency,
+    amount: expense.amount.toString(),
+    expenseDate: expense.expenseDate.toISOString(),
+    paidBy: expense.paidBy,
+    reimbursedAt: expense.reimbursedAt ? expense.reimbursedAt.toISOString() : null,
+    notes: expense.notes,
+    createdAt: expense.createdAt.toISOString(),
+  };
+}
+
 function toJournalEntryResponseDto(entry: GlJournalEntryWithLines): JournalEntryResponseDto {
   return {
     id: entry.id,
@@ -321,6 +355,14 @@ export interface VendorBillAmountsForPosting {
   total: number;
 }
 
+export interface VendorPaymentAmountsForPosting {
+  organizationId: string;
+  paymentId: string;
+  entryDate: Date;
+  currency: string;
+  amount: number;
+}
+
 @Injectable()
 export class FinanceService {
   constructor(
@@ -334,6 +376,7 @@ export class FinanceService {
     private readonly fxRevaluations: GlFxRevaluationRepository,
     private readonly fixedAssets: GlFixedAssetRepository,
     private readonly depreciationRuns: GlDepreciationRunRepository,
+    private readonly expenses: ExpenseRepository,
     private readonly audit: AuditService,
   ) {}
 
@@ -403,16 +446,23 @@ export class FinanceService {
     });
   }
 
-  async postVendorBillPaid(tenantId: string, input: VendorBillAmountsForPosting): Promise<void> {
+  /**
+   * Posts Dr Accounts Payable / Cr Cash and Bank for one recorded
+   * VendorPayment's combined amount - sourceId is the payment's own id, so
+   * it can never double-post even if VendorPaymentService's event fired
+   * twice. Never one entry per allocated bill - see
+   * compute-vendor-bill-journal-lines.ts.
+   */
+  async postVendorPayment(tenantId: string, input: VendorPaymentAmountsForPosting): Promise<void> {
     await this.accounts.ensureDefaultAccounts(tenantId);
-    const lines = computeVendorBillPaidJournalLines(input);
+    const lines = computeVendorPaymentJournalLines(input);
     await this.postLines(tenantId, {
       organizationId: input.organizationId,
       entryDate: input.entryDate,
-      description: `Vendor bill paid (${input.billId})`,
+      description: `Vendor payment (${input.paymentId})`,
       currency: input.currency,
-      sourceType: 'VENDOR_BILL_PAID',
-      sourceId: input.billId,
+      sourceType: 'VENDOR_PAYMENT',
+      sourceId: input.paymentId,
       lines,
     });
   }
@@ -429,7 +479,9 @@ export class FinanceService {
         | 'CUSTOMER_INVOICE_SENT'
         | 'CUSTOMER_INVOICE_PAID'
         | 'VENDOR_BILL_APPROVED'
-        | 'VENDOR_BILL_PAID';
+        | 'VENDOR_PAYMENT'
+        | 'EXPENSE_RECORDED'
+        | 'EXPENSE_REIMBURSED';
       sourceId: string;
       lines: JournalLineAmount[];
     },
@@ -1445,5 +1497,110 @@ export class FinanceService {
   async listDepreciationRuns(tenantId: string, organizationId?: string): Promise<DepreciationRunResponseDto[]> {
     const runs = await this.depreciationRuns.list(tenantId, organizationId);
     return runs.map(toDepreciationRunResponseDto);
+  }
+
+  /**
+   * Records a quick, single-step expense - no vendor, no DRAFT/approval
+   * workflow, posts immediately. paidBy decides which account is credited:
+   * COMPANY credits CASH_AND_BANK directly; EMPLOYEE credits
+   * EXPENSE_REIMBURSEMENTS_PAYABLE instead, until markExpenseReimbursed
+   * settles it. See compute-expense-journal-lines.ts.
+   */
+  async createExpense(tenantId: string, dto: CreateExpenseDto, actor: RequestUser): Promise<ExpenseResponseDto> {
+    await this.accounts.ensureDefaultAccounts(tenantId);
+
+    let expense;
+    try {
+      expense = await this.expenses.create(tenantId, {
+        organizationId: dto.organizationId,
+        description: dto.description,
+        category: dto.category,
+        currency: dto.currency,
+        amount: dto.amount,
+        expenseDate: new Date(dto.expenseDate),
+        paidBy: dto.paidBy,
+        notes: dto.notes,
+        createdBy: actor.sub,
+      });
+    } catch (error) {
+      translateOrganizationReferenceError(error, dto.organizationId);
+    }
+
+    const lines = computeExpenseRecordedJournalLines({ amount: dto.amount, paidBy: dto.paidBy });
+    await this.postLines(tenantId, {
+      organizationId: dto.organizationId,
+      entryDate: new Date(dto.expenseDate),
+      description: `Expense recorded - ${dto.description}`,
+      currency: dto.currency,
+      sourceType: 'EXPENSE_RECORDED',
+      sourceId: expense.id,
+      lines,
+    });
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actor.sub ?? null,
+      action: 'finance.expense.created',
+      resourceType: 'Expense',
+      resourceId: expense.id,
+      metadata: { organizationId: dto.organizationId, category: dto.category, amount: dto.amount, paidBy: dto.paidBy },
+    });
+
+    return toExpenseResponseDto(expense);
+  }
+
+  async listExpenses(tenantId: string, organizationId?: string): Promise<ExpenseResponseDto[]> {
+    const expenses = await this.expenses.list(tenantId, organizationId);
+    return expenses.map(toExpenseResponseDto);
+  }
+
+  /**
+   * Settles an EMPLOYEE-paid expense the company has now paid back - posts
+   * Dr Expense Reimbursements Payable / Cr Cash and Bank. Never valid for a
+   * COMPANY-paid expense (nothing is owed) or one already reimbursed.
+   */
+  async markExpenseReimbursed(
+    tenantId: string,
+    id: string,
+    dto: ReimburseExpenseDto,
+    actor: RequestUser,
+  ): Promise<ExpenseResponseDto> {
+    const expense = await this.expenses.findById(tenantId, id);
+    if (!expense) {
+      throw new NotFoundException(`Expense "${id}" not found`);
+    }
+    if (expense.paidBy !== 'EMPLOYEE') {
+      throw new BadRequestException('Only an employee-paid expense can be reimbursed');
+    }
+    if (expense.reimbursedAt) {
+      throw new ConflictException('This expense has already been reimbursed');
+    }
+
+    await this.accounts.ensureDefaultAccounts(tenantId);
+    const reimbursedAt = dto.reimbursedAt ? new Date(dto.reimbursedAt) : new Date();
+
+    const lines = computeExpenseReimbursedJournalLines({ amount: Number(expense.amount) });
+    await this.postLines(tenantId, {
+      organizationId: expense.organizationId,
+      entryDate: reimbursedAt,
+      description: `Expense reimbursed - ${expense.description}`,
+      currency: expense.currency,
+      sourceType: 'EXPENSE_REIMBURSED',
+      sourceId: expense.id,
+      lines,
+    });
+
+    const updated = await this.expenses.markReimbursed(tenantId, id, reimbursedAt, actor.sub);
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actor.sub ?? null,
+      action: 'finance.expense.reimbursed',
+      resourceType: 'Expense',
+      resourceId: id,
+      metadata: { organizationId: expense.organizationId },
+    });
+
+    return toExpenseResponseDto(updated);
   }
 }

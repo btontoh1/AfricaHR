@@ -16,3 +16,4 @@ export * from './lib/recurring-journal-entry-schedule';
 export * from './lib/compute-fx-revaluation';
 export * from './lib/compute-fixed-asset-depreciation';
 export * from './lib/money';
+export * from './lib/compute-expense-journal-lines';

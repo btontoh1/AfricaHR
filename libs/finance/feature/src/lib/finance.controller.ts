@@ -43,6 +43,9 @@ import { DisposeFixedAssetDto } from './dto/dispose-fixed-asset.dto';
 import { RunDepreciationDto } from './dto/run-depreciation.dto';
 import { FixedAssetResponseDto } from './dto/fixed-asset-response.dto';
 import { DepreciationRunResponseDto } from './dto/depreciation-run-response.dto';
+import { CreateExpenseDto } from './dto/create-expense.dto';
+import { ReimburseExpenseDto } from './dto/reimburse-expense.dto';
+import { ExpenseResponseDto } from './dto/expense-response.dto';
 
 // AddOnGuard runs after PermissionsGuard - order matters (NestJS runs
 // @UseGuards left to right), so a caller without the base role permission
@@ -587,5 +590,39 @@ export class FinanceController {
   runDepreciation(@Param('tenantId') tenantId: string, @Body() dto: RunDepreciationDto, @CurrentUser() actor: RequestUser) {
     assertTenantScope(actor, tenantId);
     return this.finance.runDepreciation(tenantId, dto, actor);
+  }
+
+  @Get('expenses')
+  @RequirePermissions(Permission.FINANCE_READ)
+  @ApiOkResponse({ type: ExpenseResponseDto, isArray: true })
+  @ApiQuery({ name: 'organizationId', required: false })
+  listExpenses(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() actor: RequestUser,
+    @Query('organizationId') organizationId?: string,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.listExpenses(tenantId, organizationId);
+  }
+
+  @Post('expenses')
+  @RequirePermissions(Permission.FINANCE_MANAGE)
+  @ApiOkResponse({ type: ExpenseResponseDto })
+  createExpense(@Param('tenantId') tenantId: string, @Body() dto: CreateExpenseDto, @CurrentUser() actor: RequestUser) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.createExpense(tenantId, dto, actor);
+  }
+
+  @Post('expenses/:id/reimburse')
+  @RequirePermissions(Permission.FINANCE_MANAGE)
+  @ApiOkResponse({ type: ExpenseResponseDto })
+  reimburseExpense(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: ReimburseExpenseDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.markExpenseReimbursed(tenantId, id, dto, actor);
   }
 }

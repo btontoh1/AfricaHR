@@ -48,6 +48,7 @@ export function BillsList({ tenantId }: { tenantId: string }) {
             <TableHead>Status</TableHead>
             <TableHead>Due date</TableHead>
             <TableHead>Total</TableHead>
+            <TableHead>Balance due</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -67,6 +68,7 @@ export function BillsList({ tenantId }: { tenantId: string }) {
               </TableCell>
               <TableCell className="text-muted-foreground">{bill.dueDate.slice(0, 10)}</TableCell>
               <TableCell>{formatCurrency(bill.total, bill.currency)}</TableCell>
+              <TableCell className="text-muted-foreground">{formatCurrency(bill.balanceDue, bill.currency)}</TableCell>
             </TableRow>
           ))}
         </TableBody>

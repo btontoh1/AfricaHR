@@ -24,3 +24,6 @@ export * from './lib/dto/fixed-asset-response.dto';
 export * from './lib/dto/dispose-fixed-asset.dto';
 export * from './lib/dto/run-depreciation.dto';
 export * from './lib/dto/depreciation-run-response.dto';
+export * from './lib/dto/create-expense.dto';
+export * from './lib/dto/reimburse-expense.dto';
+export * from './lib/dto/expense-response.dto';

@@ -20,6 +20,17 @@ describe('canTransitionBillStatus', () => {
     expect(canTransitionBillStatus(VendorBillStatus.OVERDUE, VendorBillStatus.CANCELLED)).toBe(true);
   });
 
+  it('allows Approved/Overdue bills to become Partially Paid', () => {
+    expect(canTransitionBillStatus(VendorBillStatus.APPROVED, VendorBillStatus.PARTIALLY_PAID)).toBe(true);
+    expect(canTransitionBillStatus(VendorBillStatus.OVERDUE, VendorBillStatus.PARTIALLY_PAID)).toBe(true);
+  });
+
+  it('allows a Partially Paid bill to become fully Paid, and nothing else', () => {
+    expect(canTransitionBillStatus(VendorBillStatus.PARTIALLY_PAID, VendorBillStatus.PAID)).toBe(true);
+    expect(canTransitionBillStatus(VendorBillStatus.PARTIALLY_PAID, VendorBillStatus.CANCELLED)).toBe(false);
+    expect(canTransitionBillStatus(VendorBillStatus.PARTIALLY_PAID, VendorBillStatus.APPROVED)).toBe(false);
+  });
+
   it('rejects a Draft going straight to Paid or Overdue, skipping Approved', () => {
     expect(canTransitionBillStatus(VendorBillStatus.DRAFT, VendorBillStatus.PAID)).toBe(false);
     expect(canTransitionBillStatus(VendorBillStatus.DRAFT, VendorBillStatus.OVERDUE)).toBe(false);

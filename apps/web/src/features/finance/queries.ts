@@ -4,11 +4,13 @@ import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/rea
 import { apiClient } from '@/lib/api-client';
 import type {
   CreateBankReconciliationInput,
+  CreateExpenseInput,
   CreateFixedAssetInput,
   CreateGlAccountInput,
   CreateManualJournalEntryInput,
   CreateRecurringJournalEntryInput,
   DisposeFixedAssetInput,
+  ReimburseExpenseInput,
   RunDepreciationInput,
   RunFxRevaluationInput,
   SetBudgetInput,
@@ -685,6 +687,57 @@ export function useRunDepreciation(tenantId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: fixedAssetsListKey(tenantId) });
       queryClient.invalidateQueries({ queryKey: depreciationRunsListKey(tenantId) });
+    },
+  });
+}
+
+function expensesListKey(tenantId: string) {
+  return ['finance', 'expenses', tenantId] as const;
+}
+
+export function useExpenses(tenantId: string, organizationId?: string) {
+  return useQuery({
+    queryKey: [...expensesListKey(tenantId), organizationId ?? ''],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/expenses', {
+        params: { path: { tenantId }, query: organizationId ? { organizationId } : undefined },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useCreateExpense(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateExpenseInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/expenses', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: expensesListKey(tenantId) });
+    },
+  });
+}
+
+export function useReimburseExpense(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...input }: ReimburseExpenseInput & { id: string }) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/expenses/{id}/reimburse', {
+        params: { path: { tenantId, id } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: expensesListKey(tenantId) });
     },
   });
 }

@@ -1,10 +1,16 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { VendorBillStatus as PrismaVendorBillStatus, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import { assertOrganizationScope, RequestUser, SystemRole } from '@africahr/platform-auth';
 import { VendorBillRepository, VendorBillWithDetails } from '@africahr/ap-data-access';
-import { assertValidBillStatusTransition, computeBillTotals, generateBillNumber } from '@africahr/ap-domain';
+import {
+  assertValidBillStatusTransition,
+  computeBillTotals,
+  computeRemainingBalance,
+  generateBillNumber,
+  PAYMENT_DRIVEN_STATUSES,
+} from '@africahr/ap-domain';
 import { VendorService } from './vendor.service';
 import { CreateVendorBillDto } from './dto/create-vendor-bill.dto';
 import { UpdateVendorBillDto } from './dto/update-vendor-bill.dto';
@@ -18,14 +24,18 @@ function translateReferenceError(error: unknown, organizationId: string): never 
 }
 
 /**
- * Emitted on every status transition, APPROVED/PAID included - consumed by
- * finance-feature's ApGlPostingListener to post the bill's GL journal entry
- * (it ignores every other status). Lives as a plain event rather than a
- * direct call because scope:ap is not allowed to depend on scope:finance
- * (see eslint.config.mjs module boundaries), same decoupling reasoning as
- * invoicing's CUSTOMER_INVOICE_STATUS_CHANGED_EVENT. total is passed as a
- * plain number (not Prisma.Decimal) since scope:finance can't share a
- * Prisma-typed contract across the boundary.
+ * Emitted on every status transition this service makes (APPROVED included)
+ * - consumed by finance-feature's ApGlPostingListener to post the bill's GL
+ * journal entry (it ignores every other status). Never fired with toStatus
+ * PARTIALLY_PAID/PAID - those are only ever reached via
+ * VendorPaymentService.create, which emits its own VENDOR_PAYMENT_RECORDED
+ * event instead (one payment can cover several bills, so a single bill's
+ * status change isn't the right unit for that posting). Lives as a plain
+ * event rather than a direct call because scope:ap is not allowed to depend
+ * on scope:finance (see eslint.config.mjs module boundaries), same
+ * decoupling reasoning as invoicing's CUSTOMER_INVOICE_STATUS_CHANGED_EVENT.
+ * total is passed as a plain number (not Prisma.Decimal) since scope:finance
+ * can't share a Prisma-typed contract across the boundary.
  */
 export const VENDOR_BILL_STATUS_CHANGED_EVENT = 'ap.vendor_bill.status_changed';
 
@@ -35,7 +45,7 @@ export interface VendorBillStatusChangedEvent {
   billId: string;
   fromStatus: string;
   toStatus: string;
-  /** ISO timestamp of the transition (approvedAt/paidAt). */
+  /** ISO timestamp of the transition (approvedAt). */
   entryDate: string;
   currency: string;
   total: number;
@@ -58,6 +68,8 @@ function toResponseDto(bill: VendorBillWithDetails): VendorBillResponseDto {
     subtotal: bill.subtotal.toString(),
     taxAmount: bill.taxAmount.toString(),
     total: bill.total.toString(),
+    amountPaid: bill.amountPaid.toString(),
+    balanceDue: computeRemainingBalance(Number(bill.total), Number(bill.amountPaid)).toString(),
     approvedAt: bill.approvedAt?.toISOString() ?? null,
     paidAt: bill.paidAt?.toISOString() ?? null,
     lineItems: bill.lineItems.map((item) => ({
@@ -211,6 +223,10 @@ export class VendorBillService {
     status: PrismaVendorBillStatus,
     actor: RequestUser,
   ): Promise<VendorBillResponseDto> {
+    if ((PAYMENT_DRIVEN_STATUSES as string[]).includes(status)) {
+      throw new BadRequestException('Record a vendor payment instead of setting this status directly');
+    }
+
     const existing = await this.findBillOrThrow(tenantId, id, actor);
     assertValidBillStatusTransition(existing.status, status);
 

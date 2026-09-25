@@ -4,6 +4,7 @@
 export const VendorBillStatus = {
   DRAFT: 'DRAFT',
   APPROVED: 'APPROVED',
+  PARTIALLY_PAID: 'PARTIALLY_PAID',
   PAID: 'PAID',
   OVERDUE: 'OVERDUE',
   CANCELLED: 'CANCELLED',
@@ -11,15 +12,36 @@ export const VendorBillStatus = {
 
 export type VendorBillStatus = (typeof VendorBillStatus)[keyof typeof VendorBillStatus];
 
-// Mirrors invoicing-domain's CustomerInvoiceStatus transition table exactly -
-// APPROVED is this model's equivalent of SENT (see the schema's own doc
-// comment on VendorBill for why). OVERDUE is reachable only from APPROVED,
-// same reasoning as invoicing: marking one overdue is a manual action, no
-// scheduled job flips it automatically in v1.
+/** Every target VendorPaymentService's recordPayment flow may set directly -
+ * never reachable through VendorBillService.updateStatus (see its own
+ * rejection of these two targets). */
+export const PAYMENT_DRIVEN_STATUSES: readonly VendorBillStatus[] = [
+  VendorBillStatus.PARTIALLY_PAID,
+  VendorBillStatus.PAID,
+];
+
+// Mirrors invoicing-domain's CustomerInvoiceStatus transition table, plus
+// PARTIALLY_PAID/PAID - APPROVED is this model's equivalent of SENT (see the
+// schema's own doc comment on VendorBill for why). OVERDUE is reachable only
+// from APPROVED, same reasoning as invoicing: marking one overdue is a
+// manual action, no scheduled job flips it automatically in v1.
+// PARTIALLY_PAID/PAID are only ever reached via VendorPaymentService, never
+// through VendorBillService.updateStatus (see PAYMENT_DRIVEN_STATUSES) - they
+// still appear here because this table is the one source of truth for the
+// full state graph, including transitions the payment flow drives.
+// PARTIALLY_PAID can only ever advance to PAID (a partially-paid bill has
+// real money against it - it can't be cancelled without first reversing that
+// payment, which is out of scope for v1).
 const ALLOWED_TRANSITIONS: Record<VendorBillStatus, VendorBillStatus[]> = {
   [VendorBillStatus.DRAFT]: [VendorBillStatus.APPROVED, VendorBillStatus.CANCELLED],
-  [VendorBillStatus.APPROVED]: [VendorBillStatus.PAID, VendorBillStatus.OVERDUE, VendorBillStatus.CANCELLED],
-  [VendorBillStatus.OVERDUE]: [VendorBillStatus.PAID, VendorBillStatus.CANCELLED],
+  [VendorBillStatus.APPROVED]: [
+    VendorBillStatus.PARTIALLY_PAID,
+    VendorBillStatus.PAID,
+    VendorBillStatus.OVERDUE,
+    VendorBillStatus.CANCELLED,
+  ],
+  [VendorBillStatus.OVERDUE]: [VendorBillStatus.PARTIALLY_PAID, VendorBillStatus.PAID, VendorBillStatus.CANCELLED],
+  [VendorBillStatus.PARTIALLY_PAID]: [VendorBillStatus.PAID],
   [VendorBillStatus.PAID]: [],
   [VendorBillStatus.CANCELLED]: [],
 };

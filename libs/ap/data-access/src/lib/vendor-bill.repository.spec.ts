@@ -111,6 +111,17 @@ describe('VendorBillRepository', () => {
     });
   });
 
+  describe('findManyByIds', () => {
+    it('finds every non-deleted bill among the given ids, scoped to the tenant', async () => {
+      await repository.findManyByIds('tenant-1', ['bill-1', 'bill-2']);
+
+      expect(tx.vendorBill.findMany).toHaveBeenCalledWith({
+        where: { id: { in: ['bill-1', 'bill-2'] }, tenantId: 'tenant-1', deletedAt: null },
+        include: { lineItems: { orderBy: { sortOrder: 'asc' } }, vendor: true, organization: true },
+      });
+    });
+  });
+
   describe('update', () => {
     it('deletes and recreates line items when a new set is provided', async () => {
       await repository.update('tenant-1', 'bill-1', {

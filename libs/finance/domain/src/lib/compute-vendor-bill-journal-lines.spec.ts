@@ -1,7 +1,7 @@
 import { GlAccountCode } from './default-chart-of-accounts';
 import {
   computeVendorBillApprovedJournalLines,
-  computeVendorBillPaidJournalLines,
+  computeVendorPaymentJournalLines,
 } from './compute-vendor-bill-journal-lines';
 
 describe('computeVendorBillApprovedJournalLines', () => {
@@ -17,9 +17,9 @@ describe('computeVendorBillApprovedJournalLines', () => {
   });
 });
 
-describe('computeVendorBillPaidJournalLines', () => {
-  it('posts Accounts Payable/Cash at the bill total', () => {
-    const lines = computeVendorBillPaidJournalLines({ total: 1150 });
+describe('computeVendorPaymentJournalLines', () => {
+  it('posts Accounts Payable/Cash at the payment amount', () => {
+    const lines = computeVendorPaymentJournalLines({ amount: 1150 });
     expect(lines).toEqual([
       { accountCode: GlAccountCode.ACCOUNTS_PAYABLE, debit: 1150, credit: 0 },
       { accountCode: GlAccountCode.CASH_AND_BANK, debit: 0, credit: 1150 },

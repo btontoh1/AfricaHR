@@ -51,6 +51,7 @@ describe('VendorBillService', () => {
       subtotal: new Prisma.Decimal(1000),
       taxAmount: new Prisma.Decimal(150),
       total: new Prisma.Decimal(1150),
+      amountPaid: new Prisma.Decimal(0),
       approvedAt: null,
       paidAt: null,
       createdAt: new Date(),
@@ -212,6 +213,15 @@ describe('VendorBillService', () => {
       expect(result.total).toBe('1150');
       expect(result.vendorName).toBe('Acme Supplies');
     });
+
+    it('computes balanceDue from total minus amountPaid', async () => {
+      bills.findById.mockResolvedValue(makeBill({ total: new Prisma.Decimal(1150), amountPaid: new Prisma.Decimal(400) }));
+
+      const result = await service.findById('tenant-1', 'bill-1', tenantAdmin);
+
+      expect(result.amountPaid).toBe('400');
+      expect(result.balanceDue).toBe('750');
+    });
   });
 
   describe('list', () => {
@@ -296,10 +306,25 @@ describe('VendorBillService', () => {
   });
 
   describe('updateStatus', () => {
-    it('rejects an invalid transition (e.g. Draft straight to Paid)', async () => {
+    it('rejects setting PAID directly - a payment must be recorded instead', async () => {
+      await expect(service.updateStatus('tenant-1', 'bill-1', 'PAID', tenantAdmin)).rejects.toThrow(
+        'Record a vendor payment instead of setting this status directly',
+      );
+      expect(bills.findById).not.toHaveBeenCalled();
+      expect(bills.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('rejects setting PARTIALLY_PAID directly - a payment must be recorded instead', async () => {
+      await expect(service.updateStatus('tenant-1', 'bill-1', 'PARTIALLY_PAID', tenantAdmin)).rejects.toThrow(
+        'Record a vendor payment instead of setting this status directly',
+      );
+      expect(bills.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('rejects an invalid transition (e.g. Draft straight to Overdue)', async () => {
       bills.findById.mockResolvedValue(makeBill({ status: 'DRAFT' }));
 
-      await expect(service.updateStatus('tenant-1', 'bill-1', 'PAID', tenantAdmin)).rejects.toThrow(Error);
+      await expect(service.updateStatus('tenant-1', 'bill-1', 'OVERDUE', tenantAdmin)).rejects.toThrow(Error);
       expect(bills.updateStatus).not.toHaveBeenCalled();
     });
 
@@ -324,23 +349,6 @@ describe('VendorBillService', () => {
           toStatus: 'APPROVED',
           total: 1150,
         }),
-      );
-    });
-
-    it('sets paidAt when transitioning Approved -> Paid, and emits the GL-posting event', async () => {
-      bills.findById.mockResolvedValue(makeBill({ status: 'APPROVED' }));
-
-      await service.updateStatus('tenant-1', 'bill-1', 'PAID', tenantAdmin);
-
-      expect(bills.updateStatus).toHaveBeenCalledWith(
-        'tenant-1',
-        'bill-1',
-        'PAID',
-        expect.objectContaining({ paidAt: expect.any(Date), approvedAt: undefined }),
-      );
-      expect(eventEmitter.emit).toHaveBeenCalledWith(
-        'ap.vendor_bill.status_changed',
-        expect.objectContaining({ fromStatus: 'APPROVED', toStatus: 'PAID', total: 1150 }),
       );
     });
 

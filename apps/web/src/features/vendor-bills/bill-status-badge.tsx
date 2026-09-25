@@ -7,6 +7,7 @@ const STATUS_VARIANT: Record<
 > = {
   DRAFT: 'secondary',
   APPROVED: 'default',
+  PARTIALLY_PAID: 'warning',
   PAID: 'success',
   OVERDUE: 'destructive',
   CANCELLED: 'outline',

@@ -11,6 +11,7 @@ import { GlFxRevaluationRepository } from './gl-fx-revaluation.repository';
 import { FinanceOrganizationRepository } from './finance-organization.repository';
 import { GlFixedAssetRepository } from './gl-fixed-asset.repository';
 import { GlDepreciationRunRepository } from './gl-depreciation-run.repository';
+import { ExpenseRepository } from './expense.repository';
 
 @Module({
   imports: [PrismaModule],
@@ -26,6 +27,7 @@ import { GlDepreciationRunRepository } from './gl-depreciation-run.repository';
     FinanceOrganizationRepository,
     GlFixedAssetRepository,
     GlDepreciationRunRepository,
+    ExpenseRepository,
   ],
   exports: [
     GlAccountRepository,
@@ -39,6 +41,7 @@ import { GlDepreciationRunRepository } from './gl-depreciation-run.repository';
     FinanceOrganizationRepository,
     GlFixedAssetRepository,
     GlDepreciationRunRepository,
+    ExpenseRepository,
   ],
 })
 export class FinanceDataAccessModule {}

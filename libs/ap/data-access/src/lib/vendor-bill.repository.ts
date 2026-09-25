@@ -116,6 +116,19 @@ export class VendorBillRepository {
     );
   }
 
+  /** VendorPaymentService's pre-write read - fetches every bill an
+   * allocation references in one query, so it can validate each is this
+   * vendor's, still open, and has enough remaining balance before ever
+   * calling VendorPaymentRepository.create. */
+  findManyByIds(tenantId: string, ids: string[]): Promise<VendorBillWithDetails[]> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.vendorBill.findMany({
+        where: { id: { in: ids }, tenantId, deletedAt: null },
+        include: { lineItems: { orderBy: { sortOrder: 'asc' } }, vendor: true, organization: true },
+      }),
+    );
+  }
+
   /**
    * Line items are replaced wholesale (delete all, recreate) rather than
    * diffed and patched individually - same convention as

@@ -266,6 +266,7 @@ model Organization {
   invoices                CustomerInvoice[]
   vendors                 Vendor[]
   vendorBills             VendorBill[]
+  vendorPayments          VendorPayment[]
   glJournalEntries        GlJournalEntry[]
   glPeriodClose           GlPeriodClose?
   glBudgets               GlBudget[]
@@ -275,6 +276,7 @@ model Organization {
   glFxRevaluations        GlFxRevaluation[]
   glFixedAssets           GlFixedAsset[]
   glDepreciationRuns      GlDepreciationRun[]
+  expenses                Expense[]
 
   @@index([tenantId])
   @@map("organizations")
@@ -1704,8 +1706,9 @@ model Vendor {
   createdBy String?   @map("created_by")
   updatedBy String?   @map("updated_by")
 
-  organization Organization @relation(fields: [organizationId], references: [id])
+  organization Organization    @relation(fields: [organizationId], references: [id])
   bills        VendorBill[]
+  payments     VendorPayment[]
 
   @@index([tenantId])
   @@index([organizationId])
@@ -1715,6 +1718,14 @@ model Vendor {
 enum VendorBillStatus {
   DRAFT
   APPROVED
+  /// Reachable only by recording a VendorPayment whose allocations don't
+  /// yet cover the full total - see VendorPaymentService.create. Never a
+  /// manually-settable target (VendorBillService.updateStatus rejects it),
+  /// same posture as PAID below.
+  PARTIALLY_PAID
+  /// Reachable only by recording a VendorPayment whose allocations bring
+  /// amountPaid to (or past, though that itself is rejected) the bill's
+  /// total - never settable via VendorBillService.updateStatus directly.
   PAID
   OVERDUE
   CANCELLED
@@ -1729,7 +1740,10 @@ enum VendorBillStatus {
 /// same reasoning as CustomerInvoice. APPROVED is this model's equivalent of
 /// CustomerInvoiceStatus.SENT - the point at which the bill becomes a real
 /// liability and posts to the GL (see VendorBillService/FinanceService);
-/// a DRAFT bill is just a working copy, not yet owed to anyone.
+/// a DRAFT bill is just a working copy, not yet owed to anyone. amountPaid
+/// only ever advances via VendorPaymentAllocation rows against this bill -
+/// see VendorPaymentService.create, which is also what drives
+/// PARTIALLY_PAID/PAID and sets paidAt once amountPaid reaches total.
 model VendorBill {
   id              String           @id @default(uuid())
   tenantId        String           @map("tenant_id")
@@ -1746,6 +1760,7 @@ model VendorBill {
   subtotal        Decimal
   taxAmount       Decimal          @map("tax_amount")
   total           Decimal
+  amountPaid      Decimal          @default(0) @map("amount_paid")
   approvedAt      DateTime?        @map("approved_at")
   paidAt          DateTime?        @map("paid_at")
 
@@ -1755,15 +1770,78 @@ model VendorBill {
   createdBy String?   @map("created_by")
   updatedBy String?   @map("updated_by")
 
-  organization Organization         @relation(fields: [organizationId], references: [id])
-  vendor       Vendor               @relation(fields: [vendorId], references: [id])
-  lineItems    VendorBillLineItem[]
+  organization       Organization              @relation(fields: [organizationId], references: [id])
+  vendor             Vendor                    @relation(fields: [vendorId], references: [id])
+  lineItems          VendorBillLineItem[]
+  paymentAllocations VendorPaymentAllocation[]
 
   @@unique([organizationId, billNumber])
   @@index([tenantId])
   @@index([organizationId])
   @@index([vendorId])
   @@map("vendor_bills")
+}
+
+enum VendorPaymentMethod {
+  BANK_TRANSFER
+  CASH
+  CHEQUE
+  MOBILE_MONEY
+  CARD
+  OTHER
+}
+
+/// One real payment a vendor was actually sent, which may cover several of
+/// their bills at once (or partially cover one) - see
+/// VendorPaymentAllocation. Posts a single Dr Accounts Payable / Cr Cash and
+/// Bank entry for the combined amount, not one entry per allocated bill,
+/// same "one posting per real-world event" convention as everywhere else in
+/// this ledger. amount is the sum of this payment's allocations, enforced
+/// by VendorPaymentService.create, not by a DB constraint (Postgres has no
+/// portable "sum of child rows" check).
+model VendorPayment {
+  id             String              @id @default(uuid())
+  tenantId       String              @map("tenant_id")
+  organizationId String              @map("organization_id")
+  vendorId       String              @map("vendor_id")
+  paymentDate    DateTime            @map("payment_date")
+  currency       String
+  amount         Decimal
+  method         VendorPaymentMethod
+  reference      String?
+  notes          String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  createdBy String?  @map("created_by")
+
+  organization Organization              @relation(fields: [organizationId], references: [id])
+  vendor       Vendor                    @relation(fields: [vendorId], references: [id])
+  allocations  VendorPaymentAllocation[]
+
+  @@index([tenantId])
+  @@index([organizationId])
+  @@index([vendorId])
+  @@map("vendor_payments")
+}
+
+/// The portion of one VendorPayment applied to one VendorBill - a payment
+/// with allocations against three bills gets three of these rows. amount
+/// here can never exceed that bill's remaining balance (total - amountPaid
+/// as of the payment), enforced by VendorPaymentService.create.
+model VendorPaymentAllocation {
+  id        String  @id @default(uuid())
+  tenantId  String  @map("tenant_id")
+  paymentId String  @map("payment_id")
+  billId    String  @map("bill_id")
+  amount    Decimal
+
+  payment VendorPayment @relation(fields: [paymentId], references: [id])
+  bill    VendorBill    @relation(fields: [billId], references: [id])
+
+  @@index([tenantId])
+  @@index([paymentId])
+  @@index([billId])
+  @@map("vendor_payment_allocations")
 }
 
 /// Immutable once written - a bill edit deletes and recreates its line
@@ -2124,6 +2202,59 @@ model GlDepreciationRun {
   @@map("gl_depreciation_runs")
 }
 
+enum ExpenseCategory {
+  OFFICE_SUPPLIES
+  TRAVEL
+  UTILITIES
+  MEALS_AND_ENTERTAINMENT
+  PROFESSIONAL_SERVICES
+  RENT
+  OTHER
+}
+
+enum ExpensePaidBy {
+  COMPANY
+  EMPLOYEE
+}
+
+/// A quick, single-step company expense - deliberately not a VendorBill:
+/// no vendor required, no DRAFT/approval workflow, posts immediately at
+/// creation. category is a reporting tag only, not a GL split - every
+/// expense still posts to the one GENERAL_EXPENSE bucket regardless of
+/// category, same "one fixed bucket per source type" convention as
+/// everywhere else in this chart (see default-chart-of-accounts.ts).
+/// paidBy decides which account is credited: COMPANY credits
+/// CASH_AND_BANK directly; EMPLOYEE credits
+/// EXPENSE_REIMBURSEMENTS_PAYABLE instead, since the company owes that
+/// employee money until markExpenseReimbursed settles it - see
+/// compute-expense-journal-lines.ts. No delete, same posture as
+/// GlFixedAsset - an expense's posting is permanent once made.
+model Expense {
+  id             String          @id @default(uuid())
+  tenantId       String          @map("tenant_id")
+  organizationId String          @map("organization_id")
+  description    String
+  category       ExpenseCategory
+  currency       String
+  amount         Decimal
+  expenseDate    DateTime        @map("expense_date")
+  paidBy         ExpensePaidBy   @map("paid_by")
+  /// Only ever set for an EMPLOYEE-paid expense, by markExpenseReimbursed.
+  reimbursedAt   DateTime?       @map("reimbursed_at")
+  notes          String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([tenantId])
+  @@index([organizationId])
+  @@map("expenses")
+}
+
 /// PAY_RUN_DISBURSED/CUSTOMER_INVOICE_SENT/CUSTOMER_INVOICE_PAID are each
 /// posted automatically, exactly once per source event - see the
 /// (sourceType, sourceId) unique constraint below, which is this table's
@@ -2140,9 +2271,13 @@ enum GlJournalEntrySourceType {
   PAY_RUN_DISBURSED
   CUSTOMER_INVOICE_SENT
   CUSTOMER_INVOICE_PAID
-  /// VendorBill's AP mirror of CUSTOMER_INVOICE_SENT/PAID - posted when a
-  /// bill is APPROVED (becomes a payable) and again when it's PAID.
+  /// VendorBill's AP mirror of CUSTOMER_INVOICE_SENT - posted when a bill is
+  /// APPROVED and becomes a real payable.
   VENDOR_BILL_APPROVED
+  /// No longer written (kept so historical rows stay valid) - a bill's PAID
+  /// transition used to post this directly; now paying a bill always goes
+  /// through VENDOR_PAYMENT instead, since one payment can cover several
+  /// bills or only part of one. See VendorPaymentService.create.
   VENDOR_BILL_PAID
   MANUAL
   /// Posted by RecurringJournalEntryPoster's daily sweep from a
@@ -2165,6 +2300,21 @@ enum GlJournalEntrySourceType {
   /// "<organizationId>:<currency>:<asOfDate>", same idempotency shape as
   /// FX_REVALUATION.
   DEPRECIATION_RUN
+  /// Posted once per VendorPayment, at creation - sourceId is the
+  /// VendorPayment's own id, so it can never double-post. Covers the
+  /// payment's full amount, which may be allocated across several bills
+  /// (or only part of one) - see VendorPaymentAllocation.
+  VENDOR_PAYMENT
+  /// Posted once, at creation, by FinanceService.createExpense - sourceId is
+  /// the Expense's own id. Lands on CASH_AND_BANK when paidBy is COMPANY, or
+  /// EXPENSE_REIMBURSEMENTS_PAYABLE when paidBy is EMPLOYEE (see
+  /// compute-expense-journal-lines.ts).
+  EXPENSE_RECORDED
+  /// Posted once, by FinanceService.markExpenseReimbursed, only for an
+  /// EMPLOYEE-paid expense - sourceId is the same Expense's id (distinct row
+  /// from EXPENSE_RECORDED because sourceType differs, same pattern as
+  /// CUSTOMER_INVOICE_SENT/PAID sharing one invoice's id).
+  EXPENSE_REIMBURSED
 }
 
 model GlJournalEntry {

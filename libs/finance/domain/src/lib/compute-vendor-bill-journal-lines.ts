@@ -20,14 +20,17 @@ export function computeVendorBillApprovedJournalLines(bill: VendorBillApprovedAm
   ];
 }
 
-export interface VendorBillPaidAmounts {
-  total: number;
+export interface VendorPaymentJournalAmounts {
+  amount: number;
 }
 
-/** Dr Accounts Payable / Cr Cash and Bank, both at the bill's total. */
-export function computeVendorBillPaidJournalLines(bill: VendorBillPaidAmounts): JournalLineAmount[] {
+/** Dr Accounts Payable / Cr Cash and Bank, both at the payment's combined
+ * amount - one payment can settle several bills (or only part of one), so
+ * this is never keyed to any single bill's total. See
+ * VendorPaymentService.create. */
+export function computeVendorPaymentJournalLines(payment: VendorPaymentJournalAmounts): JournalLineAmount[] {
   return [
-    { accountCode: GlAccountCode.ACCOUNTS_PAYABLE, debit: bill.total, credit: 0 },
-    { accountCode: GlAccountCode.CASH_AND_BANK, debit: 0, credit: bill.total },
+    { accountCode: GlAccountCode.ACCOUNTS_PAYABLE, debit: payment.amount, credit: 0 },
+    { accountCode: GlAccountCode.CASH_AND_BANK, debit: 0, credit: payment.amount },
   ];
 }

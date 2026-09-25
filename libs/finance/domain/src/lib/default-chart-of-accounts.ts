@@ -44,6 +44,11 @@ export const GlAccountCode = {
   // account already gets).
   ACCUMULATED_DEPRECIATION: '1550',
   DEPRECIATION_EXPENSE: '5200',
+  // Only ever credited for an EMPLOYEE-paid Expense, at creation - the
+  // company owes that employee the amount until markExpenseReimbursed
+  // debits it back down. Not used for anything vendor-related; VendorBill
+  // keeps its own ACCOUNTS_PAYABLE. See compute-expense-journal-lines.ts.
+  EXPENSE_REIMBURSEMENTS_PAYABLE: '2300',
 } as const;
 
 export type GlAccountCode = (typeof GlAccountCode)[keyof typeof GlAccountCode];
@@ -81,6 +86,7 @@ export const DEFAULT_CHART_OF_ACCOUNTS: readonly DefaultGlAccount[] = [
   { code: GlAccountCode.FIXED_ASSETS, name: 'Fixed Assets', type: 'ASSET' },
   { code: GlAccountCode.ACCUMULATED_DEPRECIATION, name: 'Accumulated Depreciation', type: 'ASSET' },
   { code: GlAccountCode.DEPRECIATION_EXPENSE, name: 'Depreciation Expense', type: 'EXPENSE' },
+  { code: GlAccountCode.EXPENSE_REIMBURSEMENTS_PAYABLE, name: 'Expense Reimbursements Payable', type: 'LIABILITY' },
 ];
 
 /**
@@ -97,4 +103,5 @@ export const MONETARY_ACCOUNT_TYPES: Readonly<Record<string, 'ASSET' | 'LIABILIT
   [GlAccountCode.PAYROLL_LIABILITIES_PAYABLE]: 'LIABILITY',
   [GlAccountCode.TAX_PAYABLE]: 'LIABILITY',
   [GlAccountCode.ACCOUNTS_PAYABLE]: 'LIABILITY',
+  [GlAccountCode.EXPENSE_REIMBURSEMENTS_PAYABLE]: 'LIABILITY',
 };

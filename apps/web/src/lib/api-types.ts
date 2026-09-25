@@ -3370,6 +3370,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/finance/expenses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_listExpenses"];
+        put?: never;
+        post: operations["FinanceController_createExpense"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/expenses/{id}/reimburse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["FinanceController_reimburseExpense"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/vendors": {
         parameters: {
             query?: never;
@@ -3448,6 +3480,38 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["VendorBillController_updateStatus"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/vendor-payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["VendorPaymentController_list"];
+        put?: never;
+        post: operations["VendorPaymentController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/vendor-payments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["VendorPaymentController_findById"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
 }
@@ -5195,7 +5259,7 @@ export interface components {
         };
         ManualJournalEntryLineDto: {
             /** @enum {string} */
-            accountCode: "1000" | "1100" | "2000" | "2100" | "2200" | "4000" | "5000" | "5900" | "4900" | "1500" | "1550" | "5200";
+            accountCode: "1000" | "1100" | "2000" | "2100" | "2200" | "4000" | "5000" | "5900" | "4900" | "1500" | "1550" | "5200" | "2300";
             /** @description Set exactly one of debit/credit per line, never both. */
             debit?: number;
             credit?: number;
@@ -5550,6 +5614,44 @@ export interface components {
             /** @description Every ACTIVE asset in this organization/currency whose schedule is due by this date is depreciated for one period */
             asOfDate: string;
         };
+        ExpenseResponseDto: {
+            id: string;
+            organizationId: string;
+            description: string;
+            category: string;
+            currency: string;
+            amount: string;
+            expenseDate: string;
+            /** @enum {string} */
+            paidBy: "COMPANY" | "EMPLOYEE";
+            /** @description Set only once an EMPLOYEE-paid expense has been reimbursed */
+            reimbursedAt?: string;
+            notes?: string;
+            createdAt: string;
+        };
+        CreateExpenseDto: {
+            organizationId: string;
+            description: string;
+            /**
+             * @description A reporting tag only - every expense still posts to the one General Expense account
+             * @enum {string}
+             */
+            category: "OFFICE_SUPPLIES" | "TRAVEL" | "UTILITIES" | "MEALS_AND_ENTERTAINMENT" | "PROFESSIONAL_SERVICES" | "RENT" | "OTHER";
+            /** @example GHS */
+            currency: string;
+            amount: number;
+            expenseDate: string;
+            /**
+             * @description COMPANY credits Cash and Bank immediately; EMPLOYEE credits Expense Reimbursements Payable until reimbursed
+             * @enum {string}
+             */
+            paidBy: "COMPANY" | "EMPLOYEE";
+            notes?: string;
+        };
+        ReimburseExpenseDto: {
+            /** @description Defaults to now if omitted */
+            reimbursedAt?: string;
+        };
         CreateVendorDto: {
             organizationId: string;
             name: string;
@@ -5614,12 +5716,16 @@ export interface components {
             dueDate: string;
             currency: string;
             /** @enum {string} */
-            status: "DRAFT" | "APPROVED" | "PAID" | "OVERDUE" | "CANCELLED";
+            status: "DRAFT" | "APPROVED" | "PARTIALLY_PAID" | "PAID" | "OVERDUE" | "CANCELLED";
             notes?: string;
             taxRate: string;
             subtotal: string;
             taxAmount: string;
             total: string;
+            /** @description Sum of every VendorPaymentAllocation recorded against this bill */
+            amountPaid: string;
+            /** @description total minus amountPaid - not persisted, computed on read */
+            balanceDue: string;
             approvedAt?: string;
             paidAt?: string;
             lineItems: components["schemas"]["VendorBillLineItemResponseDto"][];
@@ -5640,7 +5746,51 @@ export interface components {
         };
         UpdateBillStatusDto: {
             /** @enum {string} */
-            status: "DRAFT" | "APPROVED" | "PAID" | "OVERDUE" | "CANCELLED";
+            status: "DRAFT" | "APPROVED" | "PARTIALLY_PAID" | "PAID" | "OVERDUE" | "CANCELLED";
+        };
+        VendorPaymentAllocationDto: {
+            /** @description A VendorBill id belonging to this payment's vendor */
+            billId: string;
+            /** @description Must not exceed this bill's remaining balance (total - amountPaid) */
+            amount: number;
+        };
+        CreateVendorPaymentDto: {
+            organizationId: string;
+            vendorId: string;
+            paymentDate: string;
+            /**
+             * @description Every allocated bill must share this currency
+             * @example GHS
+             */
+            currency: string;
+            /** @enum {string} */
+            method: "BANK_TRANSFER" | "CASH" | "CHEQUE" | "MOBILE_MONEY" | "CARD" | "OTHER";
+            /** @description A bank/mobile-money transaction reference, cheque number, etc. */
+            reference?: string;
+            notes?: string;
+            /** @description The payment's total is the sum of these allocations - one payment can cover several bills, or only part of one */
+            allocations: components["schemas"]["VendorPaymentAllocationDto"][];
+        };
+        VendorPaymentAllocationResponseDto: {
+            id: string;
+            billId: string;
+            billNumber: string;
+            amount: string;
+        };
+        VendorPaymentResponseDto: {
+            id: string;
+            organizationId: string;
+            vendorId: string;
+            vendorName: string;
+            paymentDate: string;
+            currency: string;
+            /** @description The sum of every allocation below */
+            amount: string;
+            method: string;
+            reference?: string;
+            notes?: string;
+            allocations: components["schemas"]["VendorPaymentAllocationResponseDto"][];
+            createdAt: string;
         };
     };
     responses: never;
@@ -12175,6 +12325,80 @@ export interface operations {
             };
         };
     };
+    FinanceController_listExpenses: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpenseResponseDto"][];
+                };
+            };
+        };
+    };
+    FinanceController_createExpense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateExpenseDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpenseResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_reimburseExpense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReimburseExpenseDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpenseResponseDto"];
+                };
+            };
+        };
+    };
     VendorController_list: {
         parameters: {
             query?: {
@@ -12431,6 +12655,77 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VendorBillResponseDto"];
+                };
+            };
+        };
+    };
+    VendorPaymentController_list: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+                vendorId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorPaymentResponseDto"][];
+                };
+            };
+        };
+    };
+    VendorPaymentController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateVendorPaymentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorPaymentResponseDto"];
+                };
+            };
+        };
+    };
+    VendorPaymentController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorPaymentResponseDto"];
                 };
             };
         };

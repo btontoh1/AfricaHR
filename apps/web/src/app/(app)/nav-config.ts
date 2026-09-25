@@ -53,6 +53,8 @@ import {
   Repeat,
   ArrowLeftRight,
   Package,
+  HandCoins,
+  ReceiptText,
 } from 'lucide-react';
 import type { SessionUser } from '@/lib/session';
 
@@ -245,6 +247,7 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
       items: [
         ...(hasApAccess ? [{ label: 'Vendors', href: '/vendors', icon: Truck }] : []),
         ...(hasApAccess ? [{ label: 'Bills', href: '/vendor-bills', icon: FileMinus2 }] : []),
+        ...(hasApAccess ? [{ label: 'Payments', href: '/vendor-payments', icon: HandCoins }] : []),
       ],
     },
     {
@@ -269,6 +272,7 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
         ...(hasFinanceAccess
           ? [{ label: 'Fixed Assets', href: '/finance/fixed-assets', icon: Package }]
           : []),
+        ...(hasFinanceAccess ? [{ label: 'Expenses', href: '/finance/expenses', icon: ReceiptText }] : []),
       ],
     },
     {

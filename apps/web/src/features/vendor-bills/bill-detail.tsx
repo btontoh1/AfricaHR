@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Pencil, Trash2 } from 'lucide-react';
+import { HandCoins, Pencil, Trash2 } from 'lucide-react';
 import { useVendorBill, useUpdateVendorBillStatus, useDeleteVendorBill } from './queries';
 import { nextBillStatuses } from './bill-status-transition';
 import { BillStatusBadge } from './bill-status-badge';
@@ -29,7 +29,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 
 const STATUS_ACTION_LABEL: Record<string, string> = {
   APPROVED: 'Approve bill',
-  PAID: 'Mark as paid',
   OVERDUE: 'Mark as overdue',
   CANCELLED: 'Cancel bill',
 };
@@ -78,6 +77,7 @@ export function BillDetail({ tenantId, billId }: { tenantId: string; billId: str
   }
 
   const isDraft = bill.status === 'DRAFT';
+  const canReceivePayment = ['APPROVED', 'OVERDUE', 'PARTIALLY_PAID'].includes(bill.status);
 
   return (
     <div className="space-y-6">
@@ -87,6 +87,14 @@ export function BillDetail({ tenantId, billId }: { tenantId: string; billId: str
         backHref="/vendor-bills"
         action={
           <div className="flex flex-wrap gap-2">
+            {canReceivePayment && (
+              <Button asChild>
+                <Link href={`/vendor-payments?vendorId=${bill.vendorId}`}>
+                  <HandCoins className="size-4" />
+                  Record payment
+                </Link>
+              </Button>
+            )}
             {isDraft && (
               <Button variant="outline" asChild>
                 <Link href={`/vendor-bills/${bill.id}/edit`}>
@@ -134,6 +142,9 @@ export function BillDetail({ tenantId, billId }: { tenantId: string; billId: str
           <Field label="Bill date" value={bill.billDate.slice(0, 10)} />
           <Field label="Due date" value={bill.dueDate.slice(0, 10)} />
           <Field label="Currency" value={bill.currency} />
+          <Field label="Total" value={formatCurrency(bill.total, bill.currency)} />
+          <Field label="Amount paid" value={formatCurrency(bill.amountPaid, bill.currency)} />
+          <Field label="Balance due" value={formatCurrency(bill.balanceDue, bill.currency)} />
           {bill.notes && <Field label="Notes" value={bill.notes} />}
         </CardContent>
         {nextBillStatuses(bill.status).length > 0 && (

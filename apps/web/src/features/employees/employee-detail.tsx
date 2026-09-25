@@ -1,5 +1,6 @@
 'use client';
 
+import { Printer } from 'lucide-react';
 import { useEmployee } from './queries';
 import { useOrganization, useOrganizationUnits } from '@/features/organizations/queries';
 import { DeleteEmployeeDialog } from './delete-employee-dialog';
@@ -10,6 +11,7 @@ import { AdjustLeaveBalanceControl } from '@/features/leave/adjust-leave-balance
 import { useSession } from '@/app/(app)/session-provider';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { formatCurrency } from '@/lib/format-currency';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CardSkeleton } from '@/components/loading-state';
 import { ErrorState } from '@/components/error-state';
@@ -59,7 +61,15 @@ export function EmployeeDetail({ tenantId, employeeId }: { tenantId: string; emp
       <PageHeader
         title={`${employee.firstName} ${employee.lastName}`}
         description={`${employee.employeeNumber} · ${employee.jobTitle}`}
-        action={<EmploymentStatusBadge status={employee.employmentStatus} />}
+        action={
+          <div className="flex items-center gap-3">
+            <EmploymentStatusBadge status={employee.employmentStatus} />
+            <Button variant="outline" onClick={() => window.print()} className="print:hidden">
+              <Printer className="size-4" />
+              Print / Save as PDF
+            </Button>
+          </div>
+        }
         backHref="/employees"
       />
 
@@ -92,7 +102,7 @@ export function EmployeeDetail({ tenantId, employeeId }: { tenantId: string; emp
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="print:hidden">
         <CardHeader>
           <CardTitle>Change status</CardTitle>
         </CardHeader>
@@ -102,7 +112,7 @@ export function EmployeeDetail({ tenantId, employeeId }: { tenantId: string; emp
       </Card>
 
       {hasLeaveAdminAccess && (
-        <Card>
+        <Card className="print:hidden">
           <CardHeader>
             <CardTitle>Leave balance</CardTitle>
           </CardHeader>
@@ -112,7 +122,7 @@ export function EmployeeDetail({ tenantId, employeeId }: { tenantId: string; emp
         </Card>
       )}
 
-      <Card>
+      <Card className="print:hidden">
         <CardHeader>
           <CardTitle>Edit</CardTitle>
         </CardHeader>
@@ -122,7 +132,7 @@ export function EmployeeDetail({ tenantId, employeeId }: { tenantId: string; emp
       </Card>
 
       {hasEmployeeManageAccess && (
-        <Card className="border-destructive/50">
+        <Card className="border-destructive/50 print:hidden">
           <CardHeader>
             <CardTitle>Danger zone</CardTitle>
           </CardHeader>

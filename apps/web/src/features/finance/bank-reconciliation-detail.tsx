@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Trash2 } from 'lucide-react';
+import { Printer, Trash2 } from 'lucide-react';
 import {
   useBankReconciliationDetail,
   useCompleteBankReconciliation,
@@ -91,41 +91,47 @@ export function BankReconciliationDetail({ tenantId, reconciliationId }: { tenan
         description={reconciliation.currency}
         backHref="/finance/bank-reconciliations"
         action={
-          isInProgress && (
-            <div className="flex flex-wrap gap-2">
-              <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline">
-                    <Trash2 className="size-4" />
-                    Delete
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Delete this reconciliation?</DialogTitle>
-                  </DialogHeader>
-                  <p className="text-sm text-muted-foreground">
-                    Every line cleared in this reconciliation is released back to unclaimed.
-                  </p>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setDeleteOpen(false)}
-                      disabled={deleteReconciliation.isPending}
-                    >
-                      Cancel
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => window.print()} className="print:hidden">
+              <Printer className="size-4" />
+              Print / Save as PDF
+            </Button>
+            {isInProgress && (
+              <div className="flex flex-wrap gap-2 print:hidden">
+                <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">
+                      <Trash2 className="size-4" />
+                      Delete
                     </Button>
-                    <Button variant="destructive" onClick={handleDelete} disabled={deleteReconciliation.isPending}>
-                      {deleteReconciliation.isPending ? 'Deleting…' : 'Delete'}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-              <Button onClick={handleComplete} disabled={!reconciliation.isBalanced || completeReconciliation.isPending}>
-                {completeReconciliation.isPending ? 'Completing…' : 'Complete reconciliation'}
-              </Button>
-            </div>
-          )
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Delete this reconciliation?</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-muted-foreground">
+                      Every line cleared in this reconciliation is released back to unclaimed.
+                    </p>
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={() => setDeleteOpen(false)}
+                        disabled={deleteReconciliation.isPending}
+                      >
+                        Cancel
+                      </Button>
+                      <Button variant="destructive" onClick={handleDelete} disabled={deleteReconciliation.isPending}>
+                        {deleteReconciliation.isPending ? 'Deleting…' : 'Delete'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+                <Button onClick={handleComplete} disabled={!reconciliation.isBalanced || completeReconciliation.isPending}>
+                  {completeReconciliation.isPending ? 'Completing…' : 'Complete reconciliation'}
+                </Button>
+              </div>
+            )}
+          </div>
         }
       />
 

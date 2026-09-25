@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { HandCoins, Pencil, Trash2 } from 'lucide-react';
+import { HandCoins, Pencil, Printer, Trash2 } from 'lucide-react';
 import { useVendorBill, useUpdateVendorBillStatus, useDeleteVendorBill } from './queries';
 import { nextBillStatuses } from './bill-status-transition';
 import { BillStatusBadge } from './bill-status-badge';
@@ -87,8 +87,12 @@ export function BillDetail({ tenantId, billId }: { tenantId: string; billId: str
         backHref="/vendor-bills"
         action={
           <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => window.print()} className="print:hidden">
+              <Printer className="size-4" />
+              Print / Save as PDF
+            </Button>
             {canReceivePayment && (
-              <Button asChild>
+              <Button asChild className="print:hidden">
                 <Link href={`/vendor-payments?vendorId=${bill.vendorId}`}>
                   <HandCoins className="size-4" />
                   Record payment
@@ -96,7 +100,7 @@ export function BillDetail({ tenantId, billId }: { tenantId: string; billId: str
               </Button>
             )}
             {isDraft && (
-              <Button variant="outline" asChild>
+              <Button variant="outline" asChild className="print:hidden">
                 <Link href={`/vendor-bills/${bill.id}/edit`}>
                   <Pencil className="size-4" />
                   Edit
@@ -106,7 +110,7 @@ export function BillDetail({ tenantId, billId }: { tenantId: string; billId: str
             {isDraft && (
               <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline">
+                  <Button variant="outline" className="print:hidden">
                     <Trash2 className="size-4" />
                     Delete
                   </Button>
@@ -148,7 +152,7 @@ export function BillDetail({ tenantId, billId }: { tenantId: string; billId: str
           {bill.notes && <Field label="Notes" value={bill.notes} />}
         </CardContent>
         {nextBillStatuses(bill.status).length > 0 && (
-          <CardContent className="flex flex-wrap gap-2 border-t border-border pt-4">
+          <CardContent className="flex flex-wrap gap-2 border-t border-border pt-4 print:hidden">
             {nextBillStatuses(bill.status).map((status) => (
               <Button
                 key={status}

@@ -1,6 +1,6 @@
 'use client';
 
-import { ListPlus } from 'lucide-react';
+import { ListPlus, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePayslip, useRemovePayslipLineItem } from './queries';
 import { AddLineItemForm } from './add-line-item-form';
@@ -57,7 +57,20 @@ export function PayslipDetail({ tenantId, payslipId }: { tenantId: string; paysl
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Payslip" description={employeeName} backHref={`/payroll/${payslip.payRunId}`} />
+      <PageHeader
+        title="Payslip"
+        description={employeeName}
+        backHref={`/payroll/${payslip.payRunId}`}
+        action={
+          // The browser's own print dialog offers "Save as PDF", so this one
+          // button covers both printing and downloading a PDF copy - no
+          // server-side PDF rendering needed.
+          <Button variant="outline" onClick={() => window.print()} className="print:hidden">
+            <Printer className="size-4" />
+            Print / Save as PDF
+          </Button>
+        }
+      />
 
       <Card>
         <CardContent className="pt-6">
@@ -184,7 +197,7 @@ export function PayslipDetail({ tenantId, payslipId }: { tenantId: string; paysl
                     <TableHead>Code</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead>Amount</TableHead>
-                    <TableHead />
+                    <TableHead className="print:hidden" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -194,7 +207,7 @@ export function PayslipDetail({ tenantId, payslipId }: { tenantId: string; paysl
                       <TableCell>{item.code}</TableCell>
                       <TableCell className="text-muted-foreground">{item.description ?? '—'}</TableCell>
                       <TableCell>{formatCurrency(item.amount, payslip.currency)}</TableCell>
-                      <TableCell>
+                      <TableCell className="print:hidden">
                         {canEdit && (
                           <Button
                             variant="outline"
@@ -212,9 +225,13 @@ export function PayslipDetail({ tenantId, payslipId }: { tenantId: string; paysl
               </Table>
             </TableCard>
           )}
-          {canEdit && <AddLineItemForm tenantId={tenantId} payslipId={payslipId} />}
+          {canEdit && (
+            <div className="print:hidden">
+              <AddLineItemForm tenantId={tenantId} payslipId={payslipId} />
+            </div>
+          )}
           {!canEdit && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground print:hidden">
               Line items can only be changed while the payslip is in DRAFT.
             </p>
           )}

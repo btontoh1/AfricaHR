@@ -1,5 +1,6 @@
 'use client';
 
+import { Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAllReview, useCancelReview, useMyReview, useReviewCycles, useTeamReview } from './queries';
 import { ReviewStatusBadge } from './review-status-badge';
@@ -79,10 +80,19 @@ export function ReviewDetail({
           <div className="flex items-center gap-3">
             <ReviewStatusBadge status={review.status} />
             {canCancel && (
-              <Button variant="outline" onClick={handleCancel} disabled={cancelReview.isPending}>
+              <Button
+                variant="outline"
+                onClick={handleCancel}
+                disabled={cancelReview.isPending}
+                className="print:hidden"
+              >
                 Cancel review
               </Button>
             )}
+            <Button variant="outline" onClick={() => window.print()} className="print:hidden">
+              <Printer className="size-4" />
+              Print / Save as PDF
+            </Button>
           </div>
         }
       />
@@ -107,8 +117,16 @@ export function ReviewDetail({
         </CardContent>
       </Card>
 
-      {canSubmitSelf && <SelfAssessmentForm tenantId={tenantId} reviewId={reviewId} />}
-      {canSubmitManager && <ManagerAssessmentForm tenantId={tenantId} reviewId={reviewId} />}
+      {canSubmitSelf && (
+        <div className="print:hidden">
+          <SelfAssessmentForm tenantId={tenantId} reviewId={reviewId} />
+        </div>
+      )}
+      {canSubmitManager && (
+        <div className="print:hidden">
+          <ManagerAssessmentForm tenantId={tenantId} reviewId={reviewId} />
+        </div>
+      )}
     </div>
   );
 }

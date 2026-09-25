@@ -6,9 +6,11 @@ import type {
   CreateBankReconciliationInput,
   CreateGlAccountInput,
   CreateManualJournalEntryInput,
+  CreateRecurringJournalEntryInput,
   SetBudgetInput,
   SetPeriodCloseInput,
   UpdateGlAccountInput,
+  UpdateRecurringJournalEntryInput,
 } from './types';
 
 function journalEntriesListKey(tenantId: string) {
@@ -446,4 +448,71 @@ export function getTrialBalancePdfUrl(
   const params = new URLSearchParams({ organizationId: filters.organizationId, asOf: filters.asOf });
   if (download) params.set('download', 'true');
   return `/api/tenants/${tenantId}/finance/reports/trial-balance/pdf?${params.toString()}`;
+}
+
+function recurringJournalEntriesListKey(tenantId: string) {
+  return ['finance', 'recurring-journal-entries', tenantId] as const;
+}
+
+export function useRecurringJournalEntries(tenantId: string, organizationId?: string) {
+  return useQuery({
+    queryKey: [...recurringJournalEntriesListKey(tenantId), organizationId ?? ''],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/recurring-journal-entries', {
+        params: { path: { tenantId }, query: organizationId ? { organizationId } : undefined },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useCreateRecurringJournalEntry(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateRecurringJournalEntryInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/recurring-journal-entries', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: recurringJournalEntriesListKey(tenantId) });
+    },
+  });
+}
+
+export function useSetRecurringJournalEntryActive(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
+      const input: UpdateRecurringJournalEntryInput = { isActive };
+      const { data, error } = await apiClient.PATCH('/api/tenants/{tenantId}/finance/recurring-journal-entries/{id}', {
+        params: { path: { tenantId, id } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: recurringJournalEntriesListKey(tenantId) });
+    },
+  });
+}
+
+export function useDeleteRecurringJournalEntry(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await apiClient.DELETE('/api/tenants/{tenantId}/finance/recurring-journal-entries/{id}', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: recurringJournalEntriesListKey(tenantId) });
+    },
+  });
 }

@@ -12,3 +12,6 @@ export * from './lib/dto/budget-response.dto';
 export * from './lib/dto/budget-vs-actual-response.dto';
 export * from './lib/dto/create-bank-reconciliation.dto';
 export * from './lib/dto/bank-reconciliation-response.dto';
+export * from './lib/dto/create-recurring-journal-entry.dto';
+export * from './lib/dto/update-recurring-journal-entry.dto';
+export * from './lib/dto/recurring-journal-entry-response.dto';

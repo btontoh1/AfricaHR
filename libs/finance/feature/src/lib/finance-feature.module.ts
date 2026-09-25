@@ -9,6 +9,7 @@ import { FinanceController } from './finance.controller';
 import { PayrollGlPostingListener } from './payroll-gl-posting.listener';
 import { InvoicingGlPostingListener } from './invoicing-gl-posting.listener';
 import { ApGlPostingListener } from './ap-gl-posting.listener';
+import { RecurringJournalEntryPoster } from './recurring-journal-entry-poster';
 
 @Module({
   imports: [FinanceDataAccessModule, PlatformAuthModule, AuditModule],
@@ -20,6 +21,7 @@ import { ApGlPostingListener } from './ap-gl-posting.listener';
     PayrollGlPostingListener,
     InvoicingGlPostingListener,
     ApGlPostingListener,
+    RecurringJournalEntryPoster,
   ],
   exports: [FinanceService, FinanceReportsService],
 })

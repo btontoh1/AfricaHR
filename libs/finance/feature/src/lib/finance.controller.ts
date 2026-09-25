@@ -21,6 +21,8 @@ import { UpdateGlAccountDto } from './dto/update-gl-account.dto';
 import { SetPeriodCloseDto } from './dto/set-period-close.dto';
 import { SetBudgetDto } from './dto/set-budget.dto';
 import { CreateBankReconciliationDto } from './dto/create-bank-reconciliation.dto';
+import { CreateRecurringJournalEntryDto } from './dto/create-recurring-journal-entry.dto';
+import { UpdateRecurringJournalEntryDto } from './dto/update-recurring-journal-entry.dto';
 import { JournalEntryResponseDto } from './dto/journal-entry-response.dto';
 import { GlAccountResponseDto } from './dto/gl-account-response.dto';
 import { ProfitAndLossResponseDto } from './dto/profit-and-loss-response.dto';
@@ -31,6 +33,7 @@ import { BudgetVsActualResponseDto } from './dto/budget-vs-actual-response.dto';
 import { PeriodCloseResponseDto } from './dto/period-close-response.dto';
 import { BudgetResponseDto } from './dto/budget-response.dto';
 import { BankReconciliationDetailResponseDto, BankReconciliationResponseDto } from './dto/bank-reconciliation-response.dto';
+import { RecurringJournalEntryResponseDto } from './dto/recurring-journal-entry-response.dto';
 
 // AddOnGuard runs after PermissionsGuard - order matters (NestJS runs
 // @UseGuards left to right), so a caller without the base role permission
@@ -424,5 +427,55 @@ export class FinanceController {
   ): Promise<void> {
     assertTenantScope(actor, tenantId);
     await this.finance.deleteReconciliation(tenantId, id, actor);
+  }
+
+  @Get('recurring-journal-entries')
+  @RequirePermissions(Permission.FINANCE_READ)
+  @ApiOkResponse({ type: RecurringJournalEntryResponseDto, isArray: true })
+  @ApiQuery({ name: 'organizationId', required: false })
+  listRecurringJournalEntries(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() actor: RequestUser,
+    @Query('organizationId') organizationId?: string,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.listRecurringJournalEntries(tenantId, organizationId);
+  }
+
+  @Post('recurring-journal-entries')
+  @RequirePermissions(Permission.FINANCE_MANAGE)
+  @ApiOkResponse({ type: RecurringJournalEntryResponseDto })
+  createRecurringJournalEntry(
+    @Param('tenantId') tenantId: string,
+    @Body() dto: CreateRecurringJournalEntryDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.createRecurringJournalEntry(tenantId, dto, actor);
+  }
+
+  @Patch('recurring-journal-entries/:id')
+  @RequirePermissions(Permission.FINANCE_MANAGE)
+  @ApiOkResponse({ type: RecurringJournalEntryResponseDto })
+  setRecurringJournalEntryActive(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateRecurringJournalEntryDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.finance.setRecurringJournalEntryActive(tenantId, id, dto, actor);
+  }
+
+  @Delete('recurring-journal-entries/:id')
+  @RequirePermissions(Permission.FINANCE_MANAGE)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteRecurringJournalEntry(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: RequestUser,
+  ): Promise<void> {
+    assertTenantScope(actor, tenantId);
+    await this.finance.deleteRecurringJournalEntry(tenantId, id, actor);
   }
 }

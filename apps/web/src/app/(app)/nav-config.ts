@@ -50,6 +50,7 @@ import {
   PiggyBank,
   GitCompare,
   ListChecks,
+  Repeat,
 } from 'lucide-react';
 import type { SessionUser } from '@/lib/session';
 
@@ -249,6 +250,9 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
       items: [
         ...(hasFinanceAccess
           ? [{ label: 'Journal Entries', href: '/finance/journal-entries', icon: BookText }]
+          : []),
+        ...(hasFinanceAccess
+          ? [{ label: 'Recurring Journal Entries', href: '/finance/recurring-journal-entries', icon: Repeat }]
           : []),
         ...(hasFinanceAccess
           ? [{ label: 'Chart of Accounts', href: '/finance/accounts', icon: Layers }]

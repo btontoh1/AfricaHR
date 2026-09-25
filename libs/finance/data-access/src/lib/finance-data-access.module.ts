@@ -5,6 +5,7 @@ import { GlJournalEntryRepository } from './gl-journal-entry.repository';
 import { GlPeriodCloseRepository } from './gl-period-close.repository';
 import { GlBudgetRepository } from './gl-budget.repository';
 import { BankReconciliationRepository } from './bank-reconciliation.repository';
+import { GlRecurringJournalEntryRepository } from './gl-recurring-journal-entry.repository';
 import { FinanceOrganizationRepository } from './finance-organization.repository';
 
 @Module({
@@ -15,6 +16,7 @@ import { FinanceOrganizationRepository } from './finance-organization.repository
     GlPeriodCloseRepository,
     GlBudgetRepository,
     BankReconciliationRepository,
+    GlRecurringJournalEntryRepository,
     FinanceOrganizationRepository,
   ],
   exports: [
@@ -23,6 +25,7 @@ import { FinanceOrganizationRepository } from './finance-organization.repository
     GlPeriodCloseRepository,
     GlBudgetRepository,
     BankReconciliationRepository,
+    GlRecurringJournalEntryRepository,
     FinanceOrganizationRepository,
   ],
 })

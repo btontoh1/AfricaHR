@@ -21,6 +21,7 @@ const SOURCE_TYPE_LABELS: Record<string, string> = {
   CUSTOMER_INVOICE_SENT: 'Invoice sent',
   CUSTOMER_INVOICE_PAID: 'Invoice paid',
   MANUAL: 'Manual',
+  RECURRING_JOURNAL_ENTRY: 'Recurring',
 };
 
 export function JournalEntriesList({ tenantId }: { tenantId: string }) {

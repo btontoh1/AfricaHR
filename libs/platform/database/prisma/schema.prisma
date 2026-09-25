@@ -254,22 +254,23 @@ model Organization {
   createdBy String?   @map("created_by")
   updatedBy String?   @map("updated_by")
 
-  tenant                Tenant                             @relation(fields: [tenantId], references: [id])
-  units                 OrganizationUnit[]
-  employees             Employee[]
-  payRuns               PayRun[]
-  jobRequisitions       JobRequisition[]
-  verificationDocuments OrganizationVerificationDocument[]
+  tenant                  Tenant                             @relation(fields: [tenantId], references: [id])
+  units                   OrganizationUnit[]
+  employees               Employee[]
+  payRuns                 PayRun[]
+  jobRequisitions         JobRequisition[]
+  verificationDocuments   OrganizationVerificationDocument[]
   /// ORG_ADMIN users scoped to this organization - see User.organizationId.
-  orgAdmins             User[]
-  customers             Customer[]
-  invoices              CustomerInvoice[]
-  vendors               Vendor[]
-  vendorBills           VendorBill[]
-  glJournalEntries      GlJournalEntry[]
-  glPeriodClose         GlPeriodClose?
-  glBudgets             GlBudget[]
-  bankReconciliations   BankReconciliation[]
+  orgAdmins               User[]
+  customers               Customer[]
+  invoices                CustomerInvoice[]
+  vendors                 Vendor[]
+  vendorBills             VendorBill[]
+  glJournalEntries        GlJournalEntry[]
+  glPeriodClose           GlPeriodClose?
+  glBudgets               GlBudget[]
+  bankReconciliations     BankReconciliation[]
+  recurringJournalEntries GlRecurringJournalEntry[]
 
   @@index([tenantId])
   @@map("organizations")
@@ -366,8 +367,8 @@ enum MfaMethod {
 /// resolve a user from email+password alone, without first knowing which
 /// tenant to look in.
 model User {
-  id           String     @id @default(uuid())
-  tenantId     String?    @map("tenant_id")
+  id             String     @id @default(uuid())
+  tenantId       String?    @map("tenant_id")
   // Deliberately not @unique here: uniqueness is enforced by a partial
   // index (WHERE deleted_at IS NULL) added via raw SQL migration instead,
   // since Prisma's schema DSL can't express a filtered unique constraint.
@@ -375,28 +376,28 @@ model User {
   // that email from ever being reused - find_user_for_login() already
   // treats deleted_at IS NULL as "the email is free," so the DB
   // constraint needs to agree.
-  email        String
-  passwordHash String     @map("password_hash")
-  firstName    String     @map("first_name")
-  lastName     String     @map("last_name")
-  role         SystemRole
+  email          String
+  passwordHash   String     @map("password_hash")
+  firstName      String     @map("first_name")
+  lastName       String     @map("last_name")
+  role           SystemRole
   /// Set only when role is ORG_ADMIN - which single Organization (within
   /// tenantId) this user administers. Null for every other role, including
   /// TENANT_ADMIN/HR_MANAGER/PAYROLL_MANAGER, which stay tenant-wide.
-  organizationId String?  @map("organization_id")
-  isActive     Boolean    @default(true) @map("is_active")
-  lastLoginAt  DateTime?  @map("last_login_at")
+  organizationId String?    @map("organization_id")
+  isActive       Boolean    @default(true) @map("is_active")
+  lastLoginAt    DateTime?  @map("last_login_at")
 
   /// mfaSecretEncrypted is set as soon as setup() generates a secret (before
   /// the user has proven they scanned it), but mfaEnabled only flips to true
   /// once confirm() verifies a real code from it - see MfaService.
-  mfaEnabled         Boolean   @default(false) @map("mfa_enabled")
-  mfaSecretEncrypted String?   @map("mfa_secret_encrypted")
-  mfaEnabledAt       DateTime? @map("mfa_enabled_at")
+  mfaEnabled         Boolean    @default(false) @map("mfa_enabled")
+  mfaSecretEncrypted String?    @map("mfa_secret_encrypted")
+  mfaEnabledAt       DateTime?  @map("mfa_enabled_at")
   /// Which second factor is active once mfaEnabled is true - null while
   /// disabled. Set by MfaService.confirm()/confirmSms(), not user-chosen
   /// after the fact (switching methods means disabling and re-enrolling).
-  mfaMethod MfaMethod? @map("mfa_method")
+  mfaMethod          MfaMethod? @map("mfa_method")
 
   /// Set (pending, unverified) as soon as setupSms() is called, same
   /// "pending before proof" shape as mfaSecretEncrypted above.
@@ -612,14 +613,14 @@ enum FamilyMemberRelationship {
 /// update (see EmployeeService) rather than diffed, since there's no
 /// history/audit requirement for this data, unlike EmploymentHistoryEntry.
 model EmployeeFamilyMember {
-  id           String                    @id @default(uuid())
-  tenantId     String                    @map("tenant_id")
-  employeeId   String                    @map("employee_id")
+  id           String                   @id @default(uuid())
+  tenantId     String                   @map("tenant_id")
+  employeeId   String                   @map("employee_id")
   relationship FamilyMemberRelationship
   name         String
-  dateOfBirth  DateTime?                 @map("date_of_birth")
-  createdAt    DateTime                  @default(now()) @map("created_at")
-  updatedAt    DateTime                  @updatedAt @map("updated_at")
+  dateOfBirth  DateTime?                @map("date_of_birth")
+  createdAt    DateTime                 @default(now()) @map("created_at")
+  updatedAt    DateTime                 @updatedAt @map("updated_at")
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
@@ -847,34 +848,34 @@ model Payslip {
   employeeId String        @map("employee_id")
   status     PayslipStatus @default(DRAFT)
 
-  countryCode     String  @map("country_code")
-  basicSalary     Decimal @map("basic_salary")
-  grossPay        Decimal @map("gross_pay")
-  taxableIncome   Decimal @map("taxable_income")
-  payeTax         Decimal @map("paye_tax")
-  ssnitEmployee   Decimal @map("ssnit_employee")
-  ssnitEmployer   Decimal @map("ssnit_employer")
+  countryCode   String  @map("country_code")
+  basicSalary   Decimal @map("basic_salary")
+  grossPay      Decimal @map("gross_pay")
+  taxableIncome Decimal @map("taxable_income")
+  payeTax       Decimal @map("paye_tax")
+  ssnitEmployee Decimal @map("ssnit_employee")
+  ssnitEmployer Decimal @map("ssnit_employer")
 
   /// Ghana only, else 0 - Tier 2's employer-only contribution. Not part of totalDeductions/netPay, same as ssnitEmployer.
   ghanaTier2PensionEmployer Decimal @default(0) @map("ghana_tier2_pension_employer")
   /// Kenya only, else 0 - reduces taxableIncome and is part of totalDeductions/netPay. See payslip-calculator.ts (payroll-domain).
-  kenyaShifEmployee Decimal @default(0) @map("kenya_shif_employee")
+  kenyaShifEmployee         Decimal @default(0) @map("kenya_shif_employee")
   /// Kenya only, else 0 - part of totalDeductions/netPay, but does not reduce taxableIncome (relief repealed December 2024).
-  kenyaHousingLevyEmployee Decimal @default(0) @map("kenya_housing_levy_employee")
+  kenyaHousingLevyEmployee  Decimal @default(0) @map("kenya_housing_levy_employee")
   /// Kenya only, else 0 - employer-only. Not part of totalDeductions/netPay, same as ssnitEmployer.
-  kenyaHousingLevyEmployer Decimal @default(0) @map("kenya_housing_levy_employer")
+  kenyaHousingLevyEmployer  Decimal @default(0) @map("kenya_housing_levy_employer")
 
   /// Nigeria only (and only when the employing organization has 5+ active employees), else 0 - employer-only NSITF contribution. Not part of totalDeductions/netPay, same as ssnitEmployer.
   nigeriaNsitfEmployer Decimal @default(0) @map("nigeria_nsitf_employer")
   /// Nigeria only (org threshold + employee's own basic salary meeting the eligibility floor), else 0 - part of totalDeductions/netPay, but does not reduce taxableIncome (unresolved conflict in secondary sources on tax treatment - defaulted to post-tax, see payslip-calculator.ts).
-  nigeriaNhisEmployee Decimal @default(0) @map("nigeria_nhis_employee")
+  nigeriaNhisEmployee  Decimal @default(0) @map("nigeria_nhis_employee")
   /// Nigeria only, same gating as nigeriaNhisEmployee, else 0 - employer-only. Not part of totalDeductions/netPay.
-  nigeriaNhisEmployer Decimal @default(0) @map("nigeria_nhis_employer")
+  nigeriaNhisEmployer  Decimal @default(0) @map("nigeria_nhis_employer")
 
   /// Sum of every active BenefitEnrollment's employee premium as of the pay date, else 0. Post-tax (does not reduce taxableIncome) and part of totalDeductions/netPay. See payslip-calculator.ts (payroll-domain).
   benefitsEmployeeDeduction Decimal @default(0) @map("benefits_employee_deduction")
   /// Sum of every active BenefitEnrollment's employer premium as of the pay date, else 0 - employer-only. Not part of totalDeductions/netPay, same as ssnitEmployer.
-  benefitsEmployerCost Decimal @default(0) @map("benefits_employer_cost")
+  benefitsEmployerCost      Decimal @default(0) @map("benefits_employer_cost")
 
   /// Value of unpaid-leave days within the pay period at the daily rate, else 0. Informational only - already baked into basicSalary/grossPay above, NOT part of totalDeductions (that would double-count it). See payslip-calculator.ts (payroll-domain).
   unpaidLeaveDeduction Decimal @default(0) @map("unpaid_leave_deduction")
@@ -893,10 +894,10 @@ model Payslip {
   // the reference, not the tenant) can find this row via the
   // find_payslip_by_paystack_transfer_reference_across_tenants SECURITY
   // DEFINER function, same shape as invoices.paystack_reference.
-  disbursementStatus         PayslipDisbursementStatus @default(NOT_INITIATED) @map("disbursement_status")
-  paystackRecipientCode      String?                   @map("paystack_recipient_code")
-  paystackTransferReference  String?                   @unique @map("paystack_transfer_reference")
-  disbursedAt                DateTime?                 @map("disbursed_at")
+  disbursementStatus        PayslipDisbursementStatus @default(NOT_INITIATED) @map("disbursement_status")
+  paystackRecipientCode     String?                   @map("paystack_recipient_code")
+  paystackTransferReference String?                   @unique @map("paystack_transfer_reference")
+  disbursedAt               DateTime?                 @map("disbursed_at")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -1072,7 +1073,7 @@ model AttendancePolicy {
   /// cosmetic — never used in the haversine distance check itself — so it's
   /// independent of the three fields above rather than part of their
   /// all-or-nothing validation (see AttendancePolicyService.upsert).
-  geofenceLocationName String? @map("geofence_location_name")
+  geofenceLocationName String?  @map("geofence_location_name")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1620,22 +1621,22 @@ enum CustomerInvoiceStatus {
 /// silently rewrites a Sent/Paid invoice's history - see
 /// CustomerInvoiceService for where that computation happens.
 model CustomerInvoice {
-  id             String                 @id @default(uuid())
-  tenantId       String                 @map("tenant_id")
-  organizationId String                 @map("organization_id")
-  customerId     String                 @map("customer_id")
-  invoiceNumber  String                 @map("invoice_number")
-  issueDate      DateTime               @map("issue_date")
-  dueDate        DateTime               @map("due_date")
+  id             String                @id @default(uuid())
+  tenantId       String                @map("tenant_id")
+  organizationId String                @map("organization_id")
+  customerId     String                @map("customer_id")
+  invoiceNumber  String                @map("invoice_number")
+  issueDate      DateTime              @map("issue_date")
+  dueDate        DateTime              @map("due_date")
   currency       String
-  status         CustomerInvoiceStatus  @default(DRAFT)
+  status         CustomerInvoiceStatus @default(DRAFT)
   notes          String?
-  taxRate        Decimal                @default(0) @map("tax_rate")
+  taxRate        Decimal               @default(0) @map("tax_rate")
   subtotal       Decimal
-  taxAmount      Decimal                @map("tax_amount")
+  taxAmount      Decimal               @map("tax_amount")
   total          Decimal
-  sentAt         DateTime?              @map("sent_at")
-  paidAt         DateTime?              @map("paid_at")
+  sentAt         DateTime?             @map("sent_at")
+  paidAt         DateTime?             @map("paid_at")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -1643,8 +1644,8 @@ model CustomerInvoice {
   createdBy String?   @map("created_by")
   updatedBy String?   @map("updated_by")
 
-  organization Organization             @relation(fields: [organizationId], references: [id])
-  customer     Customer                 @relation(fields: [customerId], references: [id])
+  organization Organization              @relation(fields: [organizationId], references: [id])
+  customer     Customer                  @relation(fields: [customerId], references: [id])
   lineItems    CustomerInvoiceLineItem[]
 
   @@unique([organizationId, invoiceNumber])
@@ -1659,14 +1660,14 @@ model CustomerInvoice {
 /// PayslipLineItem (no updatedAt/deletedAt/updatedBy - the parent invoice
 /// carries those instead).
 model CustomerInvoiceLineItem {
-  id          String   @id @default(uuid())
-  tenantId    String   @map("tenant_id")
-  invoiceId   String   @map("invoice_id")
+  id          String  @id @default(uuid())
+  tenantId    String  @map("tenant_id")
+  invoiceId   String  @map("invoice_id")
   description String
   quantity    Decimal
-  unitPrice   Decimal  @map("unit_price")
+  unitPrice   Decimal @map("unit_price")
   amount      Decimal
-  sortOrder   Int      @default(0) @map("sort_order")
+  sortOrder   Int     @default(0) @map("sort_order")
 
   createdAt DateTime @default(now()) @map("created_at")
   createdBy String?  @map("created_by")
@@ -1765,14 +1766,14 @@ model VendorBill {
 /// items wholesale rather than patching individual rows, same convention as
 /// CustomerInvoiceLineItem.
 model VendorBillLineItem {
-  id          String   @id @default(uuid())
-  tenantId    String   @map("tenant_id")
-  billId      String   @map("bill_id")
+  id          String  @id @default(uuid())
+  tenantId    String  @map("tenant_id")
+  billId      String  @map("bill_id")
   description String
   quantity    Decimal
-  unitPrice   Decimal  @map("unit_price")
+  unitPrice   Decimal @map("unit_price")
   amount      Decimal
-  sortOrder   Int      @default(0) @map("sort_order")
+  sortOrder   Int     @default(0) @map("sort_order")
 
   createdAt DateTime @default(now()) @map("created_at")
   createdBy String?  @map("created_by")
@@ -1838,8 +1839,9 @@ model GlAccount {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  journalLines GlJournalLine[]
-  budgets      GlBudget[]
+  journalLines        GlJournalLine[]
+  budgets             GlBudget[]
+  recurringEntryLines GlRecurringJournalEntryLine[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -1856,11 +1858,11 @@ model GlAccount {
 /// for the same combination overwrites the amount (see FinanceService.
 /// setBudget's upsert), it doesn't create a second row.
 model GlBudget {
-  id             String   @id @default(uuid())
-  tenantId       String   @map("tenant_id")
-  organizationId String   @map("organization_id")
-  accountId      String   @map("account_id")
-  fiscalYear     Int      @map("fiscal_year")
+  id             String  @id @default(uuid())
+  tenantId       String  @map("tenant_id")
+  organizationId String  @map("organization_id")
+  accountId      String  @map("account_id")
+  fiscalYear     Int     @map("fiscal_year")
   currency       String
   amount         Decimal
 
@@ -1897,19 +1899,19 @@ enum BankReconciliationStatus {
 /// reopening in v1; an IN_PROGRESS one can still be deleted to start over,
 /// which frees its lines' reconciliationId back to null.
 model BankReconciliation {
-  id                     String                    @id @default(uuid())
-  tenantId               String                    @map("tenant_id")
-  organizationId         String                    @map("organization_id")
+  id                     String                   @id @default(uuid())
+  tenantId               String                   @map("tenant_id")
+  organizationId         String                   @map("organization_id")
   currency               String
-  statementDate          DateTime                  @map("statement_date")
-  statementEndingBalance Decimal                   @map("statement_ending_balance")
-  status                 BankReconciliationStatus  @default(IN_PROGRESS)
-  completedAt            DateTime?                 @map("completed_at")
+  statementDate          DateTime                 @map("statement_date")
+  statementEndingBalance Decimal                  @map("statement_ending_balance")
+  status                 BankReconciliationStatus @default(IN_PROGRESS)
+  completedAt            DateTime?                @map("completed_at")
 
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  createdBy String?   @map("created_by")
-  updatedBy String?   @map("updated_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
 
   organization Organization    @relation(fields: [organizationId], references: [id])
   clearedLines GlJournalLine[]
@@ -1917,6 +1919,70 @@ model BankReconciliation {
   @@index([tenantId])
   @@index([organizationId])
   @@map("bank_reconciliations")
+}
+
+/// A template that posts a real GlJournalEntry on its own schedule, with no
+/// person clicking anything - see RecurringJournalEntryPoster's daily
+/// @Cron sweep. Monthly-only in v1, on a fixed dayOfMonth (1-28, so every
+/// month has that day - no "31st" ambiguity in February etc). Deliberately
+/// no in-place editing of amounts/lines once created: FinanceService only
+/// ever lets isActive be toggled (pause/resume) or the whole template
+/// deleted - correcting a mistake means deleting and recreating, same
+/// "don't rewrite history, replace it" posture as GlJournalEntry's
+/// void/reversal (except here nothing's been posted yet, so there's
+/// nothing to reverse).
+model GlRecurringJournalEntry {
+  id             String    @id @default(uuid())
+  tenantId       String    @map("tenant_id")
+  organizationId String    @map("organization_id")
+  description    String
+  currency       String
+  dayOfMonth     Int       @map("day_of_month")
+  startDate      DateTime  @map("start_date")
+  /// Once nextRunDate would fall after this, the poster deactivates the
+  /// template instead of scheduling a run past it - see
+  /// RecurringJournalEntryPoster.postOne.
+  endDate        DateTime? @map("end_date")
+  nextRunDate    DateTime  @map("next_run_date")
+  lastRunDate    DateTime? @map("last_run_date")
+  isActive       Boolean   @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  organization Organization                  @relation(fields: [organizationId], references: [id])
+  lines        GlRecurringJournalEntryLine[]
+
+  @@index([tenantId])
+  @@index([organizationId])
+  @@map("gl_recurring_journal_entries")
+}
+
+/// One debit or credit leg of a GlRecurringJournalEntry template - copied
+/// verbatim into a real GlJournalLine every time the template posts.
+/// References accountId directly (any of the tenant's own accounts,
+/// default or custom), unlike ManualJournalEntryLineDto's fixed
+/// GlAccountCode-only restriction - same "any account you already track"
+/// convention as GlBudget, since recurring entries like monthly
+/// depreciation or rent typically target a tenant's own custom accounts,
+/// not one of the six system defaults.
+model GlRecurringJournalEntryLine {
+  id                      String  @id @default(uuid())
+  tenantId                String  @map("tenant_id")
+  recurringJournalEntryId String  @map("recurring_journal_entry_id")
+  accountId               String  @map("account_id")
+  debit                   Decimal @default(0)
+  credit                  Decimal @default(0)
+
+  recurringJournalEntry GlRecurringJournalEntry @relation(fields: [recurringJournalEntryId], references: [id], onDelete: Cascade)
+  account               GlAccount               @relation(fields: [accountId], references: [id])
+
+  @@index([tenantId])
+  @@index([recurringJournalEntryId])
+  @@index([accountId])
+  @@map("gl_recurring_journal_entry_lines")
 }
 
 /// PAY_RUN_DISBURSED/CUSTOMER_INVOICE_SENT/CUSTOMER_INVOICE_PAID are each
@@ -1940,6 +2006,13 @@ enum GlJournalEntrySourceType {
   VENDOR_BILL_APPROVED
   VENDOR_BILL_PAID
   MANUAL
+  /// Posted by RecurringJournalEntryPoster's daily sweep from a
+  /// GlRecurringJournalEntry template - sourceId is
+  /// "<templateId>:<scheduledRunDate>", so the (sourceType, sourceId)
+  /// unique constraint is what makes re-running the sweep for a date
+  /// already posted a safe no-op, same idempotency shape as
+  /// PAY_RUN_DISBURSED's "<payRunId>:<currency>".
+  RECURRING_JOURNAL_ENTRY
 }
 
 model GlJournalEntry {
@@ -1965,14 +2038,14 @@ model GlJournalEntry {
   /// same as its reversal - correcting history by deleting rows would break
   /// the audit trail, so a mistake is corrected by reversing it, not erasing
   /// it.
-  voidedAt DateTime? @map("voided_at")
-  voidedBy String?   @map("voided_by")
+  voidedAt     DateTime? @map("voided_at")
+  voidedBy     String?   @map("voided_by")
   /// Set on the reversal entry, pointing back at the entry it reverses.
   /// Unique so an entry can only ever be reversed once - the database-level
   /// backstop against a double-void, on top of the voidedAt check in
   /// FinanceService. Only ever set on MANUAL entries; a reversal is itself
   /// never voidable (FinanceService rejects it) so this never chains.
-  reversalOfId String? @unique @map("reversal_of_id")
+  reversalOfId String?   @unique @map("reversal_of_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   createdBy String?  @map("created_by")
@@ -2012,8 +2085,8 @@ model GlJournalLine {
 
   createdAt DateTime @default(now()) @map("created_at")
 
-  journalEntry  GlJournalEntry      @relation(fields: [journalEntryId], references: [id])
-  account       GlAccount           @relation(fields: [accountId], references: [id])
+  journalEntry   GlJournalEntry      @relation(fields: [journalEntryId], references: [id])
+  account        GlAccount           @relation(fields: [accountId], references: [id])
   reconciliation BankReconciliation? @relation(fields: [reconciliationId], references: [id])
 
   @@index([tenantId])

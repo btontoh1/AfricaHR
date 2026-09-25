@@ -3258,6 +3258,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/finance/recurring-journal-entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_listRecurringJournalEntries"];
+        put?: never;
+        post: operations["FinanceController_createRecurringJournalEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/recurring-journal-entries/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["FinanceController_deleteRecurringJournalEntry"];
+        options?: never;
+        head?: never;
+        patch: operations["FinanceController_setRecurringJournalEntryActive"];
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/vendors": {
         parameters: {
             query?: never;
@@ -5287,6 +5319,55 @@ export interface components {
             /** @description clearedBalance - statementEndingBalance - zero when balanced */
             difference: number;
             isBalanced: boolean;
+        };
+        RecurringJournalEntryLineResponseDto: {
+            id: string;
+            accountId: string;
+            accountCode: string;
+            accountName: string;
+            debit: string;
+            credit: string;
+        };
+        RecurringJournalEntryResponseDto: {
+            id: string;
+            organizationId: string;
+            description: string;
+            currency: string;
+            dayOfMonth: number;
+            startDate: string;
+            endDate?: string;
+            nextRunDate: string;
+            lastRunDate?: string;
+            isActive: boolean;
+            lines: components["schemas"]["RecurringJournalEntryLineResponseDto"][];
+            createdAt: string;
+            updatedAt: string;
+        };
+        RecurringJournalEntryLineDto: {
+            /** @description A GlAccount id from this tenant's chart of accounts */
+            accountId: string;
+            /** @description Set exactly one of debit/credit per line, never both. */
+            debit?: number;
+            credit?: number;
+        };
+        CreateRecurringJournalEntryDto: {
+            organizationId: string;
+            description: string;
+            /** @example GHS */
+            currency: string;
+            /**
+             * @description Day of the month this posts on - capped at 28 so every month has that day
+             * @example 5
+             */
+            dayOfMonth: number;
+            /** @description The first run is the first occurrence of dayOfMonth on or after this date */
+            startDate: string;
+            /** @description Once a scheduled run would fall after this date, the template deactivates itself instead of posting */
+            endDate?: string;
+            lines: components["schemas"]["RecurringJournalEntryLineDto"][];
+        };
+        UpdateRecurringJournalEntryDto: {
+            isActive: boolean;
         };
         CreateVendorDto: {
             organizationId: string;
@@ -11597,6 +11678,100 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BankReconciliationResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_listRecurringJournalEntries: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecurringJournalEntryResponseDto"][];
+                };
+            };
+        };
+    };
+    FinanceController_createRecurringJournalEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRecurringJournalEntryDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecurringJournalEntryResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_deleteRecurringJournalEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    FinanceController_setRecurringJournalEntryActive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRecurringJournalEntryDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecurringJournalEntryResponseDto"];
                 };
             };
         };

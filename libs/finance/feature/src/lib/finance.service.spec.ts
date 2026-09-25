@@ -8,6 +8,7 @@ import {
   GlBudgetRepository,
   GlJournalEntryRepository,
   GlPeriodCloseRepository,
+  GlRecurringJournalEntryRepository,
 } from '@africahr/finance-data-access';
 import { GlAccountCode } from '@africahr/finance-domain';
 import { FinanceService } from './finance.service';
@@ -19,6 +20,7 @@ describe('FinanceService', () => {
   let periodCloses: jest.Mocked<GlPeriodCloseRepository>;
   let budgets: jest.Mocked<GlBudgetRepository>;
   let bankReconciliations: jest.Mocked<BankReconciliationRepository>;
+  let recurringEntries: jest.Mocked<GlRecurringJournalEntryRepository>;
   let audit: jest.Mocked<AuditService>;
 
   const actor: RequestUser = {
@@ -85,9 +87,27 @@ describe('FinanceService', () => {
       delete: jest.fn(),
     } as unknown as jest.Mocked<BankReconciliationRepository>;
 
+    recurringEntries = {
+      create: jest.fn(),
+      findById: jest.fn(),
+      list: jest.fn(),
+      setActive: jest.fn(),
+      delete: jest.fn(),
+      markRun: jest.fn(),
+      listDue: jest.fn(),
+    } as unknown as jest.Mocked<GlRecurringJournalEntryRepository>;
+
     audit = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
 
-    service = new FinanceService(accounts, journalEntries, periodCloses, budgets, bankReconciliations, audit);
+    service = new FinanceService(
+      accounts,
+      journalEntries,
+      periodCloses,
+      budgets,
+      bankReconciliations,
+      recurringEntries,
+      audit,
+    );
   });
 
   describe('postPayrollDisbursement', () => {
@@ -925,6 +945,184 @@ describe('FinanceService', () => {
       expect(bankReconciliations.delete).toHaveBeenCalledWith('tenant-1', 'rec-1');
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'finance.bank_reconciliation.deleted', resourceId: 'rec-1' }),
+      );
+    });
+  });
+
+  describe('createRecurringJournalEntry', () => {
+    const dto = {
+      organizationId: 'org-1',
+      description: 'Monthly rent',
+      currency: 'GHS',
+      dayOfMonth: 5,
+      startDate: '2026-04-01',
+      lines: [
+        { accountId: 'acc-rent', debit: 500 },
+        { accountId: 'acc-cash', credit: 500 },
+      ],
+    };
+
+    it('rejects an entry where debits and credits do not balance', async () => {
+      const unbalanced = {
+        ...dto,
+        lines: [{ accountId: 'acc-rent', debit: 500 }, { accountId: 'acc-cash', credit: 400 }],
+      };
+
+      await expect(service.createRecurringJournalEntry('tenant-1', unbalanced, actor)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(recurringEntries.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects a line with both debit and credit set', async () => {
+      const bothSet = {
+        ...dto,
+        lines: [
+          { accountId: 'acc-rent', debit: 500, credit: 500 },
+          { accountId: 'acc-cash', credit: 500 },
+        ],
+      };
+
+      await expect(service.createRecurringJournalEntry('tenant-1', bothSet, actor)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('rejects when a line references an account that does not belong to this tenant', async () => {
+      accounts.findById.mockResolvedValue(null);
+
+      await expect(service.createRecurringJournalEntry('tenant-1', dto, actor)).rejects.toThrow(NotFoundException);
+      expect(recurringEntries.create).not.toHaveBeenCalled();
+    });
+
+    it('creates the template, computing the first run date, and audits on success', async () => {
+      accounts.findById.mockResolvedValue({ id: 'acc-1', code: '5100', name: 'Rent Expense', type: 'EXPENSE' } as never);
+      recurringEntries.create.mockResolvedValue({
+        id: 'rec-1',
+        organizationId: 'org-1',
+        description: 'Monthly rent',
+        currency: 'GHS',
+        dayOfMonth: 5,
+        startDate: new Date('2026-04-01'),
+        endDate: null,
+        nextRunDate: new Date('2026-04-05'),
+        lastRunDate: null,
+        isActive: true,
+        lines: [
+          { id: 'line-1', accountId: 'acc-rent', account: { code: '5100', name: 'Rent Expense' }, debit: { toString: () => '500' }, credit: { toString: () => '0' } },
+          { id: 'line-2', accountId: 'acc-cash', account: { code: '1000', name: 'Cash and Bank' }, debit: { toString: () => '0' }, credit: { toString: () => '500' } },
+        ],
+        createdAt: new Date('2026-03-01'),
+        updatedAt: new Date('2026-03-01'),
+      } as never);
+
+      const result = await service.createRecurringJournalEntry('tenant-1', dto, actor);
+
+      expect(recurringEntries.create).toHaveBeenCalledWith('tenant-1', {
+        organizationId: 'org-1',
+        description: 'Monthly rent',
+        currency: 'GHS',
+        dayOfMonth: 5,
+        startDate: new Date('2026-04-01'),
+        endDate: undefined,
+        nextRunDate: new Date('2026-04-05'),
+        createdBy: 'user-1',
+        lines: [
+          { accountId: 'acc-rent', debit: 500, credit: 0 },
+          { accountId: 'acc-cash', debit: 0, credit: 500 },
+        ],
+      });
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'finance.recurring_journal_entry.created', resourceId: 'rec-1' }),
+      );
+      expect(result.id).toBe('rec-1');
+      expect(result.lines).toHaveLength(2);
+    });
+
+    it('translates a foreign-key violation on organizationId into a NotFoundException', async () => {
+      accounts.findById.mockResolvedValue({ id: 'acc-1', code: '5100', name: 'Rent Expense', type: 'EXPENSE' } as never);
+      const fkError = Object.assign(Object.create(Prisma.PrismaClientKnownRequestError.prototype), {
+        code: 'P2003',
+        message: 'mock',
+      });
+      recurringEntries.create.mockRejectedValue(fkError);
+
+      await expect(
+        service.createRecurringJournalEntry('tenant-1', { ...dto, organizationId: 'missing-org' }, actor),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('listRecurringJournalEntries', () => {
+    it('lists templates scoped to the tenant and organization', async () => {
+      recurringEntries.list.mockResolvedValue([]);
+
+      await service.listRecurringJournalEntries('tenant-1', 'org-1');
+
+      expect(recurringEntries.list).toHaveBeenCalledWith('tenant-1', 'org-1');
+    });
+  });
+
+  describe('setRecurringJournalEntryActive', () => {
+    it('throws NotFoundException when the template does not exist', async () => {
+      recurringEntries.findById.mockResolvedValue(null);
+
+      await expect(
+        service.setRecurringJournalEntryActive('tenant-1', 'missing', { isActive: false }, actor),
+      ).rejects.toThrow(NotFoundException);
+      expect(recurringEntries.setActive).not.toHaveBeenCalled();
+    });
+
+    it('pauses the template and audits with the paused action', async () => {
+      recurringEntries.findById.mockResolvedValue({ id: 'rec-1', organizationId: 'org-1' } as never);
+      recurringEntries.setActive.mockResolvedValue({
+        id: 'rec-1',
+        organizationId: 'org-1',
+        description: 'Monthly rent',
+        currency: 'GHS',
+        dayOfMonth: 5,
+        startDate: new Date('2026-04-01'),
+        endDate: null,
+        nextRunDate: new Date('2026-04-05'),
+        lastRunDate: null,
+        isActive: false,
+        lines: [],
+        createdAt: new Date('2026-03-01'),
+        updatedAt: new Date('2026-03-01'),
+      } as never);
+
+      const result = await service.setRecurringJournalEntryActive('tenant-1', 'rec-1', { isActive: false }, actor);
+
+      expect(recurringEntries.setActive).toHaveBeenCalledWith('tenant-1', 'rec-1', false, 'user-1');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'finance.recurring_journal_entry.paused', resourceId: 'rec-1' }),
+      );
+      expect(result.isActive).toBe(false);
+    });
+  });
+
+  describe('deleteRecurringJournalEntry', () => {
+    it('throws NotFoundException when the template does not exist', async () => {
+      recurringEntries.findById.mockResolvedValue(null);
+
+      await expect(service.deleteRecurringJournalEntry('tenant-1', 'missing', actor)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(recurringEntries.delete).not.toHaveBeenCalled();
+    });
+
+    it('deletes and audits on success', async () => {
+      recurringEntries.findById.mockResolvedValue({
+        id: 'rec-1',
+        organizationId: 'org-1',
+        description: 'Monthly rent',
+      } as never);
+
+      await service.deleteRecurringJournalEntry('tenant-1', 'rec-1', actor);
+
+      expect(recurringEntries.delete).toHaveBeenCalledWith('tenant-1', 'rec-1');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'finance.recurring_journal_entry.deleted', resourceId: 'rec-1' }),
       );
     });
   });

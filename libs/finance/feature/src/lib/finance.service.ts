@@ -11,10 +11,13 @@ import {
   GlJournalEntryWithLines,
   GlJournalLineForReconciliation,
   GlPeriodCloseRepository,
+  GlRecurringJournalEntryRepository,
+  GlRecurringJournalEntryWithLines,
 } from '@africahr/finance-data-access';
 import {
   canExtendPeriodClose,
   computeClearedBalance,
+  computeFirstRunDate,
   computeInvoicePaidJournalLines,
   computeInvoiceSentJournalLines,
   computePayrollJournalLines,
@@ -35,11 +38,14 @@ import { UpdateGlAccountDto } from './dto/update-gl-account.dto';
 import { SetPeriodCloseDto } from './dto/set-period-close.dto';
 import { SetBudgetDto } from './dto/set-budget.dto';
 import { CreateBankReconciliationDto } from './dto/create-bank-reconciliation.dto';
+import { CreateRecurringJournalEntryDto } from './dto/create-recurring-journal-entry.dto';
+import { UpdateRecurringJournalEntryDto } from './dto/update-recurring-journal-entry.dto';
 import { JournalEntryResponseDto } from './dto/journal-entry-response.dto';
 import { GlAccountResponseDto } from './dto/gl-account-response.dto';
 import { BudgetResponseDto } from './dto/budget-response.dto';
 import { PeriodCloseResponseDto } from './dto/period-close-response.dto';
 import { BankReconciliationDetailResponseDto, BankReconciliationResponseDto } from './dto/bank-reconciliation-response.dto';
+import { RecurringJournalEntryResponseDto } from './dto/recurring-journal-entry-response.dto';
 
 function translateOrganizationReferenceError(error: unknown, organizationId: string): never {
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
@@ -130,6 +136,33 @@ function toBankReconciliationLineResponseDto(
   };
 }
 
+function toRecurringJournalEntryResponseDto(
+  template: GlRecurringJournalEntryWithLines,
+): RecurringJournalEntryResponseDto {
+  return {
+    id: template.id,
+    organizationId: template.organizationId,
+    description: template.description,
+    currency: template.currency,
+    dayOfMonth: template.dayOfMonth,
+    startDate: template.startDate.toISOString(),
+    endDate: template.endDate ? template.endDate.toISOString() : null,
+    nextRunDate: template.nextRunDate.toISOString(),
+    lastRunDate: template.lastRunDate ? template.lastRunDate.toISOString() : null,
+    isActive: template.isActive,
+    lines: template.lines.map((line) => ({
+      id: line.id,
+      accountId: line.accountId,
+      accountCode: line.account.code,
+      accountName: line.account.name,
+      debit: line.debit.toString(),
+      credit: line.credit.toString(),
+    })),
+    createdAt: template.createdAt.toISOString(),
+    updatedAt: template.updatedAt.toISOString(),
+  };
+}
+
 function toJournalEntryResponseDto(entry: GlJournalEntryWithLines): JournalEntryResponseDto {
   return {
     id: entry.id,
@@ -184,6 +217,7 @@ export class FinanceService {
     private readonly periodCloses: GlPeriodCloseRepository,
     private readonly budgets: GlBudgetRepository,
     private readonly bankReconciliations: BankReconciliationRepository,
+    private readonly recurringEntries: GlRecurringJournalEntryRepository,
     private readonly audit: AuditService,
   ) {}
 
@@ -811,5 +845,123 @@ export class FinanceService {
       throw new NotFoundException(`Bank reconciliation "${id}" not found`);
     }
     return reconciliation;
+  }
+
+  /**
+   * Creates a template that RecurringJournalEntryPoster's daily sweep posts
+   * a real GlJournalEntry from every time it comes due - see the model's
+   * own doc comment for why amounts/lines are never editable afterward.
+   * Lines validate the same way as createManualEntry's (exactly one of
+   * debit/credit per line, the whole entry balanced), but reference any of
+   * the tenant's own accounts by id, not a fixed GlAccountCode - see
+   * GlRecurringJournalEntryLine's own doc comment for why.
+   */
+  async createRecurringJournalEntry(
+    tenantId: string,
+    dto: CreateRecurringJournalEntryDto,
+    actor: RequestUser,
+  ): Promise<RecurringJournalEntryResponseDto> {
+    const lines = dto.lines.map((line) => ({ debit: line.debit ?? 0, credit: line.credit ?? 0 }));
+    if (lines.some((line) => (line.debit > 0) === (line.credit > 0))) {
+      throw new BadRequestException('Each journal line must have exactly one of debit/credit set, never both or neither');
+    }
+    if (!isBalancedEntry(lines)) {
+      throw new BadRequestException('Journal entry does not balance - total debits must equal total credits');
+    }
+
+    for (const line of dto.lines) {
+      const account = await this.accounts.findById(tenantId, line.accountId);
+      if (!account) {
+        throw new NotFoundException(`Account "${line.accountId}" not found`);
+      }
+    }
+
+    const startDate = new Date(dto.startDate);
+    const endDate = dto.endDate ? new Date(dto.endDate) : undefined;
+    const nextRunDate = computeFirstRunDate(startDate, dto.dayOfMonth);
+
+    let template;
+    try {
+      template = await this.recurringEntries.create(tenantId, {
+        organizationId: dto.organizationId,
+        description: dto.description,
+        currency: dto.currency,
+        dayOfMonth: dto.dayOfMonth,
+        startDate,
+        endDate,
+        nextRunDate,
+        createdBy: actor.sub,
+        lines: dto.lines.map((line) => ({
+          accountId: line.accountId,
+          debit: line.debit ?? 0,
+          credit: line.credit ?? 0,
+        })),
+      });
+    } catch (error) {
+      translateOrganizationReferenceError(error, dto.organizationId);
+    }
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actor.sub ?? null,
+      action: 'finance.recurring_journal_entry.created',
+      resourceType: 'GlRecurringJournalEntry',
+      resourceId: template.id,
+      metadata: { organizationId: dto.organizationId, dayOfMonth: dto.dayOfMonth, currency: dto.currency },
+    });
+
+    return toRecurringJournalEntryResponseDto(template);
+  }
+
+  async listRecurringJournalEntries(tenantId: string, organizationId?: string): Promise<RecurringJournalEntryResponseDto[]> {
+    const templates = await this.recurringEntries.list(tenantId, organizationId);
+    return templates.map(toRecurringJournalEntryResponseDto);
+  }
+
+  /** Pause/resume only - see GlRecurringJournalEntry's own doc comment. */
+  async setRecurringJournalEntryActive(
+    tenantId: string,
+    id: string,
+    dto: UpdateRecurringJournalEntryDto,
+    actor: RequestUser,
+  ): Promise<RecurringJournalEntryResponseDto> {
+    const existing = await this.recurringEntries.findById(tenantId, id);
+    if (!existing) {
+      throw new NotFoundException(`Recurring journal entry "${id}" not found`);
+    }
+
+    const updated = await this.recurringEntries.setActive(tenantId, id, dto.isActive, actor.sub);
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actor.sub ?? null,
+      action: dto.isActive ? 'finance.recurring_journal_entry.resumed' : 'finance.recurring_journal_entry.paused',
+      resourceType: 'GlRecurringJournalEntry',
+      resourceId: id,
+      metadata: { organizationId: existing.organizationId },
+    });
+
+    return toRecurringJournalEntryResponseDto(updated);
+  }
+
+  /** Deleting a template never touches any GlJournalEntry it already
+   * posted - those stay in the ledger exactly as posted, same as deleting
+   * a Budget never touches actuals already posted against that account. */
+  async deleteRecurringJournalEntry(tenantId: string, id: string, actor: RequestUser): Promise<void> {
+    const existing = await this.recurringEntries.findById(tenantId, id);
+    if (!existing) {
+      throw new NotFoundException(`Recurring journal entry "${id}" not found`);
+    }
+
+    await this.recurringEntries.delete(tenantId, id);
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actor.sub ?? null,
+      action: 'finance.recurring_journal_entry.deleted',
+      resourceType: 'GlRecurringJournalEntry',
+      resourceId: id,
+      metadata: { organizationId: existing.organizationId, description: existing.description },
+    });
   }
 }

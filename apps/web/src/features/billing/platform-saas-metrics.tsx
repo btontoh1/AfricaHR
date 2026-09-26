@@ -13,6 +13,7 @@ import {
 import { CohortRetentionTable } from './cohort-retention-table';
 import { SetOperatingCostDialog } from './set-operating-cost-dialog';
 import { SetFinancialInputDialog } from './set-financial-input-dialog';
+import { LtvToCacAlertBanner } from './ltv-to-cac-alert-banner';
 import type {
   BurnAndRunwayEntry,
   FinancialInput,
@@ -497,6 +498,8 @@ export function PlatformSaasMetrics() {
           </Button>
         }
       />
+
+      <LtvToCacAlertBanner linkToAnalytics={false} />
 
       {/*
         One section per currency for anything money-shaped, never blended -

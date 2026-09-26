@@ -4,6 +4,9 @@ import { useState } from 'react';
 import { Scale } from 'lucide-react';
 import { useBudgetVsActualReport } from './queries';
 import { OrganizationFilter, ALL_ORGANIZATIONS } from '@/features/reporting/organization-filter';
+import { ReportViewTabs, type ReportView } from '@/features/reporting/report-view-tabs';
+import { ReportBarChart } from '@/features/reporting/report-bar-chart';
+import { CHART_COLORS } from '@/features/reporting/chart-colors';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { formatCurrency } from '@/lib/format-currency';
 import { Input } from '@/components/ui/input';
@@ -21,6 +24,7 @@ function currentYear(): number {
 export function BudgetVsActualReport({ tenantId }: { tenantId: string }) {
   const [organizationId, setOrganizationId] = useState(ALL_ORGANIZATIONS);
   const [fiscalYear, setFiscalYear] = useState(currentYear());
+  const [view, setView] = useState<ReportView>('table');
 
   const { data: report, isLoading, isError, error } = useBudgetVsActualReport(tenantId, {
     organizationId: organizationId === ALL_ORGANIZATIONS ? undefined : organizationId,
@@ -65,60 +69,85 @@ export function BudgetVsActualReport({ tenantId }: { tenantId: string }) {
           {report.byCurrency.map((byCurrency) => (
             <div key={byCurrency.currency} className="space-y-2">
               <h3 className="text-sm font-medium text-muted-foreground">{byCurrency.currency}</h3>
-              <TableCard>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Account</TableHead>
-                      <TableHead className="text-right">Budget</TableHead>
-                      <TableHead className="text-right">Actual</TableHead>
-                      <TableHead className="text-right">Variance</TableHead>
-                      <TableHead className="text-right">%</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {byCurrency.rows.map((row) => (
-                      <TableRow key={row.accountCode}>
-                        <TableCell>
-                          <span className="font-mono text-muted-foreground">{row.accountCode}</span>{' '}
-                          {row.accountName}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatCurrency(row.budgetAmount, byCurrency.currency)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatCurrency(row.actualAmount, byCurrency.currency)}
-                        </TableCell>
-                        <TableCell
-                          className={`text-right ${row.varianceAmount > 0 ? 'text-destructive' : 'text-muted-foreground'}`}
-                        >
-                          {row.varianceAmount > 0 ? '+' : ''}
-                          {formatCurrency(row.varianceAmount, byCurrency.currency)}
-                        </TableCell>
-                        <TableCell
-                          className={`text-right ${row.varianceAmount > 0 ? 'text-destructive' : 'text-muted-foreground'}`}
-                        >
-                          {row.variancePercent === null ? '—' : `${row.variancePercent > 0 ? '+' : ''}${row.variancePercent}%`}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    <TableRow>
-                      <TableCell className="font-medium">Total</TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(byCurrency.totalBudget, byCurrency.currency)}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(byCurrency.totalActual, byCurrency.currency)}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {byCurrency.totalVariance > 0 ? '+' : ''}
-                        {formatCurrency(byCurrency.totalVariance, byCurrency.currency)}
-                      </TableCell>
-                      <TableCell />
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </TableCard>
+              <ReportViewTabs
+                view={view}
+                onViewChange={setView}
+                table={
+                  <TableCard>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Account</TableHead>
+                          <TableHead className="text-right">Budget</TableHead>
+                          <TableHead className="text-right">Actual</TableHead>
+                          <TableHead className="text-right">Variance</TableHead>
+                          <TableHead className="text-right">%</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {byCurrency.rows.map((row) => (
+                          <TableRow key={row.accountCode}>
+                            <TableCell>
+                              <span className="font-mono text-muted-foreground">{row.accountCode}</span>{' '}
+                              {row.accountName}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(row.budgetAmount, byCurrency.currency)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(row.actualAmount, byCurrency.currency)}
+                            </TableCell>
+                            <TableCell
+                              className={`text-right ${row.varianceAmount > 0 ? 'text-destructive' : 'text-muted-foreground'}`}
+                            >
+                              {row.varianceAmount > 0 ? '+' : ''}
+                              {formatCurrency(row.varianceAmount, byCurrency.currency)}
+                            </TableCell>
+                            <TableCell
+                              className={`text-right ${row.varianceAmount > 0 ? 'text-destructive' : 'text-muted-foreground'}`}
+                            >
+                              {row.variancePercent === null
+                                ? '—'
+                                : `${row.variancePercent > 0 ? '+' : ''}${row.variancePercent}%`}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow>
+                          <TableCell className="font-medium">Total</TableCell>
+                          <TableCell className="text-right font-medium">
+                            {formatCurrency(byCurrency.totalBudget, byCurrency.currency)}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {formatCurrency(byCurrency.totalActual, byCurrency.currency)}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {byCurrency.totalVariance > 0 ? '+' : ''}
+                            {formatCurrency(byCurrency.totalVariance, byCurrency.currency)}
+                          </TableCell>
+                          <TableCell />
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </TableCard>
+                }
+                chart={
+                  <ReportBarChart
+                    data={byCurrency.rows.map((row) => ({
+                      name: `${row.accountCode} ${row.accountName}`,
+                      budget: row.budgetAmount,
+                      actual: row.actualAmount,
+                    }))}
+                    categoryKey="name"
+                    series={[
+                      { key: 'budget', label: 'Budget', color: CHART_COLORS[0] },
+                      { key: 'actual', label: 'Actual', color: CHART_COLORS[1] },
+                    ]}
+                    layout="vertical"
+                    height={Math.max(240, byCurrency.rows.length * 56)}
+                    valueFormatter={(value) => formatCurrency(value, byCurrency.currency)}
+                  />
+                }
+              />
             </div>
           ))}
         </div>

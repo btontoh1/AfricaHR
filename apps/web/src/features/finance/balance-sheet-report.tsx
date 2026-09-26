@@ -6,6 +6,9 @@ import { getBalanceSheetPdfUrl, useBalanceSheetReport } from './queries';
 import { ReportPdfButtons } from './report-pdf-buttons';
 import { OrganizationFilter, ALL_ORGANIZATIONS } from '@/features/reporting/organization-filter';
 import { StatCard } from '@/features/reporting/stat-card';
+import { ReportViewTabs, type ReportView } from '@/features/reporting/report-view-tabs';
+import { ReportBarChart } from '@/features/reporting/report-bar-chart';
+import { CHART_COLORS } from '@/features/reporting/chart-colors';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { formatCurrency } from '@/lib/format-currency';
 import { Input } from '@/components/ui/input';
@@ -21,6 +24,7 @@ function today(): string {
 export function BalanceSheetReport({ tenantId }: { tenantId: string }) {
   const [organizationId, setOrganizationId] = useState(ALL_ORGANIZATIONS);
   const [asOf, setAsOf] = useState(today());
+  const [view, setView] = useState<ReportView>('table');
 
   const { data: report, isLoading, isError, error } = useBalanceSheetReport(tenantId, {
     organizationId: organizationId === ALL_ORGANIZATIONS ? undefined : organizationId,
@@ -72,20 +76,38 @@ export function BalanceSheetReport({ tenantId }: { tenantId: string }) {
           {report.byCurrency.map((byCurrency) => (
             <div key={byCurrency.currency} className="space-y-2">
               <h3 className="text-sm font-medium text-muted-foreground">{byCurrency.currency}</h3>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <StatCard
-                  label="Assets"
-                  value={formatCurrency(byCurrency.totalAssets, byCurrency.currency)}
-                />
-                <StatCard
-                  label="Liabilities"
-                  value={formatCurrency(byCurrency.totalLiabilities, byCurrency.currency)}
-                />
-                <StatCard
-                  label="Equity"
-                  value={formatCurrency(byCurrency.totalEquity, byCurrency.currency)}
-                />
-              </div>
+              <ReportViewTabs
+                view={view}
+                onViewChange={setView}
+                table={
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <StatCard
+                      label="Assets"
+                      value={formatCurrency(byCurrency.totalAssets, byCurrency.currency)}
+                    />
+                    <StatCard
+                      label="Liabilities"
+                      value={formatCurrency(byCurrency.totalLiabilities, byCurrency.currency)}
+                    />
+                    <StatCard
+                      label="Equity"
+                      value={formatCurrency(byCurrency.totalEquity, byCurrency.currency)}
+                    />
+                  </div>
+                }
+                chart={
+                  <ReportBarChart
+                    data={[
+                      { name: 'Assets', value: Number(byCurrency.totalAssets) },
+                      { name: 'Liabilities', value: Number(byCurrency.totalLiabilities) },
+                      { name: 'Equity', value: Number(byCurrency.totalEquity) },
+                    ]}
+                    categoryKey="name"
+                    series={[{ key: 'value', label: byCurrency.currency, color: CHART_COLORS[0] }]}
+                    valueFormatter={(value) => formatCurrency(value, byCurrency.currency)}
+                  />
+                }
+              />
             </div>
           ))}
         </div>

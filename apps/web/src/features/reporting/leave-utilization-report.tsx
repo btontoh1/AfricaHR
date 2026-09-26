@@ -4,6 +4,9 @@ import { useState } from 'react';
 import { useLeaveUtilizationReport } from './queries';
 import { OrganizationFilter, ALL_ORGANIZATIONS } from './organization-filter';
 import { useLeaveTypes } from '@/features/leave/queries';
+import { ReportViewTabs, type ReportView } from './report-view-tabs';
+import { ReportBarChart } from './report-bar-chart';
+import { CHART_COLORS } from './chart-colors';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,6 +37,7 @@ export function LeaveUtilizationReport({ tenantId }: { tenantId: string }) {
   const [organizationId, setOrganizationId] = useState(ALL_ORGANIZATIONS);
   const [leaveTypeId, setLeaveTypeId] = useState(ALL_LEAVE_TYPES);
   const [year, setYear] = useState(String(new Date().getFullYear()));
+  const [view, setView] = useState<ReportView>('table');
 
   const { data: leaveTypes } = useLeaveTypes(tenantId);
   const { data: entries, isLoading, isError, error } = useLeaveUtilizationReport(tenantId, {
@@ -80,28 +84,50 @@ export function LeaveUtilizationReport({ tenantId }: { tenantId: string }) {
       )}
 
       {entries && entries.length > 0 && (
-        <TableCard>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Leave type</TableHead>
-                <TableHead>Entitled days</TableHead>
-                <TableHead>Used days</TableHead>
-                <TableHead>Utilization</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {entries.map((entry) => (
-                <TableRow key={entry.leaveTypeId}>
-                  <TableCell className="font-medium">{entry.leaveTypeName}</TableCell>
-                  <TableCell>{entry.totalEntitledDays}</TableCell>
-                  <TableCell>{entry.totalUsedDays}</TableCell>
-                  <TableCell>{entry.utilizationPercent}%</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableCard>
+        <ReportViewTabs
+          view={view}
+          onViewChange={setView}
+          table={
+            <TableCard>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Leave type</TableHead>
+                    <TableHead>Entitled days</TableHead>
+                    <TableHead>Used days</TableHead>
+                    <TableHead>Utilization</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {entries.map((entry) => (
+                    <TableRow key={entry.leaveTypeId}>
+                      <TableCell className="font-medium">{entry.leaveTypeName}</TableCell>
+                      <TableCell>{entry.totalEntitledDays}</TableCell>
+                      <TableCell>{entry.totalUsedDays}</TableCell>
+                      <TableCell>{entry.utilizationPercent}%</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableCard>
+          }
+          chart={
+            <ReportBarChart
+              data={entries.map((entry) => ({
+                name: entry.leaveTypeName,
+                entitled: entry.totalEntitledDays,
+                used: entry.totalUsedDays,
+              }))}
+              categoryKey="name"
+              series={[
+                { key: 'entitled', label: 'Entitled days', color: CHART_COLORS[0] },
+                { key: 'used', label: 'Used days', color: CHART_COLORS[1] },
+              ]}
+              layout="vertical"
+              height={Math.max(240, entries.length * 56)}
+            />
+          }
+        />
       )}
     </div>
   );

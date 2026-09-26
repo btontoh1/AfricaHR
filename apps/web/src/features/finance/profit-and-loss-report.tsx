@@ -7,6 +7,9 @@ import { ReportPdfButtons } from './report-pdf-buttons';
 import { getDefaultDateRange } from '@/features/reporting/date-range';
 import { OrganizationFilter, ALL_ORGANIZATIONS } from '@/features/reporting/organization-filter';
 import { StatCard } from '@/features/reporting/stat-card';
+import { ReportViewTabs, type ReportView } from '@/features/reporting/report-view-tabs';
+import { ReportBarChart } from '@/features/reporting/report-bar-chart';
+import { CHART_COLORS } from '@/features/reporting/chart-colors';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { formatCurrency } from '@/lib/format-currency';
 import { Input } from '@/components/ui/input';
@@ -18,6 +21,7 @@ import { EmptyState } from '@/components/empty-state';
 export function ProfitAndLossReport({ tenantId }: { tenantId: string }) {
   const [organizationId, setOrganizationId] = useState(ALL_ORGANIZATIONS);
   const [{ from, to }, setRange] = useState(getDefaultDateRange());
+  const [view, setView] = useState<ReportView>('table');
 
   const { data: report, isLoading, isError, error } = useProfitAndLossReport(tenantId, {
     organizationId: organizationId === ALL_ORGANIZATIONS ? undefined : organizationId,
@@ -82,20 +86,38 @@ export function ProfitAndLossReport({ tenantId }: { tenantId: string }) {
           {report.byCurrency.map((byCurrency) => (
             <div key={byCurrency.currency} className="space-y-2">
               <h3 className="text-sm font-medium text-muted-foreground">{byCurrency.currency}</h3>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <StatCard
-                  label="Revenue"
-                  value={formatCurrency(byCurrency.totalRevenue, byCurrency.currency)}
-                />
-                <StatCard
-                  label="Expense"
-                  value={formatCurrency(byCurrency.totalExpense, byCurrency.currency)}
-                />
-                <StatCard
-                  label="Net income"
-                  value={formatCurrency(byCurrency.netIncome, byCurrency.currency)}
-                />
-              </div>
+              <ReportViewTabs
+                view={view}
+                onViewChange={setView}
+                table={
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <StatCard
+                      label="Revenue"
+                      value={formatCurrency(byCurrency.totalRevenue, byCurrency.currency)}
+                    />
+                    <StatCard
+                      label="Expense"
+                      value={formatCurrency(byCurrency.totalExpense, byCurrency.currency)}
+                    />
+                    <StatCard
+                      label="Net income"
+                      value={formatCurrency(byCurrency.netIncome, byCurrency.currency)}
+                    />
+                  </div>
+                }
+                chart={
+                  <ReportBarChart
+                    data={[
+                      { name: 'Revenue', value: Number(byCurrency.totalRevenue) },
+                      { name: 'Expense', value: Number(byCurrency.totalExpense) },
+                      { name: 'Net income', value: Number(byCurrency.netIncome) },
+                    ]}
+                    categoryKey="name"
+                    series={[{ key: 'value', label: byCurrency.currency, color: CHART_COLORS[0] }]}
+                    valueFormatter={(value) => formatCurrency(value, byCurrency.currency)}
+                  />
+                }
+              />
             </div>
           ))}
         </div>

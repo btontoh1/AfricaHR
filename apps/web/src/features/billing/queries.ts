@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
-import type { AssignSubscriptionInput } from './types';
+import type { AssignSubscriptionInput, SetOperatingCostInput } from './types';
 
 function subscriptionKey(tenantId: string) {
   return ['billing', tenantId, 'subscription'] as const;
@@ -156,6 +156,38 @@ export function usePlatformSaasMetrics() {
       const { data, error } = await apiClient.GET('/api/platform-admin/billing/saas-metrics');
       if (error) throw error;
       return data;
+    },
+  });
+}
+
+function operatingCostsKey() {
+  return ['platform-operating-costs'] as const;
+}
+
+export function useOperatingCosts() {
+  return useQuery({
+    queryKey: operatingCostsKey(),
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/platform-admin/billing/operating-costs');
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useSetOperatingCost() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: SetOperatingCostInput) => {
+      const { data, error } = await apiClient.POST('/api/platform-admin/billing/operating-costs', {
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: operatingCostsKey() });
+      queryClient.invalidateQueries({ queryKey: platformSaasMetricsKey() });
     },
   });
 }

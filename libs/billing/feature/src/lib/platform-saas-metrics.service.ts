@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { PlatformBillingRepository } from '@africahr/billing-data-access';
+import { PlatformBillingRepository, PlatformOperatingCostRepository } from '@africahr/billing-data-access';
 import {
   aggregateChargesByTenantMonth,
   computeChurnRates,
   computeCohortRetention,
+  computeGrowthRatePercent,
   computeMrrWaterfall,
+  computeProfitMarginPercent,
+  computeRuleOf40Score,
   enumerateMonths,
   roundCurrency,
   summarizeMrrHistory,
@@ -54,11 +57,23 @@ export interface CohortRetentionRowResult {
   retentionByMonthsElapsed: number[];
 }
 
+export interface RuleOf40Entry {
+  currency: string;
+  month: string;
+  previousMonth: string;
+  revenue: number;
+  cost: number;
+  revenueGrowthRatePercent: number;
+  profitMarginPercent: number;
+  score: number;
+}
+
 export interface PlatformSaasMetrics {
   mrrHistory: MrrHistoryPointResult[];
   arr: ArrByCurrency[];
   waterfall: MrrWaterfallByCurrency[];
   churnRates: ChurnRatesByCurrency[];
+  ruleOf40: RuleOf40Entry[];
   subscriptionFunnel: SubscriptionFunnelEntry[];
   averageRevenuePerTenant: AverageRevenuePerTenant[];
   cohortRetention: CohortRetentionRowResult[];
@@ -74,13 +89,17 @@ export interface PlatformSaasMetrics {
  */
 @Injectable()
 export class PlatformSaasMetricsService {
-  constructor(private readonly platformBilling: PlatformBillingRepository) {}
+  constructor(
+    private readonly platformBilling: PlatformBillingRepository,
+    private readonly operatingCosts: PlatformOperatingCostRepository,
+  ) {}
 
   async getSaasMetrics(): Promise<PlatformSaasMetrics> {
-    const [invoices, subscriptions, tenantSignupDates] = await Promise.all([
+    const [invoices, subscriptions, tenantSignupDates, costEntries] = await Promise.all([
       this.platformBilling.listInvoicesForAnalytics(),
       this.platformBilling.listAllSubscriptions(),
       this.platformBilling.listTenantSignupMonths(),
+      this.operatingCosts.list(),
     ]);
 
     // A cancelled invoice was voided, never actually charged - it shouldn't
@@ -98,8 +117,11 @@ export class PlatformSaasMetricsService {
     const mrrHistory = summarizeMrrHistory(charges);
     const currencies = [...new Set(aggregated.map((charge) => charge.currency))].sort();
 
+    const costByMonthCurrency = new Map(costEntries.map((entry) => [`${entry.month}::${entry.currency}`, entry.amount]));
+
     const waterfall: MrrWaterfallByCurrency[] = [];
     const churnRates: ChurnRatesByCurrency[] = [];
+    const ruleOf40: RuleOf40Entry[] = [];
     for (const currency of currencies) {
       const currencyPoints = mrrHistory.filter((point) => point.currency === currency);
       if (currencyPoints.length < 2) {
@@ -121,6 +143,24 @@ export class PlatformSaasMetricsService {
         month: latestMonth,
         ...computeChurnRates(result.startingTenantCount, result.churnedTenantCount, result.startingMrr, result.churnedMrr),
       });
+
+      // Only shown once a cost was actually entered for this month/currency -
+      // defaulting to 0 would silently claim a 100% profit margin.
+      const cost = costByMonthCurrency.get(`${latestMonth}::${currency}`);
+      if (cost !== undefined) {
+        const revenueGrowthRatePercent = computeGrowthRatePercent(result.startingMrr, result.endingMrr);
+        const profitMarginPercent = computeProfitMarginPercent(result.endingMrr, cost);
+        ruleOf40.push({
+          currency,
+          month: latestMonth,
+          previousMonth,
+          revenue: result.endingMrr,
+          cost,
+          revenueGrowthRatePercent,
+          profitMarginPercent,
+          score: computeRuleOf40Score(revenueGrowthRatePercent, profitMarginPercent),
+        });
+      }
     }
 
     // Latest month's point per currency - the natural basis for ARR and
@@ -166,6 +206,15 @@ export class PlatformSaasMetricsService {
 
     const cohortRetention = computeCohortRetention(tenantCohortMonths, activeTenantIdsByMonth, monthSequence);
 
-    return { mrrHistory, arr, waterfall, churnRates, subscriptionFunnel, averageRevenuePerTenant, cohortRetention };
+    return {
+      mrrHistory,
+      arr,
+      waterfall,
+      churnRates,
+      ruleOf40,
+      subscriptionFunnel,
+      averageRevenuePerTenant,
+      cohortRetention,
+    };
   }
 }

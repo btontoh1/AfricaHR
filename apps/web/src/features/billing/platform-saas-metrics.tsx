@@ -1,8 +1,10 @@
 'use client';
 
-import { AlertTriangle, TrendingDown, TrendingUp, Users } from 'lucide-react';
-import { usePlatformSaasMetrics } from './queries';
+import { AlertTriangle, Gauge, TrendingDown, TrendingUp, Users } from 'lucide-react';
+import { useOperatingCosts, usePlatformSaasMetrics } from './queries';
 import { CohortRetentionTable } from './cohort-retention-table';
+import { SetOperatingCostDialog } from './set-operating-cost-dialog';
+import type { RuleOf40Entry } from './types';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { formatCurrency } from '@/lib/format-currency';
 import { CardSkeleton } from '@/components/loading-state';
@@ -13,6 +15,101 @@ import { ReportLineChart } from '@/features/reporting/report-line-chart';
 import { ReportBarChart } from '@/features/reporting/report-bar-chart';
 import { CHART_COLORS } from '@/features/reporting/chart-colors';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+const RULE_OF_40_HEALTHY_THRESHOLD = 40;
+
+function ruleOf40BadgeVariant(score: number): 'success' | 'warning' {
+  return score >= RULE_OF_40_HEALTHY_THRESHOLD ? 'success' : 'warning';
+}
+
+function RuleOf40Card({ entries }: { entries: RuleOf40Entry[] }) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Gauge className="size-4 text-muted-foreground" />
+          Rule of 40
+        </CardTitle>
+        <SetOperatingCostDialog />
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Revenue growth rate plus profit margin - a score of 40 or above is considered healthy,
+          trading off growth against profitability. Profit margin needs an operating cost entered for
+          the month; a currency with no cost entered doesn&apos;t appear here yet.
+        </p>
+        {entries.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No score yet - enter an operating cost for the latest billed month to see one.
+          </p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {entries.map((entry) => (
+              <div key={entry.currency} className="space-y-2 rounded-lg border p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {entry.currency} — {entry.month}
+                  </span>
+                  <Badge variant={ruleOf40BadgeVariant(entry.score)}>{entry.score}</Badge>
+                </div>
+                <dl className="grid grid-cols-2 gap-x-2 gap-y-1 text-sm">
+                  <dt className="text-muted-foreground">Growth rate</dt>
+                  <dd className="text-right">{entry.revenueGrowthRatePercent}%</dd>
+                  <dt className="text-muted-foreground">Profit margin</dt>
+                  <dd className="text-right">{entry.profitMarginPercent}%</dd>
+                  <dt className="text-muted-foreground">Revenue</dt>
+                  <dd className="text-right">{formatCurrency(entry.revenue, entry.currency)}</dd>
+                  <dt className="text-muted-foreground">Cost</dt>
+                  <dd className="text-right">{formatCurrency(entry.cost, entry.currency)}</dd>
+                </dl>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function OperatingCostsCard() {
+  const { data: costs, isLoading } = useOperatingCosts();
+
+  if (isLoading || !costs || costs.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Operating costs entered</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Month</TableHead>
+              <TableHead>Currency</TableHead>
+              <TableHead className="text-right">Amount</TableHead>
+              <TableHead>Notes</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {costs.map((cost) => (
+              <TableRow key={cost.id}>
+                <TableCell>{cost.month}</TableCell>
+                <TableCell>{cost.currency}</TableCell>
+                <TableCell className="text-right">{formatCurrency(cost.amount, cost.currency)}</TableCell>
+                <TableCell className="text-muted-foreground">{cost.notes ?? '—'}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
 
 function distinctCurrencies(currencies: string[]): string[] {
   return [...new Set(currencies)].sort();
@@ -151,6 +248,9 @@ export function PlatformSaasMetrics() {
           </CardContent>
         </Card>
       )}
+
+      <RuleOf40Card entries={metrics.ruleOf40} />
+      <OperatingCostsCard />
 
       <Card>
         <CardHeader>

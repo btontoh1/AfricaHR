@@ -1,4 +1,9 @@
-import { PlatformBillingRepository, type CrossTenantInvoiceForAnalytics, type CrossTenantSubscription } from '@africahr/billing-data-access';
+import {
+  PlatformBillingRepository,
+  PlatformOperatingCostRepository,
+  type CrossTenantInvoiceForAnalytics,
+  type CrossTenantSubscription,
+} from '@africahr/billing-data-access';
 import { PlatformSaasMetricsService } from './platform-saas-metrics.service';
 
 function invoice(overrides: Partial<CrossTenantInvoiceForAnalytics>): CrossTenantInvoiceForAnalytics {
@@ -14,6 +19,7 @@ function invoice(overrides: Partial<CrossTenantInvoiceForAnalytics>): CrossTenan
 
 describe('PlatformSaasMetricsService', () => {
   let platformBilling: jest.Mocked<PlatformBillingRepository>;
+  let operatingCosts: jest.Mocked<PlatformOperatingCostRepository>;
   let service: PlatformSaasMetricsService;
 
   beforeEach(() => {
@@ -22,7 +28,8 @@ describe('PlatformSaasMetricsService', () => {
       listAllSubscriptions: jest.fn(),
       listTenantSignupMonths: jest.fn(),
     } as unknown as jest.Mocked<PlatformBillingRepository>;
-    service = new PlatformSaasMetricsService(platformBilling);
+    operatingCosts = { list: jest.fn().mockResolvedValue([]) } as unknown as jest.Mocked<PlatformOperatingCostRepository>;
+    service = new PlatformSaasMetricsService(platformBilling, operatingCosts);
   });
 
   it('returns empty results when there are no invoices yet', async () => {
@@ -36,6 +43,7 @@ describe('PlatformSaasMetricsService', () => {
     expect(result.arr).toEqual([]);
     expect(result.waterfall).toEqual([]);
     expect(result.churnRates).toEqual([]);
+    expect(result.ruleOf40).toEqual([]);
     expect(result.averageRevenuePerTenant).toEqual([]);
     expect(result.cohortRetention).toEqual([]);
     expect(result.subscriptionFunnel).toEqual([
@@ -109,6 +117,36 @@ describe('PlatformSaasMetricsService', () => {
     ]);
     expect(result.churnRates).toEqual([
       { currency: 'GHS', month: '2026-02', logoChurnRatePercent: 50, revenueChurnRatePercent: 33.33 },
+    ]);
+    // No operating cost was entered for 2026-02/GHS - Rule of 40 stays empty
+    // rather than assuming a 0-cost, 100%-margin business.
+    expect(result.ruleOf40).toEqual([]);
+  });
+
+  it('computes Rule of 40 once an operating cost exists for the latest month/currency', async () => {
+    platformBilling.listInvoicesForAnalytics.mockResolvedValue([
+      invoice({ tenantId: 'stable', amount: 100, currency: 'GHS', periodStart: new Date('2026-01-01') }),
+      invoice({ tenantId: 'stable', amount: 150, currency: 'GHS', periodStart: new Date('2026-02-01') }),
+    ]);
+    platformBilling.listAllSubscriptions.mockResolvedValue([]);
+    platformBilling.listTenantSignupMonths.mockResolvedValue(new Map());
+    operatingCosts.list.mockResolvedValue([{ id: 'cost-1', month: '2026-02', currency: 'GHS', amount: 90, notes: null }]);
+
+    const result = await service.getSaasMetrics();
+
+    // startingMrr 100 -> endingMrr 150: 50% growth. Margin on 150 revenue,
+    // 90 cost: (150-90)/150 = 40%. Score = 50 + 40 = 90.
+    expect(result.ruleOf40).toEqual([
+      {
+        currency: 'GHS',
+        month: '2026-02',
+        previousMonth: '2026-01',
+        revenue: 150,
+        cost: 90,
+        revenueGrowthRatePercent: 50,
+        profitMarginPercent: 40,
+        score: 90,
+      },
     ]);
   });
 

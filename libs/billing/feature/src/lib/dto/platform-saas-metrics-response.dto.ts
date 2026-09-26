@@ -45,6 +45,17 @@ export class AverageRevenuePerTenantResponseDto {
   @ApiProperty() amount!: number;
 }
 
+export class RuleOf40ResponseDto {
+  @ApiProperty() currency!: string;
+  @ApiProperty({ description: 'The month this compares against the previous one' }) month!: string;
+  @ApiProperty() previousMonth!: string;
+  @ApiProperty({ description: 'Revenue for `month`, from MRR history' }) revenue!: number;
+  @ApiProperty({ description: 'Operating cost entered for `month` - 0 if none was entered' }) cost!: number;
+  @ApiProperty() revenueGrowthRatePercent!: number;
+  @ApiProperty() profitMarginPercent!: number;
+  @ApiProperty({ description: 'growth rate + profit margin - 40 or above is considered healthy' }) score!: number;
+}
+
 export class CohortRetentionRowResponseDto {
   @ApiProperty({ description: 'YYYY-MM signup month' }) cohortMonth!: string;
   @ApiProperty() cohortSize!: number;
@@ -65,6 +76,12 @@ export class PlatformSaasMetricsResponseDto {
   })
   waterfall!: MrrWaterfallResponseDto[];
   @ApiProperty({ type: ChurnRatesResponseDto, isArray: true }) churnRates!: ChurnRatesResponseDto[];
+  @ApiProperty({
+    type: RuleOf40ResponseDto,
+    isArray: true,
+    description: 'Empty until both 2+ months of billing history and a matching operating cost entry exist',
+  })
+  ruleOf40!: RuleOf40ResponseDto[];
   @ApiProperty({ type: SubscriptionFunnelEntryResponseDto, isArray: true }) subscriptionFunnel!: SubscriptionFunnelEntryResponseDto[];
   @ApiProperty({ type: AverageRevenuePerTenantResponseDto, isArray: true })
   averageRevenuePerTenant!: AverageRevenuePerTenantResponseDto[];

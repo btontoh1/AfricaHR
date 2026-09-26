@@ -5,6 +5,7 @@ import { InvoiceRepository } from './invoice.repository';
 import { BillingEmployeeCountRepository } from './billing-employee-count.repository';
 import { BillingTenantContactRepository } from './billing-tenant-contact.repository';
 import { PlatformBillingRepository } from './platform-billing.repository';
+import { PlatformOperatingCostRepository } from './platform-operating-cost.repository';
 
 @Module({
   imports: [PrismaModule],
@@ -14,6 +15,7 @@ import { PlatformBillingRepository } from './platform-billing.repository';
     BillingEmployeeCountRepository,
     BillingTenantContactRepository,
     PlatformBillingRepository,
+    PlatformOperatingCostRepository,
   ],
   exports: [
     SubscriptionRepository,
@@ -21,6 +23,7 @@ import { PlatformBillingRepository } from './platform-billing.repository';
     BillingEmployeeCountRepository,
     BillingTenantContactRepository,
     PlatformBillingRepository,
+    PlatformOperatingCostRepository,
   ],
 })
 export class BillingDataAccessModule {}

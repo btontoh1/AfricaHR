@@ -8,3 +8,4 @@ export * from './lib/churn-rate';
 export * from './lib/subscription-funnel';
 export * from './lib/cohort-retention';
 export * from './lib/month-sequence';
+export * from './lib/rule-of-40';

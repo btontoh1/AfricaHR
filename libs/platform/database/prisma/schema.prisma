@@ -208,6 +208,29 @@ model Invoice {
   @@map("invoices")
 }
 
+/// ParotHR's own operating cost for one month, entered by hand - the
+/// platform tracks tenant revenue (Subscription/Invoice) automatically,
+/// but has no source for its own costs (salaries, infra, etc), so this is
+/// the only way to compute a profit margin for Rule of 40. Deliberately
+/// platform-wide with no tenantId, same posture as Tenant itself - it's
+/// not scoped to any tenant, so no RLS policy applies here either.
+model PlatformOperatingCost {
+  id        String   @id @default(uuid())
+  /// "YYYY-MM" - matches the month key used throughout the SaaS analytics.
+  month     String
+  currency  String
+  amount    Decimal
+  notes     String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  @@unique([month, currency])
+  @@map("platform_operating_costs")
+}
+
 /// A legal entity under a tenant (a tenant may own more than one — e.g. a
 /// holding company with subsidiaries — so this is tenantId-scoped rather
 /// than folded into Tenant as a 1:1).

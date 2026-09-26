@@ -2813,10 +2813,28 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** MRR history, net-new MRR waterfall, churn, subscription funnel, and cohort retention */
+        /** MRR history, net-new MRR waterfall, churn, Rule of 40, subscription funnel, and cohort retention */
         get: operations["PlatformBillingController_getSaasMetrics"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform-admin/billing/operating-costs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** ParotHR's own hand-entered monthly operating costs, feeding the Rule of 40 profit margin */
+        get: operations["PlatformBillingController_listOperatingCosts"];
+        put?: never;
+        /** Set (or overwrite) the operating cost for one month/currency */
+        post: operations["PlatformBillingController_setOperatingCost"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5183,6 +5201,20 @@ export interface components {
             logoChurnRatePercent: number;
             revenueChurnRatePercent: number;
         };
+        RuleOf40ResponseDto: {
+            currency: string;
+            /** @description The month this compares against the previous one */
+            month: string;
+            previousMonth: string;
+            /** @description Revenue for `month`, from MRR history */
+            revenue: number;
+            /** @description Operating cost entered for `month` - 0 if none was entered */
+            cost: number;
+            revenueGrowthRatePercent: number;
+            profitMarginPercent: number;
+            /** @description growth rate + profit margin - 40 or above is considered healthy */
+            score: number;
+        };
         SubscriptionFunnelEntryResponseDto: {
             status: string;
             count: number;
@@ -5204,9 +5236,31 @@ export interface components {
             /** @description Most recent complete month-over-month comparison, per currency - empty until at least 2 months of billing history exist */
             waterfall: components["schemas"]["MrrWaterfallResponseDto"][];
             churnRates: components["schemas"]["ChurnRatesResponseDto"][];
+            /** @description Empty until both 2+ months of billing history and a matching operating cost entry exist */
+            ruleOf40: components["schemas"]["RuleOf40ResponseDto"][];
             subscriptionFunnel: components["schemas"]["SubscriptionFunnelEntryResponseDto"][];
             averageRevenuePerTenant: components["schemas"]["AverageRevenuePerTenantResponseDto"][];
             cohortRetention: components["schemas"]["CohortRetentionRowResponseDto"][];
+        };
+        OperatingCostResponseDto: {
+            id: string;
+            month: string;
+            currency: string;
+            amount: number;
+            notes: string | null;
+        };
+        SetOperatingCostDto: {
+            /**
+             * @description Calendar month this cost covers
+             * @example 2026-01
+             */
+            month: string;
+            /** @example GHS */
+            currency: string;
+            /** @description Setting a cost again for the same month/currency overwrites this amount */
+            amount: number;
+            /** @example Payroll, hosting, and tooling */
+            notes?: string;
         };
         CreateCustomerDto: {
             organizationId: string;
@@ -11175,6 +11229,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlatformSaasMetricsResponseDto"];
+                };
+            };
+        };
+    };
+    PlatformBillingController_listOperatingCosts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperatingCostResponseDto"][];
+                };
+            };
+        };
+    };
+    PlatformBillingController_setOperatingCost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetOperatingCostDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperatingCostResponseDto"];
                 };
             };
         };

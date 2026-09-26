@@ -16,3 +16,7 @@ export type LtvToCacEntry = components['schemas']['LtvToCacResponseDto'];
 export type BurnAndRunwayEntry = components['schemas']['BurnAndRunwayResponseDto'];
 export type FinancialInput = components['schemas']['FinancialInputResponseDto'];
 export type SetFinancialInputInput = components['schemas']['SetFinancialInputDto'];
+export type QuickRatioEntry = components['schemas']['QuickRatioResponseDto'];
+export type MagicNumberEntry = components['schemas']['MagicNumberResponseDto'];
+export type RevenueConcentrationEntry = components['schemas']['RevenueConcentrationResponseDto'];
+export type TenantRevenueShare = components['schemas']['TenantRevenueShareResponseDto'];

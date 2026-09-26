@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { AlertTriangle, Fuel, Gauge, Scale, TrendingDown, TrendingUp, Users } from 'lucide-react';
+import { AlertTriangle, Fuel, Gauge, Scale, Sparkles, TrendingDown, TrendingUp, Users, Zap } from 'lucide-react';
 import {
   useAcquisitionCosts,
   useCashBalances,
@@ -13,7 +13,16 @@ import {
 import { CohortRetentionTable } from './cohort-retention-table';
 import { SetOperatingCostDialog } from './set-operating-cost-dialog';
 import { SetFinancialInputDialog } from './set-financial-input-dialog';
-import type { BurnAndRunwayEntry, FinancialInput, LtvToCacEntry, RevenueRetentionEntry, RuleOf40Entry } from './types';
+import type {
+  BurnAndRunwayEntry,
+  FinancialInput,
+  LtvToCacEntry,
+  MagicNumberEntry,
+  QuickRatioEntry,
+  RevenueConcentrationEntry,
+  RevenueRetentionEntry,
+  RuleOf40Entry,
+} from './types';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { formatCurrency } from '@/lib/format-currency';
 import { CardSkeleton } from '@/components/loading-state';
@@ -161,6 +170,139 @@ function RevenueRetentionCard({ entries }: { entries: RevenueRetentionEntry[] })
   );
 }
 
+function quickRatioBadgeVariant(value: number): 'success' | 'warning' | 'destructive' {
+  if (value >= 4) return 'success';
+  if (value >= 1) return 'warning';
+  return 'destructive';
+}
+
+function QuickRatioCard({ entries }: { entries: QuickRatioEntry[] }) {
+  if (entries.length === 0) {
+    return null;
+  }
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Zap className="size-4 text-muted-foreground" />
+          Quick ratio
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          (New + expansion) over (contraction + churn) - a growth-efficiency measure. Above 4 is
+          excellent, 1-4 is sustainable growth, below 1 means shrinking.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {entries.map((entry) => (
+            <div key={entry.currency} className="flex items-center justify-between gap-2 rounded-lg border p-4">
+              <span className="text-sm font-medium text-muted-foreground">
+                {entry.currency} — {entry.month}
+              </span>
+              {entry.value === null ? (
+                <Badge variant="outline">N/A</Badge>
+              ) : (
+                <Badge variant={quickRatioBadgeVariant(entry.value)}>{entry.value}</Badge>
+              )}
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MagicNumberCard({ entries }: { entries: MagicNumberEntry[] }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Sparkles className="size-4 text-muted-foreground" />
+          Magic number
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Net-new MRR this month divided by the prior month&apos;s acquisition spend - above 0.75 is
+          considered capital-efficient. Needs an acquisition cost entered for the PRIOR billed month; a
+          currency with no cost entered for that month doesn&apos;t appear here yet.
+        </p>
+        {entries.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No figure yet - enter an acquisition cost for an earlier month to see one once the next
+            month is billed.
+          </p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {entries.map((entry) => (
+              <div key={entry.currency} className="flex items-center justify-between gap-2 rounded-lg border p-4">
+                <span className="text-sm font-medium text-muted-foreground">
+                  {entry.currency} — {entry.previousMonth} → {entry.month}
+                </span>
+                {entry.value === null ? (
+                  <Badge variant="outline">N/A</Badge>
+                ) : (
+                  <Badge variant={entry.value >= 0.75 ? 'success' : 'warning'}>{entry.value}</Badge>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function RevenueConcentrationCard({ entries }: { entries: RevenueConcentrationEntry[] }) {
+  if (entries.length === 0) {
+    return null;
+  }
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Revenue concentration</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <p className="text-sm text-muted-foreground">
+          The largest tenants by share of the latest month&apos;s MRR - a customer-concentration risk
+          signal for investors.
+        </p>
+        {entries.map((entry) => (
+          <div key={entry.currency} className="space-y-2">
+            <div className="flex items-baseline justify-between gap-2">
+              <h3 className="text-sm font-medium text-muted-foreground">
+                {entry.currency} — {entry.month}
+              </h3>
+              <span className="text-sm">
+                <span className="text-muted-foreground">Top {entry.topTenants.length} share </span>
+                <span className="font-medium">{entry.topTenantsSharePercent}%</span>
+              </span>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tenant</TableHead>
+                  <TableHead className="text-right">MRR</TableHead>
+                  <TableHead className="text-right">Share</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {entry.topTenants.map((tenant) => (
+                  <TableRow key={tenant.tenantId}>
+                    <TableCell>{tenant.tenantName}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(tenant.amount, entry.currency)}</TableCell>
+                    <TableCell className="text-right">{tenant.sharePercent}%</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 function LtvToCacCard({ entries }: { entries: LtvToCacEntry[] }) {
   const setAcquisitionCost = useSetAcquisitionCost();
   return (
@@ -208,6 +350,8 @@ function LtvToCacCard({ entries }: { entries: LtvToCacEntry[] }) {
                   <dd className="text-right">{formatCurrency(entry.ltv, entry.currency)}</dd>
                   <dt className="text-muted-foreground">CAC</dt>
                   <dd className="text-right">{formatCurrency(entry.cac, entry.currency)}</dd>
+                  <dt className="text-muted-foreground">CAC payback</dt>
+                  <dd className="text-right">{entry.paybackMonths === null ? 'N/A' : `${entry.paybackMonths} mo`}</dd>
                 </dl>
               </div>
             ))}
@@ -463,6 +607,7 @@ export function PlatformSaasMetrics() {
       )}
 
       <RevenueRetentionCard entries={metrics.revenueRetention} />
+      <QuickRatioCard entries={metrics.quickRatio} />
 
       <RuleOf40Card entries={metrics.ruleOf40} />
       <OperatingCostsCard />
@@ -472,6 +617,9 @@ export function PlatformSaasMetrics() {
 
       <BurnAndRunwayCard entries={metrics.burnAndRunway} />
       <CashBalancesCard />
+
+      <MagicNumberCard entries={metrics.magicNumber} />
+      <RevenueConcentrationCard entries={metrics.revenueConcentration} />
 
       <Card>
         <CardHeader>

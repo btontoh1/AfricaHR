@@ -12,3 +12,7 @@ export * from './lib/rule-of-40';
 export * from './lib/revenue-retention';
 export * from './lib/ltv-cac';
 export * from './lib/burn-runway';
+export * from './lib/quick-ratio';
+export * from './lib/cac-payback';
+export * from './lib/magic-number';
+export * from './lib/revenue-concentration';

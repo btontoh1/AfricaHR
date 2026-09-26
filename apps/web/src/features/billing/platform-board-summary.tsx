@@ -63,9 +63,12 @@ export function PlatformBoardSummary() {
         const waterfall = metrics.waterfall.find((entry) => entry.currency === currency);
         const churn = metrics.churnRates.find((entry) => entry.currency === currency);
         const retention = metrics.revenueRetention.find((entry) => entry.currency === currency);
+        const quickRatio = metrics.quickRatio.find((entry) => entry.currency === currency);
         const ruleOf40 = metrics.ruleOf40.find((entry) => entry.currency === currency);
         const ltvToCac = metrics.ltvToCac.find((entry) => entry.currency === currency);
         const burn = metrics.burnAndRunway.find((entry) => entry.currency === currency);
+        const magicNumber = metrics.magicNumber.find((entry) => entry.currency === currency);
+        const concentration = metrics.revenueConcentration.find((entry) => entry.currency === currency);
 
         return (
           <section key={currency} className="space-y-6 break-inside-avoid">
@@ -101,6 +104,9 @@ export function PlatformBoardSummary() {
                 {churn && <SummaryRow label="Revenue churn" value={`${churn.revenueChurnRatePercent}%`} />}
                 {retention && <SummaryRow label="Net revenue retention" value={`${retention.netRevenueRetentionPercent}%`} />}
                 {retention && <SummaryRow label="Gross revenue retention" value={`${retention.grossRevenueRetentionPercent}%`} />}
+                {quickRatio && (
+                  <SummaryRow label="Quick ratio" value={quickRatio.value === null ? 'N/A' : String(quickRatio.value)} />
+                )}
               </div>
             )}
 
@@ -119,6 +125,10 @@ export function PlatformBoardSummary() {
                 <SummaryRow label="LTV" value={formatCurrency(ltvToCac.ltv, currency)} />
                 <SummaryRow label="CAC" value={formatCurrency(ltvToCac.cac, currency)} />
                 <SummaryRow label="Ratio" value={`${ltvToCac.ratio}:1`} />
+                <SummaryRow
+                  label="CAC payback"
+                  value={ltvToCac.paybackMonths === null ? 'N/A' : `${ltvToCac.paybackMonths} months`}
+                />
               </div>
             )}
 
@@ -129,6 +139,31 @@ export function PlatformBoardSummary() {
                 <SummaryRow label="Cash balance" value={formatCurrency(burn.cashBalance, currency)} />
                 <SummaryRow label="Runway" value={burn.runwayMonths === null ? 'Not burning' : `${burn.runwayMonths} months`} />
                 <SummaryRow label="Burn multiple" value={burn.burnMultiple === null ? 'N/A' : `${burn.burnMultiple}x`} />
+              </div>
+            )}
+
+            {magicNumber && (
+              <div>
+                <h3 className="mb-1 text-sm font-medium text-muted-foreground">
+                  Magic number ({magicNumber.previousMonth} → {magicNumber.month})
+                </h3>
+                <SummaryRow label="Value" value={magicNumber.value === null ? 'N/A' : String(magicNumber.value)} />
+              </div>
+            )}
+
+            {concentration && concentration.topTenants.length > 0 && (
+              <div>
+                <h3 className="mb-1 text-sm font-medium text-muted-foreground">
+                  Revenue concentration - top {concentration.topTenants.length}
+                </h3>
+                {concentration.topTenants.map((tenant) => (
+                  <SummaryRow
+                    key={tenant.tenantId}
+                    label={tenant.tenantName}
+                    value={`${formatCurrency(tenant.amount, currency)} (${tenant.sharePercent}%)`}
+                  />
+                ))}
+                <SummaryRow label="Combined share" value={`${concentration.topTenantsSharePercent}%`} />
               </div>
             )}
           </section>

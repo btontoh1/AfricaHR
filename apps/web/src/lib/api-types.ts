@@ -5247,6 +5247,12 @@ export interface components {
             /** @description Never exceeds 100% - doesn't count new business */
             grossRevenueRetentionPercent: number;
         };
+        QuickRatioResponseDto: {
+            currency: string;
+            month: string;
+            /** @description (new + expansion) / (contraction + churn) - above 4 is excellent, 1-4 is sustainable growth, below 1 means shrinking. Null when there was no contraction or churn to divide by. */
+            value: number | null;
+        };
         RuleOf40ResponseDto: {
             currency: string;
             /** @description The month this compares against the previous one */
@@ -5270,6 +5276,8 @@ export interface components {
             cac: number;
             /** @description LTV divided by CAC - 3 or higher is the common SaaS benchmark */
             ratio: number;
+            /** @description Months to recoup CAC from revenue alone (CAC / ARPU) - null when there is no ARPU to recoup it from */
+            paybackMonths: number | null;
         };
         BurnAndRunwayResponseDto: {
             currency: string;
@@ -5282,6 +5290,28 @@ export interface components {
             runwayMonths: number | null;
             /** @description Net burn divided by net-new MRR - null when there was no growth to divide by */
             burnMultiple: number | null;
+        };
+        MagicNumberResponseDto: {
+            currency: string;
+            /** @description The month this compares against the previous one */
+            month: string;
+            previousMonth: string;
+            /** @description Net-new MRR this month divided by the PRIOR month's acquisition spend - above 0.75 is considered capital-efficient. Null when no acquisition cost was entered for the prior month. */
+            value: number | null;
+        };
+        TenantRevenueShareResponseDto: {
+            tenantId: string;
+            tenantName: string;
+            amount: number;
+            sharePercent: number;
+        };
+        RevenueConcentrationResponseDto: {
+            currency: string;
+            /** @description The latest billed month this snapshot is for */
+            month: string;
+            topTenants: components["schemas"]["TenantRevenueShareResponseDto"][];
+            /** @description Combined share of the tenants above - a customer-concentration/whale-risk signal */
+            topTenantsSharePercent: number;
         };
         SubscriptionFunnelEntryResponseDto: {
             status: string;
@@ -5306,12 +5336,18 @@ export interface components {
             churnRates: components["schemas"]["ChurnRatesResponseDto"][];
             /** @description Net/gross revenue retention - empty until at least 2 months of billing history exist */
             revenueRetention: components["schemas"]["RevenueRetentionResponseDto"][];
+            /** @description Growth efficiency - empty until at least 2 months of billing history exist */
+            quickRatio: components["schemas"]["QuickRatioResponseDto"][];
             /** @description Empty until both 2+ months of billing history and a matching operating cost entry exist */
             ruleOf40: components["schemas"]["RuleOf40ResponseDto"][];
             /** @description Empty until both 2+ months of billing history and a matching acquisition cost entry exist */
             ltvToCac: components["schemas"]["LtvToCacResponseDto"][];
             /** @description Empty until both an operating cost and a cash balance entry exist for the latest billed month */
             burnAndRunway: components["schemas"]["BurnAndRunwayResponseDto"][];
+            /** @description Empty until both 2+ months of billing history and an acquisition cost entry for the PRIOR month exist */
+            magicNumber: components["schemas"]["MagicNumberResponseDto"][];
+            /** @description Customer-concentration risk for the latest billed month, per currency */
+            revenueConcentration: components["schemas"]["RevenueConcentrationResponseDto"][];
             subscriptionFunnel: components["schemas"]["SubscriptionFunnelEntryResponseDto"][];
             averageRevenuePerTenant: components["schemas"]["AverageRevenuePerTenantResponseDto"][];
             cohortRetention: components["schemas"]["CohortRetentionRowResponseDto"][];

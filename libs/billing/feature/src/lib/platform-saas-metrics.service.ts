@@ -5,14 +5,18 @@ import {
   aggregateChargesByTenantMonth,
   computeBurnMultiple,
   computeCac,
+  computeCacPaybackMonths,
   computeChurnRates,
   computeCohortRetention,
   computeGrowthRatePercent,
   computeLtv,
   computeLtvToCacRatio,
+  computeMagicNumber,
   computeMrrWaterfall,
   computeNetBurn,
   computeProfitMarginPercent,
+  computeQuickRatio,
+  computeRevenueConcentration,
   computeRevenueRetention,
   computeRuleOf40Score,
   computeRunwayMonths,
@@ -23,6 +27,7 @@ import {
   type MrrHistoryPoint,
   type MrrWaterfall,
   type TenantPeriodCharge,
+  type TenantRevenueShare,
 } from '@africahr/billing-domain';
 
 function toMonthKey(date: Date): string {
@@ -90,6 +95,7 @@ export interface LtvToCacEntry {
   ltv: number;
   cac: number;
   ratio: number;
+  paybackMonths: number | null;
 }
 
 export interface BurnAndRunwayEntry {
@@ -101,15 +107,38 @@ export interface BurnAndRunwayEntry {
   burnMultiple: number | null;
 }
 
+export interface QuickRatioEntry {
+  currency: string;
+  month: string;
+  value: number | null;
+}
+
+export interface MagicNumberEntry {
+  currency: string;
+  month: string;
+  previousMonth: string;
+  value: number | null;
+}
+
+export interface RevenueConcentrationEntry {
+  currency: string;
+  month: string;
+  topTenants: TenantRevenueShare[];
+  topTenantsSharePercent: number;
+}
+
 export interface PlatformSaasMetrics {
   mrrHistory: MrrHistoryPointResult[];
   arr: ArrByCurrency[];
   waterfall: MrrWaterfallByCurrency[];
   churnRates: ChurnRatesByCurrency[];
   revenueRetention: RevenueRetentionEntry[];
+  quickRatio: QuickRatioEntry[];
   ruleOf40: RuleOf40Entry[];
   ltvToCac: LtvToCacEntry[];
   burnAndRunway: BurnAndRunwayEntry[];
+  magicNumber: MagicNumberEntry[];
+  revenueConcentration: RevenueConcentrationEntry[];
   subscriptionFunnel: SubscriptionFunnelEntry[];
   averageRevenuePerTenant: AverageRevenuePerTenant[];
   cohortRetention: CohortRetentionRowResult[];
@@ -117,12 +146,13 @@ export interface PlatformSaasMetrics {
 
 /**
  * Investor/board-style SaaS metrics for the platform admin dashboard.
- * mrrHistory/arr/waterfall/churnRates/revenueRetention/subscriptionFunnel/
- * averageRevenuePerTenant/cohortRetention are all reconstructed from invoice
- * history - see platform_list_invoices_for_analytics's migration comment
- * for why that's the only source available. ruleOf40/ltvToCac/burnAndRunway
+ * mrrHistory/arr/waterfall/churnRates/revenueRetention/quickRatio/
+ * revenueConcentration/subscriptionFunnel/averageRevenuePerTenant/
+ * cohortRetention are all reconstructed from invoice history - see
+ * platform_list_invoices_for_analytics's migration comment for why that's
+ * the only source available. ruleOf40/ltvToCac/burnAndRunway/magicNumber
  * additionally need a hand-entered operating cost, acquisition cost, or
- * cash balance for the latest billed month/currency (see
+ * cash balance for the relevant month/currency (see
  * PlatformOperatingCost/PlatformFinancialInput) and stay empty until one
  * exists. A tenant with no invoices yet (still trialing, never billed)
  * simply doesn't appear in any of these - it isn't "new" or "churned", it
@@ -160,6 +190,8 @@ export class PlatformSaasMetricsService {
     const aggregated = aggregateChargesByTenantMonth(charges);
     const mrrHistory = summarizeMrrHistory(charges);
     const currencies = [...new Set(aggregated.map((charge) => charge.currency))].sort();
+    const billedTenantIds = [...new Set(aggregated.map((charge) => charge.tenantId))];
+    const tenantNames = await this.platformBilling.listTenantNames(billedTenantIds);
 
     const costByMonthCurrency = new Map(costEntries.map((entry) => [`${entry.month}::${entry.currency}`, entry.amount]));
     const acquisitionCostByMonthCurrency = new Map(
@@ -193,9 +225,11 @@ export class PlatformSaasMetricsService {
     const waterfall: MrrWaterfallByCurrency[] = [];
     const churnRates: ChurnRatesByCurrency[] = [];
     const revenueRetention: RevenueRetentionEntry[] = [];
+    const quickRatio: QuickRatioEntry[] = [];
     const ruleOf40: RuleOf40Entry[] = [];
     const ltvToCac: LtvToCacEntry[] = [];
     const burnAndRunway: BurnAndRunwayEntry[] = [];
+    const magicNumber: MagicNumberEntry[] = [];
     for (const currency of currencies) {
       const currencyPoints = mrrHistory.filter((point) => point.currency === currency);
       if (currencyPoints.length < 2) {
@@ -215,6 +249,11 @@ export class PlatformSaasMetricsService {
       const churn = computeChurnRates(result.startingTenantCount, result.churnedTenantCount, result.startingMrr, result.churnedMrr);
       churnRates.push({ currency, month: latestMonth, ...churn });
       revenueRetention.push({ currency, month: latestMonth, previousMonth, ...computeRevenueRetention(result) });
+      quickRatio.push({
+        currency,
+        month: latestMonth,
+        value: computeQuickRatio(result.newMrr + result.expansionMrr, result.contractionMrr + result.churnedMrr),
+      });
 
       // Only shown once a cost was actually entered for this month/currency -
       // defaulting to 0 would silently claim a 100% profit margin.
@@ -252,10 +291,45 @@ export class PlatformSaasMetricsService {
       // efficiency.
       const acquisitionCost = acquisitionCostByMonthCurrency.get(`${latestMonth}::${currency}`);
       if (acquisitionCost !== undefined) {
-        const ltv = computeLtv(averageRevenuePerTenantByCurrency.get(currency) ?? 0, churn.logoChurnRatePercent);
+        const arpu = averageRevenuePerTenantByCurrency.get(currency) ?? 0;
+        const ltv = computeLtv(arpu, churn.logoChurnRatePercent);
         const cac = computeCac(acquisitionCost, result.newTenantCount);
-        ltvToCac.push({ currency, month: latestMonth, ltv, cac, ratio: computeLtvToCacRatio(ltv, cac) });
+        ltvToCac.push({
+          currency,
+          month: latestMonth,
+          ltv,
+          cac,
+          ratio: computeLtvToCacRatio(ltv, cac),
+          paybackMonths: computeCacPaybackMonths(cac, arpu),
+        });
       }
+
+      // Magic number follows the standard timing convention: this period's
+      // growth is attributed to the PRIOR period's acquisition spend, not
+      // the current one.
+      const priorAcquisitionCost = acquisitionCostByMonthCurrency.get(`${previousMonth}::${currency}`);
+      if (priorAcquisitionCost !== undefined) {
+        magicNumber.push({
+          currency,
+          month: latestMonth,
+          previousMonth,
+          value: computeMagicNumber(result.netNewMrr, priorAcquisitionCost),
+        });
+      }
+    }
+
+    // Revenue concentration is a snapshot of the latest billed month per
+    // currency - unlike the metrics above, it doesn't need a prior month to
+    // compare against, so it isn't gated by the same 2-month minimum.
+    const revenueConcentration: RevenueConcentrationEntry[] = [];
+    for (const [currency, point] of latestPointByCurrency) {
+      const latestCharges = aggregated.filter((charge) => charge.currency === currency && charge.month === point.month);
+      const namedCharges = latestCharges.map((charge) => ({
+        tenantId: charge.tenantId,
+        tenantName: tenantNames.get(charge.tenantId) ?? charge.tenantId,
+        amount: charge.amount,
+      }));
+      revenueConcentration.push({ currency, month: point.month, ...computeRevenueConcentration(namedCharges) });
     }
 
     const subscriptionFunnel = summarizeSubscriptionsByStatus(subscriptions);
@@ -263,10 +337,10 @@ export class PlatformSaasMetricsService {
     // Cohort retention: cohort by signup month, restricted to tenants who
     // were ever actually billed (a trial that never converted was never
     // "acquired" as a paying customer, so it has nothing to retain).
-    const billedTenantIds = new Set(aggregated.map((charge) => charge.tenantId));
+    const billedTenantIdSet = new Set(billedTenantIds);
     const tenantCohortMonths = new Map<string, string>();
     for (const [tenantId, createdAt] of tenantSignupDates) {
-      if (billedTenantIds.has(tenantId)) {
+      if (billedTenantIdSet.has(tenantId)) {
         tenantCohortMonths.set(tenantId, toMonthKey(createdAt));
       }
     }
@@ -292,9 +366,12 @@ export class PlatformSaasMetricsService {
       waterfall,
       churnRates,
       revenueRetention,
+      quickRatio,
       ruleOf40,
       ltvToCac,
       burnAndRunway,
+      magicNumber,
+      revenueConcentration,
       subscriptionFunnel,
       averageRevenuePerTenant,
       cohortRetention,

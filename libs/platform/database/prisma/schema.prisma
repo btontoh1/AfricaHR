@@ -231,6 +231,40 @@ model PlatformOperatingCost {
   @@map("platform_operating_costs")
 }
 
+/// Which investor/board metric a PlatformFinancialInput row feeds - kept
+/// separate from PlatformOperatingCost (an earlier, already-shipped table
+/// with the identical month/currency/amount shape) rather than migrating
+/// it in, to avoid touching a table already in production for a purely
+/// cosmetic consolidation.
+enum PlatformFinancialInputType {
+  /// Total sales+marketing spend for the month, feeding CAC/LTV:CAC.
+  ACQUISITION_COST
+  /// End-of-month cash on hand, feeding runway and the burn multiple.
+  CASH_BALANCE
+}
+
+/// ParotHR's own hand-entered acquisition cost or cash balance for one
+/// month - same "no source exists for this" situation and same manual-entry
+/// posture as PlatformOperatingCost. Platform-wide, no tenantId, no RLS
+/// policy, same reasoning as Tenant/PlatformOperatingCost.
+model PlatformFinancialInput {
+  id       String                     @id @default(uuid())
+  type     PlatformFinancialInputType
+  /// "YYYY-MM" - matches the month key used throughout the SaaS analytics.
+  month    String
+  currency String
+  amount   Decimal
+  notes    String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  @@unique([type, month, currency])
+  @@map("platform_financial_inputs")
+}
+
 /// A legal entity under a tenant (a tenant may own more than one — e.g. a
 /// holding company with subsidiaries — so this is tenantId-scoped rather
 /// than folded into Tenant as a 1:1).

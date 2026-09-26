@@ -2841,6 +2841,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/platform-admin/billing/acquisition-costs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** ParotHR's own hand-entered monthly acquisition (sales+marketing) spend, feeding LTV:CAC */
+        get: operations["PlatformBillingController_listAcquisitionCosts"];
+        put?: never;
+        /** Set (or overwrite) the acquisition cost for one month/currency */
+        post: operations["PlatformBillingController_setAcquisitionCost"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform-admin/billing/cash-balances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** ParotHR's own hand-entered end-of-month cash balance, feeding runway and the burn multiple */
+        get: operations["PlatformBillingController_listCashBalances"];
+        put?: never;
+        /** Set (or overwrite) the cash balance for one month/currency */
+        post: operations["PlatformBillingController_setCashBalance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/customers": {
         parameters: {
             query?: never;
@@ -5201,6 +5237,16 @@ export interface components {
             logoChurnRatePercent: number;
             revenueChurnRatePercent: number;
         };
+        RevenueRetentionResponseDto: {
+            currency: string;
+            /** @description The month this compares against the previous one */
+            month: string;
+            previousMonth: string;
+            /** @description Can exceed 100% when expansion outpaces churn */
+            netRevenueRetentionPercent: number;
+            /** @description Never exceeds 100% - doesn't count new business */
+            grossRevenueRetentionPercent: number;
+        };
         RuleOf40ResponseDto: {
             currency: string;
             /** @description The month this compares against the previous one */
@@ -5214,6 +5260,28 @@ export interface components {
             profitMarginPercent: number;
             /** @description growth rate + profit margin - 40 or above is considered healthy */
             score: number;
+        };
+        LtvToCacResponseDto: {
+            currency: string;
+            month: string;
+            /** @description Average revenue per tenant divided by the monthly logo churn rate */
+            ltv: number;
+            /** @description Acquisition cost entered for `month` divided by tenants acquired that month */
+            cac: number;
+            /** @description LTV divided by CAC - 3 or higher is the common SaaS benchmark */
+            ratio: number;
+        };
+        BurnAndRunwayResponseDto: {
+            currency: string;
+            month: string;
+            /** @description Operating cost minus revenue - positive means burning cash */
+            netBurn: number;
+            /** @description Cash balance entered for `month` */
+            cashBalance: number;
+            /** @description Months of cash left at the current burn rate - null when not burning cash */
+            runwayMonths: number | null;
+            /** @description Net burn divided by net-new MRR - null when there was no growth to divide by */
+            burnMultiple: number | null;
         };
         SubscriptionFunnelEntryResponseDto: {
             status: string;
@@ -5236,8 +5304,14 @@ export interface components {
             /** @description Most recent complete month-over-month comparison, per currency - empty until at least 2 months of billing history exist */
             waterfall: components["schemas"]["MrrWaterfallResponseDto"][];
             churnRates: components["schemas"]["ChurnRatesResponseDto"][];
+            /** @description Net/gross revenue retention - empty until at least 2 months of billing history exist */
+            revenueRetention: components["schemas"]["RevenueRetentionResponseDto"][];
             /** @description Empty until both 2+ months of billing history and a matching operating cost entry exist */
             ruleOf40: components["schemas"]["RuleOf40ResponseDto"][];
+            /** @description Empty until both 2+ months of billing history and a matching acquisition cost entry exist */
+            ltvToCac: components["schemas"]["LtvToCacResponseDto"][];
+            /** @description Empty until both an operating cost and a cash balance entry exist for the latest billed month */
+            burnAndRunway: components["schemas"]["BurnAndRunwayResponseDto"][];
             subscriptionFunnel: components["schemas"]["SubscriptionFunnelEntryResponseDto"][];
             averageRevenuePerTenant: components["schemas"]["AverageRevenuePerTenantResponseDto"][];
             cohortRetention: components["schemas"]["CohortRetentionRowResponseDto"][];
@@ -5260,6 +5334,25 @@ export interface components {
             /** @description Setting a cost again for the same month/currency overwrites this amount */
             amount: number;
             /** @example Payroll, hosting, and tooling */
+            notes?: string;
+        };
+        FinancialInputResponseDto: {
+            id: string;
+            month: string;
+            currency: string;
+            amount: number;
+            notes: string | null;
+        };
+        SetFinancialInputDto: {
+            /**
+             * @description Calendar month this entry covers
+             * @example 2026-01
+             */
+            month: string;
+            /** @example GHS */
+            currency: string;
+            /** @description Setting an entry again for the same month/currency overwrites this amount */
+            amount: number;
             notes?: string;
         };
         CreateCustomerDto: {
@@ -11271,6 +11364,90 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OperatingCostResponseDto"];
+                };
+            };
+        };
+    };
+    PlatformBillingController_listAcquisitionCosts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinancialInputResponseDto"][];
+                };
+            };
+        };
+    };
+    PlatformBillingController_setAcquisitionCost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetFinancialInputDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinancialInputResponseDto"];
+                };
+            };
+        };
+    };
+    PlatformBillingController_listCashBalances: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinancialInputResponseDto"][];
+                };
+            };
+        };
+    };
+    PlatformBillingController_setCashBalance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetFinancialInputDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinancialInputResponseDto"];
                 };
             };
         };

@@ -9,3 +9,6 @@ export * from './lib/subscription-funnel';
 export * from './lib/cohort-retention';
 export * from './lib/month-sequence';
 export * from './lib/rule-of-40';
+export * from './lib/revenue-retention';
+export * from './lib/ltv-cac';
+export * from './lib/burn-runway';

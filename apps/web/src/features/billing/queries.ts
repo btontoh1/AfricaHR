@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
-import type { AssignSubscriptionInput, SetOperatingCostInput } from './types';
+import type { AssignSubscriptionInput, SetFinancialInputInput, SetOperatingCostInput } from './types';
 
 function subscriptionKey(tenantId: string) {
   return ['billing', tenantId, 'subscription'] as const;
@@ -187,6 +187,70 @@ export function useSetOperatingCost() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: operatingCostsKey() });
+      queryClient.invalidateQueries({ queryKey: platformSaasMetricsKey() });
+    },
+  });
+}
+
+function acquisitionCostsKey() {
+  return ['platform-acquisition-costs'] as const;
+}
+
+export function useAcquisitionCosts() {
+  return useQuery({
+    queryKey: acquisitionCostsKey(),
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/platform-admin/billing/acquisition-costs');
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useSetAcquisitionCost() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: SetFinancialInputInput) => {
+      const { data, error } = await apiClient.POST('/api/platform-admin/billing/acquisition-costs', {
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: acquisitionCostsKey() });
+      queryClient.invalidateQueries({ queryKey: platformSaasMetricsKey() });
+    },
+  });
+}
+
+function cashBalancesKey() {
+  return ['platform-cash-balances'] as const;
+}
+
+export function useCashBalances() {
+  return useQuery({
+    queryKey: cashBalancesKey(),
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/platform-admin/billing/cash-balances');
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useSetCashBalance() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: SetFinancialInputInput) => {
+      const { data, error } = await apiClient.POST('/api/platform-admin/billing/cash-balances', {
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cashBalancesKey() });
       queryClient.invalidateQueries({ queryKey: platformSaasMetricsKey() });
     },
   });

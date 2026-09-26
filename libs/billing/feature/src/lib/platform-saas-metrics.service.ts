@@ -1,13 +1,21 @@
 import { Injectable } from '@nestjs/common';
-import { PlatformBillingRepository, PlatformOperatingCostRepository } from '@africahr/billing-data-access';
+import { PlatformBillingRepository, PlatformFinancialInputRepository, PlatformOperatingCostRepository } from '@africahr/billing-data-access';
+import { PlatformFinancialInputType } from '@prisma/client';
 import {
   aggregateChargesByTenantMonth,
+  computeBurnMultiple,
+  computeCac,
   computeChurnRates,
   computeCohortRetention,
   computeGrowthRatePercent,
+  computeLtv,
+  computeLtvToCacRatio,
   computeMrrWaterfall,
+  computeNetBurn,
   computeProfitMarginPercent,
+  computeRevenueRetention,
   computeRuleOf40Score,
+  computeRunwayMonths,
   enumerateMonths,
   roundCurrency,
   summarizeMrrHistory,
@@ -68,38 +76,74 @@ export interface RuleOf40Entry {
   score: number;
 }
 
+export interface RevenueRetentionEntry {
+  currency: string;
+  month: string;
+  previousMonth: string;
+  netRevenueRetentionPercent: number;
+  grossRevenueRetentionPercent: number;
+}
+
+export interface LtvToCacEntry {
+  currency: string;
+  month: string;
+  ltv: number;
+  cac: number;
+  ratio: number;
+}
+
+export interface BurnAndRunwayEntry {
+  currency: string;
+  month: string;
+  netBurn: number;
+  cashBalance: number;
+  runwayMonths: number | null;
+  burnMultiple: number | null;
+}
+
 export interface PlatformSaasMetrics {
   mrrHistory: MrrHistoryPointResult[];
   arr: ArrByCurrency[];
   waterfall: MrrWaterfallByCurrency[];
   churnRates: ChurnRatesByCurrency[];
+  revenueRetention: RevenueRetentionEntry[];
   ruleOf40: RuleOf40Entry[];
+  ltvToCac: LtvToCacEntry[];
+  burnAndRunway: BurnAndRunwayEntry[];
   subscriptionFunnel: SubscriptionFunnelEntry[];
   averageRevenuePerTenant: AverageRevenuePerTenant[];
   cohortRetention: CohortRetentionRowResult[];
 }
 
 /**
- * Investor/board-style SaaS metrics for the platform admin dashboard, all
- * reconstructed from invoice history rather than a dedicated snapshot table
- * - see platform_list_invoices_for_analytics's migration comment for why
- * that's the only source available. A tenant with no invoices yet (still
- * trialing, never billed) simply doesn't appear in any of these - it isn't
- * "new" or "churned", it just hasn't entered the billed population.
+ * Investor/board-style SaaS metrics for the platform admin dashboard.
+ * mrrHistory/arr/waterfall/churnRates/revenueRetention/subscriptionFunnel/
+ * averageRevenuePerTenant/cohortRetention are all reconstructed from invoice
+ * history - see platform_list_invoices_for_analytics's migration comment
+ * for why that's the only source available. ruleOf40/ltvToCac/burnAndRunway
+ * additionally need a hand-entered operating cost, acquisition cost, or
+ * cash balance for the latest billed month/currency (see
+ * PlatformOperatingCost/PlatformFinancialInput) and stay empty until one
+ * exists. A tenant with no invoices yet (still trialing, never billed)
+ * simply doesn't appear in any of these - it isn't "new" or "churned", it
+ * just hasn't entered the billed population.
  */
 @Injectable()
 export class PlatformSaasMetricsService {
   constructor(
     private readonly platformBilling: PlatformBillingRepository,
     private readonly operatingCosts: PlatformOperatingCostRepository,
+    private readonly financialInputs: PlatformFinancialInputRepository,
   ) {}
 
   async getSaasMetrics(): Promise<PlatformSaasMetrics> {
-    const [invoices, subscriptions, tenantSignupDates, costEntries] = await Promise.all([
+    const [invoices, subscriptions, tenantSignupDates, costEntries, acquisitionCostEntries, cashBalanceEntries] = await Promise.all([
       this.platformBilling.listInvoicesForAnalytics(),
       this.platformBilling.listAllSubscriptions(),
       this.platformBilling.listTenantSignupMonths(),
       this.operatingCosts.list(),
+      this.financialInputs.list(PlatformFinancialInputType.ACQUISITION_COST),
+      this.financialInputs.list(PlatformFinancialInputType.CASH_BALANCE),
     ]);
 
     // A cancelled invoice was voided, never actually charged - it shouldn't
@@ -118,10 +162,40 @@ export class PlatformSaasMetricsService {
     const currencies = [...new Set(aggregated.map((charge) => charge.currency))].sort();
 
     const costByMonthCurrency = new Map(costEntries.map((entry) => [`${entry.month}::${entry.currency}`, entry.amount]));
+    const acquisitionCostByMonthCurrency = new Map(
+      acquisitionCostEntries.map((entry) => [`${entry.month}::${entry.currency}`, entry.amount]),
+    );
+    const cashBalanceByMonthCurrency = new Map(
+      cashBalanceEntries.map((entry) => [`${entry.month}::${entry.currency}`, entry.amount]),
+    );
+
+    // Latest month's point per currency - the natural basis for ARR and
+    // average revenue per tenant (mrrHistory is sorted ascending by month).
+    const latestPointByCurrency = new Map<string, MrrHistoryPoint>();
+    for (const point of mrrHistory) {
+      latestPointByCurrency.set(point.currency, point);
+    }
+    const arr = Array.from(latestPointByCurrency.values()).map((point) => ({
+      currency: point.currency,
+      arr: roundCurrency(point.mrr * 12),
+    }));
+    const averageRevenuePerTenantByCurrency = new Map(
+      Array.from(latestPointByCurrency.entries()).map(([currency, point]) => [
+        currency,
+        point.tenantCount === 0 ? 0 : roundCurrency(point.mrr / point.tenantCount),
+      ]),
+    );
+    const averageRevenuePerTenant = Array.from(averageRevenuePerTenantByCurrency.entries()).map(([currency, amount]) => ({
+      currency,
+      amount,
+    }));
 
     const waterfall: MrrWaterfallByCurrency[] = [];
     const churnRates: ChurnRatesByCurrency[] = [];
+    const revenueRetention: RevenueRetentionEntry[] = [];
     const ruleOf40: RuleOf40Entry[] = [];
+    const ltvToCac: LtvToCacEntry[] = [];
+    const burnAndRunway: BurnAndRunwayEntry[] = [];
     for (const currency of currencies) {
       const currencyPoints = mrrHistory.filter((point) => point.currency === currency);
       if (currencyPoints.length < 2) {
@@ -138,11 +212,9 @@ export class PlatformSaasMetricsService {
       );
       const result = computeMrrWaterfall(previousCharges, currentCharges);
       waterfall.push({ currency, month: latestMonth, previousMonth, ...result });
-      churnRates.push({
-        currency,
-        month: latestMonth,
-        ...computeChurnRates(result.startingTenantCount, result.churnedTenantCount, result.startingMrr, result.churnedMrr),
-      });
+      const churn = computeChurnRates(result.startingTenantCount, result.churnedTenantCount, result.startingMrr, result.churnedMrr);
+      churnRates.push({ currency, month: latestMonth, ...churn });
+      revenueRetention.push({ currency, month: latestMonth, previousMonth, ...computeRevenueRetention(result) });
 
       // Only shown once a cost was actually entered for this month/currency -
       // defaulting to 0 would silently claim a 100% profit margin.
@@ -160,23 +232,31 @@ export class PlatformSaasMetricsService {
           profitMarginPercent,
           score: computeRuleOf40Score(revenueGrowthRatePercent, profitMarginPercent),
         });
+
+        const cashBalance = cashBalanceByMonthCurrency.get(`${latestMonth}::${currency}`);
+        if (cashBalance !== undefined) {
+          const netBurn = computeNetBurn(result.endingMrr, cost);
+          burnAndRunway.push({
+            currency,
+            month: latestMonth,
+            netBurn,
+            cashBalance,
+            runwayMonths: computeRunwayMonths(cashBalance, netBurn),
+            burnMultiple: computeBurnMultiple(netBurn, result.netNewMrr),
+          });
+        }
+      }
+
+      // Only shown once acquisition spend was actually entered for this
+      // month/currency - defaulting to 0 would silently claim infinite CAC
+      // efficiency.
+      const acquisitionCost = acquisitionCostByMonthCurrency.get(`${latestMonth}::${currency}`);
+      if (acquisitionCost !== undefined) {
+        const ltv = computeLtv(averageRevenuePerTenantByCurrency.get(currency) ?? 0, churn.logoChurnRatePercent);
+        const cac = computeCac(acquisitionCost, result.newTenantCount);
+        ltvToCac.push({ currency, month: latestMonth, ltv, cac, ratio: computeLtvToCacRatio(ltv, cac) });
       }
     }
-
-    // Latest month's point per currency - the natural basis for ARR and
-    // average revenue per tenant (mrrHistory is sorted ascending by month).
-    const latestPointByCurrency = new Map<string, MrrHistoryPoint>();
-    for (const point of mrrHistory) {
-      latestPointByCurrency.set(point.currency, point);
-    }
-    const arr = Array.from(latestPointByCurrency.values()).map((point) => ({
-      currency: point.currency,
-      arr: roundCurrency(point.mrr * 12),
-    }));
-    const averageRevenuePerTenant = Array.from(latestPointByCurrency.values()).map((point) => ({
-      currency: point.currency,
-      amount: point.tenantCount === 0 ? 0 : roundCurrency(point.mrr / point.tenantCount),
-    }));
 
     const subscriptionFunnel = summarizeSubscriptionsByStatus(subscriptions);
 
@@ -211,7 +291,10 @@ export class PlatformSaasMetricsService {
       arr,
       waterfall,
       churnRates,
+      revenueRetention,
       ruleOf40,
+      ltvToCac,
+      burnAndRunway,
       subscriptionFunnel,
       averageRevenuePerTenant,
       cohortRetention,

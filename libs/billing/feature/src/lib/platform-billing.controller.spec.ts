@@ -3,12 +3,14 @@ import { PlatformBillingController } from './platform-billing.controller';
 import { PlatformBillingService } from './platform-billing.service';
 import { PlatformSaasMetricsService } from './platform-saas-metrics.service';
 import { PlatformOperatingCostService } from './platform-operating-cost.service';
+import { PlatformInvestorMetricsService } from './platform-investor-metrics.service';
 
 describe('PlatformBillingController', () => {
   let controller: PlatformBillingController;
   let service: jest.Mocked<PlatformBillingService>;
   let saasMetrics: jest.Mocked<PlatformSaasMetricsService>;
   let operatingCosts: jest.Mocked<PlatformOperatingCostService>;
+  let investorMetrics: jest.Mocked<PlatformInvestorMetricsService>;
   const actor = { sub: 'user-1' } as RequestUser;
 
   beforeEach(() => {
@@ -18,7 +20,13 @@ describe('PlatformBillingController', () => {
       setCost: jest.fn(),
       listCosts: jest.fn(),
     } as unknown as jest.Mocked<PlatformOperatingCostService>;
-    controller = new PlatformBillingController(service, saasMetrics, operatingCosts);
+    investorMetrics = {
+      setAcquisitionCost: jest.fn(),
+      listAcquisitionCosts: jest.fn(),
+      setCashBalance: jest.fn(),
+      listCashBalances: jest.fn(),
+    } as unknown as jest.Mocked<PlatformInvestorMetricsService>;
+    controller = new PlatformBillingController(service, saasMetrics, operatingCosts, investorMetrics);
   });
 
   it('delegates getSummary to PlatformBillingService', () => {
@@ -45,5 +53,33 @@ describe('PlatformBillingController', () => {
     controller.setOperatingCost(dto, actor);
 
     expect(operatingCosts.setCost).toHaveBeenCalledWith(dto, actor);
+  });
+
+  it('delegates listAcquisitionCosts to PlatformInvestorMetricsService', () => {
+    controller.listAcquisitionCosts();
+
+    expect(investorMetrics.listAcquisitionCosts).toHaveBeenCalled();
+  });
+
+  it('delegates setAcquisitionCost to PlatformInvestorMetricsService with the acting user', () => {
+    const dto = { month: '2026-01', currency: 'GHS', amount: 1200 };
+
+    controller.setAcquisitionCost(dto, actor);
+
+    expect(investorMetrics.setAcquisitionCost).toHaveBeenCalledWith(dto, actor);
+  });
+
+  it('delegates listCashBalances to PlatformInvestorMetricsService', () => {
+    controller.listCashBalances();
+
+    expect(investorMetrics.listCashBalances).toHaveBeenCalled();
+  });
+
+  it('delegates setCashBalance to PlatformInvestorMetricsService with the acting user', () => {
+    const dto = { month: '2026-01', currency: 'GHS', amount: 50000 };
+
+    controller.setCashBalance(dto, actor);
+
+    expect(investorMetrics.setCashBalance).toHaveBeenCalledWith(dto, actor);
   });
 });

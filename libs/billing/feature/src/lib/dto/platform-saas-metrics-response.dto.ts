@@ -56,6 +56,33 @@ export class RuleOf40ResponseDto {
   @ApiProperty({ description: 'growth rate + profit margin - 40 or above is considered healthy' }) score!: number;
 }
 
+export class RevenueRetentionResponseDto {
+  @ApiProperty() currency!: string;
+  @ApiProperty({ description: 'The month this compares against the previous one' }) month!: string;
+  @ApiProperty() previousMonth!: string;
+  @ApiProperty({ description: 'Can exceed 100% when expansion outpaces churn' }) netRevenueRetentionPercent!: number;
+  @ApiProperty({ description: "Never exceeds 100% - doesn't count new business" }) grossRevenueRetentionPercent!: number;
+}
+
+export class LtvToCacResponseDto {
+  @ApiProperty() currency!: string;
+  @ApiProperty() month!: string;
+  @ApiProperty({ description: 'Average revenue per tenant divided by the monthly logo churn rate' }) ltv!: number;
+  @ApiProperty({ description: 'Acquisition cost entered for `month` divided by tenants acquired that month' }) cac!: number;
+  @ApiProperty({ description: 'LTV divided by CAC - 3 or higher is the common SaaS benchmark' }) ratio!: number;
+}
+
+export class BurnAndRunwayResponseDto {
+  @ApiProperty() currency!: string;
+  @ApiProperty() month!: string;
+  @ApiProperty({ description: 'Operating cost minus revenue - positive means burning cash' }) netBurn!: number;
+  @ApiProperty({ description: 'Cash balance entered for `month`' }) cashBalance!: number;
+  @ApiProperty({ nullable: true, type: Number, description: 'Months of cash left at the current burn rate - null when not burning cash' })
+  runwayMonths!: number | null;
+  @ApiProperty({ nullable: true, type: Number, description: 'Net burn divided by net-new MRR - null when there was no growth to divide by' })
+  burnMultiple!: number | null;
+}
+
 export class CohortRetentionRowResponseDto {
   @ApiProperty({ description: 'YYYY-MM signup month' }) cohortMonth!: string;
   @ApiProperty() cohortSize!: number;
@@ -77,11 +104,29 @@ export class PlatformSaasMetricsResponseDto {
   waterfall!: MrrWaterfallResponseDto[];
   @ApiProperty({ type: ChurnRatesResponseDto, isArray: true }) churnRates!: ChurnRatesResponseDto[];
   @ApiProperty({
+    type: RevenueRetentionResponseDto,
+    isArray: true,
+    description: 'Net/gross revenue retention - empty until at least 2 months of billing history exist',
+  })
+  revenueRetention!: RevenueRetentionResponseDto[];
+  @ApiProperty({
     type: RuleOf40ResponseDto,
     isArray: true,
     description: 'Empty until both 2+ months of billing history and a matching operating cost entry exist',
   })
   ruleOf40!: RuleOf40ResponseDto[];
+  @ApiProperty({
+    type: LtvToCacResponseDto,
+    isArray: true,
+    description: 'Empty until both 2+ months of billing history and a matching acquisition cost entry exist',
+  })
+  ltvToCac!: LtvToCacResponseDto[];
+  @ApiProperty({
+    type: BurnAndRunwayResponseDto,
+    isArray: true,
+    description: 'Empty until both an operating cost and a cash balance entry exist for the latest billed month',
+  })
+  burnAndRunway!: BurnAndRunwayResponseDto[];
   @ApiProperty({ type: SubscriptionFunnelEntryResponseDto, isArray: true }) subscriptionFunnel!: SubscriptionFunnelEntryResponseDto[];
   @ApiProperty({ type: AverageRevenuePerTenantResponseDto, isArray: true })
   averageRevenuePerTenant!: AverageRevenuePerTenantResponseDto[];

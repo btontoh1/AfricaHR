@@ -144,3 +144,18 @@ export function usePlatformBillingSummary() {
     },
   });
 }
+
+function platformSaasMetricsKey() {
+  return ['platform-saas-metrics'] as const;
+}
+
+export function usePlatformSaasMetrics() {
+  return useQuery({
+    queryKey: platformSaasMetricsKey(),
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/platform-admin/billing/saas-metrics');
+      if (error) throw error;
+      return data;
+    },
+  });
+}

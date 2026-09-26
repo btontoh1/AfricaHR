@@ -76,6 +76,22 @@ interface RawRevenueByCurrencyRow {
   totalPaid: string;
 }
 
+export interface CrossTenantInvoiceForAnalytics {
+  tenantId: string;
+  currency: string;
+  amount: number;
+  periodStart: Date;
+  status: InvoiceStatus;
+}
+
+interface RawInvoiceForAnalyticsRow {
+  tenantId: string;
+  currency: string;
+  amount: string;
+  periodStart: Date;
+  status: InvoiceStatus;
+}
+
 /**
  * Platform-admin, cross-tenant billing reads (MRR, platform revenue,
  * expiring subscriptions, webhook invoice lookup). "subscriptions" and
@@ -126,6 +142,28 @@ export class PlatformBillingRepository {
       select: { id: true, name: true },
     });
     return new Map(tenants.map((tenant) => [tenant.id, tenant.name]));
+  }
+
+  /**
+   * Every invoice ever issued, across all tenants - the only source
+   * historical MRR/churn/cohort analytics can be reconstructed from, since
+   * Subscription only ever holds current state. See
+   * platform_list_invoices_for_analytics's own migration comment.
+   */
+  async listInvoicesForAnalytics(): Promise<CrossTenantInvoiceForAnalytics[]> {
+    const rows = await this.prisma.$queryRaw<
+      RawInvoiceForAnalyticsRow[]
+    >`SELECT * FROM platform_list_invoices_for_analytics()`;
+    return rows.map((row) => ({ ...row, amount: Number(row.amount) }));
+  }
+
+  /**
+   * Same no-RLS posture as listTenantNames - tenants has no RLS policy, so
+   * this is a plain unscoped query. Used to cohort tenants by signup month.
+   */
+  async listTenantSignupMonths(): Promise<Map<string, Date>> {
+    const tenants = await this.prisma.tenant.findMany({ select: { id: true, createdAt: true } });
+    return new Map(tenants.map((tenant) => [tenant.id, tenant.createdAt]));
   }
 
   async findInvoiceByPaystackReference(reference: string): Promise<CrossTenantInvoice | null> {

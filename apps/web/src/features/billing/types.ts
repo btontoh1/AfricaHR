@@ -7,3 +7,4 @@ export type AssignSubscriptionInput = components['schemas']['AssignSubscriptionD
 export type Invoice = components['schemas']['InvoiceResponseDto'];
 export type InvoiceStatus = Invoice['status'];
 export type PlatformBillingSummary = components['schemas']['PlatformBillingSummaryResponseDto'];
+export type PlatformSaasMetrics = components['schemas']['PlatformSaasMetricsResponseDto'];

@@ -170,6 +170,9 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
           ? [{ label: 'Tenants', href: '/platform-admin/tenants', icon: Building }]
           : []),
         ...(isPlatformAdmin
+          ? [{ label: 'SaaS Analytics', href: '/platform-admin/analytics', icon: LineChart }]
+          : []),
+        ...(isPlatformAdmin
           ? [{ label: 'Verification Queue', href: '/organizations/verification-queue', icon: ShieldCheck }]
           : []),
         ...(isPlatformAdmin

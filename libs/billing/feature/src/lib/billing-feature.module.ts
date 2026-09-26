@@ -10,6 +10,7 @@ import { InvoiceController } from './invoice.controller';
 import { PaystackWebhookController } from './paystack-webhook.controller';
 import { PlatformBillingService } from './platform-billing.service';
 import { PlatformBillingController } from './platform-billing.controller';
+import { PlatformSaasMetricsService } from './platform-saas-metrics.service';
 import { LogPaystackClient, PaystackClient, RealPaystackClient } from './paystack-client';
 
 @Module({
@@ -24,6 +25,7 @@ import { LogPaystackClient, PaystackClient, RealPaystackClient } from './paystac
     SubscriptionService,
     InvoiceService,
     PlatformBillingService,
+    PlatformSaasMetricsService,
     {
       provide: PaystackClient,
       inject: [AppConfigService],
@@ -36,6 +38,6 @@ import { LogPaystackClient, PaystackClient, RealPaystackClient } from './paystac
       },
     },
   ],
-  exports: [SubscriptionService, InvoiceService, PlatformBillingService],
+  exports: [SubscriptionService, InvoiceService, PlatformBillingService, PlatformSaasMetricsService],
 })
 export class BillingFeatureModule {}

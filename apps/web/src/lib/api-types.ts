@@ -2806,6 +2806,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/platform-admin/billing/saas-metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** MRR history, net-new MRR waterfall, churn, subscription funnel, and cohort retention */
+        get: operations["PlatformBillingController_getSaasMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/customers": {
         parameters: {
             query?: never;
@@ -5130,6 +5147,66 @@ export interface components {
             /** @description All-time paid invoice total, grouped by currency */
             platformRevenue: components["schemas"]["RevenueByCurrencyResponseDto"][];
             expiringSubscriptions: components["schemas"]["ExpiringSubscriptionResponseDto"][];
+        };
+        MrrHistoryPointResponseDto: {
+            /** @description YYYY-MM */
+            month: string;
+            currency: string;
+            mrr: number;
+            /** @description Distinct tenants billed that month */
+            tenantCount: number;
+        };
+        ArrByCurrencyResponseDto: {
+            currency: string;
+            /** @description Latest month's MRR x 12 */
+            arr: number;
+        };
+        MrrWaterfallResponseDto: {
+            currency: string;
+            /** @description The month this waterfall ends on */
+            month: string;
+            previousMonth: string;
+            startingMrr: number;
+            newMrr: number;
+            expansionMrr: number;
+            contractionMrr: number;
+            churnedMrr: number;
+            endingMrr: number;
+            netNewMrr: number;
+            startingTenantCount: number;
+            newTenantCount: number;
+            churnedTenantCount: number;
+        };
+        ChurnRatesResponseDto: {
+            currency: string;
+            month: string;
+            logoChurnRatePercent: number;
+            revenueChurnRatePercent: number;
+        };
+        SubscriptionFunnelEntryResponseDto: {
+            status: string;
+            count: number;
+        };
+        AverageRevenuePerTenantResponseDto: {
+            currency: string;
+            amount: number;
+        };
+        CohortRetentionRowResponseDto: {
+            /** @description YYYY-MM signup month */
+            cohortMonth: string;
+            cohortSize: number;
+            /** @description Retention percent by months elapsed since the cohort month - index 0 (the cohort month itself) is always 100 */
+            retentionByMonthsElapsed: number[];
+        };
+        PlatformSaasMetricsResponseDto: {
+            mrrHistory: components["schemas"]["MrrHistoryPointResponseDto"][];
+            arr: components["schemas"]["ArrByCurrencyResponseDto"][];
+            /** @description Most recent complete month-over-month comparison, per currency - empty until at least 2 months of billing history exist */
+            waterfall: components["schemas"]["MrrWaterfallResponseDto"][];
+            churnRates: components["schemas"]["ChurnRatesResponseDto"][];
+            subscriptionFunnel: components["schemas"]["SubscriptionFunnelEntryResponseDto"][];
+            averageRevenuePerTenant: components["schemas"]["AverageRevenuePerTenantResponseDto"][];
+            cohortRetention: components["schemas"]["CohortRetentionRowResponseDto"][];
         };
         CreateCustomerDto: {
             organizationId: string;
@@ -11079,6 +11156,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlatformBillingSummaryResponseDto"];
+                };
+            };
+        };
+    };
+    PlatformBillingController_getSaasMetrics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformSaasMetricsResponseDto"];
                 };
             };
         };

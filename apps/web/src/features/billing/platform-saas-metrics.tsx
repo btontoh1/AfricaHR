@@ -138,9 +138,6 @@ function OperatingCostsCard() {
 }
 
 function RevenueRetentionCard({ entries }: { entries: RevenueRetentionEntry[] }) {
-  if (entries.length === 0) {
-    return null;
-  }
   return (
     <Card>
       <CardHeader>
@@ -149,23 +146,31 @@ function RevenueRetentionCard({ entries }: { entries: RevenueRetentionEntry[] })
           Revenue retention
         </CardTitle>
       </CardHeader>
-      <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {entries.map((entry) => (
-          <StatCard
-            key={`net-${entry.currency}`}
-            label={`Net revenue retention (${entry.currency})`}
-            value={`${entry.netRevenueRetentionPercent}%`}
-            icon={TrendingUp}
-          />
-        ))}
-        {entries.map((entry) => (
-          <StatCard
-            key={`gross-${entry.currency}`}
-            label={`Gross revenue retention (${entry.currency})`}
-            value={`${entry.grossRevenueRetentionPercent}%`}
-            icon={Scale}
-          />
-        ))}
+      <CardContent className="space-y-4">
+        {entries.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No figure yet - needs at least two months of billing history to compare against.
+          </p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {entries.map((entry) => (
+              <StatCard
+                key={`net-${entry.currency}`}
+                label={`Net revenue retention (${entry.currency})`}
+                value={`${entry.netRevenueRetentionPercent}%`}
+                icon={TrendingUp}
+              />
+            ))}
+            {entries.map((entry) => (
+              <StatCard
+                key={`gross-${entry.currency}`}
+                label={`Gross revenue retention (${entry.currency})`}
+                value={`${entry.grossRevenueRetentionPercent}%`}
+                icon={Scale}
+              />
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -178,9 +183,6 @@ function quickRatioBadgeVariant(value: number): 'success' | 'warning' | 'destruc
 }
 
 function QuickRatioCard({ entries }: { entries: QuickRatioEntry[] }) {
-  if (entries.length === 0) {
-    return null;
-  }
   return (
     <Card>
       <CardHeader>
@@ -194,20 +196,26 @@ function QuickRatioCard({ entries }: { entries: QuickRatioEntry[] }) {
           (New + expansion) over (contraction + churn) - a growth-efficiency measure. Above 4 is
           excellent, 1-4 is sustainable growth, below 1 means shrinking.
         </p>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {entries.map((entry) => (
-            <div key={entry.currency} className="flex items-center justify-between gap-2 rounded-lg border p-4">
-              <span className="text-sm font-medium text-muted-foreground">
-                {entry.currency} — {entry.month}
-              </span>
-              {entry.value === null ? (
-                <Badge variant="outline">N/A</Badge>
-              ) : (
-                <Badge variant={quickRatioBadgeVariant(entry.value)}>{entry.value}</Badge>
-              )}
-            </div>
-          ))}
-        </div>
+        {entries.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No figure yet - needs at least two months of billing history to compare against.
+          </p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {entries.map((entry) => (
+              <div key={entry.currency} className="flex items-center justify-between gap-2 rounded-lg border p-4">
+                <span className="text-sm font-medium text-muted-foreground">
+                  {entry.currency} — {entry.month}
+                </span>
+                {entry.value === null ? (
+                  <Badge variant="outline">N/A</Badge>
+                ) : (
+                  <Badge variant={quickRatioBadgeVariant(entry.value)}>{entry.value}</Badge>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -255,9 +263,6 @@ function MagicNumberCard({ entries }: { entries: MagicNumberEntry[] }) {
 }
 
 function RevenueConcentrationCard({ entries }: { entries: RevenueConcentrationEntry[] }) {
-  if (entries.length === 0) {
-    return null;
-  }
   return (
     <Card>
       <CardHeader>
@@ -268,6 +273,9 @@ function RevenueConcentrationCard({ entries }: { entries: RevenueConcentrationEn
           The largest tenants by share of the latest month&apos;s MRR - a customer-concentration risk
           signal for investors.
         </p>
+        {entries.length === 0 && (
+          <p className="text-sm text-muted-foreground">No billed activity yet - this builds up once invoices are paid.</p>
+        )}
         {entries.map((entry) => (
           <div key={entry.currency} className="space-y-2">
             <div className="flex items-baseline justify-between gap-2">
@@ -468,6 +476,10 @@ function distinctCurrencies(currencies: string[]): string[] {
   return [...new Set(currencies)].sort();
 }
 
+function SectionHeading({ title }: { title: string }) {
+  return <h2 className="pt-2 text-xs font-semibold tracking-wide text-muted-foreground/70 uppercase">{title}</h2>;
+}
+
 export function PlatformSaasMetrics() {
   const { data: metrics, isLoading, isError, error } = usePlatformSaasMetrics();
 
@@ -500,6 +512,8 @@ export function PlatformSaasMetrics() {
       />
 
       <LtvToCacAlertBanner linkToAnalytics={false} />
+
+      <SectionHeading title="Growth & retention" />
 
       {/*
         One section per currency for anything money-shaped, never blended -
@@ -612,17 +626,24 @@ export function PlatformSaasMetrics() {
       <RevenueRetentionCard entries={metrics.revenueRetention} />
       <QuickRatioCard entries={metrics.quickRatio} />
 
+      <SectionHeading title="Unit economics & profitability" />
+
       <RuleOf40Card entries={metrics.ruleOf40} />
       <OperatingCostsCard />
 
       <LtvToCacCard entries={metrics.ltvToCac} />
       <AcquisitionCostsCard />
 
+      <MagicNumberCard entries={metrics.magicNumber} />
+
+      <SectionHeading title="Capital efficiency & risk" />
+
       <BurnAndRunwayCard entries={metrics.burnAndRunway} />
       <CashBalancesCard />
 
-      <MagicNumberCard entries={metrics.magicNumber} />
       <RevenueConcentrationCard entries={metrics.revenueConcentration} />
+
+      <SectionHeading title="Funnel & cohorts" />
 
       <Card>
         <CardHeader>

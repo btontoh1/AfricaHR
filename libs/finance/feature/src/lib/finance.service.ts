@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { BankReconciliationStatus, GlPeriodClose, Prisma } from '@prisma/client';
+import { AddOnModule, BankReconciliationStatus, GlPeriodClose, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import { RequestUser } from '@africahr/platform-auth';
 import {
@@ -20,6 +20,7 @@ import {
   GlPeriodCloseRepository,
   GlRecurringJournalEntryRepository,
   GlRecurringJournalEntryWithLines,
+  TenantAddOnRepository,
 } from '@africahr/finance-data-access';
 import {
   canExtendPeriodClose,
@@ -411,7 +412,23 @@ export class FinanceService {
     private readonly expenses: ExpenseRepository,
     private readonly costCenters: GlCostCenterRepository,
     private readonly audit: AuditService,
+    private readonly tenantAddOns: TenantAddOnRepository,
   ) {}
+
+  /**
+   * The five postX methods below are all called from event listeners
+   * (PayrollGlPostingListener etc.), not from HTTP requests - AddOnGuard
+   * only runs on the HTTP pipeline, so it never sees these. Finance being
+   * an opt-in add-on would otherwise be silently defeated for every tenant
+   * that runs payroll (payroll itself isn't gated by any add-on), since
+   * disbursing a pay run would still populate a default chart of accounts
+   * and GL entries in the background. Each postX method checks this first
+   * and no-ops rather than throwing - skipping a background posting for a
+   * module the tenant hasn't turned on isn't an error condition.
+   */
+  private isFinanceEnabled(tenantId: string): Promise<boolean> {
+    return this.tenantAddOns.isEnabled(tenantId, AddOnModule.FINANCE);
+  }
 
   /**
    * Posts one balanced entry for an entire disbursed pay run - see
@@ -421,6 +438,9 @@ export class FinanceService {
    * (see GlJournalEntryRepository.createIfNotExists).
    */
   async postPayrollDisbursement(tenantId: string, input: PayRunDisbursedForPosting): Promise<void> {
+    if (!(await this.isFinanceEnabled(tenantId))) {
+      return;
+    }
     await this.accounts.ensureDefaultAccounts(tenantId);
     const lines = computePayrollJournalLines(input.totals);
     await this.postLines(tenantId, {
@@ -438,6 +458,9 @@ export class FinanceService {
   }
 
   async postInvoiceSent(tenantId: string, input: CustomerInvoiceAmountsForPosting): Promise<void> {
+    if (!(await this.isFinanceEnabled(tenantId))) {
+      return;
+    }
     await this.accounts.ensureDefaultAccounts(tenantId);
     const lines = computeInvoiceSentJournalLines(input);
     await this.postLines(tenantId, {
@@ -452,6 +475,9 @@ export class FinanceService {
   }
 
   async postInvoicePaid(tenantId: string, input: CustomerInvoiceAmountsForPosting): Promise<void> {
+    if (!(await this.isFinanceEnabled(tenantId))) {
+      return;
+    }
     await this.accounts.ensureDefaultAccounts(tenantId);
     const lines = computeInvoicePaidJournalLines(input);
     await this.postLines(tenantId, {
@@ -466,6 +492,9 @@ export class FinanceService {
   }
 
   async postVendorBillApproved(tenantId: string, input: VendorBillAmountsForPosting): Promise<void> {
+    if (!(await this.isFinanceEnabled(tenantId))) {
+      return;
+    }
     await this.accounts.ensureDefaultAccounts(tenantId);
     const lines = computeVendorBillApprovedJournalLines(input);
     await this.postLines(tenantId, {
@@ -487,6 +516,9 @@ export class FinanceService {
    * compute-vendor-bill-journal-lines.ts.
    */
   async postVendorPayment(tenantId: string, input: VendorPaymentAmountsForPosting): Promise<void> {
+    if (!(await this.isFinanceEnabled(tenantId))) {
+      return;
+    }
     await this.accounts.ensureDefaultAccounts(tenantId);
     const lines = computeVendorPaymentJournalLines(input);
     await this.postLines(tenantId, {

@@ -13,6 +13,7 @@ import { GlFixedAssetRepository } from './gl-fixed-asset.repository';
 import { GlDepreciationRunRepository } from './gl-depreciation-run.repository';
 import { ExpenseRepository } from './expense.repository';
 import { GlCostCenterRepository } from './gl-cost-center.repository';
+import { TenantAddOnRepository } from './tenant-add-on.repository';
 
 @Module({
   imports: [PrismaModule],
@@ -30,6 +31,7 @@ import { GlCostCenterRepository } from './gl-cost-center.repository';
     GlDepreciationRunRepository,
     ExpenseRepository,
     GlCostCenterRepository,
+    TenantAddOnRepository,
   ],
   exports: [
     GlAccountRepository,
@@ -45,6 +47,7 @@ import { GlCostCenterRepository } from './gl-cost-center.repository';
     GlDepreciationRunRepository,
     ExpenseRepository,
     GlCostCenterRepository,
+    TenantAddOnRepository,
   ],
 })
 export class FinanceDataAccessModule {}

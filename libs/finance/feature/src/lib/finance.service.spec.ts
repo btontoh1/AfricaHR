@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { AddOnModule, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import { RequestUser, SystemRole } from '@africahr/platform-auth';
 import {
@@ -15,6 +15,7 @@ import {
   GlJournalEntryRepository,
   GlPeriodCloseRepository,
   GlRecurringJournalEntryRepository,
+  TenantAddOnRepository,
 } from '@africahr/finance-data-access';
 import { GlAccountCode } from '@africahr/finance-domain';
 import { FinanceService } from './finance.service';
@@ -34,6 +35,7 @@ describe('FinanceService', () => {
   let expenses: jest.Mocked<ExpenseRepository>;
   let costCenters: jest.Mocked<GlCostCenterRepository>;
   let audit: jest.Mocked<AuditService>;
+  let tenantAddOns: jest.Mocked<TenantAddOnRepository>;
 
   const actor: RequestUser = {
     sub: 'user-1',
@@ -157,6 +159,8 @@ describe('FinanceService', () => {
 
     audit = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
 
+    tenantAddOns = { isEnabled: jest.fn().mockResolvedValue(true) } as unknown as jest.Mocked<TenantAddOnRepository>;
+
     service = new FinanceService(
       accounts,
       journalEntries,
@@ -171,6 +175,7 @@ describe('FinanceService', () => {
       expenses,
       costCenters,
       audit,
+      tenantAddOns,
     );
   });
 
@@ -188,6 +193,7 @@ describe('FinanceService', () => {
         totals: { totalGrossPay: 1000, totalEmployerOnlyCost: 130, totalNetPay: 850 },
       });
 
+      expect(tenantAddOns.isEnabled).toHaveBeenCalledWith('tenant-1', AddOnModule.FINANCE);
       expect(accounts.ensureDefaultAccounts).toHaveBeenCalledWith('tenant-1');
       const call = journalEntries.createIfNotExists.mock.calls[0][1];
       expect(call.sourceType).toBe('PAY_RUN_DISBURSED');
@@ -197,6 +203,23 @@ describe('FinanceService', () => {
       const debits = call.lines.reduce((sum, l) => sum + Number(l.debit), 0);
       const credits = call.lines.reduce((sum, l) => sum + Number(l.credit), 0);
       expect(debits).toBeCloseTo(credits, 2);
+    });
+
+    it('skips posting when the tenant has not enabled the Finance add-on', async () => {
+      tenantAddOns.isEnabled.mockResolvedValue(false);
+
+      await service.postPayrollDisbursement('tenant-1', {
+        organizationId: 'org-1',
+        payRunId: 'payrun-1',
+        payDate: new Date('2026-01-31'),
+        periodStart: new Date('2026-01-01'),
+        periodEnd: new Date('2026-01-31'),
+        currency: 'GHS',
+        totals: { totalGrossPay: 1000, totalEmployerOnlyCost: 130, totalNetPay: 850 },
+      });
+
+      expect(accounts.ensureDefaultAccounts).not.toHaveBeenCalled();
+      expect(journalEntries.createIfNotExists).not.toHaveBeenCalled();
     });
   });
 
@@ -241,6 +264,23 @@ describe('FinanceService', () => {
       expect(call.description).toBe('Customer invoice paid - INV-0001');
       expect(call.lines).toHaveLength(2);
     });
+
+    it('skips posting when the tenant has not enabled the Finance add-on', async () => {
+      tenantAddOns.isEnabled.mockResolvedValue(false);
+
+      await service.postInvoiceSent('tenant-1', {
+        organizationId: 'org-1',
+        invoiceId: 'inv-1',
+        invoiceNumber: 'INV-0001',
+        entryDate: new Date('2026-02-01'),
+        currency: 'GHS',
+        subtotal: 1000,
+        taxAmount: 150,
+        total: 1150,
+      });
+
+      expect(journalEntries.createIfNotExists).not.toHaveBeenCalled();
+    });
   });
 
   describe('postVendorBillApproved / postVendorPayment', () => {
@@ -280,6 +320,36 @@ describe('FinanceService', () => {
       expect(call.sourceId).toBe('payment-1');
       expect(call.description).toBe('Vendor payment - Acme Ltd');
       expect(call.lines).toHaveLength(2);
+    });
+
+    it('skips posting a vendor bill when the tenant has not enabled the Finance add-on', async () => {
+      tenantAddOns.isEnabled.mockResolvedValue(false);
+
+      await service.postVendorBillApproved('tenant-1', {
+        organizationId: 'org-1',
+        billId: 'bill-1',
+        billNumber: 'BILL-0001',
+        entryDate: new Date('2026-02-01'),
+        currency: 'GHS',
+        total: 1150,
+      });
+
+      expect(journalEntries.createIfNotExists).not.toHaveBeenCalled();
+    });
+
+    it('skips posting a vendor payment when the tenant has not enabled the Finance add-on', async () => {
+      tenantAddOns.isEnabled.mockResolvedValue(false);
+
+      await service.postVendorPayment('tenant-1', {
+        organizationId: 'org-1',
+        paymentId: 'payment-1',
+        vendorName: 'Acme Ltd',
+        entryDate: new Date('2026-02-15'),
+        currency: 'GHS',
+        amount: 1150,
+      });
+
+      expect(journalEntries.createIfNotExists).not.toHaveBeenCalled();
     });
   });
 

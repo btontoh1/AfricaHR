@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { MapPin, Plus } from 'lucide-react';
 import { useCreateAttendanceLocation } from './queries';
 import { attendanceLocationFormSchema, type AttendanceLocationFormValues } from './attendance-form-schema';
+import { AddressSearchField } from './address-search-field';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
 import {
@@ -99,6 +100,12 @@ export function CreateAttendanceLocationDialog({ tenantId }: { tenantId: string 
                   <FormMessage />
                 </FormItem>
               )}
+            />
+            <AddressSearchField
+              onSelect={(result) => {
+                form.setValue('latitude', result.latitude.toFixed(6));
+                form.setValue('longitude', result.longitude.toFixed(6));
+              }}
             />
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField

@@ -1626,6 +1626,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/attendance-locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AttendanceLocationController_list"];
+        put?: never;
+        post: operations["AttendanceLocationController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/attendance-locations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["AttendanceLocationController_remove"];
+        options?: never;
+        head?: never;
+        patch: operations["AttendanceLocationController_update"];
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/attendance/me": {
         parameters: {
             query?: never;
@@ -4557,31 +4589,47 @@ export interface components {
              * @example 8
              */
             standardDailyHours: number;
-            /** @description Work-site geofence center latitude — set together with geofenceLongitude and geofenceRadiusMeters, or leave all three unset to disable geofencing */
-            geofenceLatitude?: number;
-            /** @description Work-site geofence center longitude */
-            geofenceLongitude?: number;
-            /**
-             * @description Radius in meters around the geofence center within which a clock-in/out is not flagged
-             * @example 150
-             */
-            geofenceRadiusMeters?: number;
-            /**
-             * @description Human-readable label for the geofence, shown on the attendance dashboard. Independent of the three fields above — purely cosmetic.
-             * @example East Legon Office
-             */
-            geofenceLocationName?: string;
         };
         AttendancePolicyResponseDto: {
             id: string;
             tenantId: string;
             standardDailyHours: string;
-            geofenceLatitude?: string | null;
-            geofenceLongitude?: string | null;
-            geofenceRadiusMeters?: number | null;
-            geofenceLocationName?: string | null;
             createdAt: string;
             updatedAt: string;
+        };
+        AttendanceLocationResponseDto: {
+            id: string;
+            tenantId: string;
+            name: string;
+            latitude: string;
+            longitude: string;
+            radiusMeters: number;
+            createdAt: string;
+            updatedAt: string;
+        };
+        CreateAttendanceLocationDto: {
+            /**
+             * @description Human-readable label for the location
+             * @example East Legon Office
+             */
+            name: string;
+            /** @description Location center latitude */
+            latitude: number;
+            /** @description Location center longitude */
+            longitude: number;
+            /**
+             * @description Radius in meters around the center within which a clock-in/out is not flagged
+             * @example 150
+             */
+            radiusMeters: number;
+        };
+        UpdateAttendanceLocationDto: {
+            /** @example East Legon Office */
+            name?: string;
+            latitude?: number;
+            longitude?: number;
+            /** @example 150 */
+            radiusMeters?: number;
         };
         AttendanceRecordResponseDto: {
             id: string;
@@ -4597,10 +4645,12 @@ export interface components {
             clockInLongitude?: string | null;
             clockInDistanceMeters?: number | null;
             clockInOutsideGeofence?: boolean | null;
+            clockInLocationName?: string | null;
             clockOutLatitude?: string | null;
             clockOutLongitude?: string | null;
             clockOutDistanceMeters?: number | null;
             clockOutOutsideGeofence?: boolean | null;
+            clockOutLocationName?: string | null;
             createdAt: string;
             updatedAt: string;
         };
@@ -9109,6 +9159,98 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AttendancePolicyResponseDto"];
+                };
+            };
+        };
+    };
+    AttendanceLocationController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceLocationResponseDto"][];
+                };
+            };
+        };
+    };
+    AttendanceLocationController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAttendanceLocationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceLocationResponseDto"];
+                };
+            };
+        };
+    };
+    AttendanceLocationController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AttendanceLocationController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAttendanceLocationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceLocationResponseDto"];
                 };
             };
         };

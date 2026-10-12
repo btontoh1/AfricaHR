@@ -4,15 +4,15 @@ import { AttendanceRecord, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import {
   AttendanceEmployeeRepository,
+  AttendanceLocationRepository,
   AttendancePolicyRepository,
   AttendanceRecordRepository,
 } from '@africahr/attendance-data-access';
 import {
   computeHoursWorked,
   computeOvertimeHours,
+  findNearestLocation,
   GeoPoint,
-  haversineDistanceMeters,
-  isOutsideGeofence,
   roundHours,
   toCalendarDay,
 } from '@africahr/attendance-domain';
@@ -29,6 +29,7 @@ interface GeofenceEvaluation {
   longitude?: number;
   distanceMeters?: number;
   outsideGeofence?: boolean;
+  locationName?: string;
 }
 
 function translateReferenceError(error: unknown, employeeId: string): never {
@@ -69,6 +70,7 @@ export class AttendanceRecordService {
     private readonly employees: AttendanceEmployeeRepository,
     private readonly audit: AuditService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly locations: AttendanceLocationRepository,
   ) {}
 
   async resolveOwnEmployeeId(tenantId: string, userId: string): Promise<string> {
@@ -110,6 +112,7 @@ export class AttendanceRecordService {
         clockInLongitude: geofence.longitude,
         clockInDistanceMeters: geofence.distanceMeters,
         clockInOutsideGeofence: geofence.outsideGeofence,
+        clockInLocationName: geofence.locationName,
         createdBy: actorId,
       });
     } catch (error) {
@@ -165,6 +168,7 @@ export class AttendanceRecordService {
       clockOutLongitude: geofence.longitude,
       clockOutDistanceMeters: geofence.distanceMeters,
       clockOutOutsideGeofence: geofence.outsideGeofence,
+      clockOutLocationName: geofence.locationName,
       updatedBy: actorId,
     });
 
@@ -186,31 +190,38 @@ export class AttendanceRecordService {
 
   /**
    * Captures whatever GPS position the client sent, and - only if the
-   * tenant has a geofence configured - judges it against that geofence.
-   * Deliberately flag-only: an out-of-range result is never used to reject
-   * the clock-in/out (see AttendancePolicy.geofenceLatitude doc comment),
-   * so this never throws.
+   * tenant has at least one AttendanceLocation configured - matches it
+   * against the nearest one. Deliberately flag-only and purely
+   * informational: an out-of-range result is never used to reject the
+   * clock-in/out, and an employee isn't assigned to or restricted to any
+   * location (see AttendanceLocation doc comment), so this never throws.
    */
   private async evaluateGeofence(tenantId: string, position?: GeoPoint): Promise<GeofenceEvaluation> {
     if (!position) {
       return {};
     }
 
-    const policy = await this.policies.find(tenantId);
-    if (!policy || policy.geofenceLatitude == null || policy.geofenceLongitude == null || policy.geofenceRadiusMeters == null) {
+    const locations = await this.locations.list(tenantId);
+    const match = findNearestLocation(
+      position,
+      locations.map((location) => ({
+        name: location.name,
+        latitude: Number(location.latitude),
+        longitude: Number(location.longitude),
+        radiusMeters: location.radiusMeters,
+      })),
+    );
+
+    if (!match) {
       return { latitude: position.latitude, longitude: position.longitude };
     }
-
-    const distanceMeters = haversineDistanceMeters(position, {
-      latitude: Number(policy.geofenceLatitude),
-      longitude: Number(policy.geofenceLongitude),
-    });
 
     return {
       latitude: position.latitude,
       longitude: position.longitude,
-      distanceMeters,
-      outsideGeofence: isOutsideGeofence(distanceMeters, policy.geofenceRadiusMeters),
+      distanceMeters: match.distanceMeters,
+      outsideGeofence: match.outsideGeofence,
+      locationName: match.locationName,
     };
   }
 

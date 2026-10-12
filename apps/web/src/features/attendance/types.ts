@@ -5,3 +5,6 @@ export type AttendancePolicy = components['schemas']['AttendancePolicyResponseDt
 export type CreateAttendanceRecordInput = components['schemas']['CreateAttendanceRecordDto'];
 export type UpdateAttendanceRecordInput = components['schemas']['UpdateAttendanceRecordDto'];
 export type UpsertAttendancePolicyInput = components['schemas']['UpsertAttendancePolicyDto'];
+export type AttendanceLocation = components['schemas']['AttendanceLocationResponseDto'];
+export type CreateAttendanceLocationInput = components['schemas']['CreateAttendanceLocationDto'];
+export type UpdateAttendanceLocationInput = components['schemas']['UpdateAttendanceLocationDto'];

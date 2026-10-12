@@ -1124,28 +1124,37 @@ model AttendancePolicy {
   tenantId           String  @unique @map("tenant_id")
   standardDailyHours Decimal @map("standard_daily_hours")
 
-  /// Optional single work-site geofence: when all three are set, clock-in/
-  /// out events are checked against this center point + radius. Absent by
-  /// default — geofencing is opt-in per tenant. Deliberately flag-only, not
-  /// enforced (see AttendanceRecord fields below) — device GPS commonly
-  /// drifts 20-50m+ indoors/urban, so hard-blocking on it would just
-  /// generate false-positive support tickets instead of catching anything.
-  geofenceLatitude     Decimal? @map("geofence_latitude")
-  geofenceLongitude    Decimal? @map("geofence_longitude")
-  geofenceRadiusMeters Int?     @map("geofence_radius_meters")
-  /// Human-readable label for the geofence (e.g. "East Legon Office"), shown
-  /// on the attendance dashboard next to flagged/unflagged punches. Purely
-  /// cosmetic — never used in the haversine distance check itself — so it's
-  /// independent of the three fields above rather than part of their
-  /// all-or-nothing validation (see AttendancePolicyService.upsert).
-  geofenceLocationName String?  @map("geofence_location_name")
-
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   createdBy String?  @map("created_by")
   updatedBy String?  @map("updated_by")
 
   @@map("attendance_policies")
+}
+
+/// A named work site a tenant's employees may clock in/out from - replaces
+/// the single geofence that used to live directly on AttendancePolicy
+/// (migration 20261012000000_add_attendance_locations moves any existing
+/// single geofence into a row here). An employee isn't assigned to a
+/// location; any of a tenant's locations is informational only, matched by
+/// proximity at punch time (see AttendanceRecordService.evaluateGeofence) -
+/// same deliberately flag-only, never-enforced posture as the single
+/// geofence it replaces (device GPS drift makes hard-blocking unreliable).
+model AttendanceLocation {
+  id            String  @id @default(uuid())
+  tenantId      String  @map("tenant_id")
+  name          String
+  latitude      Decimal
+  longitude     Decimal
+  radiusMeters  Int     @map("radius_meters")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  @@index([tenantId])
+  @@map("attendance_locations")
 }
 
 /// One row per employee per calendar day. No status column — "currently
@@ -1182,6 +1191,12 @@ model AttendanceRecord {
   clockOutLongitude       Decimal? @map("clock_out_longitude")
   clockOutDistanceMeters  Int?     @map("clock_out_distance_meters")
   clockOutOutsideGeofence Boolean? @map("clock_out_outside_geofence")
+
+  /// Name of the AttendanceLocation nearest to the punch at the time it was
+  /// made, denormalized (not a live FK) so a later edit/delete of that
+  /// location never rewrites or orphans historical records.
+  clockInLocationName  String? @map("clock_in_location_name")
+  clockOutLocationName String? @map("clock_out_location_name")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")

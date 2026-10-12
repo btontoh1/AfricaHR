@@ -1,9 +1,10 @@
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { AttendancePolicy, AttendanceRecord, Prisma } from '@prisma/client';
+import { AttendanceLocation, AttendancePolicy, AttendanceRecord, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import {
   AttendanceEmployeeRepository,
+  AttendanceLocationRepository,
   AttendancePolicyRepository,
   AttendanceRecordRepository,
 } from '@africahr/attendance-data-access';
@@ -16,6 +17,7 @@ describe('AttendanceRecordService', () => {
   let employees: jest.Mocked<AttendanceEmployeeRepository>;
   let audit: jest.Mocked<AuditService>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
+  let locations: jest.Mocked<AttendanceLocationRepository>;
 
   const now = new Date('2026-02-02T17:00:00Z');
 
@@ -30,6 +32,22 @@ describe('AttendanceRecordService', () => {
       updatedBy: null,
       ...overrides,
     } as AttendancePolicy;
+  }
+
+  function makeLocation(overrides: Partial<AttendanceLocation> = {}): AttendanceLocation {
+    return {
+      id: 'loc-1',
+      tenantId: 'tenant-1',
+      name: 'HQ',
+      latitude: new Prisma.Decimal(0),
+      longitude: new Prisma.Decimal(0),
+      radiusMeters: 100,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      createdBy: null,
+      updatedBy: null,
+      ...overrides,
+    } as AttendanceLocation;
   }
 
   function makeRecord(overrides: Partial<AttendanceRecord> = {}): AttendanceRecord {
@@ -77,7 +95,15 @@ describe('AttendanceRecordService', () => {
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
     eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
 
-    service = new AttendanceRecordService(records, policies, employees, audit, eventEmitter);
+    locations = {
+      list: jest.fn().mockResolvedValue([]),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      findById: jest.fn(),
+    } as unknown as jest.Mocked<AttendanceLocationRepository>;
+
+    service = new AttendanceRecordService(records, policies, employees, audit, eventEmitter, locations);
   });
 
   afterEach(() => {
@@ -143,13 +169,14 @@ describe('AttendanceRecordService', () => {
           clockInLongitude: undefined,
           clockInDistanceMeters: undefined,
           clockInOutsideGeofence: undefined,
+          clockInLocationName: undefined,
         }),
       );
-      expect(policies.find).not.toHaveBeenCalled();
+      expect(locations.list).not.toHaveBeenCalled();
     });
 
-    it('captures the position but skips the geofence check when the tenant has none configured', async () => {
-      policies.find.mockResolvedValue(makePolicy());
+    it('captures the position but skips the nearest-location match when the tenant has none configured', async () => {
+      locations.list.mockResolvedValue([]);
       records.create.mockResolvedValue(makeRecord({ clockIn: now }));
 
       await service.clockIn('tenant-1', 'emp-1', 'emp-1-user', { latitude: 5.6, longitude: -0.19 });
@@ -161,47 +188,53 @@ describe('AttendanceRecordService', () => {
           clockInLongitude: -0.19,
           clockInDistanceMeters: undefined,
           clockInOutsideGeofence: undefined,
+          clockInLocationName: undefined,
         }),
       );
     });
 
-    it('flags a clock-in outside the configured geofence, but still allows it', async () => {
-      policies.find.mockResolvedValue(
-        makePolicy({
-          geofenceLatitude: new Prisma.Decimal(0),
-          geofenceLongitude: new Prisma.Decimal(0),
-          geofenceRadiusMeters: 100,
-        }),
-      );
+    it('flags a clock-in outside the nearest location, but still allows it', async () => {
+      locations.list.mockResolvedValue([makeLocation({ name: 'HQ', latitude: new Prisma.Decimal(0), longitude: new Prisma.Decimal(0), radiusMeters: 100 })]);
       records.create.mockResolvedValue(makeRecord({ clockIn: now }));
 
-      // 1 degree of latitude away from the geofence center is ~111km, well outside a 100m radius
+      // 1 degree of latitude away from the location center is ~111km, well outside a 100m radius
       await service.clockIn('tenant-1', 'emp-1', 'emp-1-user', { latitude: 1, longitude: 0 });
 
       expect(records.create).toHaveBeenCalledWith(
         'tenant-1',
-        expect.objectContaining({ clockInDistanceMeters: 111195, clockInOutsideGeofence: true }),
+        expect.objectContaining({ clockInDistanceMeters: 111195, clockInOutsideGeofence: true, clockInLocationName: 'HQ' }),
       );
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'attendance.clocked_in', metadata: { outsideGeofence: true } }),
       );
     });
 
-    it('does not flag a clock-in within the configured geofence', async () => {
-      policies.find.mockResolvedValue(
-        makePolicy({
-          geofenceLatitude: new Prisma.Decimal(5.6),
-          geofenceLongitude: new Prisma.Decimal(-0.19),
-          geofenceRadiusMeters: 100,
-        }),
-      );
+    it('does not flag a clock-in within the nearest location, and records its name', async () => {
+      locations.list.mockResolvedValue([
+        makeLocation({ name: 'HQ', latitude: new Prisma.Decimal(5.6), longitude: new Prisma.Decimal(-0.19), radiusMeters: 100 }),
+      ]);
       records.create.mockResolvedValue(makeRecord({ clockIn: now }));
 
       await service.clockIn('tenant-1', 'emp-1', 'emp-1-user', { latitude: 5.6, longitude: -0.19 });
 
       expect(records.create).toHaveBeenCalledWith(
         'tenant-1',
-        expect.objectContaining({ clockInDistanceMeters: 0, clockInOutsideGeofence: false }),
+        expect.objectContaining({ clockInDistanceMeters: 0, clockInOutsideGeofence: false, clockInLocationName: 'HQ' }),
+      );
+    });
+
+    it('picks the nearest of several configured locations', async () => {
+      locations.list.mockResolvedValue([
+        makeLocation({ name: 'Far', latitude: new Prisma.Decimal(2), longitude: new Prisma.Decimal(0), radiusMeters: 100 }),
+        makeLocation({ name: 'Near', latitude: new Prisma.Decimal(0.001), longitude: new Prisma.Decimal(0), radiusMeters: 100 }),
+      ]);
+      records.create.mockResolvedValue(makeRecord({ clockIn: now }));
+
+      await service.clockIn('tenant-1', 'emp-1', 'emp-1-user', { latitude: 0, longitude: 0 });
+
+      expect(records.create).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ clockInLocationName: 'Near' }),
       );
     });
   });
@@ -272,14 +305,8 @@ describe('AttendanceRecordService', () => {
       );
     });
 
-    it('flags a clock-out outside the configured geofence, but still allows it', async () => {
-      policies.find.mockResolvedValue(
-        makePolicy({
-          geofenceLatitude: new Prisma.Decimal(0),
-          geofenceLongitude: new Prisma.Decimal(0),
-          geofenceRadiusMeters: 100,
-        }),
-      );
+    it('flags a clock-out outside the nearest location, but still allows it', async () => {
+      locations.list.mockResolvedValue([makeLocation({ name: 'HQ', latitude: new Prisma.Decimal(0), longitude: new Prisma.Decimal(0), radiusMeters: 100 })]);
       records.findOpenByEmployee.mockResolvedValue(
         makeRecord({ clockIn: new Date('2026-02-02T08:00:00Z') }),
       );
@@ -290,7 +317,7 @@ describe('AttendanceRecordService', () => {
       expect(records.update).toHaveBeenCalledWith(
         'tenant-1',
         'rec-1',
-        expect.objectContaining({ clockOutDistanceMeters: 111195, clockOutOutsideGeofence: true }),
+        expect.objectContaining({ clockOutDistanceMeters: 111195, clockOutOutsideGeofence: true, clockOutLocationName: 'HQ' }),
       );
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({

@@ -14,10 +14,12 @@ export interface CreateAttendanceRecordInput {
   clockInLongitude?: Prisma.Decimal | number | null;
   clockInDistanceMeters?: number | null;
   clockInOutsideGeofence?: boolean | null;
+  clockInLocationName?: string | null;
   clockOutLatitude?: Prisma.Decimal | number | null;
   clockOutLongitude?: Prisma.Decimal | number | null;
   clockOutDistanceMeters?: number | null;
   clockOutOutsideGeofence?: boolean | null;
+  clockOutLocationName?: string | null;
   createdBy?: string;
 }
 
@@ -31,10 +33,12 @@ export interface UpdateAttendanceRecordInput {
   clockInLongitude?: Prisma.Decimal | number | null;
   clockInDistanceMeters?: number | null;
   clockInOutsideGeofence?: boolean | null;
+  clockInLocationName?: string | null;
   clockOutLatitude?: Prisma.Decimal | number | null;
   clockOutLongitude?: Prisma.Decimal | number | null;
   clockOutDistanceMeters?: number | null;
   clockOutOutsideGeofence?: boolean | null;
+  clockOutLocationName?: string | null;
   updatedBy?: string;
 }
 
@@ -64,10 +68,12 @@ export class AttendanceRecordRepository {
           clockInLongitude: input.clockInLongitude,
           clockInDistanceMeters: input.clockInDistanceMeters,
           clockInOutsideGeofence: input.clockInOutsideGeofence,
+          clockInLocationName: input.clockInLocationName,
           clockOutLatitude: input.clockOutLatitude,
           clockOutLongitude: input.clockOutLongitude,
           clockOutDistanceMeters: input.clockOutDistanceMeters,
           clockOutOutsideGeofence: input.clockOutOutsideGeofence,
+          clockOutLocationName: input.clockOutLocationName,
           createdBy: input.createdBy,
           updatedBy: input.createdBy,
         },
@@ -128,10 +134,12 @@ export class AttendanceRecordRepository {
           clockInLongitude: input.clockInLongitude,
           clockInDistanceMeters: input.clockInDistanceMeters,
           clockInOutsideGeofence: input.clockInOutsideGeofence,
+          clockInLocationName: input.clockInLocationName,
           clockOutLatitude: input.clockOutLatitude,
           clockOutLongitude: input.clockOutLongitude,
           clockOutDistanceMeters: input.clockOutDistanceMeters,
           clockOutOutsideGeofence: input.clockOutOutsideGeofence,
+          clockOutLocationName: input.clockOutLocationName,
           updatedBy: input.updatedBy,
         },
       }),

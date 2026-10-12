@@ -3,7 +3,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
 import type {
+  CreateAttendanceLocationInput,
   CreateAttendanceRecordInput,
+  UpdateAttendanceLocationInput,
   UpdateAttendanceRecordInput,
   UpsertAttendancePolicyInput,
 } from './types';
@@ -22,6 +24,10 @@ function attendanceRecordKey(tenantId: string, id: string) {
 
 function attendancePolicyKey(tenantId: string) {
   return ['attendance-policy', tenantId] as const;
+}
+
+function attendanceLocationsKey(tenantId: string) {
+  return ['attendance-locations', tenantId] as const;
 }
 
 // --- Self-service ---
@@ -182,5 +188,63 @@ export function useUpsertAttendancePolicy(tenantId: string) {
       return data;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: attendancePolicyKey(tenantId) }),
+  });
+}
+
+// --- Locations ---
+
+export function useAttendanceLocations(tenantId: string) {
+  return useQuery({
+    queryKey: attendanceLocationsKey(tenantId),
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/attendance-locations', {
+        params: { path: { tenantId } },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useCreateAttendanceLocation(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateAttendanceLocationInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/attendance-locations', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: attendanceLocationsKey(tenantId) }),
+  });
+}
+
+export function useUpdateAttendanceLocation(tenantId: string, id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UpdateAttendanceLocationInput) => {
+      const { data, error } = await apiClient.PATCH('/api/tenants/{tenantId}/attendance-locations/{id}', {
+        params: { path: { tenantId, id } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: attendanceLocationsKey(tenantId) }),
+  });
+}
+
+export function useDeleteAttendanceLocation(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await apiClient.DELETE('/api/tenants/{tenantId}/attendance-locations/{id}', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: attendanceLocationsKey(tenantId) }),
   });
 }

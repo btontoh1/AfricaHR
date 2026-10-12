@@ -128,4 +128,29 @@ describe('AttendanceRecordRepository', () => {
       }),
     });
   });
+
+  it('persists the matched location name on create', async () => {
+    await repository.create('tenant-1', {
+      employeeId: 'emp-1',
+      date: new Date('2026-02-02'),
+      clockIn: new Date('2026-02-02T08:00:00Z'),
+      clockInLocationName: 'HQ',
+    });
+
+    expect(tx.attendanceRecord.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ clockInLocationName: 'HQ' }),
+    });
+  });
+
+  it('persists the matched location name on update', async () => {
+    await repository.update('tenant-1', 'rec-1', {
+      clockOut: new Date('2026-02-02T17:00:00Z'),
+      clockOutLocationName: 'Branch Office',
+    });
+
+    expect(tx.attendanceRecord.update).toHaveBeenCalledWith({
+      where: { id: 'rec-1' },
+      data: expect.objectContaining({ clockOutLocationName: 'Branch Office' }),
+    });
+  });
 });

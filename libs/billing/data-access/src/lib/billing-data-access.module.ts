@@ -7,6 +7,7 @@ import { BillingTenantContactRepository } from './billing-tenant-contact.reposit
 import { PlatformBillingRepository } from './platform-billing.repository';
 import { PlatformOperatingCostRepository } from './platform-operating-cost.repository';
 import { PlatformFinancialInputRepository } from './platform-financial-input.repository';
+import { TenantPayrollWalletRepository } from './tenant-payroll-wallet.repository';
 
 @Module({
   imports: [PrismaModule],
@@ -18,6 +19,7 @@ import { PlatformFinancialInputRepository } from './platform-financial-input.rep
     PlatformBillingRepository,
     PlatformOperatingCostRepository,
     PlatformFinancialInputRepository,
+    TenantPayrollWalletRepository,
   ],
   exports: [
     SubscriptionRepository,
@@ -27,6 +29,7 @@ import { PlatformFinancialInputRepository } from './platform-financial-input.rep
     PlatformBillingRepository,
     PlatformOperatingCostRepository,
     PlatformFinancialInputRepository,
+    TenantPayrollWalletRepository,
   ],
 })
 export class BillingDataAccessModule {}

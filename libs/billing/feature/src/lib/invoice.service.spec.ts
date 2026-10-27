@@ -11,6 +11,7 @@ import {
 } from '@africahr/billing-data-access';
 import { InvoiceService, PAYSTACK_TRANSFER_UPDATED_EVENT } from './invoice.service';
 import { PaystackClient } from './paystack-client';
+import { TenantPayrollWalletService } from './tenant-payroll-wallet.service';
 
 describe('InvoiceService', () => {
   let service: InvoiceService;
@@ -22,6 +23,7 @@ describe('InvoiceService', () => {
   let paystack: jest.Mocked<PaystackClient>;
   let audit: jest.Mocked<AuditService>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
+  let wallet: jest.Mocked<TenantPayrollWalletService>;
 
   const activeSubscription: Subscription = {
     id: 'sub-1',
@@ -84,6 +86,9 @@ describe('InvoiceService', () => {
     } as unknown as jest.Mocked<PaystackClient>;
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
     eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
+    wallet = {
+      creditTopUpByReference: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<TenantPayrollWalletService>;
 
     service = new InvoiceService(
       invoices,
@@ -94,6 +99,7 @@ describe('InvoiceService', () => {
       paystack,
       audit,
       eventEmitter,
+      wallet,
     );
   });
 
@@ -275,16 +281,17 @@ describe('InvoiceService', () => {
       expect(platformBilling.findInvoiceByPaystackReference).not.toHaveBeenCalled();
     });
 
-    it('ignores a reference that does not match any invoice', async () => {
+    it('falls back to the wallet top-up path when a reference does not match any invoice', async () => {
       paystack.verifyWebhookSignature.mockReturnValue(true);
       platformBilling.findInvoiceByPaystackReference.mockResolvedValue(null);
 
       await service.handlePaystackWebhook(
-        JSON.stringify({ event: 'charge.success', data: { reference: 'unknown' } }),
+        JSON.stringify({ event: 'charge.success', data: { reference: 'topup-ref' } }),
         'valid-signature',
       );
 
       expect(invoices.update).not.toHaveBeenCalled();
+      expect(wallet.creditTopUpByReference).toHaveBeenCalledWith('topup-ref');
     });
 
     it('re-emits a transfer.success event instead of handling it as billing', async () => {

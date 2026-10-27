@@ -102,6 +102,8 @@ model Tenant {
   users         User[]
   subscription  Subscription?
   invoices      Invoice[]
+  payrollWallets  TenantPayrollWallet[]
+  walletTopUps    TenantWalletTopUp[]
 
   @@map("tenants")
 }
@@ -206,6 +208,74 @@ model Invoice {
   @@index([subscriptionId])
   @@index([status])
   @@map("invoices")
+}
+
+/// A tenant's pre-funded payroll balance, broken out per currency ("never
+/// blend currencies" - same convention as GL/payroll cost reports, since a
+/// tenant can run payroll in more than one country's currency). Real
+/// Paystack Transfers (see payroll's PaystackTransferClient) draw from
+/// ParotHR's own single Paystack balance, not a per-tenant sub-account, so
+/// this is purely ParotHR's own internal ledger of how much of that shared
+/// balance belongs to which tenant - it exists so a pay run can't be marked
+/// paid, and transfers attempted, for more than a tenant has actually paid
+/// in (see PayRunService.markPaid's reserveForDisbursement call). Funded
+/// only via TenantWalletTopUp (a real Paystack transaction - see that
+/// model's own comment for why a wallet credit can never come from
+/// anywhere else).
+model TenantPayrollWallet {
+  id       String  @id @default(uuid())
+  tenantId String  @map("tenant_id")
+  currency String
+  balance  Decimal @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, currency])
+  @@map("tenant_payroll_wallets")
+}
+
+enum WalletTopUpStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+/// One row per payroll-wallet top-up attempt - deliberately the only way a
+/// TenantPayrollWallet's balance can grow. A wallet credit must be backed
+/// by a real Paystack transaction (not a side-channel bank transfer
+/// reconciled by hand), so the same amount both lands in ParotHR's actual
+/// Paystack balance and this tenant's recorded share of it can never drift
+/// apart - same checkout+webhook shape as Invoice, a separate model (not a
+/// reuse of Invoice) since a top-up isn't tied to a Subscription billing
+/// period and funds payroll, not a subscription fee.
+model TenantWalletTopUp {
+  id       String            @id @default(uuid())
+  tenantId String            @map("tenant_id")
+  currency String
+  amount   Decimal
+  status   WalletTopUpStatus @default(PENDING)
+  /// Paystack transaction reference - the join key
+  /// find_wallet_topup_by_paystack_reference_across_tenants uses when the
+  /// webhook (no tenant context) sees a matching charge.success.
+  paystackReference String?   @unique @map("paystack_reference")
+  checkoutUrl       String?   @map("checkout_url")
+  paidAt            DateTime? @map("paid_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("tenant_wallet_top_ups")
 }
 
 /// ParotHR's own operating cost for one month, entered by hand - the

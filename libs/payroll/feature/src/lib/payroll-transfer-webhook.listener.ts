@@ -5,6 +5,7 @@ import { Payslip, PayslipDisbursementStatus } from '@prisma/client';
 import {
   PayrollDisbursementRepository,
   PayrollEmployeeRepository,
+  PayrollWalletRepository,
   PayRunRepository,
   PayslipRepository,
   StalePendingDisbursement,
@@ -112,6 +113,7 @@ export class PayrollTransferWebhookListener {
     private readonly employees: PayrollEmployeeRepository,
     private readonly eventEmitter: EventEmitter2,
     private readonly paystack: PaystackTransferClient,
+    private readonly wallet: PayrollWalletRepository,
   ) {}
 
   @OnEvent('payroll.paystack_transfer.updated')
@@ -220,6 +222,11 @@ export class PayrollTransferWebhookListener {
     }
 
     if (status === PayslipDisbursementStatus.FAILED) {
+      // The transfer reference that reached this point was committed with
+      // a reservation already taken against the wallet (see
+      // PayRunService.disburse) - now that Paystack has definitively said
+      // it failed, that reservation is returned.
+      await this.wallet.refund(updated.tenantId, updated.currency, Number(updated.netPay));
       await this.notifyOfFailedDisbursement(updated);
     }
   }

@@ -5,11 +5,13 @@ import { PayRun, Prisma } from '@prisma/client';
 import { AppConfigService, encryptAesGcm } from '@africahr/platform-core';
 import { AuditService } from '@africahr/platform-audit';
 import {
+  InsufficientWalletBalanceError,
   PayrollAttendanceRecordRepository,
   PayrollBenefitEnrollmentRepository,
   PayRunRepository,
   PayrollEmployeeRepository,
   PayrollLeaveRequestRepository,
+  PayrollWalletRepository,
   PayslipRepository,
   PayslipWithLineItems,
   StatutoryRateRepository,
@@ -37,6 +39,7 @@ describe('PayRunService', () => {
   let audit: jest.Mocked<AuditService>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let paystack: jest.Mocked<PaystackTransferClient>;
+  let wallet: jest.Mocked<PayrollWalletRepository>;
   let config: AppConfigService;
 
   function makePayslip(overrides: Partial<PayslipWithLineItems> = {}): PayslipWithLineItems {
@@ -165,6 +168,11 @@ describe('PayRunService', () => {
       createRecipient: jest.fn(),
       initiateTransfer: jest.fn(),
     } as unknown as jest.Mocked<PaystackTransferClient>;
+    wallet = {
+      reserveForDisbursement: jest.fn().mockResolvedValue(undefined),
+      refund: jest.fn().mockResolvedValue(undefined),
+      getBalances: jest.fn(),
+    } as unknown as jest.Mocked<PayrollWalletRepository>;
     config = { paymentMethodEncryptionKey: validEncryptionKey } as unknown as AppConfigService;
 
     service = new PayRunService(
@@ -179,6 +187,7 @@ describe('PayRunService', () => {
       audit,
       eventEmitter,
       paystack,
+      wallet,
       config,
     );
   });
@@ -200,6 +209,7 @@ describe('PayRunService', () => {
           audit,
           eventEmitter,
           paystack,
+          wallet,
           badConfig,
         ),
     ).toThrow(/PAYMENT_METHOD_ENCRYPTION_KEY must be set/);
@@ -1041,6 +1051,82 @@ describe('PayRunService', () => {
       await service.markPaid('tenant-1', 'run-1', 'mgr-1');
 
       expect(paystack.initiateTransfer).not.toHaveBeenCalled();
+    });
+
+    it('reserves the total net pay per currency against the wallet before disbursing', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PAID' }));
+      payslips.listByPayRun.mockResolvedValue([
+        makePayslip({ id: 'payslip-1', currency: 'GHS', netPay: new Prisma.Decimal(500) }),
+        makePayslip({ id: 'payslip-2', currency: 'GHS', netPay: new Prisma.Decimal(300) }),
+        makePayslip({ id: 'payslip-3', currency: 'USD', netPay: new Prisma.Decimal(100) }),
+      ]);
+
+      await service.markPaid('tenant-1', 'run-1', 'mgr-1');
+
+      expect(wallet.reserveForDisbursement).toHaveBeenCalledWith('tenant-1', [
+        { currency: 'GHS', amount: 800 },
+        { currency: 'USD', amount: 100 },
+      ]);
+    });
+
+    it('rejects marking paid when the wallet balance is insufficient, before touching the pay run', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
+      payslips.listByPayRun.mockResolvedValue([
+        makePayslip({ currency: 'GHS', netPay: new Prisma.Decimal(500) }),
+      ]);
+      wallet.reserveForDisbursement.mockRejectedValue(
+        new InsufficientWalletBalanceError([{ currency: 'GHS', required: 500, available: 100 }]),
+      );
+
+      await expect(service.markPaid('tenant-1', 'run-1', 'mgr-1')).rejects.toThrow(ConflictException);
+
+      expect(payRuns.updateStatus).not.toHaveBeenCalled();
+      expect(payslips.updateManyStatusByPayRun).not.toHaveBeenCalled();
+    });
+
+    it('refunds the wallet when an employee has no usable payment method', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PAID' }));
+      payslips.listByPayRun.mockResolvedValue([
+        makePayslip({ currency: 'GHS', netPay: new Prisma.Decimal(856) }),
+      ]);
+      employees.findPaymentMethodByEmployeeId.mockResolvedValue(null);
+
+      await service.markPaid('tenant-1', 'run-1', 'mgr-1');
+
+      expect(wallet.refund).toHaveBeenCalledWith('tenant-1', 'GHS', 856);
+    });
+  });
+
+  describe('retryDisbursement', () => {
+    it('re-reserves the wallet before retrying a FAILED disbursement', async () => {
+      payslips.findById.mockResolvedValue(
+        makePayslip({ disbursementStatus: 'FAILED', currency: 'GHS', netPay: new Prisma.Decimal(856) }),
+      );
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'PAID' }));
+
+      await service.retryDisbursement('tenant-1', 'payslip-1', 'mgr-1');
+
+      expect(wallet.reserveForDisbursement).toHaveBeenCalledWith('tenant-1', [
+        { currency: 'GHS', amount: 856 },
+      ]);
+    });
+
+    it('rejects retrying when the wallet balance is insufficient', async () => {
+      payslips.findById.mockResolvedValue(
+        makePayslip({ disbursementStatus: 'FAILED', currency: 'GHS', netPay: new Prisma.Decimal(856) }),
+      );
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'PAID' }));
+      wallet.reserveForDisbursement.mockRejectedValue(
+        new InsufficientWalletBalanceError([{ currency: 'GHS', required: 856, available: 0 }]),
+      );
+
+      await expect(service.retryDisbursement('tenant-1', 'payslip-1', 'mgr-1')).rejects.toThrow(
+        ConflictException,
+      );
+
+      expect(paystack.createRecipient).not.toHaveBeenCalled();
     });
   });
 

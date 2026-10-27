@@ -14,6 +14,8 @@ import { PlatformSaasMetricsService } from './platform-saas-metrics.service';
 import { PlatformOperatingCostService } from './platform-operating-cost.service';
 import { PlatformInvestorMetricsService } from './platform-investor-metrics.service';
 import { LogPaystackClient, PaystackClient, RealPaystackClient } from './paystack-client';
+import { TenantPayrollWalletService } from './tenant-payroll-wallet.service';
+import { TenantPayrollWalletController } from './tenant-payroll-wallet.controller';
 
 @Module({
   imports: [BillingDataAccessModule, PlatformAuthModule, AuditModule, AppConfigModule],
@@ -22,6 +24,7 @@ import { LogPaystackClient, PaystackClient, RealPaystackClient } from './paystac
     InvoiceController,
     PaystackWebhookController,
     PlatformBillingController,
+    TenantPayrollWalletController,
   ],
   providers: [
     SubscriptionService,
@@ -30,6 +33,7 @@ import { LogPaystackClient, PaystackClient, RealPaystackClient } from './paystac
     PlatformSaasMetricsService,
     PlatformOperatingCostService,
     PlatformInvestorMetricsService,
+    TenantPayrollWalletService,
     {
       provide: PaystackClient,
       inject: [AppConfigService],
@@ -49,6 +53,7 @@ import { LogPaystackClient, PaystackClient, RealPaystackClient } from './paystac
     PlatformSaasMetricsService,
     PlatformOperatingCostService,
     PlatformInvestorMetricsService,
+    TenantPayrollWalletService,
   ],
 })
 export class BillingFeatureModule {}

@@ -11,6 +11,7 @@ import {
 import { AppConfigService, decryptAesGcm, deriveEncryptionKey } from '@africahr/platform-core';
 import { AuditService } from '@africahr/platform-audit';
 import {
+  InsufficientWalletBalanceError,
   PayrollAttendanceRecordRepository,
   PayrollBenefitEnrollmentRepository,
   PayrollEligibleEmployee,
@@ -18,6 +19,7 @@ import {
   PayRunRepository,
   PayrollEmployeeRepository,
   PayrollLeaveRequestRepository,
+  PayrollWalletRepository,
   PayslipRepository,
   PayslipWithLineItems,
   StatutoryRateRepository,
@@ -140,6 +142,7 @@ export class PayRunService {
     private readonly audit: AuditService,
     private readonly eventEmitter: EventEmitter2,
     private readonly paystack: PaystackTransferClient,
+    private readonly wallet: PayrollWalletRepository,
     config: AppConfigService,
   ) {
     // Derived once at construction (Nest instantiates providers eagerly).
@@ -439,22 +442,6 @@ export class PayRunService {
     const payRun = await this.findById(tenantId, id);
     this.assertTransition(payRun.status, PayRunStatus.PAID);
 
-    const updated = await this.updateStatusOrThrow(tenantId, id, {
-      fromStatus: payRun.status,
-      status: PrismaPayRunStatus.PAID,
-      paidAt: new Date(),
-      updatedBy: actorId,
-    });
-    await this.payslips.updateManyStatusByPayRun(tenantId, id, PayslipStatus.PAID, actorId);
-
-    await this.audit.record({
-      tenantId,
-      actorUserId: actorId ?? null,
-      action: 'payroll.pay_run.paid',
-      resourceType: 'PayRun',
-      resourceId: id,
-    });
-
     const payslips = await this.payslips.listByPayRun(tenantId, id);
     const totalsByCurrency = new Map<string, PayRunCurrencyTotals>();
     for (const payslip of payslips) {
@@ -475,6 +462,47 @@ export class PayRunService {
       running.totalNetPay += Number(payslip.netPay);
       totalsByCurrency.set(payslip.currency, running);
     }
+
+    // Reserves the full disbursement total, in every currency this run
+    // needs, before anything else commits - a tenant short of funds in any
+    // one currency gets a clear error and the pay run stays APPROVED,
+    // rather than being marked PAID with transfers that then fail against
+    // Paystack's real balance. See PayrollWalletRepository.reserveForDisbursement
+    // for why this is all-or-nothing across currencies.
+    try {
+      await this.wallet.reserveForDisbursement(
+        tenantId,
+        [...totalsByCurrency.values()].map((totals) => ({
+          currency: totals.currency,
+          amount: totals.totalNetPay,
+        })),
+      );
+    } catch (error) {
+      if (error instanceof InsufficientWalletBalanceError) {
+        const detail = error.shortfalls
+          .map((s) => `${s.currency} ${s.required.toFixed(2)} required, ${s.available.toFixed(2)} available`)
+          .join('; ');
+        throw new ConflictException(`Insufficient payroll wallet balance: ${detail} — top up before marking paid`);
+      }
+      throw error;
+    }
+
+    const updated = await this.updateStatusOrThrow(tenantId, id, {
+      fromStatus: payRun.status,
+      status: PrismaPayRunStatus.PAID,
+      paidAt: new Date(),
+      updatedBy: actorId,
+    });
+    await this.payslips.updateManyStatusByPayRun(tenantId, id, PayslipStatus.PAID, actorId);
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'payroll.pay_run.paid',
+      resourceType: 'PayRun',
+      resourceId: id,
+    });
+
     const disbursedEvent: PayRunDisbursedEvent = {
       tenantId,
       organizationId: payRun.organizationId,
@@ -532,6 +560,10 @@ export class PayRunService {
     const paymentMethod = this.decryptPaymentMethod(encryptedPaymentMethod);
     const accountNumber = resolveAccountNumber(paymentMethod);
     if (!paymentMethod || !paymentMethod.bankCode || !accountNumber) {
+      // markPaid() reserved this payslip's netPay against the wallet before
+      // ever reaching here - since this employee will never actually be
+      // sent a transfer, that reservation is returned.
+      await this.wallet.refund(tenantId, payslip.currency, Number(payslip.netPay));
       return;
     }
 
@@ -540,11 +572,13 @@ export class PayRunService {
       this.logger.warn(
         `No Paystack transfer recipient type for country "${payslip.countryCode}" / method "${paymentMethod.type}" - skipping payslip "${payslip.id}"`,
       );
+      await this.wallet.refund(tenantId, payslip.currency, Number(payslip.netPay));
       return;
     }
 
     const employee = await this.employees.findById(tenantId, payslip.employeeId);
     if (!employee) {
+      await this.wallet.refund(tenantId, payslip.currency, Number(payslip.netPay));
       return;
     }
 
@@ -645,6 +679,11 @@ export class PayRunService {
     employee: PayrollEligibleEmployee,
   ): Promise<void> {
     await this.payslips.recordDisbursementResult(tenantId, payslip.id, PayslipDisbursementStatus.FAILED);
+    // Reached before any transfer reference was ever committed, so the
+    // reservation markPaid()/retryDisbursement() made for this payslip is
+    // definitely never spent - return it now rather than waiting on a
+    // webhook that will never arrive for a transfer that was never sent.
+    await this.wallet.refund(tenantId, payslip.currency, Number(payslip.netPay));
 
     const payRun = await this.payRuns.findById(tenantId, payslip.payRunId);
     if (!payRun) {
@@ -681,6 +720,25 @@ export class PayRunService {
     const payRun = await this.findById(tenantId, payslip.payRunId);
     if (payRun.status !== PrismaPayRunStatus.PAID) {
       throw new ConflictException(`Cannot retry a disbursement for a pay run in status ${payRun.status}`);
+    }
+
+    // Whatever took this payslip to FAILED/NOT_INITIATED already refunded
+    // its reservation (see disburse()'s skip branches,
+    // markDisbursementInitiationFailed, and PayrollTransferWebhookListener's
+    // FAILED resolution) - re-reserve it here, same as markPaid(), before
+    // attempting the transfer again.
+    try {
+      await this.wallet.reserveForDisbursement(tenantId, [
+        { currency: payslip.currency, amount: Number(payslip.netPay) },
+      ]);
+    } catch (error) {
+      if (error instanceof InsufficientWalletBalanceError) {
+        const detail = error.shortfalls
+          .map((s) => `${s.currency} ${s.required.toFixed(2)} required, ${s.available.toFixed(2)} available`)
+          .join('; ');
+        throw new ConflictException(`Insufficient payroll wallet balance: ${detail} — top up before retrying`);
+      }
+      throw error;
     }
 
     await this.disburse(tenantId, payslip);

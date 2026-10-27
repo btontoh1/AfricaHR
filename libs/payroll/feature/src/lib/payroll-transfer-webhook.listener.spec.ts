@@ -1,8 +1,9 @@
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Payslip } from '@prisma/client';
+import { Payslip, Prisma } from '@prisma/client';
 import {
   PayrollDisbursementRepository,
   PayrollEmployeeRepository,
+  PayrollWalletRepository,
   PayRunRepository,
   PayslipRepository,
   PayslipWithLineItems,
@@ -22,6 +23,7 @@ describe('PayrollTransferWebhookListener', () => {
   let employees: jest.Mocked<PayrollEmployeeRepository>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let paystack: jest.Mocked<PaystackTransferClient>;
+  let wallet: jest.Mocked<PayrollWalletRepository>;
 
   function makeUpdatedPayslip(overrides: Partial<Payslip> = {}): Payslip {
     return {
@@ -30,6 +32,8 @@ describe('PayrollTransferWebhookListener', () => {
       payRunId: 'run-1',
       employeeId: 'emp-1',
       disbursementStatus: 'FAILED',
+      currency: 'GHS',
+      netPay: new Prisma.Decimal(856),
       ...overrides,
     } as Payslip;
   }
@@ -58,6 +62,7 @@ describe('PayrollTransferWebhookListener', () => {
     } as unknown as jest.Mocked<PayrollEmployeeRepository>;
     eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
     paystack = { verifyTransfer: jest.fn() } as unknown as jest.Mocked<PaystackTransferClient>;
+    wallet = { refund: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<PayrollWalletRepository>;
 
     listener = new PayrollTransferWebhookListener(
       disbursements,
@@ -66,6 +71,7 @@ describe('PayrollTransferWebhookListener', () => {
       employees,
       eventEmitter,
       paystack,
+      wallet,
     );
   });
 
@@ -80,6 +86,7 @@ describe('PayrollTransferWebhookListener', () => {
     await listener.handleTransferUpdated({ reference: 'ref-123', status: 'success' });
 
     expect(payslips.recordDisbursementResult).toHaveBeenCalledWith('tenant-1', 'payslip-1', 'SUCCESS');
+    expect(wallet.refund).not.toHaveBeenCalled();
     expect(eventEmitter.emit).not.toHaveBeenCalled();
   });
 
@@ -93,6 +100,7 @@ describe('PayrollTransferWebhookListener', () => {
     await listener.handleTransferUpdated({ reference: 'ref-123', status: 'failed' });
 
     expect(payslips.recordDisbursementResult).toHaveBeenCalledWith('tenant-1', 'payslip-1', 'FAILED');
+    expect(wallet.refund).toHaveBeenCalledWith('tenant-1', 'GHS', 856);
     expect(eventEmitter.emit).toHaveBeenCalledWith(
       PAYROLL_DISBURSEMENT_FAILED_EVENT,
       expect.objectContaining({

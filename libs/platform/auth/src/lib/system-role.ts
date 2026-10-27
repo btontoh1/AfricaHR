@@ -54,6 +54,14 @@ export const Permission = {
   // Every role holding PAYROLL_MANAGE also holds this one (see
   // ROLE_PERMISSIONS) so approvers can still prepare a run themselves.
   PAYROLL_PREPARE: 'payroll:prepare',
+  // The tenant's own prefunded payroll balance (see TenantPayrollWallet) -
+  // tenant-scoped, not PLATFORM_BILLING_MANAGE-gated like Invoice, since
+  // topping it up is the tenant deciding to fund their own upcoming
+  // payroll, not a platform admin acting on their behalf. Same
+  // PAYROLL_MANAGE/PAYROLL_READ role distribution as the rest of payroll -
+  // whoever can mark a pay run paid is who needs to keep this funded.
+  PAYROLL_WALLET_MANAGE: 'payroll:wallet:manage',
+  PAYROLL_WALLET_READ: 'payroll:wallet:read',
   LEAVE_MANAGE: 'leave:manage',
   LEAVE_READ: 'leave:read',
   ATTENDANCE_MANAGE: 'attendance:manage',
@@ -155,6 +163,8 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.PAYROLL_MANAGE,
     Permission.PAYROLL_PREPARE,
     Permission.PAYROLL_READ,
+    Permission.PAYROLL_WALLET_MANAGE,
+    Permission.PAYROLL_WALLET_READ,
     Permission.PLATFORM_PAYROLL_CONFIG_MANAGE,
     Permission.PLATFORM_ORGANIZATION_VERIFY,
     Permission.LEAVE_MANAGE,
@@ -195,6 +205,8 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.PAYROLL_MANAGE,
     Permission.PAYROLL_PREPARE,
     Permission.PAYROLL_READ,
+    Permission.PAYROLL_WALLET_MANAGE,
+    Permission.PAYROLL_WALLET_READ,
     Permission.LEAVE_MANAGE,
     Permission.LEAVE_READ,
     Permission.ATTENDANCE_MANAGE,
@@ -246,17 +258,21 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.PAYROLL_MANAGE,
     Permission.PAYROLL_PREPARE,
     Permission.PAYROLL_READ,
+    Permission.PAYROLL_WALLET_MANAGE,
+    Permission.PAYROLL_WALLET_READ,
     Permission.REPORTING_READ,
   ],
   // Prepare-only counterpart to PAYROLL_MANAGER (see Permission.PAYROLL_PREPARE) -
   // same visibility (organization/employee read, reports) but no
   // PAYROLL_MANAGE, so approve/pay/close/cancel/retry-disbursement stay out
-  // of reach.
+  // of reach. Same split for the wallet: can see the balance
+  // (PAYROLL_WALLET_READ) but not top it up or spend it.
   [SystemRole.PAYROLL_OFFICER]: [
     Permission.ORGANIZATION_READ,
     Permission.EMPLOYEE_READ,
     Permission.PAYROLL_PREPARE,
     Permission.PAYROLL_READ,
+    Permission.PAYROLL_WALLET_READ,
     Permission.REPORTING_READ,
   ],
   // Deliberately narrow (v1 scope cut): employee management only, within

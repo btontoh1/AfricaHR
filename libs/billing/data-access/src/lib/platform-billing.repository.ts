@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { InvoiceStatus, SubscriptionStatus } from '@prisma/client';
+import { InvoiceStatus, SubscriptionStatus, WalletTopUpStatus } from '@prisma/client';
 import { PrismaService } from '@africahr/platform-database';
 
 export interface CrossTenantSubscription {
@@ -74,6 +74,32 @@ interface RawActiveEmployeeCountRow {
 interface RawRevenueByCurrencyRow {
   currency: string;
   totalPaid: string;
+}
+
+export interface CrossTenantWalletTopUp {
+  id: string;
+  tenantId: string;
+  currency: string;
+  amount: number;
+  status: WalletTopUpStatus;
+  paystackReference: string | null;
+  checkoutUrl: string | null;
+  paidAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface RawWalletTopUpRow {
+  id: string;
+  tenantId: string;
+  currency: string;
+  amount: string;
+  status: WalletTopUpStatus;
+  paystackReference: string | null;
+  checkoutUrl: string | null;
+  paidAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface CrossTenantInvoiceForAnalytics {
@@ -170,6 +196,17 @@ export class PlatformBillingRepository {
     const rows = await this.prisma.$queryRaw<
       RawInvoiceRow[]
     >`SELECT * FROM find_invoice_by_paystack_reference_across_tenants(${reference})`;
+    const row = rows[0];
+    if (!row) {
+      return null;
+    }
+    return { ...row, amount: Number(row.amount) };
+  }
+
+  async findWalletTopUpByPaystackReference(reference: string): Promise<CrossTenantWalletTopUp | null> {
+    const rows = await this.prisma.$queryRaw<
+      RawWalletTopUpRow[]
+    >`SELECT * FROM find_wallet_topup_by_paystack_reference_across_tenants(${reference})`;
     const row = rows[0];
     if (!row) {
       return null;

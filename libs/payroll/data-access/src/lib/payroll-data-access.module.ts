@@ -11,6 +11,7 @@ import { PayrollDisbursementRepository } from './payroll-disbursement.repository
 import { PayrollBenefitEnrollmentRepository } from './payroll-benefit-enrollment.repository';
 import { PayrollLeaveRequestRepository } from './payroll-leave-request.repository';
 import { PayrollAttendanceRecordRepository } from './payroll-attendance-record.repository';
+import { PayrollWalletRepository } from './payroll-wallet.repository';
 
 @Module({
   imports: [PrismaModule],
@@ -26,6 +27,7 @@ import { PayrollAttendanceRecordRepository } from './payroll-attendance-record.r
     PayrollBenefitEnrollmentRepository,
     PayrollLeaveRequestRepository,
     PayrollAttendanceRecordRepository,
+    PayrollWalletRepository,
   ],
   exports: [
     StatutoryTaxBandRepository,
@@ -39,6 +41,7 @@ import { PayrollAttendanceRecordRepository } from './payroll-attendance-record.r
     PayrollBenefitEnrollmentRepository,
     PayrollLeaveRequestRepository,
     PayrollAttendanceRecordRepository,
+    PayrollWalletRepository,
   ],
 })
 export class PayrollDataAccessModule {}

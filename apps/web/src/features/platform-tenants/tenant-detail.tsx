@@ -9,6 +9,7 @@ import { DeleteTenantDialog } from './delete-tenant-dialog';
 import { EditTenantDialog } from './edit-tenant-dialog';
 import { TenantUsersTable } from './tenant-users-table';
 import { AddOnsCard } from './add-ons-card';
+import { TenantPayrollWalletCard } from './tenant-payroll-wallet-card';
 import type { TenantStatus } from './types';
 import { useSubscription } from '@/features/billing/queries';
 import { SubscriptionCard } from '@/features/billing/subscription-card';
@@ -123,6 +124,8 @@ export function TenantDetail({ tenantId }: { tenantId: string }) {
           />
         </CardContent>
       </Card>
+
+      <TenantPayrollWalletCard tenantId={tenantId} />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2">

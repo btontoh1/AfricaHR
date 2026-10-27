@@ -2909,6 +2909,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/payroll-wallet/balances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TenantPayrollWalletController_balances"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/payroll-wallet/top-ups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TenantPayrollWalletController_listTopUps"];
+        put?: never;
+        /** Starts a Paystack checkout to fund the tenant payroll wallet for one currency */
+        post: operations["TenantPayrollWalletController_requestTopUp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/customers": {
         parameters: {
             query?: never;
@@ -5440,6 +5473,32 @@ export interface components {
             /** @description Setting an entry again for the same month/currency overwrites this amount */
             amount: number;
             notes?: string;
+        };
+        WalletBalanceResponseDto: {
+            currency: string;
+            balance: number;
+        };
+        WalletTopUpResponseDto: {
+            id: string;
+            tenantId: string;
+            currency: string;
+            amount: number;
+            /** @enum {string} */
+            status: "PENDING" | "PAID" | "CANCELLED";
+            checkoutUrl?: string | null;
+            /** Format: date-time */
+            paidAt?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        RequestWalletTopUpDto: {
+            /** @example GHS */
+            currency: string;
+            /**
+             * @description Major currency units (e.g. GHS, not pesewas)
+             * @example 5000
+             */
+            amount: number;
         };
         CreateCustomerDto: {
             organizationId: string;
@@ -11626,6 +11685,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FinancialInputResponseDto"];
+                };
+            };
+        };
+    };
+    TenantPayrollWalletController_balances: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalletBalanceResponseDto"][];
+                };
+            };
+        };
+    };
+    TenantPayrollWalletController_listTopUps: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalletTopUpResponseDto"][];
+                };
+            };
+        };
+    };
+    TenantPayrollWalletController_requestTopUp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestWalletTopUpDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalletTopUpResponseDto"];
                 };
             };
         };

@@ -26,6 +26,7 @@ import {
   FileInput,
   BarChart3,
   Wallet,
+  WalletCards,
   CalendarRange,
   TrendingUp,
   LineChart,
@@ -224,6 +225,7 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
       label: 'Payroll & Benefits',
       items: [
         ...(hasAdminAccess ? [{ label: 'Payroll', href: '/payroll', icon: Banknote }] : []),
+        ...(hasAdminAccess ? [{ label: 'Payroll Wallet', href: '/payroll/wallet', icon: WalletCards }] : []),
         ...(isEmployeeSelfService ? [{ label: 'My Payslips', href: '/payslips', icon: Receipt }] : []),
         ...(isEmployeeSelfService
           ? [{ label: 'Payment Details', href: '/payment-method', icon: Landmark }]

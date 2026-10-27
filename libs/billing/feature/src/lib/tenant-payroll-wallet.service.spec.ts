@@ -24,7 +24,10 @@ describe('TenantPayrollWalletService', () => {
       listTopUpsForTenant: jest.fn(),
       updateTopUp: jest.fn(),
     } as unknown as jest.Mocked<TenantPayrollWalletRepository>;
-    tenantContacts = { findAdminEmail: jest.fn() } as unknown as jest.Mocked<BillingTenantContactRepository>;
+    tenantContacts = {
+      findAdminEmail: jest.fn(),
+      findCurrency: jest.fn().mockResolvedValue('GHS'),
+    } as unknown as jest.Mocked<BillingTenantContactRepository>;
     platformBilling = {
       findWalletTopUpByPaystackReference: jest.fn(),
     } as unknown as jest.Mocked<PlatformBillingRepository>;
@@ -77,6 +80,29 @@ describe('TenantPayrollWalletService', () => {
       expect(paystack.initializeTransaction).toHaveBeenCalledWith(
         expect.objectContaining({ email: 'tenant-tenant-1@parothr.local' }),
       );
+    });
+
+    it("rejects a currency other than the tenant's operating currency", async () => {
+      tenantContacts.findCurrency.mockResolvedValue('GHS');
+
+      await expect(service.requestTopUp('tenant-1', 'USD', 500)).rejects.toThrow(
+        "Wallet top-ups must use this tenant's operating currency (GHS)",
+      );
+      expect(paystack.initializeTransaction).not.toHaveBeenCalled();
+      expect(wallets.createTopUp).not.toHaveBeenCalled();
+    });
+
+    it('allows the request when the tenant has no resolvable currency', async () => {
+      tenantContacts.findCurrency.mockResolvedValue(null);
+      tenantContacts.findAdminEmail.mockResolvedValue('admin@acme.com');
+      paystack.initializeTransaction.mockResolvedValue({
+        authorizationUrl: 'https://checkout.paystack.com/xyz',
+        accessCode: 'code-1',
+        reference: 'ref-1',
+      });
+      wallets.createTopUp.mockResolvedValue({ id: 'topup-1' } as TenantWalletTopUp);
+
+      await expect(service.requestTopUp('tenant-1', 'GHS', 500)).resolves.toEqual({ id: 'topup-1' });
     });
   });
 

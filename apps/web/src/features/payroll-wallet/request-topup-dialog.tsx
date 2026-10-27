@@ -20,19 +20,19 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 
-export function RequestTopUpDialog({ tenantId, defaultCurrency }: { tenantId: string; defaultCurrency?: string }) {
+export function RequestTopUpDialog({ tenantId, tenantCurrency }: { tenantId: string; tenantCurrency: string }) {
   const [open, setOpen] = useState(false);
   const requestTopUp = useRequestWalletTopUp(tenantId);
 
   const form = useForm<RequestTopUpFormValues>({
     resolver: zodResolver(requestTopUpFormSchema),
-    defaultValues: { currency: defaultCurrency ?? '', amount: '' },
+    defaultValues: { amount: '' },
   });
 
   async function onSubmit(values: RequestTopUpFormValues) {
     try {
       const topUp = await requestTopUp.mutateAsync({
-        currency: values.currency,
+        currency: tenantCurrency,
         amount: Number(values.amount),
       });
       form.reset();
@@ -74,22 +74,9 @@ export function RequestTopUpDialog({ tenantId, defaultCurrency }: { tenantId: st
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Amount</FormLabel>
+                  <FormLabel>Amount ({tenantCurrency})</FormLabel>
                   <FormControl>
                     <Input type="number" min={1} step="0.01" placeholder="e.g. 5000" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="currency"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Currency</FormLabel>
-                  <FormControl>
-                    <Input maxLength={3} placeholder="e.g. GHS" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

@@ -3716,6 +3716,11 @@ export interface components {
             name: string;
             /** @example acme-ghana-ltd */
             slug: string;
+            /**
+             * @description The tenant's operating currency (ISO 4217)
+             * @example GHS
+             */
+            currency: string;
             /** @description Signed view URL for the uploaded business logo, or null if none set */
             logoUrl?: string;
             /** @enum {string} */
@@ -5492,7 +5497,10 @@ export interface components {
             createdAt: string;
         };
         RequestWalletTopUpDto: {
-            /** @example GHS */
+            /**
+             * @description Must match the tenant's own operating currency
+             * @example GHS
+             */
             currency: string;
             /**
              * @description Major currency units (e.g. GHS, not pesewas)

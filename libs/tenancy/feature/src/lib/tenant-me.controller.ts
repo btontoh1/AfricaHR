@@ -55,6 +55,7 @@ export class TenantMeController {
     return {
       name: tenant.name,
       slug: tenant.slug,
+      currency: tenant.currency,
       logoUrl,
       performanceFramework: tenant.performanceFramework,
       enabledAddOns: tenant.enabledAddOns,
@@ -81,6 +82,7 @@ export class TenantMeController {
     return {
       name: tenant.name,
       slug: tenant.slug,
+      currency: tenant.currency,
       logoUrl,
       performanceFramework: tenant.performanceFramework,
       enabledAddOns: tenant.enabledAddOns,

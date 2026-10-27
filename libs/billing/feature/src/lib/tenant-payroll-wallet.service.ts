@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { TenantPayrollWallet, TenantWalletTopUp } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import {
@@ -42,6 +42,18 @@ export class TenantPayrollWalletService {
     amount: number,
     actorId?: string,
   ): Promise<TenantWalletTopUp> {
+    // Restricted to the tenant's own declared operating currency - a
+    // free-text currency here would let a wallet accumulate a balance in
+    // a currency no payslip of this tenant is ever denominated in, which
+    // could never be reserved by PayrollWalletRepository.reserveForDisbursement
+    // and would just sit stranded.
+    const tenantCurrency = await this.tenantContacts.findCurrency(tenantId);
+    if (tenantCurrency && currency !== tenantCurrency) {
+      throw new BadRequestException(
+        `Wallet top-ups must use this tenant's operating currency (${tenantCurrency})`,
+      );
+    }
+
     const adminEmail = await this.tenantContacts.findAdminEmail(tenantId);
     const email = adminEmail ?? `tenant-${tenantId}@parothr.local`;
 

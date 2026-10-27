@@ -8,6 +8,9 @@ export class TenantMeResponseDto {
   @ApiProperty({ example: 'acme-ghana-ltd' })
   slug!: string;
 
+  @ApiProperty({ example: 'GHS', description: "The tenant's operating currency (ISO 4217)" })
+  currency!: string;
+
   @ApiPropertyOptional({ description: 'Signed view URL for the uploaded business logo, or null if none set' })
   logoUrl?: string | null;
 

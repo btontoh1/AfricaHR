@@ -64,6 +64,7 @@ describe('TenantMeController', () => {
     await expect(controller.findMine(tenantUser)).resolves.toEqual({
       name: 'Acme Ghana Ltd',
       slug: 'acme-ghana-ltd',
+      currency: 'GHS',
       logoUrl: 'https://storage.example/view?sig=xyz',
       performanceFramework: PerformanceFramework.STANDARD,
       enabledAddOns: [],

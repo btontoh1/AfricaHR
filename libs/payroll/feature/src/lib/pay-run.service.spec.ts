@@ -19,6 +19,7 @@ import {
 } from '@africahr/payroll-data-access';
 import { PAY_RUN_PROCESSED_EVENT, PayRunService } from './pay-run.service';
 import { PaystackTransferClient } from './paystack-transfer-client';
+import { PaystackTransferClientRegistry } from './paystack-transfer-client-registry';
 
 const validEncryptionKey = randomBytes(32).toString('hex');
 
@@ -39,6 +40,7 @@ describe('PayRunService', () => {
   let audit: jest.Mocked<AuditService>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let paystack: jest.Mocked<PaystackTransferClient>;
+  let paystackRegistry: jest.Mocked<PaystackTransferClientRegistry>;
   let wallet: jest.Mocked<PayrollWalletRepository>;
   let config: AppConfigService;
 
@@ -168,6 +170,9 @@ describe('PayRunService', () => {
       createRecipient: jest.fn(),
       initiateTransfer: jest.fn(),
     } as unknown as jest.Mocked<PaystackTransferClient>;
+    paystackRegistry = {
+      forCurrency: jest.fn().mockReturnValue(paystack),
+    } as unknown as jest.Mocked<PaystackTransferClientRegistry>;
     wallet = {
       reserveForDisbursement: jest.fn().mockResolvedValue(undefined),
       refund: jest.fn().mockResolvedValue(undefined),
@@ -186,7 +191,7 @@ describe('PayRunService', () => {
       attendanceRecords,
       audit,
       eventEmitter,
-      paystack,
+      paystackRegistry,
       wallet,
       config,
     );
@@ -208,7 +213,7 @@ describe('PayRunService', () => {
           attendanceRecords,
           audit,
           eventEmitter,
-          paystack,
+          paystackRegistry,
           wallet,
           badConfig,
         ),
@@ -844,6 +849,7 @@ describe('PayRunService', () => {
 
       await service.markPaid('tenant-1', 'run-1', 'mgr-1');
 
+      expect(paystackRegistry.forCurrency).toHaveBeenCalledWith('GHS');
       expect(paystack.createRecipient).toHaveBeenCalledWith({
         type: 'ghipss',
         name: 'Kwame Asante',

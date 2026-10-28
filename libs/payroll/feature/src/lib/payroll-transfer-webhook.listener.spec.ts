@@ -14,6 +14,7 @@ import {
   PayrollTransferWebhookListener,
 } from './payroll-transfer-webhook.listener';
 import { PaystackTransferClient } from './paystack-transfer-client';
+import { PaystackTransferClientRegistry } from './paystack-transfer-client-registry';
 
 describe('PayrollTransferWebhookListener', () => {
   let listener: PayrollTransferWebhookListener;
@@ -23,6 +24,7 @@ describe('PayrollTransferWebhookListener', () => {
   let employees: jest.Mocked<PayrollEmployeeRepository>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let paystack: jest.Mocked<PaystackTransferClient>;
+  let paystackRegistry: jest.Mocked<PaystackTransferClientRegistry>;
   let wallet: jest.Mocked<PayrollWalletRepository>;
 
   function makeUpdatedPayslip(overrides: Partial<Payslip> = {}): Payslip {
@@ -62,6 +64,9 @@ describe('PayrollTransferWebhookListener', () => {
     } as unknown as jest.Mocked<PayrollEmployeeRepository>;
     eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
     paystack = { verifyTransfer: jest.fn() } as unknown as jest.Mocked<PaystackTransferClient>;
+    paystackRegistry = {
+      forCurrency: jest.fn().mockReturnValue(paystack),
+    } as unknown as jest.Mocked<PaystackTransferClientRegistry>;
     wallet = { refund: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<PayrollWalletRepository>;
 
     listener = new PayrollTransferWebhookListener(
@@ -70,7 +75,7 @@ describe('PayrollTransferWebhookListener', () => {
       payRuns,
       employees,
       eventEmitter,
-      paystack,
+      paystackRegistry,
       wallet,
     );
   });
@@ -162,7 +167,7 @@ describe('PayrollTransferWebhookListener', () => {
   describe('reconcileStalePendingDisbursements', () => {
     it('resolves a stale pending disbursement that Paystack reports as successful', async () => {
       disbursements.listStalePendingDisbursements.mockResolvedValue([
-        { id: 'payslip-1', tenantId: 'tenant-1', paystackTransferReference: 'ref-123' },
+        { id: 'payslip-1', tenantId: 'tenant-1', paystackTransferReference: 'ref-123', currency: 'GHS' },
       ]);
       disbursements.findPayslipByPaystackTransferReference.mockResolvedValue({
         id: 'payslip-1',
@@ -173,13 +178,14 @@ describe('PayrollTransferWebhookListener', () => {
 
       await listener.reconcileStalePendingDisbursements();
 
+      expect(paystackRegistry.forCurrency).toHaveBeenCalledWith('GHS');
       expect(paystack.verifyTransfer).toHaveBeenCalledWith('ref-123');
       expect(payslips.recordDisbursementResult).toHaveBeenCalledWith('tenant-1', 'payslip-1', 'SUCCESS');
     });
 
     it('resolves a stale pending disbursement Paystack reports as failed, and notifies', async () => {
       disbursements.listStalePendingDisbursements.mockResolvedValue([
-        { id: 'payslip-1', tenantId: 'tenant-1', paystackTransferReference: 'ref-123' },
+        { id: 'payslip-1', tenantId: 'tenant-1', paystackTransferReference: 'ref-123', currency: 'GHS' },
       ]);
       disbursements.findPayslipByPaystackTransferReference.mockResolvedValue({
         id: 'payslip-1',
@@ -196,7 +202,7 @@ describe('PayrollTransferWebhookListener', () => {
 
     it('leaves a disbursement alone when Paystack still reports it pending', async () => {
       disbursements.listStalePendingDisbursements.mockResolvedValue([
-        { id: 'payslip-1', tenantId: 'tenant-1', paystackTransferReference: 'ref-123' },
+        { id: 'payslip-1', tenantId: 'tenant-1', paystackTransferReference: 'ref-123', currency: 'GHS' },
       ]);
       paystack.verifyTransfer.mockResolvedValue({ status: 'pending' });
 
@@ -208,7 +214,7 @@ describe('PayrollTransferWebhookListener', () => {
 
     it("does not act on a payslip a webhook already resolved between the sweep's query and processing it", async () => {
       disbursements.listStalePendingDisbursements.mockResolvedValue([
-        { id: 'payslip-1', tenantId: 'tenant-1', paystackTransferReference: 'ref-123' },
+        { id: 'payslip-1', tenantId: 'tenant-1', paystackTransferReference: 'ref-123', currency: 'GHS' },
       ]);
       disbursements.findPayslipByPaystackTransferReference.mockResolvedValue({
         id: 'payslip-1',
@@ -224,8 +230,8 @@ describe('PayrollTransferWebhookListener', () => {
 
     it('does not let one item\'s Paystack failure stop the rest of the sweep', async () => {
       disbursements.listStalePendingDisbursements.mockResolvedValue([
-        { id: 'payslip-1', tenantId: 'tenant-1', paystackTransferReference: 'ref-1' },
-        { id: 'payslip-2', tenantId: 'tenant-1', paystackTransferReference: 'ref-2' },
+        { id: 'payslip-1', tenantId: 'tenant-1', paystackTransferReference: 'ref-1', currency: 'GHS' },
+        { id: 'payslip-2', tenantId: 'tenant-1', paystackTransferReference: 'ref-2', currency: 'GHS' },
       ]);
       disbursements.findPayslipByPaystackTransferReference.mockResolvedValue({
         id: 'payslip-2',
@@ -255,7 +261,7 @@ describe('PayrollTransferWebhookListener', () => {
     it('alerts once a payslip is found critically stale', async () => {
       disbursements.listStalePendingDisbursements
         .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([{ id: 'payslip-1', tenantId: 'tenant-1', paystackTransferReference: 'ref-123' }]);
+        .mockResolvedValueOnce([{ id: 'payslip-1', tenantId: 'tenant-1', paystackTransferReference: 'ref-123', currency: 'GHS' }]);
       payslips.findById.mockResolvedValue(makeFoundPayslip({ disbursementStatus: 'PENDING' }));
 
       await listener.reconcileStalePendingDisbursements();
@@ -275,7 +281,7 @@ describe('PayrollTransferWebhookListener', () => {
     it('does not re-alert on the same payslip in a later sweep', async () => {
       disbursements.listStalePendingDisbursements
         .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([{ id: 'payslip-1', tenantId: 'tenant-1', paystackTransferReference: 'ref-123' }]);
+        .mockResolvedValueOnce([{ id: 'payslip-1', tenantId: 'tenant-1', paystackTransferReference: 'ref-123', currency: 'GHS' }]);
       payslips.findById.mockResolvedValue(makeFoundPayslip({ disbursementStatus: 'PENDING' }));
 
       await listener.reconcileStalePendingDisbursements();
@@ -283,7 +289,7 @@ describe('PayrollTransferWebhookListener', () => {
 
       disbursements.listStalePendingDisbursements
         .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([{ id: 'payslip-1', tenantId: 'tenant-1', paystackTransferReference: 'ref-123' }]);
+        .mockResolvedValueOnce([{ id: 'payslip-1', tenantId: 'tenant-1', paystackTransferReference: 'ref-123', currency: 'GHS' }]);
 
       await listener.reconcileStalePendingDisbursements();
 
@@ -292,8 +298,8 @@ describe('PayrollTransferWebhookListener', () => {
 
     it("does not let one item's alert failure stop the rest", async () => {
       disbursements.listStalePendingDisbursements.mockResolvedValueOnce([]).mockResolvedValueOnce([
-        { id: 'payslip-1', tenantId: 'tenant-1', paystackTransferReference: 'ref-1' },
-        { id: 'payslip-2', tenantId: 'tenant-1', paystackTransferReference: 'ref-2' },
+        { id: 'payslip-1', tenantId: 'tenant-1', paystackTransferReference: 'ref-1', currency: 'GHS' },
+        { id: 'payslip-2', tenantId: 'tenant-1', paystackTransferReference: 'ref-2', currency: 'GHS' },
       ]);
       payslips.findById
         .mockRejectedValueOnce(new Error('boom'))

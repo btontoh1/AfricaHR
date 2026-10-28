@@ -7,6 +7,7 @@ import {
 } from '@africahr/billing-data-access';
 import { TenantPayrollWalletService } from './tenant-payroll-wallet.service';
 import { PaystackClient } from './paystack-client';
+import { PaystackClientRegistry } from './paystack-client-registry';
 
 describe('TenantPayrollWalletService', () => {
   let service: TenantPayrollWalletService;
@@ -14,6 +15,7 @@ describe('TenantPayrollWalletService', () => {
   let tenantContacts: jest.Mocked<BillingTenantContactRepository>;
   let platformBilling: jest.Mocked<PlatformBillingRepository>;
   let paystack: jest.Mocked<PaystackClient>;
+  let paystackRegistry: jest.Mocked<PaystackClientRegistry>;
   let audit: jest.Mocked<AuditService>;
 
   beforeEach(() => {
@@ -32,9 +34,14 @@ describe('TenantPayrollWalletService', () => {
       findWalletTopUpByPaystackReference: jest.fn(),
     } as unknown as jest.Mocked<PlatformBillingRepository>;
     paystack = { initializeTransaction: jest.fn() } as unknown as jest.Mocked<PaystackClient>;
+    paystackRegistry = {
+      forCurrency: jest.fn().mockReturnValue(paystack),
+      isConfigured: jest.fn().mockReturnValue(true),
+      hasAnyConfigured: jest.fn().mockReturnValue(true),
+    } as unknown as jest.Mocked<PaystackClientRegistry>;
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
 
-    service = new TenantPayrollWalletService(wallets, tenantContacts, platformBilling, paystack, audit);
+    service = new TenantPayrollWalletService(wallets, tenantContacts, platformBilling, paystackRegistry, audit);
   });
 
   describe('requestTopUp', () => {
@@ -103,6 +110,32 @@ describe('TenantPayrollWalletService', () => {
       wallets.createTopUp.mockResolvedValue({ id: 'topup-1' } as TenantWalletTopUp);
 
       await expect(service.requestTopUp('tenant-1', 'GHS', 500)).resolves.toEqual({ id: 'topup-1' });
+    });
+
+    it('rejects a currency with no Paystack account configured once this environment has any real account', async () => {
+      paystackRegistry.hasAnyConfigured.mockReturnValue(true);
+      paystackRegistry.isConfigured.mockReturnValue(false);
+      tenantContacts.findCurrency.mockResolvedValue('NGN');
+
+      await expect(service.requestTopUp('tenant-1', 'NGN', 500)).rejects.toThrow(
+        'Payroll wallet top-ups are not yet available in NGN - contact support',
+      );
+      expect(paystack.initializeTransaction).not.toHaveBeenCalled();
+    });
+
+    it('does not block an unconfigured currency when nothing is configured (local/dev/CI)', async () => {
+      paystackRegistry.hasAnyConfigured.mockReturnValue(false);
+      paystackRegistry.isConfigured.mockReturnValue(false);
+      tenantContacts.findCurrency.mockResolvedValue('NGN');
+      tenantContacts.findAdminEmail.mockResolvedValue('admin@acme.com');
+      paystack.initializeTransaction.mockResolvedValue({
+        authorizationUrl: 'https://paystack.com/placeholder-checkout/ref-1',
+        accessCode: 'code-1',
+        reference: 'ref-1',
+      });
+      wallets.createTopUp.mockResolvedValue({ id: 'topup-1' } as TenantWalletTopUp);
+
+      await expect(service.requestTopUp('tenant-1', 'NGN', 500)).resolves.toEqual({ id: 'topup-1' });
     });
   });
 

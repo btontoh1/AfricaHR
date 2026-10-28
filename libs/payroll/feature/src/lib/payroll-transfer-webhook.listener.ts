@@ -10,7 +10,7 @@ import {
   PayslipRepository,
   StalePendingDisbursement,
 } from '@africahr/payroll-data-access';
-import { PaystackTransferClient } from './paystack-transfer-client';
+import { PaystackTransferClientRegistry } from './paystack-transfer-client-registry';
 
 /**
  * Consumes the event billing-feature's InvoiceService re-emits when the
@@ -112,7 +112,7 @@ export class PayrollTransferWebhookListener {
     private readonly payRuns: PayRunRepository,
     private readonly employees: PayrollEmployeeRepository,
     private readonly eventEmitter: EventEmitter2,
-    private readonly paystack: PaystackTransferClient,
+    private readonly paystack: PaystackTransferClientRegistry,
     private readonly wallet: PayrollWalletRepository,
   ) {}
 
@@ -144,7 +144,7 @@ export class PayrollTransferWebhookListener {
 
     for (const item of stale) {
       try {
-        const verified = await this.paystack.verifyTransfer(item.paystackTransferReference);
+        const verified = await this.paystack.forCurrency(item.currency).verifyTransfer(item.paystackTransferReference);
         const status = mapVerifiedStatus(verified.status);
         if (status) {
           await this.resolveIfPending(item.paystackTransferReference, status);

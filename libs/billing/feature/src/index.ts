@@ -9,6 +9,7 @@ export * from './lib/platform-saas-metrics.service';
 export * from './lib/platform-operating-cost.service';
 export * from './lib/platform-investor-metrics.service';
 export * from './lib/paystack-client';
+export * from './lib/paystack-client-registry';
 export * from './lib/tenant-payroll-wallet.service';
 export * from './lib/tenant-payroll-wallet.controller';
 export * from './lib/billing-feature.module';

@@ -7,7 +7,7 @@ import {
   PlatformBillingRepository,
   TenantPayrollWalletRepository,
 } from '@africahr/billing-data-access';
-import { PaystackClient } from './paystack-client';
+import { PaystackClientRegistry } from './paystack-client-registry';
 
 /**
  * Funds a tenant's payroll wallet (see TenantPayrollWallet's own doc
@@ -24,7 +24,7 @@ export class TenantPayrollWalletService {
     private readonly wallets: TenantPayrollWalletRepository,
     private readonly tenantContacts: BillingTenantContactRepository,
     private readonly platformBilling: PlatformBillingRepository,
-    private readonly paystack: PaystackClient,
+    private readonly paystack: PaystackClientRegistry,
     private readonly audit: AuditService,
   ) {}
 
@@ -54,11 +54,26 @@ export class TenantPayrollWalletService {
       );
     }
 
+    // Paystack requires a separately registered business + local bank
+    // account per country/currency (see PaystackClientRegistry's doc
+    // comment) - a currency with no account configured would otherwise
+    // silently fall back to the log-only placeholder client and hand the
+    // tenant admin a checkout URL that goes nowhere. Only enforced once
+    // this environment has at least one real account configured
+    // (hasAnyConfigured) - local/dev/CI, where nothing is configured,
+    // keeps exercising every currency against the placeholder exactly as
+    // before this registry existed.
+    if (this.paystack.hasAnyConfigured() && !this.paystack.isConfigured(currency)) {
+      throw new BadRequestException(
+        `Payroll wallet top-ups are not yet available in ${currency} - contact support`,
+      );
+    }
+
     const adminEmail = await this.tenantContacts.findAdminEmail(tenantId);
     const email = adminEmail ?? `tenant-${tenantId}@parothr.local`;
 
     const reference = randomUUID();
-    const checkout = await this.paystack.initializeTransaction({
+    const checkout = await this.paystack.forCurrency(currency).initializeTransaction({
       email,
       amount,
       currency,

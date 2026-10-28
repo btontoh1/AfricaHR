@@ -36,7 +36,7 @@ import {
   resolvePaystackRecipientType,
 } from '@africahr/payroll-domain';
 import { CreatePayRunDto } from './dto/create-pay-run.dto';
-import { PaystackTransferClient } from './paystack-transfer-client';
+import { PaystackTransferClientRegistry } from './paystack-transfer-client-registry';
 import { buildDisbursementFailedEvent, PAYROLL_DISBURSEMENT_FAILED_EVENT } from './payroll-transfer-webhook.listener';
 
 /** BANK_ACCOUNT uses accountNumber; MOBILE_MONEY uses the phone number Paystack treats as the recipient's "account number." */
@@ -141,7 +141,7 @@ export class PayRunService {
     private readonly attendanceRecords: PayrollAttendanceRecordRepository,
     private readonly audit: AuditService,
     private readonly eventEmitter: EventEmitter2,
-    private readonly paystack: PaystackTransferClient,
+    private readonly paystack: PaystackTransferClientRegistry,
     private readonly wallet: PayrollWalletRepository,
     config: AppConfigService,
   ) {
@@ -591,7 +591,7 @@ export class PayRunService {
     let recipientCode = encryptedPaymentMethod?.paystackRecipientCode ?? null;
     if (!recipientCode) {
       try {
-        const recipient = await this.paystack.createRecipient({
+        const recipient = await this.paystack.forCurrency(payslip.currency).createRecipient({
           type: recipientType,
           name: paymentMethod.accountName ?? `${employee.firstName} ${employee.lastName}`,
           accountNumber,
@@ -640,7 +640,7 @@ export class PayRunService {
     }
 
     try {
-      await this.paystack.initiateTransfer({
+      await this.paystack.forCurrency(payslip.currency).initiateTransfer({
         amount: Number(payslip.netPay),
         currency: payslip.currency,
         recipientCode,

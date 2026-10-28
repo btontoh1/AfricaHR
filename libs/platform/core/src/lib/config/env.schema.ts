@@ -57,14 +57,30 @@ export const envSchema = z.object({
   // same posture as JWT_ACCESS_SECRET.
   MFA_ENCRYPTION_KEY: z.string().optional(),
 
-  // Real payment collection (billing/subscriptions) AND real payroll
-  // disbursement (Paystack Transfers) - same account, two API surfaces,
-  // one key. Optional - when unset, PaystackClient/PaystackTransferClient
-  // both fall back to a placeholder that logs instead of calling the real
-  // API (same "optional at schema level, enforced by the consuming
-  // service" posture as SENDGRID_API_KEY), so local/dev/CI environments
-  // never need a real key.
+  // Legacy single-account key, still the live production Ghana account's
+  // secret - kept working as the GHS fallback (see
+  // AppConfigService.paystackSecretKeysByCurrency) so an existing
+  // deployment's .env.production doesn't need to change. Real payment
+  // collection (billing/subscriptions) AND real payroll disbursement
+  // (Paystack Transfers) for GHS use this unless PAYSTACK_SECRET_KEY_GHS
+  // is set instead. Optional - when unset, PaystackClient/
+  // PaystackTransferClient both fall back to a placeholder that logs
+  // instead of calling the real API (same "optional at schema level,
+  // enforced by the consuming service" posture as SENDGRID_API_KEY), so
+  // local/dev/CI environments never need a real key.
   PAYSTACK_SECRET_KEY: z.string().optional(),
+
+  // Paystack requires a separately registered business + local bank
+  // account per country to settle in that country's currency, so "the
+  // Paystack account for GHS" and "the Paystack account for NGN" are
+  // genuinely different accounts/credentials, not one multi-currency
+  // account - see PaystackClientRegistry/PaystackTransferClientRegistry.
+  // Each is optional and independent: configuring NGN doesn't require
+  // configuring KES, and an unconfigured currency simply falls back to
+  // the same log-only placeholder as PAYSTACK_SECRET_KEY unset today.
+  PAYSTACK_SECRET_KEY_GHS: z.string().optional(),
+  PAYSTACK_SECRET_KEY_NGN: z.string().optional(),
+  PAYSTACK_SECRET_KEY_KES: z.string().optional(),
 
   // Encrypts EmployeePaymentMethod's bank/mobile-money fields at rest
   // (see aes-gcm-cipher.ts and PaymentMethodService). Optional at the

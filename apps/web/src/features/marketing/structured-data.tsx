@@ -13,6 +13,13 @@ const STRUCTURED_DATA = {
       url: SITE_URL,
       logo: `${SITE_URL}/logo.png`,
       email: 'support@parothr.com',
+      contactPoint: {
+        '@type': 'ContactPoint',
+        contactType: 'customer support',
+        email: 'support@parothr.com',
+        telephone: '+233-24-426-2347',
+        areaServed: ['GH', 'NG', 'KE'],
+      },
       areaServed: [
         { '@type': 'Country', name: 'Ghana' },
         { '@type': 'Country', name: 'Nigeria' },

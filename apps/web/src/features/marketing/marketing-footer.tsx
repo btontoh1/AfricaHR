@@ -58,11 +58,24 @@ export function MarketingFooter() {
                 </li>
               ))}
               <li>
+                <Link href="/support" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+                  Support
+                </Link>
+              </li>
+              <li>
                 <a
                   href="mailto:support@parothr.com"
                   className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  Contact support
+                  support@parothr.com
+                </a>
+              </li>
+              <li>
+                <a
+                  href="tel:+233244262347"
+                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  +233 24 426 2347
                 </a>
               </li>
             </ul>

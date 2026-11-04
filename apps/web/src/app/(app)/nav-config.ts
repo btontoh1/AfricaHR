@@ -57,6 +57,7 @@ import {
   HandCoins,
   ReceiptText,
   Tags,
+  LifeBuoy,
 } from 'lucide-react';
 import type { SessionUser } from '@/lib/session';
 
@@ -404,6 +405,13 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
         ...(user.role === 'TENANT_ADMIN'
           ? [{ label: 'Settings', href: '/settings', icon: Settings }]
           : []),
+        // Unconditional, same reasoning as My Account - every user, on
+        // every plan, needs to be able to find how to reach support.
+        // "/help", not "/support" - that path is the public marketing
+        // page (apps/web/src/app/support), and (app) is a route group so
+        // it doesn't add a path segment of its own; the two would
+        // otherwise collide on the same URL.
+        { label: 'Help & Support', href: '/help', icon: LifeBuoy },
       ],
     },
   ];

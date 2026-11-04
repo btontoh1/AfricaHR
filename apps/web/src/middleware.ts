@@ -9,6 +9,7 @@ const PUBLIC_PATHS = [
   '/careers',
   '/about',
   '/faq',
+  '/support',
   '/testimonials',
   '/terms',
   '/privacy',

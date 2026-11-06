@@ -23,6 +23,7 @@ describe('PlatformTenantUsersController', () => {
       updateProfileForTenant: jest.fn(),
       adminResetPasswordForTenant: jest.fn(),
       setActiveForTenant: jest.fn(),
+      impersonateForTenant: jest.fn(),
     } as unknown as jest.Mocked<UserService>;
 
     controller = new PlatformTenantUsersController(userService);
@@ -68,6 +69,17 @@ describe('PlatformTenantUsersController', () => {
       'user-2',
       'NewSecurePass9',
       'ops-1',
+    );
+  });
+
+  it('delegates impersonate with the tenant id, user id, reason, and full actor', () => {
+    controller.impersonate('tenant-9', 'user-2', { reason: 'Investigating payroll error #412' }, actor);
+
+    expect(userService.impersonateForTenant).toHaveBeenCalledWith(
+      'tenant-9',
+      'user-2',
+      'Investigating payroll error #412',
+      actor,
     );
   });
 });

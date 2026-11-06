@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import {
   CurrentUser,
@@ -13,6 +13,8 @@ import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 import { UpdateUserActiveDto } from './dto/update-user-active.dto';
 import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 import { AdminResetPasswordDto } from './dto/admin-reset-password.dto';
+import { ImpersonateUserDto } from './dto/impersonate-user.dto';
+import { ImpersonationTokenResponseDto } from './dto/impersonation-token-response.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 
 /**
@@ -78,5 +80,23 @@ export class PlatformTenantUsersController {
     @CurrentUser() actor: RequestUser,
   ) {
     return this.users.setActiveForTenant(tenantId, id, dto.isActive, actor.sub);
+  }
+
+  /**
+   * A narrower grant than this controller's own class-level
+   * PLATFORM_TENANT_MANAGE - see Permission.PLATFORM_USER_IMPERSONATE's
+   * own doc comment for why. Method-level @RequirePermissions overrides
+   * (not adds to) the class-level one for this one route.
+   */
+  @Post(':id/impersonate')
+  @RequirePermissions(Permission.PLATFORM_USER_IMPERSONATE)
+  @ApiOkResponse({ type: ImpersonationTokenResponseDto })
+  impersonate(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: ImpersonateUserDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    return this.users.impersonateForTenant(tenantId, id, dto.reason, actor);
   }
 }

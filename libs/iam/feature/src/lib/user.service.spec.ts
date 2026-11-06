@@ -1,10 +1,11 @@
 import { BadRequestException, ConflictException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import * as argon2 from 'argon2';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { User } from '@prisma/client';
-import { RequestUser, SystemRole, TokenRevocationService } from '@africahr/platform-auth';
+import { JwtTokenService, RequestUser, SystemRole, TokenRevocationService } from '@africahr/platform-auth';
 import { AuditService } from '@africahr/platform-audit';
 import { RefreshTokenRepository, UserRepository } from '@africahr/iam-data-access';
-import { UserService } from './user.service';
+import { IMPERSONATION_STARTED_EVENT, UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 
 jest.mock('argon2');
@@ -15,6 +16,8 @@ describe('UserService', () => {
   let refreshTokens: jest.Mocked<RefreshTokenRepository>;
   let revocation: jest.Mocked<TokenRevocationService>;
   let audit: jest.Mocked<AuditService>;
+  let tokens: jest.Mocked<JwtTokenService>;
+  let eventEmitter: jest.Mocked<EventEmitter2>;
 
   const validPassword = 'CorrectHorse9';
 
@@ -66,11 +69,15 @@ describe('UserService', () => {
     refreshTokens = { revokeAllForUser: jest.fn() } as unknown as jest.Mocked<RefreshTokenRepository>;
     revocation = { revokeAllForUser: jest.fn() } as unknown as jest.Mocked<TokenRevocationService>;
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
+    tokens = {
+      signImpersonationToken: jest.fn().mockReturnValue('impersonation-jwt'),
+    } as unknown as jest.Mocked<JwtTokenService>;
+    eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
 
     (argon2.hash as jest.Mock).mockResolvedValue('hashed-password');
     (argon2.verify as jest.Mock).mockResolvedValue(true);
 
-    service = new UserService(users, refreshTokens, revocation, audit);
+    service = new UserService(users, refreshTokens, revocation, audit, tokens, eventEmitter);
   });
 
   describe('create', () => {
@@ -491,6 +498,87 @@ describe('UserService', () => {
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'user.deactivated', tenantId: 'tenant-9', resourceId: 'user-2' }),
       );
+    });
+  });
+
+  describe('impersonateForTenant', () => {
+    const targetUser = {
+      id: 'user-2',
+      tenantId: 'tenant-9',
+      organizationId: null,
+      email: 'sheriff.armarh@nalag.com',
+      role: SystemRole.TENANT_ADMIN,
+      isActive: true,
+    } as User;
+
+    it('throws NotFoundException when the user does not exist in that tenant', async () => {
+      users.findById.mockResolvedValue(null);
+
+      await expect(
+        service.impersonateForTenant('tenant-9', 'missing', 'Investigating a reported issue', platformAdmin),
+      ).rejects.toThrow(NotFoundException);
+      expect(tokens.signImpersonationToken).not.toHaveBeenCalled();
+    });
+
+    it('rejects impersonating a deactivated user', async () => {
+      users.findById.mockResolvedValue({ ...targetUser, isActive: false });
+
+      await expect(
+        service.impersonateForTenant('tenant-9', 'user-2', 'Investigating a reported issue', platformAdmin),
+      ).rejects.toThrow(BadRequestException);
+      expect(tokens.signImpersonationToken).not.toHaveBeenCalled();
+    });
+
+    it('signs a token carrying the target as sub and the admin as the act claim', async () => {
+      users.findById.mockResolvedValue(targetUser);
+
+      const result = await service.impersonateForTenant(
+        'tenant-9',
+        'user-2',
+        'Investigating payroll error #412',
+        platformAdmin,
+      );
+
+      expect(tokens.signImpersonationToken).toHaveBeenCalledWith({
+        sub: 'user-2',
+        email: 'sheriff.armarh@nalag.com',
+        role: SystemRole.TENANT_ADMIN,
+        tenantId: 'tenant-9',
+        organizationId: null,
+        act: { sub: 'actor-2', email: 'ops@africahr.com' },
+      });
+      expect(result.accessToken).toBe('impersonation-jwt');
+      expect(result.expiresInSeconds).toBe(30 * 60);
+    });
+
+    it('audits the start against the admin, not the target', async () => {
+      users.findById.mockResolvedValue(targetUser);
+
+      await service.impersonateForTenant('tenant-9', 'user-2', 'Investigating payroll error #412', platformAdmin);
+
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: 'tenant-9',
+          actorUserId: 'actor-2',
+          action: 'user.impersonation_started',
+          resourceType: 'User',
+          resourceId: 'user-2',
+          metadata: { targetEmail: 'sheriff.armarh@nalag.com', reason: 'Investigating payroll error #412' },
+        }),
+      );
+    });
+
+    it('emits IMPERSONATION_STARTED_EVENT so the target gets notified', async () => {
+      users.findById.mockResolvedValue(targetUser);
+
+      await service.impersonateForTenant('tenant-9', 'user-2', 'Investigating payroll error #412', platformAdmin);
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(IMPERSONATION_STARTED_EVENT, {
+        tenantId: 'tenant-9',
+        targetUserId: 'user-2',
+        actingAdminId: 'actor-2',
+        reason: 'Investigating payroll error #412',
+      });
     });
   });
 });

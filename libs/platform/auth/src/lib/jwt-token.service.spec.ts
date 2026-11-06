@@ -52,6 +52,19 @@ describe('JwtTokenService', () => {
     expect(() => service.verifyAccessToken('bad-token')).toThrow(UnauthorizedException);
   });
 
+  it('signs an impersonation token with a 30 minute expiry, same secret as a normal access token', () => {
+    const impersonationPayload: JwtPayload = {
+      ...payload,
+      sub: 'target-user-1',
+      act: { sub: 'admin-1', email: 'admin@africahr.com' },
+    };
+
+    const token = service.signImpersonationToken(impersonationPayload);
+
+    expect(token).toBe('signed-token');
+    expect(jwtService.sign).toHaveBeenCalledWith(impersonationPayload, { expiresIn: 30 * 60 });
+  });
+
   describe('MFA challenge tokens', () => {
     it('signs with JWT_REFRESH_SECRET and a 5 minute expiry, not the access secret', () => {
       const token = service.signMfaChallengeToken({ sub: 'user-1', tenantId: 'tenant-1' });

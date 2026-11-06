@@ -24,6 +24,7 @@ import { JobRequisitionNotificationListener } from './job-requisition-notificati
 import { PayrollDisbursementFailedNotificationListener } from './payroll-disbursement-failed-notification.listener';
 import { PayrollDisbursementStuckNotificationListener } from './payroll-disbursement-stuck-notification.listener';
 import { AttendanceRecordAdjustedNotificationListener } from './attendance-record-adjusted-notification.listener';
+import { ImpersonationNotificationListener } from './impersonation-notification.listener';
 import {
   LogNotificationDispatcher,
   NotificationDispatcher,
@@ -61,6 +62,7 @@ import {
     PayrollDisbursementFailedNotificationListener,
     PayrollDisbursementStuckNotificationListener,
     AttendanceRecordAdjustedNotificationListener,
+    ImpersonationNotificationListener,
     {
       provide: NotificationDispatcher,
       inject: [AppConfigService],

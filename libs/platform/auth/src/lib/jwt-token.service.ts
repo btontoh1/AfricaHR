@@ -5,6 +5,8 @@ import { JwtPayload, RequestUser } from './jwt-payload.interface';
 
 const ACCESS_TOKEN_TTL = '15m';
 const MFA_CHALLENGE_TOKEN_TTL = '5m';
+/** Longer than a normal access token on purpose - see UserService.impersonateForTenant's doc comment for why a support session gets a bit more room than a normal sign-in before it has to be re-started. */
+export const IMPERSONATION_TOKEN_TTL_SECONDS = 30 * 60;
 
 export interface MfaChallengePayload {
   sub: string;
@@ -25,6 +27,21 @@ export class JwtTokenService {
 
   signAccessToken(payload: JwtPayload): string {
     return this.jwtService.sign(payload, { expiresIn: ACCESS_TOKEN_TTL });
+  }
+
+  /**
+   * Same secret and verification path as a normal access token (it's
+   * verified by the exact same JwtAuthGuard.verifyAccessToken) - only the
+   * `act` claim inside `payload` and this longer TTL distinguish it. No
+   * matching refresh token is ever issued: when this expires, the session
+   * is simply over, by design (see jwt-payload.interface.ts's doc comment
+   * on `act` and JwtAuthGuard's read-only enforcement) - a support
+   * engineer who still needs access starts a fresh impersonation session,
+   * each one independently reasoned and audited, rather than one that
+   * silently renews itself indefinitely.
+   */
+  signImpersonationToken(payload: JwtPayload): string {
+    return this.jwtService.sign(payload, { expiresIn: IMPERSONATION_TOKEN_TTL_SECONDS });
   }
 
   verifyAccessToken(token: string): RequestUser {

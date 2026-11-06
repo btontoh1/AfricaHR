@@ -29,6 +29,12 @@ export type SystemRole = (typeof SystemRole)[keyof typeof SystemRole];
 // was chosen over dynamic per-tenant RBAC — a deliberate v1 scope cut).
 export const Permission = {
   PLATFORM_TENANT_MANAGE: 'platform:tenant:manage',
+  // Deliberately its own permission, not folded into PLATFORM_TENANT_MANAGE
+  // above - "who can edit a tenant's settings" and "who can sign in as one
+  // of its users" are different enough questions (for a security review,
+  // an auditor, and the service agreement) to want a separately nameable
+  // grant, even though today only PLATFORM_ADMIN holds either one.
+  PLATFORM_USER_IMPERSONATE: 'platform:user:impersonate',
   ORGANIZATION_MANAGE: 'organization:manage',
   // Added when Organization got its first read-only consumer (the
   // Employee frontend's organization picker) — Module 1 predates the
@@ -154,6 +160,7 @@ export type Permission = (typeof Permission)[keyof typeof Permission];
 export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
   [SystemRole.PLATFORM_ADMIN]: [
     Permission.PLATFORM_TENANT_MANAGE,
+    Permission.PLATFORM_USER_IMPERSONATE,
     Permission.ORGANIZATION_MANAGE,
     Permission.ORGANIZATION_READ,
     Permission.USER_MANAGE,

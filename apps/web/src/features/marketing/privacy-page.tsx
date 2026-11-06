@@ -2,7 +2,7 @@ import { LegalPageLayout } from './legal-page-layout';
 
 export function PrivacyPage() {
   return (
-    <LegalPageLayout title="Privacy Policy" lastUpdated="26 August 2026">
+    <LegalPageLayout title="Privacy Policy" lastUpdated="6 November 2026">
       <p>
         This Privacy Policy explains how Baffour &amp; Egyir Ringlife LTD (&quot;ParotHR&quot;,
         &quot;we&quot;, &quot;us&quot;), a company registered in Ghana with its registered address at 10
@@ -95,7 +95,15 @@ export function PrivacyPage() {
           <li>row-level tenant isolation at the database layer, not just application-level filtering;</li>
           <li>role-based access control, so users only see and act on what their role permits;</li>
           <li>optional multi-factor authentication on every account;</li>
-          <li>an audit trail recording sensitive actions taken within the platform.</li>
+          <li>an audit trail recording sensitive actions taken within the platform;</li>
+          <li>
+            time-boxed, reason-logged, and automatically-expiring support access to a user&apos;s account for
+            troubleshooting, with the user notified afterward - see Section 6 of our{' '}
+            <a href="/terms" className="text-primary hover:underline">
+              Terms of Service
+            </a>{' '}
+            for how this works.
+          </li>
         </ul>
         <p>
           No system is completely secure, and we cannot guarantee absolute security, but we take reasonable

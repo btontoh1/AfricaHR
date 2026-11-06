@@ -2,7 +2,7 @@ import { LegalPageLayout } from './legal-page-layout';
 
 export function TermsPage() {
   return (
-    <LegalPageLayout title="Terms of Service" lastUpdated="26 August 2026">
+    <LegalPageLayout title="Terms of Service" lastUpdated="6 November 2026">
       <p>
         These Terms of Service (&quot;Terms&quot;) govern access to and use of ParotHR, a human resources
         and payroll platform provided by Baffour &amp; Egyir Ringlife LTD (&quot;ParotHR&quot;,
@@ -94,6 +94,43 @@ export function TermsPage() {
             Privacy Policy
           </a>
           .
+        </p>
+      </section>
+
+      <section>
+        <h2>6. Account access by our support team</h2>
+        <p>
+          To help with a support request - for example, investigating a reported error or helping you
+          configure a feature - an authorized ParotHR support engineer can access a user&apos;s account
+          within your tenant to see what that user sees, without that user&apos;s password and without you
+          having to share it. This access is:
+        </p>
+        <ul>
+          <li>
+            <strong className="text-foreground">Time-boxed</strong> - each session expires automatically
+            after 30 minutes;
+          </li>
+          <li>
+            <strong className="text-foreground">Reason-recorded</strong> - the support engineer must enter a
+            specific reason before the session can start;
+          </li>
+          <li>
+            <strong className="text-foreground">Logged</strong> - every session is recorded in your
+            tenant&apos;s audit log, attributed to the support engineer who performed it;
+          </li>
+          <li>
+            <strong className="text-foreground">Restricted</strong> - during the session, nothing can be
+            changed: no payroll approval or disbursement, no password or two-factor authentication change,
+            no deletion, and no other action that modifies data;
+          </li>
+          <li>
+            <strong className="text-foreground">Disclosed afterward</strong> - the affected user is notified
+            by email and in-app notice of the date and the stated reason once the session ends.
+          </li>
+        </ul>
+        <p>
+          We do not access a user&apos;s account without a reason tied to an active support request, and we
+          do not use this access for any other purpose.
         </p>
       </section>
 

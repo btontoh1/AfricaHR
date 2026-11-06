@@ -20,6 +20,14 @@ export interface UpdateUserProfileInput {
   email?: string;
 }
 
+export interface ActiveTenantAdmin {
+  id: string;
+  tenantId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+}
+
 export interface UserForLogin {
   id: string;
   tenantId: string | null;
@@ -53,6 +61,20 @@ export class UserRepository {
       UserForLogin[]
     >`SELECT * FROM find_user_for_login(${email})`;
     return rows[0] ?? null;
+  }
+
+  /**
+   * Cross-tenant by design: a platform-wide broadcast (e.g. "the Terms
+   * changed") needs one recipient per tenant, across every tenant at once -
+   * same genuinely-cross-tenant shape as
+   * OrganizationRepository.listPendingReview(). "users" has the
+   * nullable-tenant §4 RLS policy, but withPlatformScope only surfaces the
+   * tenant_id IS NULL rows (platform admins themselves) - a real tenant's
+   * User rows stay invisible to the sentinel, so this goes through the same
+   * §5 SECURITY DEFINER escape hatch as findByEmail.
+   */
+  findActiveTenantAdmins(): Promise<ActiveTenantAdmin[]> {
+    return this.prisma.$queryRaw<ActiveTenantAdmin[]>`SELECT * FROM find_active_tenant_admins()`;
   }
 
   findById(tenantId: string | null, id: string): Promise<User | null> {

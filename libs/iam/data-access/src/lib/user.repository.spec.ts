@@ -76,6 +76,22 @@ describe('UserRepository', () => {
     });
   });
 
+  describe('findActiveTenantAdmins', () => {
+    it('looks up via the find_active_tenant_admins SECURITY DEFINER function, bypassing tenant scoping', async () => {
+      const rows = [
+        { id: 'user-1', tenantId: 'tenant-1', email: 'admin@tenant-1.com', firstName: 'Ama', lastName: 'Owusu' },
+      ];
+      queryRaw.mockResolvedValue(rows);
+
+      const result = await repository.findActiveTenantAdmins();
+
+      expect(withTenantContext).not.toHaveBeenCalled();
+      expect(withPlatformScope).not.toHaveBeenCalled();
+      expect(queryRaw).toHaveBeenCalled();
+      expect(result).toEqual(rows);
+    });
+  });
+
   describe('findByEmailInTenant', () => {
     it('looks up within tenant scope, not via the SECURITY DEFINER function', async () => {
       const row = {

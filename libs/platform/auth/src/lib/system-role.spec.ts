@@ -284,6 +284,14 @@ describe('hasPermission', () => {
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.PLATFORM_NOTIFICATION_READ)).toBe(false);
   });
 
+  it('restricts platform-wide broadcast to platform admins', () => {
+    expect(hasPermission(SystemRole.PLATFORM_ADMIN, Permission.PLATFORM_NOTIFICATION_BROADCAST)).toBe(true);
+    expect(hasPermission(SystemRole.TENANT_ADMIN, Permission.PLATFORM_NOTIFICATION_BROADCAST)).toBe(false);
+    expect(hasPermission(SystemRole.HR_MANAGER, Permission.PLATFORM_NOTIFICATION_BROADCAST)).toBe(false);
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.PLATFORM_NOTIFICATION_BROADCAST)).toBe(false);
+    expect(hasPermission(SystemRole.EMPLOYEE, Permission.PLATFORM_NOTIFICATION_BROADCAST)).toBe(false);
+  });
+
   it('grants accountants read-only finance access and nothing else', () => {
     expect(hasPermission(SystemRole.ACCOUNTANT, Permission.FINANCE_READ)).toBe(true);
     expect(hasPermission(SystemRole.ACCOUNTANT, Permission.FINANCE_MANAGE)).toBe(false);

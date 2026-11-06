@@ -19,6 +19,7 @@ import { FinanceFeatureModule } from '@africahr/finance-feature';
 import { ApFeatureModule } from '@africahr/ap-feature';
 import { SetupModule } from './setup/setup.module';
 import { TenantAuthModule } from './tenant-auth/tenant-auth.module';
+import { PlatformBroadcastModule } from './platform-broadcast/platform-broadcast.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { TenantAuthModule } from './tenant-auth/tenant-auth.module';
     HealthModule,
     SetupModule,
     TenantAuthModule,
+    PlatformBroadcastModule,
     IamFeatureModule,
     TenancyFeatureModule,
     EmployeeFeatureModule,

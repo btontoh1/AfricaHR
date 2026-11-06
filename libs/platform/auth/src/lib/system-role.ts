@@ -124,6 +124,12 @@ export const Permission = {
   // those emails go through. No tenant-level counterpart, same reasoning
   // as PLATFORM_AUDIT_READ/PLATFORM_DISBURSEMENT_READ.
   PLATFORM_NOTIFICATION_READ: 'platform:notification:read',
+  // Deliberately its own permission, not folded into PLATFORM_NOTIFICATION_READ
+  // above - that one is read-only (the delivery-health dashboard), this one
+  // sends a real email + in-app notice to every tenant's admin at once, a
+  // materially different and separately auditable grant (same reasoning as
+  // PLATFORM_USER_IMPERSONATE being split from PLATFORM_TENANT_MANAGE).
+  PLATFORM_NOTIFICATION_BROADCAST: 'platform:notification:broadcast',
   // An organization's own external billing tool (customers it invoices),
   // not an internal HR function - deliberately granted to ORG_ADMIN despite
   // that role otherwise being scoped to employees only (see ORG_ADMIN's own
@@ -198,6 +204,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.PLATFORM_AUDIT_READ,
     Permission.PLATFORM_DISBURSEMENT_READ,
     Permission.PLATFORM_NOTIFICATION_READ,
+    Permission.PLATFORM_NOTIFICATION_BROADCAST,
     Permission.HOW_IT_WORKS_MANAGE,
   ],
   [SystemRole.TENANT_ADMIN]: [

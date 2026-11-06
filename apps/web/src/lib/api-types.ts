@@ -1033,6 +1033,168 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/platform-admin/notifications/broadcast": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Email + in-app notice to every active tenant's admin at once */
+        post: operations["PlatformBroadcastController_send"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/notification-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["NotificationTemplateController_list"];
+        put?: never;
+        post: operations["NotificationTemplateController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/notification-templates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["NotificationTemplateController_findById"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["NotificationTemplateController_update"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/notifications/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyNotificationController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/notifications/me/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MyNotificationController_markRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/notifications/me/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["MyNotificationController_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["NotificationController_list"];
+        put?: never;
+        post: operations["NotificationController_send"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/notifications/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["NotificationController_findById"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/notifications/from-template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["NotificationController_sendFromTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform-admin/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cross-tenant email delivery health for the platform admin dashboard */
+        get: operations["PlatformNotificationController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/employees": {
         parameters: {
             query?: never;
@@ -2606,151 +2768,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/notification-templates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["NotificationTemplateController_list"];
-        put?: never;
-        post: operations["NotificationTemplateController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/notification-templates/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["NotificationTemplateController_findById"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: operations["NotificationTemplateController_update"];
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/notifications/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["MyNotificationController_list"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/notifications/me/{id}/read": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["MyNotificationController_markRead"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/notifications/me/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete: operations["MyNotificationController_delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/notifications": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["NotificationController_list"];
-        put?: never;
-        post: operations["NotificationController_send"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/notifications/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["NotificationController_findById"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/notifications/from-template": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["NotificationController_sendFromTemplate"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/platform-admin/notifications": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Cross-tenant email delivery health for the platform admin dashboard */
-        get: operations["PlatformNotificationController_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/tenants/{tenantId}/subscription": {
         parameters: {
             query?: never;
@@ -4211,6 +4228,118 @@ export interface components {
             /** @description No refresh token is issued for an impersonation session - once this expires, the session is simply over. */
             expiresInSeconds: number;
         };
+        BroadcastNotificationDto: {
+            /**
+             * @description Short, human-readable subject line
+             * @example Updated Terms of Service
+             */
+            subject: string;
+            /**
+             * @description Plain-text body sent by email and shown in-app
+             * @example We've updated our Terms of Service to describe how our support team accesses accounts for troubleshooting. See https://parothr.com/terms for details.
+             */
+            body: string;
+        };
+        BroadcastResultDto: {
+            /** @description How many tenants had an active TENANT_ADMIN to notify */
+            recipientCount: number;
+            /** @description How many individual email/in-app deliveries failed - a failure here never aborts the rest of the broadcast */
+            failureCount: number;
+        };
+        NotificationTemplateResponseDto: {
+            id: string;
+            tenantId: string;
+            code: string;
+            name: string;
+            /** @enum {string} */
+            channel: "IN_APP" | "EMAIL";
+            subjectTemplate: string;
+            bodyTemplate: string;
+            isActive: boolean;
+            createdAt: string;
+            updatedAt: string;
+        };
+        CreateNotificationTemplateDto: {
+            /**
+             * @description Unique within the tenant
+             * @example LEAVE_APPROVED
+             */
+            code: string;
+            name: string;
+            /** @enum {string} */
+            channel: "IN_APP" | "EMAIL";
+            /** @example Your leave request was approved */
+            subjectTemplate: string;
+            /** @example Hi {{firstName}}, your leave from {{startDate}} to {{endDate}} was approved. */
+            bodyTemplate: string;
+        };
+        UpdateNotificationTemplateDto: {
+            name?: string;
+            subjectTemplate?: string;
+            bodyTemplate?: string;
+            isActive?: boolean;
+        };
+        NotificationResponseDto: {
+            id: string;
+            tenantId: string;
+            userId: string;
+            /** @enum {string} */
+            channel: "IN_APP" | "EMAIL";
+            subject: string;
+            body: string;
+            /** @enum {string} */
+            status: "PENDING" | "SENT" | "FAILED";
+            isRead: boolean;
+            readAt?: string | null;
+            sentAt?: string | null;
+            failureReason?: string | null;
+            createdAt: string;
+            updatedAt: string;
+        };
+        SendNotificationDto: {
+            /** @description The User (not Employee) who will receive this notification */
+            userId: string;
+            /** @enum {string} */
+            channel: "IN_APP" | "EMAIL";
+            subject: string;
+            body: string;
+        };
+        SendFromTemplateDto: {
+            /** @description The User (not Employee) who will receive this notification */
+            userId: string;
+            templateId: string;
+            /**
+             * @example {
+             *       "firstName": "Ama",
+             *       "startDate": "2026-06-08"
+             *     }
+             */
+            variables?: {
+                [key: string]: string;
+            };
+        };
+        NotificationDeliveryCountsDto: {
+            sent: number;
+            failed: number;
+            pending: number;
+        };
+        FailedNotificationDto: {
+            id: string;
+            tenantId: string;
+            tenantName?: string | null;
+            userId: string;
+            userEmail: string;
+            userFirstName: string;
+            userLastName: string;
+            subject: string;
+            failureReason?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        NotificationDeliveryResponseDto: {
+            counts: components["schemas"]["NotificationDeliveryCountsDto"];
+            failed: components["schemas"]["FailedNotificationDto"][];
+        };
         FamilyMemberDto: {
             /** @enum {string} */
             relationship: "PARENT" | "CHILD";
@@ -5154,100 +5283,6 @@ export interface components {
             openRequisitions: number;
             applicationsByStage: components["schemas"]["ApplicationsByStageResponseDto"][];
             averageTimeToHireDays: number;
-        };
-        NotificationTemplateResponseDto: {
-            id: string;
-            tenantId: string;
-            code: string;
-            name: string;
-            /** @enum {string} */
-            channel: "IN_APP" | "EMAIL";
-            subjectTemplate: string;
-            bodyTemplate: string;
-            isActive: boolean;
-            createdAt: string;
-            updatedAt: string;
-        };
-        CreateNotificationTemplateDto: {
-            /**
-             * @description Unique within the tenant
-             * @example LEAVE_APPROVED
-             */
-            code: string;
-            name: string;
-            /** @enum {string} */
-            channel: "IN_APP" | "EMAIL";
-            /** @example Your leave request was approved */
-            subjectTemplate: string;
-            /** @example Hi {{firstName}}, your leave from {{startDate}} to {{endDate}} was approved. */
-            bodyTemplate: string;
-        };
-        UpdateNotificationTemplateDto: {
-            name?: string;
-            subjectTemplate?: string;
-            bodyTemplate?: string;
-            isActive?: boolean;
-        };
-        NotificationResponseDto: {
-            id: string;
-            tenantId: string;
-            userId: string;
-            /** @enum {string} */
-            channel: "IN_APP" | "EMAIL";
-            subject: string;
-            body: string;
-            /** @enum {string} */
-            status: "PENDING" | "SENT" | "FAILED";
-            isRead: boolean;
-            readAt?: string | null;
-            sentAt?: string | null;
-            failureReason?: string | null;
-            createdAt: string;
-            updatedAt: string;
-        };
-        SendNotificationDto: {
-            /** @description The User (not Employee) who will receive this notification */
-            userId: string;
-            /** @enum {string} */
-            channel: "IN_APP" | "EMAIL";
-            subject: string;
-            body: string;
-        };
-        SendFromTemplateDto: {
-            /** @description The User (not Employee) who will receive this notification */
-            userId: string;
-            templateId: string;
-            /**
-             * @example {
-             *       "firstName": "Ama",
-             *       "startDate": "2026-06-08"
-             *     }
-             */
-            variables?: {
-                [key: string]: string;
-            };
-        };
-        NotificationDeliveryCountsDto: {
-            sent: number;
-            failed: number;
-            pending: number;
-        };
-        FailedNotificationDto: {
-            id: string;
-            tenantId: string;
-            tenantName?: string | null;
-            userId: string;
-            userEmail: string;
-            userFirstName: string;
-            userLastName: string;
-            subject: string;
-            failureReason?: string | null;
-            /** Format: date-time */
-            createdAt: string;
-        };
-        NotificationDeliveryResponseDto: {
-            counts: components["schemas"]["NotificationDeliveryCountsDto"];
-            failed: components["schemas"]["FailedNotificationDto"][];
         };
         SubscriptionResponseDto: {
             id: string;
@@ -8164,6 +8199,303 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuthResponseDto"] | components["schemas"]["MfaChallengeResponseDto"];
+                };
+            };
+        };
+    };
+    PlatformBroadcastController_send: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BroadcastNotificationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BroadcastResultDto"];
+                };
+            };
+        };
+    };
+    NotificationTemplateController_list: {
+        parameters: {
+            query?: {
+                activeOnly?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationTemplateResponseDto"][];
+                };
+            };
+        };
+    };
+    NotificationTemplateController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateNotificationTemplateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationTemplateResponseDto"];
+                };
+            };
+        };
+    };
+    NotificationTemplateController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationTemplateResponseDto"];
+                };
+            };
+        };
+    };
+    NotificationTemplateController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateNotificationTemplateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationTemplateResponseDto"];
+                };
+            };
+        };
+    };
+    MyNotificationController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationResponseDto"][];
+                };
+            };
+        };
+    };
+    MyNotificationController_markRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationResponseDto"];
+                };
+            };
+        };
+    };
+    MyNotificationController_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    NotificationController_list: {
+        parameters: {
+            query?: {
+                userId?: string;
+                status?: unknown;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationResponseDto"][];
+                };
+            };
+        };
+    };
+    NotificationController_send: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendNotificationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationResponseDto"];
+                };
+            };
+        };
+    };
+    NotificationController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationResponseDto"];
+                };
+            };
+        };
+    };
+    NotificationController_sendFromTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendFromTemplateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationResponseDto"];
+                };
+            };
+        };
+    };
+    PlatformNotificationController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationDeliveryResponseDto"];
                 };
             };
         };
@@ -11161,280 +11493,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RecruitmentPipelineReportResponseDto"];
-                };
-            };
-        };
-    };
-    NotificationTemplateController_list: {
-        parameters: {
-            query?: {
-                activeOnly?: string;
-            };
-            header?: never;
-            path: {
-                tenantId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationTemplateResponseDto"][];
-                };
-            };
-        };
-    };
-    NotificationTemplateController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateNotificationTemplateDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationTemplateResponseDto"];
-                };
-            };
-        };
-    };
-    NotificationTemplateController_findById: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationTemplateResponseDto"];
-                };
-            };
-        };
-    };
-    NotificationTemplateController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateNotificationTemplateDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationTemplateResponseDto"];
-                };
-            };
-        };
-    };
-    MyNotificationController_list: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationResponseDto"][];
-                };
-            };
-        };
-    };
-    MyNotificationController_markRead: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationResponseDto"];
-                };
-            };
-        };
-    };
-    MyNotificationController_delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    NotificationController_list: {
-        parameters: {
-            query?: {
-                userId?: string;
-                status?: unknown;
-            };
-            header?: never;
-            path: {
-                tenantId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationResponseDto"][];
-                };
-            };
-        };
-    };
-    NotificationController_send: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SendNotificationDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationResponseDto"];
-                };
-            };
-        };
-    };
-    NotificationController_findById: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationResponseDto"];
-                };
-            };
-        };
-    };
-    NotificationController_sendFromTemplate: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SendFromTemplateDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationResponseDto"];
-                };
-            };
-        };
-    };
-    PlatformNotificationController_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationDeliveryResponseDto"];
                 };
             };
         };

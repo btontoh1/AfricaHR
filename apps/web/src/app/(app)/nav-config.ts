@@ -58,6 +58,7 @@ import {
   ReceiptText,
   Tags,
   LifeBuoy,
+  Megaphone,
 } from 'lucide-react';
 import type { SessionUser } from '@/lib/session';
 
@@ -182,6 +183,9 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
           : []),
         ...(isPlatformAdmin
           ? [{ label: 'Demo Requests', href: '/platform-admin/demo-requests', icon: Presentation }]
+          : []),
+        ...(isPlatformAdmin
+          ? [{ label: 'Broadcast', href: '/platform-admin/broadcast', icon: Megaphone }]
           : []),
       ],
     },

@@ -39,12 +39,35 @@ export function clearAuthCookies(response: NextResponse): void {
   response.cookies.delete(REFRESH_TOKEN_COOKIE);
 }
 
+// Mirrors JwtTokenService.IMPERSONATION_TOKEN_TTL_SECONDS on the backend.
+const IMPERSONATION_TOKEN_MAX_AGE_SECONDS = 30 * 60;
+
+/**
+ * Starting (or naturally continuing) an impersonation session only ever
+ * touches this one cookie - the admin's own REFRESH_TOKEN_COOKIE is left
+ * exactly as it was, so the existing /api/auth/refresh route is already
+ * "exit impersonation": it mints a fresh ACCESS_TOKEN_COOKIE for the admin
+ * from a refresh token that was never overwritten.
+ */
+export function setImpersonationAccessTokenCookie(
+  response: NextResponse,
+  accessToken: string,
+): void {
+  response.cookies.set(ACCESS_TOKEN_COOKIE, accessToken, {
+    ...baseCookieOptions,
+    maxAge: IMPERSONATION_TOKEN_MAX_AGE_SECONDS,
+  });
+}
+
 /**
  * Deliberately not part of setAuthCookies/clearAuthCookies above - a
  * device token is independent of the session (it survives logout; only
  * "forget this device" or disabling MFA should remove it).
  */
-export function setDeviceTokenCookie(response: NextResponse, deviceToken: string): void {
+export function setDeviceTokenCookie(
+  response: NextResponse,
+  deviceToken: string,
+): void {
   response.cookies.set(DEVICE_TOKEN_COOKIE, deviceToken, {
     ...baseCookieOptions,
     maxAge: DEVICE_TOKEN_MAX_AGE_SECONDS,

@@ -1000,6 +1000,22 @@ export interface paths {
         patch: operations["PlatformTenantUsersController_setActive"];
         trace?: never;
     };
+    "/api/tenants/{tenantId}/users/{id}/impersonate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PlatformTenantUsersController_impersonate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{slug}/login": {
         parameters: {
             query?: never;
@@ -4181,6 +4197,19 @@ export interface components {
         };
         UpdateUserActiveDto: {
             isActive: boolean;
+        };
+        ImpersonateUserDto: {
+            /**
+             * @description Why this session is needed - stored with the audit entry and included in the notice sent to the impersonated user, so it must be a real, specific reason, not a placeholder.
+             * @example Investigating payroll error #412 reported by the tenant
+             */
+            reason: string;
+        };
+        ImpersonationTokenResponseDto: {
+            /** @description Short-lived access token for the impersonated user - carries an `act` claim naming the acting admin. */
+            accessToken: string;
+            /** @description No refresh token is issued for an impersonation session - once this expires, the session is simply over. */
+            expiresInSeconds: number;
         };
         FamilyMemberDto: {
             /** @enum {string} */
@@ -8081,6 +8110,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserResponseDto"];
+                };
+            };
+        };
+    };
+    PlatformTenantUsersController_impersonate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImpersonateUserDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImpersonationTokenResponseDto"];
                 };
             };
         };

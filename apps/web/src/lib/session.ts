@@ -27,6 +27,13 @@ export interface SessionUser {
   organizationId: string | null;
   iat: number;
   exp: number;
+  /**
+   * Present only when this session is a platform admin impersonating this
+   * user (see the backend's JwtPayload.act) - names the real actor driving
+   * the session, so the UI can render the "Viewing as ... " banner. Every
+   * other field above still describes the impersonated user themselves.
+   */
+  act?: { sub: string; email: string };
 }
 
 export function decodeAccessToken(token: string): SessionUser | null {

@@ -13,7 +13,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Logo } from '@/components/logo';
 import { NewNotificationWatcher } from '@/features/notifications/new-notification-watcher';
@@ -25,6 +30,7 @@ import { useOrganization } from '@/features/organizations/queries';
 import { cn } from '@/lib/utils';
 import type { SessionUser } from '@/lib/session';
 import { buildNavGroups, type NavGroup } from './nav-config';
+import { ImpersonationBanner } from './impersonation-banner';
 
 function NavLink({
   href,
@@ -57,7 +63,15 @@ function NavLink({
   );
 }
 
-function NavGroups({ groups, pathname, onNavigate }: { groups: NavGroup[]; pathname: string; onNavigate?: () => void }) {
+function NavGroups({
+  groups,
+  pathname,
+  onNavigate,
+}: {
+  groups: NavGroup[];
+  pathname: string;
+  onNavigate?: () => void;
+}) {
   return (
     <nav className="flex flex-col gap-5">
       {groups.map((group) => (
@@ -71,7 +85,9 @@ function NavGroups({ groups, pathname, onNavigate }: { groups: NavGroup[]; pathn
               href={item.href}
               label={item.label}
               Icon={item.icon}
-              active={pathname === item.href || pathname.startsWith(`${item.href}/`)}
+              active={
+                pathname === item.href || pathname.startsWith(`${item.href}/`)
+              }
               onNavigate={onNavigate}
             />
           ))}
@@ -83,16 +99,30 @@ function NavGroups({ groups, pathname, onNavigate }: { groups: NavGroup[]; pathn
 
 // Falls back to the default ParotHR mark and name when a tenant hasn't
 // uploaded their own logo, or has no tenant at all (PLATFORM_ADMIN).
-function BrandMark({ logoUrl, tenantName }: { logoUrl?: string | null; tenantName?: string | null }) {
+function BrandMark({
+  logoUrl,
+  tenantName,
+}: {
+  logoUrl?: string | null;
+  tenantName?: string | null;
+}) {
   return (
     <div className="flex items-center gap-2 px-2">
       <Logo className="size-8 rounded-lg" src={logoUrl} />
-      <span className="truncate text-lg font-semibold tracking-tight">{tenantName ?? 'ParotHR'}</span>
+      <span className="truncate text-lg font-semibold tracking-tight">
+        {tenantName ?? 'ParotHR'}
+      </span>
     </div>
   );
 }
 
-export function AppShell({ user, children }: { user: SessionUser; children: React.ReactNode }) {
+export function AppShell({
+  user,
+  children,
+}: {
+  user: SessionUser;
+  children: React.ReactNode;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -103,7 +133,10 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
   // otherwise see "NALAG" rather than the specific member organization
   // they actually manage.
   const isOrgAdmin = user.role === 'ORG_ADMIN';
-  const { data: organization } = useOrganization(user.tenantId ?? '', user.organizationId ?? '');
+  const { data: organization } = useOrganization(
+    user.tenantId ?? '',
+    user.organizationId ?? '',
+  );
   const brandName = isOrgAdmin ? organization?.legalName : tenant?.name;
 
   async function handleLogout() {
@@ -117,31 +150,38 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
   const isPlatformAdmin = user.role === 'PLATFORM_ADMIN';
 
   return (
-    <div className="flex min-h-screen bg-background">
-      {user.tenantId && <NewNotificationWatcher tenantId={user.tenantId} />}
-      {isPlatformAdmin && <NewDemoRequestWatcher />}
+    <div className="flex min-h-screen flex-col bg-background">
+      <ImpersonationBanner user={user} />
+      <div className="flex min-h-0 flex-1">
+        {user.tenantId && <NewNotificationWatcher tenantId={user.tenantId} />}
+        {isPlatformAdmin && <NewDemoRequestWatcher />}
 
-      {/* Desktop sidebar */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card px-3 py-5 lg:flex print:hidden">
-        <BrandMark logoUrl={tenant?.logoUrl} tenantName={brandName} />
-        <div className="mt-6 flex-1 overflow-y-auto">
-          <NavGroups groups={navGroups} pathname={pathname} />
-        </div>
-      </aside>
+        {/* Desktop sidebar */}
+        <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card px-3 py-5 lg:flex print:hidden">
+          <BrandMark logoUrl={tenant?.logoUrl} tenantName={brandName} />
+          <div className="mt-6 flex-1 overflow-y-auto">
+            <NavGroups groups={navGroups} pathname={pathname} />
+          </div>
+        </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 items-center justify-between border-b border-border bg-card/60 px-4 backdrop-blur-sm supports-backdrop-filter:bg-card/60 lg:px-6 print:hidden">
-          <div className="flex items-center gap-2">
-            {/* Mobile nav trigger */}
-            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open navigation">
-                  <Menu className="size-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-72 p-0">
-                <SheetTitle className="sr-only">Navigation</SheetTitle>
-                {/* SheetContent is a fixed, viewport-height box (h-full), not
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="flex h-16 items-center justify-between border-b border-border bg-card/60 px-4 backdrop-blur-sm supports-backdrop-filter:bg-card/60 lg:px-6 print:hidden">
+            <div className="flex items-center gap-2">
+              {/* Mobile nav trigger */}
+              <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="lg:hidden"
+                    aria-label="Open navigation"
+                  >
+                    <Menu className="size-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-72 p-0">
+                  <SheetTitle className="sr-only">Navigation</SheetTitle>
+                  {/* SheetContent is a fixed, viewport-height box (h-full), not
                     part of document flow like the desktop <aside> below - so
                     without an explicit scroll region here, a nav list taller
                     than the screen just gets clipped at the bottom with no
@@ -149,60 +189,78 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
                     flex items default to min-height:auto, which blocks them
                     from ever shrinking enough to trigger their own
                     overflow-y-auto scrollbar. */}
-                <div className="flex h-full min-h-0 flex-col px-3 py-5">
-                  <BrandMark logoUrl={tenant?.logoUrl} tenantName={brandName} />
-                  <div className="mt-6 min-h-0 flex-1 overflow-y-auto">
-                    <NavGroups groups={navGroups} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+                  <div className="flex h-full min-h-0 flex-col px-3 py-5">
+                    <BrandMark
+                      logoUrl={tenant?.logoUrl}
+                      tenantName={brandName}
+                    />
+                    <div className="mt-6 min-h-0 flex-1 overflow-y-auto">
+                      <NavGroups
+                        groups={navGroups}
+                        pathname={pathname}
+                        onNavigate={() => setMobileOpen(false)}
+                      />
+                    </div>
                   </div>
-                </div>
-              </SheetContent>
-            </Sheet>
-            <span className="text-sm text-muted-foreground">
-              {user.tenantId
-                ? brandName
-                  ? isOrgAdmin
-                    ? `Organization - ${brandName}`
-                    : `Tenant - ${brandName}`
-                  : null
-                : 'Platform Admin'}
-            </span>
-          </div>
+                </SheetContent>
+              </Sheet>
+              <span className="text-sm text-muted-foreground">
+                {user.tenantId
+                  ? brandName
+                    ? isOrgAdmin
+                      ? `Organization - ${brandName}`
+                      : `Tenant - ${brandName}`
+                    : null
+                  : 'Platform Admin'}
+              </span>
+            </div>
 
-          <div className="flex items-center gap-1">
-            {user.tenantId && <NotificationBell tenantId={user.tenantId} />}
-            {isPlatformAdmin && <DemoRequestBell />}
-            <ThemeToggle />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2 px-2">
-                  <Avatar className="size-8">
-                    <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="hidden text-sm font-medium sm:inline">{user.email}</span>
-                  <ChevronDown className="size-4 text-muted-foreground" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-sm font-medium">{user.email}</span>
-                    <span className="text-xs text-muted-foreground">{user.role.replace(/_/g, ' ')}</span>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} variant="destructive">
-                  <LogOut className="size-4" />
-                  Log out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </header>
-        <main className="flex-1 overflow-y-auto p-4 lg:p-8 print:overflow-visible print:p-0">
-          {children}
-        </main>
+            <div className="flex items-center gap-1">
+              {user.tenantId && <NotificationBell tenantId={user.tenantId} />}
+              {isPlatformAdmin && <DemoRequestBell />}
+              <ThemeToggle />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="flex items-center gap-2 px-2"
+                  >
+                    <Avatar className="size-8">
+                      <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="hidden text-sm font-medium sm:inline">
+                      {user.email}
+                    </span>
+                    <ChevronDown className="size-4 text-muted-foreground" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm font-medium">{user.email}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {user.role.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    variant="destructive"
+                  >
+                    <LogOut className="size-4" />
+                    Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </header>
+          <main className="flex-1 overflow-y-auto p-4 lg:p-8 print:overflow-visible print:p-0">
+            {children}
+          </main>
+        </div>
       </div>
     </div>
   );

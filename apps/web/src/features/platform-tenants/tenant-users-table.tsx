@@ -2,9 +2,14 @@
 
 import { toast } from 'sonner';
 import { Users } from 'lucide-react';
-import { useTenantUsers, useUpdateTenantUserActive, useUpdateTenantUserRole } from './queries';
+import {
+  useTenantUsers,
+  useUpdateTenantUserActive,
+  useUpdateTenantUserRole,
+} from './queries';
 import { EditTenantUserProfileDialog } from './edit-tenant-user-profile-dialog';
 import { ResetTenantUserPasswordDialog } from './reset-tenant-user-password-dialog';
+import { ImpersonateUserDialog } from './impersonate-user-dialog';
 import type { SystemRole } from '@/features/iam/types';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Badge } from '@/components/ui/badge';
@@ -13,8 +18,21 @@ import { EmptyState } from '@/components/empty-state';
 import { ErrorState } from '@/components/error-state';
 import { TableSkeleton } from '@/components/loading-state';
 import { TableCard } from '@/components/table-card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 // A tenant-scoped list never includes PLATFORM_ADMIN (that role always has
 // tenantId: null), so this is exhaustive for what this table will ever
@@ -33,9 +51,9 @@ const ROLE_LABEL: Record<Exclude<SystemRole, 'PLATFORM_ADMIN'>, string> = {
 // nowhere to collect the organizationId it requires, same reasoning as
 // team-members-list.tsx's RoleControl. An existing ORG_ADMIN row renders
 // ROLE_LABEL as fixed text instead of this Select (see below).
-const ASSIGNABLE_ROLES = (Object.keys(ROLE_LABEL) as (keyof typeof ROLE_LABEL)[]).filter(
-  (role) => role !== 'ORG_ADMIN',
-);
+const ASSIGNABLE_ROLES = (
+  Object.keys(ROLE_LABEL) as (keyof typeof ROLE_LABEL)[]
+).filter((role) => role !== 'ORG_ADMIN');
 
 export function TenantUsersTable({ tenantId }: { tenantId: string }) {
   const { data: users, isLoading, isError, error } = useTenantUsers(tenantId);
@@ -47,11 +65,19 @@ export function TenantUsersTable({ tenantId }: { tenantId: string }) {
   }
 
   if (isError) {
-    return <ErrorState message={getApiErrorMessage(error, 'Failed to load users')} />;
+    return (
+      <ErrorState message={getApiErrorMessage(error, 'Failed to load users')} />
+    );
   }
 
   if (!users || users.length === 0) {
-    return <EmptyState icon={Users} title="No users yet" description="Add the first user with the button above." />;
+    return (
+      <EmptyState
+        icon={Users}
+        title="No users yet"
+        description="Add the first user with the button above."
+      />
+    );
   }
 
   async function handleRoleChange(id: string, role: SystemRole) {
@@ -90,14 +116,18 @@ export function TenantUsersTable({ tenantId }: { tenantId: string }) {
               <TableCell>
                 {user.firstName} {user.lastName}
               </TableCell>
-              <TableCell className="text-muted-foreground">{user.email}</TableCell>
+              <TableCell className="text-muted-foreground">
+                {user.email}
+              </TableCell>
               <TableCell>
                 {user.role === 'ORG_ADMIN' ? (
                   <span className="text-sm">{ROLE_LABEL.ORG_ADMIN}</span>
                 ) : (
                   <Select
                     value={user.role}
-                    onValueChange={(value) => handleRoleChange(user.id, value as SystemRole)}
+                    onValueChange={(value) =>
+                      handleRoleChange(user.id, value as SystemRole)
+                    }
                   >
                     <SelectTrigger className="h-8 w-40">
                       <SelectValue />
@@ -113,13 +143,28 @@ export function TenantUsersTable({ tenantId }: { tenantId: string }) {
                 )}
               </TableCell>
               <TableCell>
-                <Badge variant={user.isActive ? 'success' : 'outline'}>{user.isActive ? 'Active' : 'Inactive'}</Badge>
+                <Badge variant={user.isActive ? 'success' : 'outline'}>
+                  {user.isActive ? 'Active' : 'Inactive'}
+                </Badge>
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
-                  <EditTenantUserProfileDialog tenantId={tenantId} user={user} />
-                  <ResetTenantUserPasswordDialog tenantId={tenantId} user={user} />
-                  <Button variant="outline" size="sm" onClick={() => handleActiveToggle(user.id, user.isActive)}>
+                  <EditTenantUserProfileDialog
+                    tenantId={tenantId}
+                    user={user}
+                  />
+                  <ResetTenantUserPasswordDialog
+                    tenantId={tenantId}
+                    user={user}
+                  />
+                  {user.isActive && (
+                    <ImpersonateUserDialog tenantId={tenantId} user={user} />
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleActiveToggle(user.id, user.isActive)}
+                  >
                     {user.isActive ? 'Deactivate' : 'Activate'}
                   </Button>
                 </div>

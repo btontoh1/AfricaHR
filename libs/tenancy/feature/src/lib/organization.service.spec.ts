@@ -39,6 +39,7 @@ describe('OrganizationService', () => {
     countryCode: 'GH',
     registrationNumber: 'BN-12345',
     taxIdentificationNumber: null,
+    address: null,
     metadata: null,
     logoStorageKey: null,
     verificationStatus: OrganizationVerificationStatus.UNVERIFIED,

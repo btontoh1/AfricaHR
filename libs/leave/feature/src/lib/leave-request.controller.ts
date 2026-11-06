@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
   assertTenantScope,
@@ -12,6 +12,7 @@ import {
 import { LeaveRequestStatus } from '@prisma/client';
 import { LeaveRequestService } from './leave-request.service';
 import { RejectLeaveRequestDto } from './dto/reject-leave-request.dto';
+import { UpdateLeaveRequestDto } from './dto/update-leave-request.dto';
 import { LeaveRequestResponseDto } from './dto/leave-request-response.dto';
 import { AdjustLeaveBalanceDto } from './dto/adjust-leave-balance.dto';
 import { LeaveBalanceResponseDto } from './dto/leave-balance-response.dto';
@@ -48,6 +49,19 @@ export class LeaveRequestController {
   ) {
     assertTenantScope(actor, tenantId);
     return this.leaveRequests.findById(tenantId, id);
+  }
+
+  @Patch(':id')
+  @RequirePermissions(Permission.LEAVE_MANAGE)
+  @ApiOkResponse({ type: LeaveRequestResponseDto })
+  update(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateLeaveRequestDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.leaveRequests.update(tenantId, id, dto, actor.sub);
   }
 
   @Post(':id/approve')

@@ -1,6 +1,15 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { assertTenantScope, CurrentUser, JwtAuthGuard, PermissionsGuard, RequestUser } from '@africahr/platform-auth';
+import {
+  AddOnGuard,
+  assertTenantScope,
+  CurrentUser,
+  JwtAuthGuard,
+  PermissionsGuard,
+  RequestUser,
+  RequireAddOn,
+} from '@africahr/platform-auth';
+import { AddOnModule } from '@prisma/client';
 import { PerformanceGoalService } from './performance-goal.service';
 import { CreatePerformanceGoalDto } from './dto/create-performance-goal.dto';
 import { PerformanceGoalResponseDto } from './dto/performance-goal-response.dto';
@@ -15,7 +24,8 @@ import { UpdatePerformanceGoalDto } from './dto/update-performance-goal.dto';
  */
 @ApiTags('performance-goals')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, AddOnGuard)
+@RequireAddOn(AddOnModule.PERFORMANCE)
 @Controller('tenants/:tenantId/performance-goals/me')
 export class MyPerformanceGoalController {
   constructor(private readonly goals: PerformanceGoalService) {}

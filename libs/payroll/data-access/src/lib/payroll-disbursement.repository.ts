@@ -12,6 +12,8 @@ export interface StalePendingDisbursement {
   id: string;
   tenantId: string;
   paystackTransferReference: string;
+  /** Picks which Paystack account's client to verify this transfer against - see PaystackTransferClientRegistry.forCurrency. */
+  currency: string;
 }
 
 export interface DisbursementNeedingAttention {
@@ -41,6 +43,7 @@ interface RawStalePendingDisbursementRow {
   id: string;
   tenantId: string;
   paystackTransferReference: string;
+  currency: string;
 }
 
 interface RawDisbursementNeedingAttentionRow extends Omit<DisbursementNeedingAttention, 'netPay'> {

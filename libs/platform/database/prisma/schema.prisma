@@ -37,6 +37,32 @@ enum VerificationDocumentType {
   OTHER
 }
 
+/// Which goal-categorization scheme a tenant's Performance Management
+/// module uses. BALANCED_SCORECARD is aimed at financial-services/bank
+/// tenants that organize goals into the 4 BSC perspectives (see
+/// GoalPerspective) rather than tracking goals uncategorized.
+enum PerformanceFramework {
+  STANDARD
+  BALANCED_SCORECARD
+}
+
+/// Modules that can be gated behind a paid add-on (see Tenant.enabledAddOns
+/// and AddOnGuard/@RequireAddOn in @africahr/platform-auth). Fixed,
+/// code-defined catalog, same convention as Permission/SystemRole - tenants
+/// don't get to invent their own add-ons.
+enum AddOnModule {
+  INVOICING
+  /// Unlike INVOICING (opt-in, off by default), RECRUITMENT and
+  /// PERFORMANCE existed as core features before add-on gating was
+  /// introduced - every tenant gets both by default (see the migration
+  /// that added these two values, and TenantService.create) and a
+  /// platform admin opts a tenant OUT rather than in.
+  RECRUITMENT
+  PERFORMANCE
+  /// Opt-in, off by default - same convention as INVOICING.
+  FINANCE
+}
+
 /// The SaaS account. Platform-root table — no tenantId, no RLS.
 model Tenant {
   id       String       @id @default(uuid())
@@ -53,6 +79,19 @@ model Tenant {
   // OrganizationVerificationDocument.storageKey.
   logoStorageKey String? @map("logo_storage_key")
 
+  // Tenant Admin self-service toggle (see TenantMeController) - no separate
+  // settings table since this is the only per-tenant module-behavior flag
+  // that exists today; a JSON/table-based settings scheme can replace this
+  // if/when a second one is needed.
+  performanceFramework PerformanceFramework @default(STANDARD) @map("performance_framework")
+
+  // Platform-admin-only, manual toggle (see TenantController's add-ons
+  // endpoint) - enabling/disabling happens after payment is handled outside
+  // the app, same "no tenant self-serve checkout" v1 pattern as Subscription.
+  // A Postgres array directly on Tenant rather than a join table - simplest
+  // fit for a small, code-defined, rarely-changing catalog (see AddOnModule).
+  enabledAddOns AddOnModule[] @default([]) @map("enabled_add_ons")
+
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
@@ -63,8 +102,34 @@ model Tenant {
   users         User[]
   subscription  Subscription?
   invoices      Invoice[]
+  payrollWallets  TenantPayrollWallet[]
+  walletTopUps    TenantWalletTopUp[]
 
   @@map("tenants")
+}
+
+/// A "Book a demo" submission from the public marketing site
+/// (apps/web/src/features/marketing) — pre-tenant, platform-root, same as
+/// Tenant itself: no tenantId, no RLS. No status workflow in v1 beyond
+/// viewedAt (null until a platform admin opens the list, see
+/// DemoRequestService.markAllViewed) — follow-up itself happens outside the
+/// system.
+model DemoRequest {
+  id                String    @id @default(uuid())
+  fullName          String    @map("full_name")
+  email             String
+  phoneNumber       String    @map("phone_number")
+  isWhatsapp        Boolean   @default(false) @map("is_whatsapp")
+  organizationName  String    @map("organization_name")
+  numberOfEmployees String?   @map("number_of_employees")
+  preferredDate     String?   @map("preferred_date")
+  preferredTime     String?   @map("preferred_time")
+  viewedAt          DateTime? @map("viewed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("demo_requests")
 }
 
 enum SubscriptionStatus {
@@ -145,6 +210,131 @@ model Invoice {
   @@map("invoices")
 }
 
+/// A tenant's pre-funded payroll balance, broken out per currency ("never
+/// blend currencies" - same convention as GL/payroll cost reports, since a
+/// tenant can run payroll in more than one country's currency). Real
+/// Paystack Transfers (see payroll's PaystackTransferClient) draw from
+/// ParotHR's own single Paystack balance, not a per-tenant sub-account, so
+/// this is purely ParotHR's own internal ledger of how much of that shared
+/// balance belongs to which tenant - it exists so a pay run can't be marked
+/// paid, and transfers attempted, for more than a tenant has actually paid
+/// in (see PayRunService.markPaid's reserveForDisbursement call). Funded
+/// only via TenantWalletTopUp (a real Paystack transaction - see that
+/// model's own comment for why a wallet credit can never come from
+/// anywhere else).
+model TenantPayrollWallet {
+  id       String  @id @default(uuid())
+  tenantId String  @map("tenant_id")
+  currency String
+  balance  Decimal @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, currency])
+  @@map("tenant_payroll_wallets")
+}
+
+enum WalletTopUpStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+/// One row per payroll-wallet top-up attempt - deliberately the only way a
+/// TenantPayrollWallet's balance can grow. A wallet credit must be backed
+/// by a real Paystack transaction (not a side-channel bank transfer
+/// reconciled by hand), so the same amount both lands in ParotHR's actual
+/// Paystack balance and this tenant's recorded share of it can never drift
+/// apart - same checkout+webhook shape as Invoice, a separate model (not a
+/// reuse of Invoice) since a top-up isn't tied to a Subscription billing
+/// period and funds payroll, not a subscription fee.
+model TenantWalletTopUp {
+  id       String            @id @default(uuid())
+  tenantId String            @map("tenant_id")
+  currency String
+  amount   Decimal
+  status   WalletTopUpStatus @default(PENDING)
+  /// Paystack transaction reference - the join key
+  /// find_wallet_topup_by_paystack_reference_across_tenants uses when the
+  /// webhook (no tenant context) sees a matching charge.success.
+  paystackReference String?   @unique @map("paystack_reference")
+  checkoutUrl       String?   @map("checkout_url")
+  paidAt            DateTime? @map("paid_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("tenant_wallet_top_ups")
+}
+
+/// ParotHR's own operating cost for one month, entered by hand - the
+/// platform tracks tenant revenue (Subscription/Invoice) automatically,
+/// but has no source for its own costs (salaries, infra, etc), so this is
+/// the only way to compute a profit margin for Rule of 40. Deliberately
+/// platform-wide with no tenantId, same posture as Tenant itself - it's
+/// not scoped to any tenant, so no RLS policy applies here either.
+model PlatformOperatingCost {
+  id        String   @id @default(uuid())
+  /// "YYYY-MM" - matches the month key used throughout the SaaS analytics.
+  month     String
+  currency  String
+  amount    Decimal
+  notes     String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  @@unique([month, currency])
+  @@map("platform_operating_costs")
+}
+
+/// Which investor/board metric a PlatformFinancialInput row feeds - kept
+/// separate from PlatformOperatingCost (an earlier, already-shipped table
+/// with the identical month/currency/amount shape) rather than migrating
+/// it in, to avoid touching a table already in production for a purely
+/// cosmetic consolidation.
+enum PlatformFinancialInputType {
+  /// Total sales+marketing spend for the month, feeding CAC/LTV:CAC.
+  ACQUISITION_COST
+  /// End-of-month cash on hand, feeding runway and the burn multiple.
+  CASH_BALANCE
+}
+
+/// ParotHR's own hand-entered acquisition cost or cash balance for one
+/// month - same "no source exists for this" situation and same manual-entry
+/// posture as PlatformOperatingCost. Platform-wide, no tenantId, no RLS
+/// policy, same reasoning as Tenant/PlatformOperatingCost.
+model PlatformFinancialInput {
+  id       String                     @id @default(uuid())
+  type     PlatformFinancialInputType
+  /// "YYYY-MM" - matches the month key used throughout the SaaS analytics.
+  month    String
+  currency String
+  amount   Decimal
+  notes    String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  @@unique([type, month, currency])
+  @@map("platform_financial_inputs")
+}
+
 /// A legal entity under a tenant (a tenant may own more than one — e.g. a
 /// holding company with subsidiaries — so this is tenantId-scoped rather
 /// than folded into Tenant as a 1:1).
@@ -156,9 +346,21 @@ model Organization {
   countryCode             String  @map("country_code")
   registrationNumber      String  @map("registration_number")
   taxIdentificationNumber String? @map("tax_identification_number")
+  /// Free-form postal/physical address, shown as the employer's address on
+  /// payslips (see PayslipResponseDto). Single string, not structured
+  /// street/city/postal fields - same convention as Customer.billingAddress.
+  address                 String?
   /// Country-specific registration fields that don't warrant a dedicated
   /// column yet (e.g. Ghana SSNIT employer number).
   metadata                Json?
+
+  /// Object-storage key for the organization's own branding logo - shown on
+  /// invoices this organization sends to its own customers (see
+  /// CustomerInvoice). Deliberately separate from Tenant.logoStorageKey: a
+  /// multi-organization tenant's member organizations each bill under their
+  /// own name/mark, not the tenant's - same reasoning as why invoices below
+  /// key off organizationId, not tenantId alone.
+  logoStorageKey String? @map("logo_storage_key")
 
   /// KYB-style review: a PLATFORM_ADMIN verifies the legal-entity fields
   /// above (and any supporting documents) before the org is trusted.
@@ -179,12 +381,30 @@ model Organization {
   createdBy String?   @map("created_by")
   updatedBy String?   @map("updated_by")
 
-  tenant                Tenant                             @relation(fields: [tenantId], references: [id])
-  units                 OrganizationUnit[]
-  employees             Employee[]
-  payRuns               PayRun[]
-  jobRequisitions       JobRequisition[]
-  verificationDocuments OrganizationVerificationDocument[]
+  tenant                  Tenant                             @relation(fields: [tenantId], references: [id])
+  units                   OrganizationUnit[]
+  employees               Employee[]
+  payRuns                 PayRun[]
+  jobRequisitions         JobRequisition[]
+  verificationDocuments   OrganizationVerificationDocument[]
+  /// ORG_ADMIN users scoped to this organization - see User.organizationId.
+  orgAdmins               User[]
+  customers               Customer[]
+  invoices                CustomerInvoice[]
+  vendors                 Vendor[]
+  vendorBills             VendorBill[]
+  vendorPayments          VendorPayment[]
+  glJournalEntries        GlJournalEntry[]
+  glPeriodClose           GlPeriodClose?
+  glBudgets               GlBudget[]
+  bankReconciliations     BankReconciliation[]
+  recurringJournalEntries GlRecurringJournalEntry[]
+  glHomeCurrency          GlHomeCurrency?
+  glFxRevaluations        GlFxRevaluation[]
+  glFixedAssets           GlFixedAsset[]
+  glDepreciationRuns      GlDepreciationRun[]
+  expenses                Expense[]
+  glCostCenters           GlCostCenter[]
 
   @@index([tenantId])
   @@map("organizations")
@@ -235,6 +455,7 @@ model OrganizationUnit {
   children        OrganizationUnit[] @relation("OrganizationUnitToParent")
   employees       Employee[]
   jobRequisitions JobRequisition[]
+  journalEntries  GlJournalEntry[]
 
   @@index([tenantId])
   @@index([organizationId])
@@ -253,7 +474,21 @@ enum SystemRole {
   TENANT_ADMIN
   HR_MANAGER
   PAYROLL_MANAGER
+  /// Narrower than PAYROLL_MANAGER: can prepare a pay run (create, process,
+  /// adjust line items) but not approve, release payment, close, or cancel
+  /// it - separation of duties between who enters payroll data and who
+  /// releases funds. See Permission.PAYROLL_PREPARE.
+  PAYROLL_OFFICER
+  /// Scoped to exactly one Organization (User.organizationId) - manages
+  /// employees within that org only, unlike every other role above which
+  /// is tenant-wide. See RLS_CONVENTION.md for why this scoping is
+  /// app-level (assertOrganizationScope) rather than a new RLS dimension.
+  ORG_ADMIN
   EMPLOYEE
+  /// Read-only, Finance-only - an external bookkeeper/accountant, no
+  /// Employee record expected or required. See SystemRole.ts (platform-auth)
+  /// for the full reasoning.
+  ACCOUNTANT
 }
 
 enum MfaMethod {
@@ -267,8 +502,8 @@ enum MfaMethod {
 /// resolve a user from email+password alone, without first knowing which
 /// tenant to look in.
 model User {
-  id           String     @id @default(uuid())
-  tenantId     String?    @map("tenant_id")
+  id             String     @id @default(uuid())
+  tenantId       String?    @map("tenant_id")
   // Deliberately not @unique here: uniqueness is enforced by a partial
   // index (WHERE deleted_at IS NULL) added via raw SQL migration instead,
   // since Prisma's schema DSL can't express a filtered unique constraint.
@@ -276,24 +511,28 @@ model User {
   // that email from ever being reused - find_user_for_login() already
   // treats deleted_at IS NULL as "the email is free," so the DB
   // constraint needs to agree.
-  email        String
-  passwordHash String     @map("password_hash")
-  firstName    String     @map("first_name")
-  lastName     String     @map("last_name")
-  role         SystemRole
-  isActive     Boolean    @default(true) @map("is_active")
-  lastLoginAt  DateTime?  @map("last_login_at")
+  email          String
+  passwordHash   String     @map("password_hash")
+  firstName      String     @map("first_name")
+  lastName       String     @map("last_name")
+  role           SystemRole
+  /// Set only when role is ORG_ADMIN - which single Organization (within
+  /// tenantId) this user administers. Null for every other role, including
+  /// TENANT_ADMIN/HR_MANAGER/PAYROLL_MANAGER, which stay tenant-wide.
+  organizationId String?    @map("organization_id")
+  isActive       Boolean    @default(true) @map("is_active")
+  lastLoginAt    DateTime?  @map("last_login_at")
 
   /// mfaSecretEncrypted is set as soon as setup() generates a secret (before
   /// the user has proven they scanned it), but mfaEnabled only flips to true
   /// once confirm() verifies a real code from it - see MfaService.
-  mfaEnabled         Boolean   @default(false) @map("mfa_enabled")
-  mfaSecretEncrypted String?   @map("mfa_secret_encrypted")
-  mfaEnabledAt       DateTime? @map("mfa_enabled_at")
+  mfaEnabled         Boolean    @default(false) @map("mfa_enabled")
+  mfaSecretEncrypted String?    @map("mfa_secret_encrypted")
+  mfaEnabledAt       DateTime?  @map("mfa_enabled_at")
   /// Which second factor is active once mfaEnabled is true - null while
   /// disabled. Set by MfaService.confirm()/confirmSms(), not user-chosen
   /// after the fact (switching methods means disabling and re-enrolling).
-  mfaMethod MfaMethod? @map("mfa_method")
+  mfaMethod          MfaMethod? @map("mfa_method")
 
   /// Set (pending, unverified) as soon as setupSms() is called, same
   /// "pending before proof" shape as mfaSecretEncrypted above.
@@ -310,6 +549,7 @@ model User {
   updatedBy String?   @map("updated_by")
 
   tenant            Tenant?            @relation(fields: [tenantId], references: [id])
+  organization      Organization?      @relation(fields: [organizationId], references: [id])
   refreshTokens     RefreshToken[]
   employee          Employee?
   notifications     Notification[]
@@ -317,6 +557,7 @@ model User {
   mfaTrustedDevices MfaTrustedDevice[]
 
   @@index([tenantId])
+  @@index([organizationId])
   @@map("users")
 }
 
@@ -507,14 +748,14 @@ enum FamilyMemberRelationship {
 /// update (see EmployeeService) rather than diffed, since there's no
 /// history/audit requirement for this data, unlike EmploymentHistoryEntry.
 model EmployeeFamilyMember {
-  id           String                    @id @default(uuid())
-  tenantId     String                    @map("tenant_id")
-  employeeId   String                    @map("employee_id")
+  id           String                   @id @default(uuid())
+  tenantId     String                   @map("tenant_id")
+  employeeId   String                   @map("employee_id")
   relationship FamilyMemberRelationship
   name         String
-  dateOfBirth  DateTime?                 @map("date_of_birth")
-  createdAt    DateTime                  @default(now()) @map("created_at")
-  updatedAt    DateTime                  @updatedAt @map("updated_at")
+  dateOfBirth  DateTime?                @map("date_of_birth")
+  createdAt    DateTime                 @default(now()) @map("created_at")
+  updatedAt    DateTime                 @updatedAt @map("updated_at")
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
@@ -742,34 +983,34 @@ model Payslip {
   employeeId String        @map("employee_id")
   status     PayslipStatus @default(DRAFT)
 
-  countryCode     String  @map("country_code")
-  basicSalary     Decimal @map("basic_salary")
-  grossPay        Decimal @map("gross_pay")
-  taxableIncome   Decimal @map("taxable_income")
-  payeTax         Decimal @map("paye_tax")
-  ssnitEmployee   Decimal @map("ssnit_employee")
-  ssnitEmployer   Decimal @map("ssnit_employer")
+  countryCode   String  @map("country_code")
+  basicSalary   Decimal @map("basic_salary")
+  grossPay      Decimal @map("gross_pay")
+  taxableIncome Decimal @map("taxable_income")
+  payeTax       Decimal @map("paye_tax")
+  ssnitEmployee Decimal @map("ssnit_employee")
+  ssnitEmployer Decimal @map("ssnit_employer")
 
   /// Ghana only, else 0 - Tier 2's employer-only contribution. Not part of totalDeductions/netPay, same as ssnitEmployer.
   ghanaTier2PensionEmployer Decimal @default(0) @map("ghana_tier2_pension_employer")
   /// Kenya only, else 0 - reduces taxableIncome and is part of totalDeductions/netPay. See payslip-calculator.ts (payroll-domain).
-  kenyaShifEmployee Decimal @default(0) @map("kenya_shif_employee")
+  kenyaShifEmployee         Decimal @default(0) @map("kenya_shif_employee")
   /// Kenya only, else 0 - part of totalDeductions/netPay, but does not reduce taxableIncome (relief repealed December 2024).
-  kenyaHousingLevyEmployee Decimal @default(0) @map("kenya_housing_levy_employee")
+  kenyaHousingLevyEmployee  Decimal @default(0) @map("kenya_housing_levy_employee")
   /// Kenya only, else 0 - employer-only. Not part of totalDeductions/netPay, same as ssnitEmployer.
-  kenyaHousingLevyEmployer Decimal @default(0) @map("kenya_housing_levy_employer")
+  kenyaHousingLevyEmployer  Decimal @default(0) @map("kenya_housing_levy_employer")
 
   /// Nigeria only (and only when the employing organization has 5+ active employees), else 0 - employer-only NSITF contribution. Not part of totalDeductions/netPay, same as ssnitEmployer.
   nigeriaNsitfEmployer Decimal @default(0) @map("nigeria_nsitf_employer")
   /// Nigeria only (org threshold + employee's own basic salary meeting the eligibility floor), else 0 - part of totalDeductions/netPay, but does not reduce taxableIncome (unresolved conflict in secondary sources on tax treatment - defaulted to post-tax, see payslip-calculator.ts).
-  nigeriaNhisEmployee Decimal @default(0) @map("nigeria_nhis_employee")
+  nigeriaNhisEmployee  Decimal @default(0) @map("nigeria_nhis_employee")
   /// Nigeria only, same gating as nigeriaNhisEmployee, else 0 - employer-only. Not part of totalDeductions/netPay.
-  nigeriaNhisEmployer Decimal @default(0) @map("nigeria_nhis_employer")
+  nigeriaNhisEmployer  Decimal @default(0) @map("nigeria_nhis_employer")
 
   /// Sum of every active BenefitEnrollment's employee premium as of the pay date, else 0. Post-tax (does not reduce taxableIncome) and part of totalDeductions/netPay. See payslip-calculator.ts (payroll-domain).
   benefitsEmployeeDeduction Decimal @default(0) @map("benefits_employee_deduction")
   /// Sum of every active BenefitEnrollment's employer premium as of the pay date, else 0 - employer-only. Not part of totalDeductions/netPay, same as ssnitEmployer.
-  benefitsEmployerCost Decimal @default(0) @map("benefits_employer_cost")
+  benefitsEmployerCost      Decimal @default(0) @map("benefits_employer_cost")
 
   /// Value of unpaid-leave days within the pay period at the daily rate, else 0. Informational only - already baked into basicSalary/grossPay above, NOT part of totalDeductions (that would double-count it). See payslip-calculator.ts (payroll-domain).
   unpaidLeaveDeduction Decimal @default(0) @map("unpaid_leave_deduction")
@@ -788,10 +1029,10 @@ model Payslip {
   // the reference, not the tenant) can find this row via the
   // find_payslip_by_paystack_transfer_reference_across_tenants SECURITY
   // DEFINER function, same shape as invoices.paystack_reference.
-  disbursementStatus         PayslipDisbursementStatus @default(NOT_INITIATED) @map("disbursement_status")
-  paystackRecipientCode      String?                   @map("paystack_recipient_code")
-  paystackTransferReference  String?                   @unique @map("paystack_transfer_reference")
-  disbursedAt                DateTime?                 @map("disbursed_at")
+  disbursementStatus        PayslipDisbursementStatus @default(NOT_INITIATED) @map("disbursement_status")
+  paystackRecipientCode     String?                   @map("paystack_recipient_code")
+  paystackTransferReference String?                   @unique @map("paystack_transfer_reference")
+  disbursedAt               DateTime?                 @map("disbursed_at")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -953,28 +1194,37 @@ model AttendancePolicy {
   tenantId           String  @unique @map("tenant_id")
   standardDailyHours Decimal @map("standard_daily_hours")
 
-  /// Optional single work-site geofence: when all three are set, clock-in/
-  /// out events are checked against this center point + radius. Absent by
-  /// default — geofencing is opt-in per tenant. Deliberately flag-only, not
-  /// enforced (see AttendanceRecord fields below) — device GPS commonly
-  /// drifts 20-50m+ indoors/urban, so hard-blocking on it would just
-  /// generate false-positive support tickets instead of catching anything.
-  geofenceLatitude     Decimal? @map("geofence_latitude")
-  geofenceLongitude    Decimal? @map("geofence_longitude")
-  geofenceRadiusMeters Int?     @map("geofence_radius_meters")
-  /// Human-readable label for the geofence (e.g. "East Legon Office"), shown
-  /// on the attendance dashboard next to flagged/unflagged punches. Purely
-  /// cosmetic — never used in the haversine distance check itself — so it's
-  /// independent of the three fields above rather than part of their
-  /// all-or-nothing validation (see AttendancePolicyService.upsert).
-  geofenceLocationName String? @map("geofence_location_name")
-
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   createdBy String?  @map("created_by")
   updatedBy String?  @map("updated_by")
 
   @@map("attendance_policies")
+}
+
+/// A named work site a tenant's employees may clock in/out from - replaces
+/// the single geofence that used to live directly on AttendancePolicy
+/// (migration 20261012000000_add_attendance_locations moves any existing
+/// single geofence into a row here). An employee isn't assigned to a
+/// location; any of a tenant's locations is informational only, matched by
+/// proximity at punch time (see AttendanceRecordService.evaluateGeofence) -
+/// same deliberately flag-only, never-enforced posture as the single
+/// geofence it replaces (device GPS drift makes hard-blocking unreliable).
+model AttendanceLocation {
+  id            String  @id @default(uuid())
+  tenantId      String  @map("tenant_id")
+  name          String
+  latitude      Decimal
+  longitude     Decimal
+  radiusMeters  Int     @map("radius_meters")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  @@index([tenantId])
+  @@map("attendance_locations")
 }
 
 /// One row per employee per calendar day. No status column — "currently
@@ -1011,6 +1261,12 @@ model AttendanceRecord {
   clockOutLongitude       Decimal? @map("clock_out_longitude")
   clockOutDistanceMeters  Int?     @map("clock_out_distance_meters")
   clockOutOutsideGeofence Boolean? @map("clock_out_outside_geofence")
+
+  /// Name of the AttendanceLocation nearest to the punch at the time it was
+  /// made, denormalized (not a live FK) so a later edit/delete of that
+  /// location never rewrites or orphans historical records.
+  clockInLocationName  String? @map("clock_in_location_name")
+  clockOutLocationName String? @map("clock_out_location_name")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -1115,6 +1371,16 @@ enum PerformanceGoalStatus {
   CANCELLED
 }
 
+/// Balanced Scorecard perspective (see Tenant.performanceFramework) -
+/// Risk & Control replaces the standard BSC's "Internal Business Process"
+/// quadrant, a common banking-sector adaptation.
+enum GoalPerspective {
+  FINANCIAL
+  CUSTOMER
+  PEOPLE
+  RISK_CONTROL
+}
+
 /// An employee's own ongoing goal tracking. Standalone — not tied to a
 /// PerformanceReviewCycle in v1 (a deliberate scope cut, see project
 /// memory); goals and reviews aren't hard-linked.
@@ -1127,6 +1393,11 @@ model PerformanceGoal {
   targetDate      DateTime?             @map("target_date")
   status          PerformanceGoalStatus @default(NOT_STARTED)
   progressPercent Int                   @default(0) @map("progress_percent")
+  // Nullable regardless of the tenant's current framework - a tenant that
+  // switches STANDARD -> BALANCED_SCORECARD doesn't retroactively require
+  // every existing goal to be re-tagged; enforcement of "must be set" only
+  // applies to new goals (see PerformanceGoalService.create).
+  perspective     GoalPerspective?
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -1297,6 +1568,18 @@ enum ApplicationStage {
   WITHDRAWN
 }
 
+/// Deliberately generic rather than country-specific (e.g. no literal
+/// "GHANA_CARD" value) — ParotHR is pan-African (see README), and a
+/// Ghana Card, a Kenyan Huduma Namba card, etc. are all just a national ID
+/// under a different local name. NATIONAL_ID covers those; the upload
+/// form's label spells out the local example per country instead.
+enum IdentityDocumentType {
+  PASSPORT
+  NATIONAL_ID
+  DRIVERS_LICENSE
+  OTHER
+}
+
 /// Links a Candidate to a JobRequisition and tracks the pipeline. Offer
 /// details are folded in directly rather than a separate Offer model — one
 /// offer per application is the norm (see project memory). No automatic
@@ -1321,6 +1604,23 @@ model Application {
   offerAccepted    Boolean?  @map("offer_accepted")
 
   hiredEmployeeId String? @map("hired_employee_id")
+
+  // Object-storage key for an uploaded resume, same pattern as
+  // OrganizationVerificationDocument.storageKey - never sent to the client
+  // directly (see ApplicationResponseDto), only ever resolved into a
+  // short-lived signed view URL on demand. resumeFileName is the one part
+  // of this pair that is client-facing, for display ("View resume").
+  // Nullable since a resume is optional and only the public apply flow
+  // sets it - HR/manager-created applications never populate it.
+  resumeStorageKey String? @map("resume_storage_key")
+  resumeFileName   String? @map("resume_file_name")
+
+  // Same shape and same client-facing rule as the resume fields above -
+  // storage key never leaves the server, only the file name and declared
+  // document type do (see ApplicationResponseDto).
+  identityDocumentStorageKey String?               @map("identity_document_storage_key")
+  identityDocumentFileName   String?               @map("identity_document_file_name")
+  identityDocumentType       IdentityDocumentType? @map("identity_document_type")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -1419,4 +1719,901 @@ model Notification {
   @@index([tenantId])
   @@index([userId])
   @@map("notifications")
+}
+
+// ---------------------------------------------------------------------------
+// Customer Invoicing (Module 12)
+// ---------------------------------------------------------------------------
+
+/// A customer an organization bills - distinct from anything tenant-wide:
+/// each organization under a multi-organization tenant (e.g. NALAG's member
+/// bodies) maintains its own customer list, not shared with sibling
+/// organizations. Deliberately unrelated to Employee/User - this is who the
+/// organization sells to, not who works for it.
+model Customer {
+  id             String  @id @default(uuid())
+  tenantId       String  @map("tenant_id")
+  organizationId String  @map("organization_id")
+  name           String
+  email          String?
+  phone          String?
+  billingAddress String? @map("billing_address")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  organization Organization      @relation(fields: [organizationId], references: [id])
+  invoices     CustomerInvoice[]
+
+  @@index([tenantId])
+  @@index([organizationId])
+  @@map("customers")
+}
+
+enum CustomerInvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+/// Invoices an organization sends to its own Customers - unrelated to
+/// Invoice (Module: Billing), which is ParotHR's own platform-to-tenant
+/// subscription billing. invoiceNumber is unique per organization (not
+/// tenant-wide): each organization bills under its own sequence, matching
+/// how a real standalone business numbers its own invoices. subtotal/
+/// taxAmount/total are computed from line items at write time and stored
+/// (not computed on every read) so a later tax-rate or line-item edit never
+/// silently rewrites a Sent/Paid invoice's history - see
+/// CustomerInvoiceService for where that computation happens.
+model CustomerInvoice {
+  id             String                @id @default(uuid())
+  tenantId       String                @map("tenant_id")
+  organizationId String                @map("organization_id")
+  customerId     String                @map("customer_id")
+  invoiceNumber  String                @map("invoice_number")
+  issueDate      DateTime              @map("issue_date")
+  dueDate        DateTime              @map("due_date")
+  currency       String
+  status         CustomerInvoiceStatus @default(DRAFT)
+  notes          String?
+  taxRate        Decimal               @default(0) @map("tax_rate")
+  subtotal       Decimal
+  taxAmount      Decimal               @map("tax_amount")
+  total          Decimal
+  sentAt         DateTime?             @map("sent_at")
+  paidAt         DateTime?             @map("paid_at")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  organization Organization              @relation(fields: [organizationId], references: [id])
+  customer     Customer                  @relation(fields: [customerId], references: [id])
+  lineItems    CustomerInvoiceLineItem[]
+
+  @@unique([organizationId, invoiceNumber])
+  @@index([tenantId])
+  @@index([organizationId])
+  @@index([customerId])
+  @@map("customer_invoices")
+}
+
+/// Immutable once written - an invoice edit deletes and recreates its line
+/// items wholesale rather than patching individual rows, same convention as
+/// PayslipLineItem (no updatedAt/deletedAt/updatedBy - the parent invoice
+/// carries those instead).
+model CustomerInvoiceLineItem {
+  id          String  @id @default(uuid())
+  tenantId    String  @map("tenant_id")
+  invoiceId   String  @map("invoice_id")
+  description String
+  quantity    Decimal
+  unitPrice   Decimal @map("unit_price")
+  amount      Decimal
+  sortOrder   Int     @default(0) @map("sort_order")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  createdBy String?  @map("created_by")
+
+  invoice CustomerInvoice @relation(fields: [invoiceId], references: [id])
+
+  @@index([tenantId])
+  @@index([invoiceId])
+  @@map("customer_invoice_line_items")
+}
+
+// ---------------------------------------------------------------------------
+// Accounts Payable (Module 14) - vendor bills, the AP mirror of
+// Customer/CustomerInvoice's AR. See VendorBillStatus and VendorBill's own
+// doc comments for the mirrored status lifecycle and GL posting.
+// ---------------------------------------------------------------------------
+
+model Vendor {
+  id             String  @id @default(uuid())
+  tenantId       String  @map("tenant_id")
+  organizationId String  @map("organization_id")
+  name           String
+  email          String?
+  phone          String?
+  address        String?
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  bills        VendorBill[]
+  payments     VendorPayment[]
+
+  @@index([tenantId])
+  @@index([organizationId])
+  @@map("vendors")
+}
+
+enum VendorBillStatus {
+  DRAFT
+  APPROVED
+  /// Reachable only by recording a VendorPayment whose allocations don't
+  /// yet cover the full total - see VendorPaymentService.create. Never a
+  /// manually-settable target (VendorBillService.updateStatus rejects it),
+  /// same posture as PAID below.
+  PARTIALLY_PAID
+  /// Reachable only by recording a VendorPayment whose allocations bring
+  /// amountPaid to (or past, though that itself is rejected) the bill's
+  /// total - never settable via VendorBillService.updateStatus directly.
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+/// Bills an organization receives from its own Vendors - the AP mirror of
+/// CustomerInvoice's AR. billNumber is this app's own internal sequence
+/// (BILL-0001, ...), unique per organization same as CustomerInvoice's
+/// invoiceNumber; vendorReference is the vendor's own invoice/bill number,
+/// free text, for matching against the paper/PDF the vendor sent. subtotal/
+/// taxAmount/total are computed from line items at write time and stored,
+/// same reasoning as CustomerInvoice. APPROVED is this model's equivalent of
+/// CustomerInvoiceStatus.SENT - the point at which the bill becomes a real
+/// liability and posts to the GL (see VendorBillService/FinanceService);
+/// a DRAFT bill is just a working copy, not yet owed to anyone. amountPaid
+/// only ever advances via VendorPaymentAllocation rows against this bill -
+/// see VendorPaymentService.create, which is also what drives
+/// PARTIALLY_PAID/PAID and sets paidAt once amountPaid reaches total.
+model VendorBill {
+  id              String           @id @default(uuid())
+  tenantId        String           @map("tenant_id")
+  organizationId  String           @map("organization_id")
+  vendorId        String           @map("vendor_id")
+  billNumber      String           @map("bill_number")
+  vendorReference String?          @map("vendor_reference")
+  billDate        DateTime         @map("bill_date")
+  dueDate         DateTime         @map("due_date")
+  currency        String
+  status          VendorBillStatus @default(DRAFT)
+  notes           String?
+  taxRate         Decimal          @default(0) @map("tax_rate")
+  subtotal        Decimal
+  taxAmount       Decimal          @map("tax_amount")
+  total           Decimal
+  amountPaid      Decimal          @default(0) @map("amount_paid")
+  approvedAt      DateTime?        @map("approved_at")
+  paidAt          DateTime?        @map("paid_at")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  organization       Organization              @relation(fields: [organizationId], references: [id])
+  vendor             Vendor                    @relation(fields: [vendorId], references: [id])
+  lineItems          VendorBillLineItem[]
+  paymentAllocations VendorPaymentAllocation[]
+
+  @@unique([organizationId, billNumber])
+  @@index([tenantId])
+  @@index([organizationId])
+  @@index([vendorId])
+  @@map("vendor_bills")
+}
+
+enum VendorPaymentMethod {
+  BANK_TRANSFER
+  CASH
+  CHEQUE
+  MOBILE_MONEY
+  CARD
+  OTHER
+}
+
+/// One real payment a vendor was actually sent, which may cover several of
+/// their bills at once (or partially cover one) - see
+/// VendorPaymentAllocation. Posts a single Dr Accounts Payable / Cr Cash and
+/// Bank entry for the combined amount, not one entry per allocated bill,
+/// same "one posting per real-world event" convention as everywhere else in
+/// this ledger. amount is the sum of this payment's allocations, enforced
+/// by VendorPaymentService.create, not by a DB constraint (Postgres has no
+/// portable "sum of child rows" check).
+model VendorPayment {
+  id             String              @id @default(uuid())
+  tenantId       String              @map("tenant_id")
+  organizationId String              @map("organization_id")
+  vendorId       String              @map("vendor_id")
+  paymentDate    DateTime            @map("payment_date")
+  currency       String
+  amount         Decimal
+  method         VendorPaymentMethod
+  reference      String?
+  notes          String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  createdBy String?  @map("created_by")
+
+  organization Organization              @relation(fields: [organizationId], references: [id])
+  vendor       Vendor                    @relation(fields: [vendorId], references: [id])
+  allocations  VendorPaymentAllocation[]
+
+  @@index([tenantId])
+  @@index([organizationId])
+  @@index([vendorId])
+  @@map("vendor_payments")
+}
+
+/// The portion of one VendorPayment applied to one VendorBill - a payment
+/// with allocations against three bills gets three of these rows. amount
+/// here can never exceed that bill's remaining balance (total - amountPaid
+/// as of the payment), enforced by VendorPaymentService.create.
+model VendorPaymentAllocation {
+  id        String  @id @default(uuid())
+  tenantId  String  @map("tenant_id")
+  paymentId String  @map("payment_id")
+  billId    String  @map("bill_id")
+  amount    Decimal
+
+  payment VendorPayment @relation(fields: [paymentId], references: [id])
+  bill    VendorBill    @relation(fields: [billId], references: [id])
+
+  @@index([tenantId])
+  @@index([paymentId])
+  @@index([billId])
+  @@map("vendor_payment_allocations")
+}
+
+/// Immutable once written - a bill edit deletes and recreates its line
+/// items wholesale rather than patching individual rows, same convention as
+/// CustomerInvoiceLineItem.
+model VendorBillLineItem {
+  id          String  @id @default(uuid())
+  tenantId    String  @map("tenant_id")
+  billId      String  @map("bill_id")
+  description String
+  quantity    Decimal
+  unitPrice   Decimal @map("unit_price")
+  amount      Decimal
+  sortOrder   Int     @default(0) @map("sort_order")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  createdBy String?  @map("created_by")
+
+  bill VendorBill @relation(fields: [billId], references: [id])
+
+  @@index([tenantId])
+  @@index([billId])
+  @@map("vendor_bill_line_items")
+}
+
+// ---------------------------------------------------------------------------
+// How It Works videos (Module 13)
+// ---------------------------------------------------------------------------
+
+/// Platform-root reference content (no tenantId, no RLS - same convention as
+/// DemoRequest and the statutory reference tables): one shared catalog of
+/// tutorial video links shown to every tenant, curated by PLATFORM_ADMIN.
+/// videoUrl is an external embed link (YouTube/Vimeo/Loom/etc.), not a
+/// storage key - this app never stores video bytes.
+model HowItWorksVideo {
+  id          String  @id @default(uuid())
+  title       String
+  description String?
+  videoUrl    String  @map("video_url")
+  category    String?
+  sortOrder   Int     @default(0) @map("sort_order")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  @@index([sortOrder])
+  @@map("how_it_works_videos")
+}
+
+// ---------------------------------------------------------------------------
+// Finance / General Ledger (Module 14)
+// ---------------------------------------------------------------------------
+
+enum GlAccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+/// A minimal chart of accounts, seeded per tenant with six defaults (see
+/// GlAccountRepository.ensureDefaultAccounts) - a tenant can add further
+/// accounts of its own (GlAccountRepository.create) for use in manual
+/// journal entries. Automatic posting (payroll disbursement, customer
+/// invoicing) only ever targets the six fixed default codes, never a
+/// tenant-added one - see FinanceService.postLines.
+model GlAccount {
+  id       String        @id @default(uuid())
+  tenantId String        @map("tenant_id")
+  code     String
+  name     String
+  type     GlAccountType
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  journalLines        GlJournalLine[]
+  budgets             GlBudget[]
+  recurringEntryLines GlRecurringJournalEntryLine[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("gl_accounts")
+}
+
+/// A budgeted amount for one account, one organization, one fiscal year
+/// (calendar year - Jan 1 through Dec 31, no custom fiscal-year-start
+/// support in v1), one currency - same per-currency segmentation as every
+/// finance report (see finance-domain's computeBudgetVsActual), since an
+/// organization posting in more than one currency can't budget them as one
+/// blended figure any more than it can report them that way. Unique per
+/// (organization, account, fiscalYear, currency) - setting a budget again
+/// for the same combination overwrites the amount (see FinanceService.
+/// setBudget's upsert), it doesn't create a second row.
+model GlBudget {
+  id             String  @id @default(uuid())
+  tenantId       String  @map("tenant_id")
+  organizationId String  @map("organization_id")
+  accountId      String  @map("account_id")
+  fiscalYear     Int     @map("fiscal_year")
+  currency       String
+  amount         Decimal
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  account      GlAccount    @relation(fields: [accountId], references: [id])
+
+  @@unique([tenantId, organizationId, accountId, fiscalYear, currency])
+  @@index([tenantId])
+  @@index([organizationId])
+  @@index([accountId])
+  @@map("gl_budgets")
+}
+
+enum BankReconciliationStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+/// Confirms the GL's Cash and Bank account balance against a real bank
+/// statement for one organization/currency/statement date. Deliberately
+/// minimal: no imported statement line matching, no per-transaction bank
+/// reference numbers - just the statement's ending balance, and a
+/// yes/no "cleared" toggle (see GlJournalLine.reconciliationId) on every
+/// Cash and Bank journal line up to that date. It's balanced when the sum
+/// of cleared lines equals statementEndingBalance (see finance-domain's
+/// computeClearedBalance/isReconciliationBalanced) - completing one is
+/// only allowed once that holds (see FinanceService.completeReconciliation).
+/// COMPLETED is a one-way lock, same convention as GlPeriodClose - no
+/// reopening in v1; an IN_PROGRESS one can still be deleted to start over,
+/// which frees its lines' reconciliationId back to null.
+model BankReconciliation {
+  id                     String                   @id @default(uuid())
+  tenantId               String                   @map("tenant_id")
+  organizationId         String                   @map("organization_id")
+  currency               String
+  statementDate          DateTime                 @map("statement_date")
+  statementEndingBalance Decimal                  @map("statement_ending_balance")
+  status                 BankReconciliationStatus @default(IN_PROGRESS)
+  completedAt            DateTime?                @map("completed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  clearedLines GlJournalLine[]
+
+  @@index([tenantId])
+  @@index([organizationId])
+  @@map("bank_reconciliations")
+}
+
+/// A template that posts a real GlJournalEntry on its own schedule, with no
+/// person clicking anything - see RecurringJournalEntryPoster's daily
+/// @Cron sweep. Monthly-only in v1, on a fixed dayOfMonth (1-28, so every
+/// month has that day - no "31st" ambiguity in February etc). Deliberately
+/// no in-place editing of amounts/lines once created: FinanceService only
+/// ever lets isActive be toggled (pause/resume) or the whole template
+/// deleted - correcting a mistake means deleting and recreating, same
+/// "don't rewrite history, replace it" posture as GlJournalEntry's
+/// void/reversal (except here nothing's been posted yet, so there's
+/// nothing to reverse).
+model GlRecurringJournalEntry {
+  id             String    @id @default(uuid())
+  tenantId       String    @map("tenant_id")
+  organizationId String    @map("organization_id")
+  description    String
+  currency       String
+  dayOfMonth     Int       @map("day_of_month")
+  startDate      DateTime  @map("start_date")
+  /// Once nextRunDate would fall after this, the poster deactivates the
+  /// template instead of scheduling a run past it - see
+  /// RecurringJournalEntryPoster.postOne.
+  endDate        DateTime? @map("end_date")
+  nextRunDate    DateTime  @map("next_run_date")
+  lastRunDate    DateTime? @map("last_run_date")
+  isActive       Boolean   @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  organization Organization                  @relation(fields: [organizationId], references: [id])
+  lines        GlRecurringJournalEntryLine[]
+
+  @@index([tenantId])
+  @@index([organizationId])
+  @@map("gl_recurring_journal_entries")
+}
+
+/// One debit or credit leg of a GlRecurringJournalEntry template - copied
+/// verbatim into a real GlJournalLine every time the template posts.
+/// References accountId directly (any of the tenant's own accounts,
+/// default or custom), unlike ManualJournalEntryLineDto's fixed
+/// GlAccountCode-only restriction - same "any account you already track"
+/// convention as GlBudget, since recurring entries like monthly
+/// depreciation or rent typically target a tenant's own custom accounts,
+/// not one of the six system defaults.
+model GlRecurringJournalEntryLine {
+  id                      String  @id @default(uuid())
+  tenantId                String  @map("tenant_id")
+  recurringJournalEntryId String  @map("recurring_journal_entry_id")
+  accountId               String  @map("account_id")
+  debit                   Decimal @default(0)
+  credit                  Decimal @default(0)
+
+  recurringJournalEntry GlRecurringJournalEntry @relation(fields: [recurringJournalEntryId], references: [id], onDelete: Cascade)
+  account               GlAccount               @relation(fields: [accountId], references: [id])
+
+  @@index([tenantId])
+  @@index([recurringJournalEntryId])
+  @@index([accountId])
+  @@map("gl_recurring_journal_entry_lines")
+}
+
+/// The currency every FX revaluation for this organization converts foreign
+/// balances into - one row per organization, set once via FinanceService.
+/// setHomeCurrency before any revaluation can run for it (see
+/// FinanceService.runFxRevaluation's own check). Deliberately its own tiny
+/// table rather than a field on Organization: Organization is owned by a
+/// different scope (tenancy), and this setting is meaningful only to
+/// Finance, same reasoning as GlPeriodClose being its own table instead of
+/// a field there.
+model GlHomeCurrency {
+  id             String @id @default(uuid())
+  tenantId       String @map("tenant_id")
+  organizationId String @unique @map("organization_id")
+  currency       String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedBy String?  @map("updated_by")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([tenantId])
+  @@map("gl_home_currencies")
+}
+
+/// One row per FX revaluation run for one (organization, currency) pair -
+/// see FinanceService.runFxRevaluation. rate/previousRate are both "units
+/// of GlHomeCurrency per 1 unit of currency"; previousRate is null on the
+/// very first revaluation ever run for this organization/currency (there's
+/// nothing yet to compare against, so no gain/loss is computed or posted -
+/// that run only establishes the baseline rate for next time). gainLoss and
+/// journalEntryId are likewise both null whenever nothing was posted
+/// (first run, or every monetary account's balance in this currency was
+/// zero as of asOfDate).
+model GlFxRevaluation {
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  organizationId String   @map("organization_id")
+  currency       String
+  asOfDate       DateTime @map("as_of_date")
+  rate           Decimal
+  previousRate   Decimal? @map("previous_rate")
+  gainLoss       Decimal? @map("gain_loss")
+  journalEntryId String?  @map("journal_entry_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  createdBy String?  @map("created_by")
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  journalEntry GlJournalEntry? @relation(fields: [journalEntryId], references: [id])
+
+  @@unique([organizationId, currency, asOfDate])
+  @@index([tenantId])
+  @@index([organizationId, currency])
+  @@map("gl_fx_revaluations")
+}
+
+enum FixedAssetStatus {
+  ACTIVE
+  /// Accumulated depreciation has reached its depreciable base (cost minus
+  /// salvage value) - runDepreciation stops scheduling it once it reaches
+  /// this state. Terminal, same as DISPOSED.
+  FULLY_DEPRECIATED
+  /// Set by FinanceService.disposeFixedAsset - stops future depreciation
+  /// immediately, regardless of how much of the depreciable base remains.
+  /// v1 doesn't post a disposal gain/loss entry (that needs a sale
+  /// proceeds figure this feature doesn't collect) - disposing only ever
+  /// stops the schedule, it never touches the ledger.
+  DISPOSED
+}
+
+/// A depreciable asset - its cost, schedule, and running total are tracked
+/// here; libs/finance/domain's compute-fixed-asset-depreciation.ts is the
+/// straight-line math runDepreciation applies against it every period.
+/// Creating one immediately posts the acquisition entry (Dr FIXED_ASSETS /
+/// Cr CASH_AND_BANK) - v1 assumes every asset is bought for cash, no
+/// accounts-payable purchase path. One row per real-world asset (unlike
+/// FIXED_ASSETS/ACCUMULATED_DEPRECIATION, which are shared cost/contra
+/// buckets across every asset an organization owns).
+model GlFixedAsset {
+  id                      String           @id @default(uuid())
+  tenantId                String           @map("tenant_id")
+  organizationId          String           @map("organization_id")
+  description             String
+  currency                String
+  cost                    Decimal
+  salvageValue            Decimal          @default(0) @map("salvage_value")
+  usefulLifeMonths        Int              @map("useful_life_months")
+  acquisitionDate         DateTime         @map("acquisition_date")
+  status                  FixedAssetStatus @default(ACTIVE)
+  accumulatedDepreciation Decimal          @default(0) @map("accumulated_depreciation")
+  /// Null once FULLY_DEPRECIATED or DISPOSED - runDepreciation only ever
+  /// considers assets where this is set and due.
+  nextDepreciationDate    DateTime?        @map("next_depreciation_date")
+  lastDepreciationDate    DateTime?        @map("last_depreciation_date")
+  disposedAt              DateTime?        @map("disposed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([tenantId])
+  @@index([organizationId, currency])
+  @@map("gl_fixed_assets")
+}
+
+/// One row per runDepreciation call for one (organization, currency,
+/// asOfDate) - see the unique constraint below, same idempotency shape as
+/// GlFxRevaluation. totalDepreciation/assetCount summarize every asset the
+/// run actually posted for; journalEntryId is null only when nothing was
+/// due (assetCount 0).
+model GlDepreciationRun {
+  id                String   @id @default(uuid())
+  tenantId          String   @map("tenant_id")
+  organizationId    String   @map("organization_id")
+  currency          String
+  asOfDate          DateTime @map("as_of_date")
+  totalDepreciation Decimal  @map("total_depreciation")
+  assetCount        Int      @map("asset_count")
+  journalEntryId    String?  @map("journal_entry_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  createdBy String?  @map("created_by")
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  journalEntry GlJournalEntry? @relation(fields: [journalEntryId], references: [id])
+
+  @@unique([organizationId, currency, asOfDate])
+  @@index([tenantId])
+  @@index([organizationId, currency])
+  @@map("gl_depreciation_runs")
+}
+
+enum ExpenseCategory {
+  OFFICE_SUPPLIES
+  TRAVEL
+  UTILITIES
+  MEALS_AND_ENTERTAINMENT
+  PROFESSIONAL_SERVICES
+  RENT
+  OTHER
+}
+
+enum ExpensePaidBy {
+  COMPANY
+  EMPLOYEE
+}
+
+/// A quick, single-step company expense - deliberately not a VendorBill:
+/// no vendor required, no DRAFT/approval workflow, posts immediately at
+/// creation. category is a reporting tag only, not a GL split - every
+/// expense still posts to the one GENERAL_EXPENSE bucket regardless of
+/// category, same "one fixed bucket per source type" convention as
+/// everywhere else in this chart (see default-chart-of-accounts.ts).
+/// paidBy decides which account is credited: COMPANY credits
+/// CASH_AND_BANK directly; EMPLOYEE credits
+/// EXPENSE_REIMBURSEMENTS_PAYABLE instead, since the company owes that
+/// employee money until markExpenseReimbursed settles it - see
+/// compute-expense-journal-lines.ts. No delete, same posture as
+/// GlFixedAsset - an expense's posting is permanent once made.
+model Expense {
+  id             String          @id @default(uuid())
+  tenantId       String          @map("tenant_id")
+  organizationId String          @map("organization_id")
+  description    String
+  category       ExpenseCategory
+  currency       String
+  amount         Decimal
+  expenseDate    DateTime        @map("expense_date")
+  paidBy         ExpensePaidBy   @map("paid_by")
+  /// Only ever set for an EMPLOYEE-paid expense, by markExpenseReimbursed.
+  reimbursedAt   DateTime?       @map("reimbursed_at")
+  notes          String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([tenantId])
+  @@index([organizationId])
+  @@map("expenses")
+}
+
+/// PAY_RUN_DISBURSED/CUSTOMER_INVOICE_SENT/CUSTOMER_INVOICE_PAID are each
+/// posted automatically, exactly once per source event - see the
+/// (sourceType, sourceId) unique constraint below, which is this table's
+/// idempotency guard against a re-fired event double-posting. CUSTOMER_
+/// INVOICE_SENT and CUSTOMER_INVOICE_PAID share the same sourceId (the
+/// invoice's own id) but stay distinct rows because sourceType differs.
+/// PAY_RUN_DISBURSED's sourceId is "<payRunId>:<currency>", not the bare
+/// payRunId - a single pay run's payslips are all but always one currency in
+/// practice (one Organization, one country), but PayRun itself carries no
+/// currency column, so PayRunService groups its payslips by currency and
+/// posts one entry per group; the composite id keeps each group's entry
+/// unique in the (rare) case a pay run does mix currencies.
+enum GlJournalEntrySourceType {
+  PAY_RUN_DISBURSED
+  CUSTOMER_INVOICE_SENT
+  CUSTOMER_INVOICE_PAID
+  /// VendorBill's AP mirror of CUSTOMER_INVOICE_SENT - posted when a bill is
+  /// APPROVED and becomes a real payable.
+  VENDOR_BILL_APPROVED
+  /// No longer written (kept so historical rows stay valid) - a bill's PAID
+  /// transition used to post this directly; now paying a bill always goes
+  /// through VENDOR_PAYMENT instead, since one payment can cover several
+  /// bills or only part of one. See VendorPaymentService.create.
+  VENDOR_BILL_PAID
+  MANUAL
+  /// Posted by RecurringJournalEntryPoster's daily sweep from a
+  /// GlRecurringJournalEntry template - sourceId is
+  /// "<templateId>:<scheduledRunDate>", so the (sourceType, sourceId)
+  /// unique constraint is what makes re-running the sweep for a date
+  /// already posted a safe no-op, same idempotency shape as
+  /// PAY_RUN_DISBURSED's "<payRunId>:<currency>".
+  RECURRING_JOURNAL_ENTRY
+  /// Posted by FinanceService.runFxRevaluation - sourceId is
+  /// "<organizationId>:<currency>:<asOfDate>", so re-running a revaluation
+  /// already run for that exact organization/currency/date is a safe
+  /// no-op, same idempotency shape as every other automatic posting here.
+  FX_REVALUATION
+  /// Posted once, at creation, by FinanceService.createFixedAsset -
+  /// sourceId is the GlFixedAsset's own id, so it can never collide or
+  /// double-post even if creation were somehow retried.
+  FIXED_ASSET_ACQUIRED
+  /// Posted by FinanceService.runDepreciation - sourceId is
+  /// "<organizationId>:<currency>:<asOfDate>", same idempotency shape as
+  /// FX_REVALUATION.
+  DEPRECIATION_RUN
+  /// Posted once per VendorPayment, at creation - sourceId is the
+  /// VendorPayment's own id, so it can never double-post. Covers the
+  /// payment's full amount, which may be allocated across several bills
+  /// (or only part of one) - see VendorPaymentAllocation.
+  VENDOR_PAYMENT
+  /// Posted once, at creation, by FinanceService.createExpense - sourceId is
+  /// the Expense's own id. Lands on CASH_AND_BANK when paidBy is COMPANY, or
+  /// EXPENSE_REIMBURSEMENTS_PAYABLE when paidBy is EMPLOYEE (see
+  /// compute-expense-journal-lines.ts).
+  EXPENSE_RECORDED
+  /// Posted once, by FinanceService.markExpenseReimbursed, only for an
+  /// EMPLOYEE-paid expense - sourceId is the same Expense's id (distinct row
+  /// from EXPENSE_RECORDED because sourceType differs, same pattern as
+  /// CUSTOMER_INVOICE_SENT/PAID sharing one invoice's id).
+  EXPENSE_REIMBURSED
+}
+
+model GlJournalEntry {
+  id             String                   @id @default(uuid())
+  tenantId       String                   @map("tenant_id")
+  organizationId String                   @map("organization_id")
+  entryDate      DateTime                 @map("entry_date")
+  description    String
+  /// Every line in one entry shares this currency - a journal entry always
+  /// originates from one payslip/pay-run currency-group, one invoice, or one
+  /// manual entry, never a mix. Reports group by this, never blend across
+  /// currencies (see finance-domain's computeProfitAndLoss/computeCashFlow).
+  currency       String
+  sourceType     GlJournalEntrySourceType @map("source_type")
+  /// PayRun.id for PAY_RUN_DISBURSED, CustomerInvoice.id for both
+  /// CUSTOMER_INVOICE_* values, or a fresh uuid for MANUAL entries (reversals
+  /// included - a reversal is itself just a MANUAL entry with reversalOfId
+  /// set, not a distinct sourceType).
+  sourceId       String                   @map("source_id")
+
+  /// Set on the original entry once it's been voided - see FinanceService.
+  /// voidEntry. Never cleared; a voided entry stays in the ledger forever,
+  /// same as its reversal - correcting history by deleting rows would break
+  /// the audit trail, so a mistake is corrected by reversing it, not erasing
+  /// it.
+  voidedAt     DateTime? @map("voided_at")
+  voidedBy     String?   @map("voided_by")
+  /// Set on the reversal entry, pointing back at the entry it reverses.
+  /// Unique so an entry can only ever be reversed once - the database-level
+  /// backstop against a double-void, on top of the voidedAt check in
+  /// FinanceService. Only ever set on MANUAL entries; a reversal is itself
+  /// never voidable (FinanceService rejects it) so this never chains.
+  reversalOfId String?   @unique @map("reversal_of_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  createdBy String?  @map("created_by")
+
+  /// Set once this entry has gone through the (not-yet-built) approval
+  /// workflow - both null for every entry today, automatic and manual
+  /// alike. Added now as the foundation other work is expected to build on;
+  /// nothing currently sets them, so the UI shows "-" until an approve
+  /// action exists.
+  approvedAt DateTime? @map("approved_at")
+  approvedBy String?   @map("approved_by")
+
+  /// Optional cost-accounting dimensions, set on manual entries only today
+  /// (automatic postings from payroll/AP/invoicing don't carry a
+  /// department/cost center of their own). Reuses OrganizationUnit rather
+  /// than inventing a separate "department" concept - it's the same
+  /// employee-facing org-structure tree already used elsewhere.
+  organizationUnitId String? @map("organization_unit_id")
+  costCenterId       String? @map("cost_center_id")
+
+  organization     Organization        @relation(fields: [organizationId], references: [id])
+  organizationUnit OrganizationUnit?   @relation(fields: [organizationUnitId], references: [id])
+  costCenter       GlCostCenter?       @relation(fields: [costCenterId], references: [id])
+  lines            GlJournalLine[]
+  reversalOf       GlJournalEntry?     @relation("GlJournalEntryReversal", fields: [reversalOfId], references: [id])
+  reversedBy       GlJournalEntry?     @relation("GlJournalEntryReversal")
+  fxRevaluations   GlFxRevaluation[]
+  depreciationRuns GlDepreciationRun[]
+
+  @@unique([sourceType, sourceId])
+  @@index([tenantId])
+  @@index([organizationId])
+  @@index([entryDate])
+  @@index([organizationUnitId])
+  @@index([costCenterId])
+  @@map("gl_journal_entries")
+}
+
+/// A lightweight cost-accounting bucket ("Marketing Campaign Q1", "Head
+/// Office") that a manual journal entry can optionally be tagged with,
+/// independent of OrganizationUnit (which mirrors reporting-line structure,
+/// not spend tracking). Deliberately minimal - name + optional code, no
+/// hierarchy, no budget of its own - unlike OrganizationUnit this has no
+/// other use in the product yet, so it isn't worth more than that until a
+/// real need shows up.
+model GlCostCenter {
+  id             String  @id @default(uuid())
+  tenantId       String  @map("tenant_id")
+  organizationId String  @map("organization_id")
+  name           String
+  code           String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  organization   Organization     @relation(fields: [organizationId], references: [id])
+  journalEntries GlJournalEntry[]
+
+  @@unique([organizationId, name])
+  @@index([tenantId])
+  @@index([organizationId])
+  @@map("gl_cost_centers")
+}
+
+/// One debit or credit leg of a GlJournalEntry. debit/credit are both
+/// non-negative; exactly one of the pair is nonzero per line, never both -
+/// see FinanceService/computePayrollJournalLines etc, which never emit a
+/// line with both set.
+model GlJournalLine {
+  id             String  @id @default(uuid())
+  tenantId       String  @map("tenant_id")
+  journalEntryId String  @map("journal_entry_id")
+  accountId      String  @map("account_id")
+  debit          Decimal @default(0)
+  credit         Decimal @default(0)
+
+  /// Set once this line has been marked "cleared" against a bank statement
+  /// in the given reconciliation - see BankReconciliation's own doc comment.
+  /// Only meaningful for Cash and Bank lines (nothing enforces that at the
+  /// database level; BankReconciliationService is what only ever offers
+  /// Cash and Bank lines as candidates). A line clears at most once, ever -
+  /// ReconciliationService never lets a line already claimed by a different
+  /// (especially a COMPLETED) reconciliation be re-toggled.
+  reconciliationId String? @map("reconciliation_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  journalEntry   GlJournalEntry      @relation(fields: [journalEntryId], references: [id])
+  account        GlAccount           @relation(fields: [accountId], references: [id])
+  reconciliation BankReconciliation? @relation(fields: [reconciliationId], references: [id])
+
+  @@index([tenantId])
+  @@index([journalEntryId])
+  @@index([accountId])
+  @@index([reconciliationId])
+  @@map("gl_journal_lines")
+}
+
+/// Locks manual journal entry posting/voiding on or before a given date, per
+/// organization - see FinanceService's period-close checks in
+/// createManualEntry/voidEntry. "Closed through" semantics (like a
+/// watermark), not discrete named periods: closing again only ever extends
+/// the date forward (FinanceService.setPeriodClose rejects an earlier one) -
+/// there's no reopen in v1. Automatic postings (payroll disbursement,
+/// customer invoicing) are deliberately NOT checked against this - they're
+/// driven by a real business event that already happened and can't be
+/// rescheduled, so blocking them would just leave a silent gap in the
+/// ledger rather than protect anything.
+model GlPeriodClose {
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  organizationId String   @unique @map("organization_id")
+  closedThrough  DateTime @map("closed_through")
+  closedAt       DateTime @default(now()) @map("closed_at")
+  /// Closing User's id - bare String like GlJournalEntry.createdBy, no
+  /// @relation (same convention as every other audit-trail field here).
+  closedBy       String?  @map("closed_by")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([tenantId])
+  @@map("gl_period_closes")
 }

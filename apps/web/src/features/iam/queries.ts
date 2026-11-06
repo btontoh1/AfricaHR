@@ -2,7 +2,12 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
-import type { AdminResetPasswordInput, CreateUserInput, SystemRole, UpdateUserProfileInput } from './types';
+import type {
+  AdminResetPasswordInput,
+  CreateUserInput,
+  UpdateUserProfileInput,
+  UpdateUserRoleInput,
+} from './types';
 
 function usersKey() {
   return ['users'] as const;
@@ -34,10 +39,10 @@ export function useCreateUser() {
 export function useUpdateUserRole(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (role: SystemRole) => {
+    mutationFn: async (input: UpdateUserRoleInput) => {
       const { data, error } = await apiClient.PATCH('/api/users/{id}/role', {
         params: { path: { id } },
-        body: { role },
+        body: input,
       });
       if (error) throw error;
       return data;

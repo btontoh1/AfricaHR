@@ -12,6 +12,7 @@ describe('AttendancePolicyController', () => {
     email: 'hr@acme.com',
     role: SystemRole.HR_MANAGER,
     tenantId: 'tenant-1',
+    organizationId: null,
     iat: 1,
     exp: 2,
   };
@@ -21,6 +22,7 @@ describe('AttendancePolicyController', () => {
     email: 'ama@acme.com',
     role: SystemRole.EMPLOYEE,
     tenantId: 'tenant-1',
+    organizationId: null,
     iat: 1,
     exp: 2,
   };

@@ -59,7 +59,7 @@ export function CandidateDetail({ tenantId, candidateId }: { tenantId: string; c
 
   return (
     <div className="space-y-6">
-      <PageHeader title={`${candidate.firstName} ${candidate.lastName}`} />
+      <PageHeader title={`${candidate.firstName} ${candidate.lastName}`} backHref="/recruitment/candidates" />
 
       <Card>
         <CardHeader>

@@ -1,0 +1,19 @@
+{
+  "name": "how-it-works-feature",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/how-it-works/feature/src",
+  "projectType": "library",
+  "tags": ["scope:how-it-works", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/how-it-works/feature",
+        "main": "libs/how-it-works/feature/src/index.ts",
+        "tsConfig": "libs/how-it-works/feature/tsconfig.lib.json",
+        "assets": ["libs/how-it-works/feature/*.md"]
+      }
+    }
+  }
+}

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PlatformAuthModule } from '@africahr/platform-auth';
 import { AuditModule } from '@africahr/platform-audit';
+import { PrismaModule } from '@africahr/platform-database';
 import { PerformanceDataAccessModule } from '@africahr/performance-data-access';
 import { PerformanceGoalService } from './performance-goal.service';
 import { MyPerformanceGoalController } from './my-performance-goal.controller';
@@ -13,7 +14,7 @@ import { TeamPerformanceReviewController } from './team-performance-review.contr
 import { PerformanceReviewController } from './performance-review.controller';
 
 @Module({
-  imports: [PerformanceDataAccessModule, PlatformAuthModule, AuditModule],
+  imports: [PerformanceDataAccessModule, PlatformAuthModule, AuditModule, PrismaModule],
   // Literal-path controllers ("/me", "/team") must be registered before
   // their sibling dynamic-path controllers ("/:id") so Nest's router
   // matches the literal segment first (same gotcha as Modules 5-7).

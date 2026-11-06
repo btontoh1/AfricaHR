@@ -50,6 +50,7 @@ export function PayRunDetail({ tenantId, payRunId }: { tenantId: string; payRunI
       <PageHeader
         title={`${payRun.periodStart.slice(0, 10)} – ${payRun.periodEnd.slice(0, 10)}`}
         description={`Pay date ${payRun.payDate.slice(0, 10)}`}
+        backHref="/payroll"
         action={<PayRunStatusBadge status={payRun.status} />}
       />
 

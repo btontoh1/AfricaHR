@@ -8,6 +8,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Application, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
+import { StorageService } from '@africahr/platform-storage';
 import { canTransitionApplicationStage, canTransitionRequisitionStatus } from '@africahr/recruitment-domain';
 import {
   ApplicationRepository,
@@ -101,6 +102,7 @@ export class ApplicationService {
     private readonly employees: RecruitmentEmployeeRepository,
     private readonly audit: AuditService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly storage: StorageService,
   ) {}
 
   async resolveOwnEmployeeId(tenantId: string, userId: string): Promise<string> {
@@ -252,6 +254,44 @@ export class ApplicationService {
     const application = await this.findById(tenantId, id);
     await this.assertIsHiringManager(tenantId, userId, application.requisitionId);
     return application;
+  }
+
+  async getResumeViewUrl(tenantId: string, id: string): Promise<string> {
+    const application = await this.findById(tenantId, id);
+    return this.resumeViewUrl(application);
+  }
+
+  async getResumeViewUrlForHiringManager(tenantId: string, userId: string, id: string): Promise<string> {
+    const application = await this.findByIdForHiringManager(tenantId, userId, id);
+    return this.resumeViewUrl(application);
+  }
+
+  async getIdentityDocumentViewUrl(tenantId: string, id: string): Promise<string> {
+    const application = await this.findById(tenantId, id);
+    return this.identityDocumentViewUrl(application);
+  }
+
+  async getIdentityDocumentViewUrlForHiringManager(
+    tenantId: string,
+    userId: string,
+    id: string,
+  ): Promise<string> {
+    const application = await this.findByIdForHiringManager(tenantId, userId, id);
+    return this.identityDocumentViewUrl(application);
+  }
+
+  private resumeViewUrl(application: ApplicationWithRelations): Promise<string> {
+    if (!application.resumeStorageKey) {
+      throw new NotFoundException('No resume was uploaded for this application');
+    }
+    return this.storage.getViewUrl(application.resumeStorageKey);
+  }
+
+  private identityDocumentViewUrl(application: ApplicationWithRelations): Promise<string> {
+    if (!application.identityDocumentStorageKey) {
+      throw new NotFoundException('No identity document was uploaded for this application');
+    }
+    return this.storage.getViewUrl(application.identityDocumentStorageKey);
   }
 
   list(

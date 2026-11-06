@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Application, ApplicationStage, Prisma } from '@prisma/client';
+import { Application, ApplicationStage, IdentityDocumentType, Prisma } from '@prisma/client';
 import { PrismaService } from '@africahr/platform-database';
 
 export interface CreateApplicationInput {
@@ -18,6 +18,11 @@ export interface UpdateApplicationInput {
   offerRespondedAt?: Date;
   offerAccepted?: boolean;
   hiredEmployeeId?: string;
+  resumeStorageKey?: string;
+  resumeFileName?: string;
+  identityDocumentStorageKey?: string;
+  identityDocumentFileName?: string;
+  identityDocumentType?: IdentityDocumentType;
   updatedBy?: string;
 }
 
@@ -103,6 +108,11 @@ export class ApplicationRepository {
           offerRespondedAt: input.offerRespondedAt,
           offerAccepted: input.offerAccepted,
           hiredEmployeeId: input.hiredEmployeeId,
+          resumeStorageKey: input.resumeStorageKey,
+          resumeFileName: input.resumeFileName,
+          identityDocumentStorageKey: input.identityDocumentStorageKey,
+          identityDocumentFileName: input.identityDocumentFileName,
+          identityDocumentType: input.identityDocumentType,
           updatedBy: input.updatedBy,
         },
       }),

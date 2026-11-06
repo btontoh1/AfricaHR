@@ -6,14 +6,40 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import * as argon2 from 'argon2';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { User } from '@prisma/client';
-import { RequestUser, SystemRole, TokenRevocationService } from '@africahr/platform-auth';
+import {
+  IMPERSONATION_TOKEN_TTL_SECONDS,
+  JwtTokenService,
+  RequestUser,
+  SystemRole,
+  TokenRevocationService,
+} from '@africahr/platform-auth';
 import { AuditService } from '@africahr/platform-audit';
 import { RefreshTokenRepository, UserRepository } from '@africahr/iam-data-access';
 import { getPasswordRequirementErrors } from '@africahr/iam-domain';
 import { CreateUserDto } from './dto/create-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
+import { ImpersonationTokenResponseDto } from './dto/impersonation-token-response.dto';
+
+/**
+ * Emitted once an impersonation session is actually issued - lives here,
+ * not notifications-feature, because scope:iam cannot depend on
+ * scope:notifications (Nx module boundary). notifications-feature's
+ * ImpersonationNotificationListener is the other half of this decoupling;
+ * both sides must agree on this literal string and payload shape
+ * informally, same as every other cross-domain event in this codebase
+ * (see e.g. PAYROLL_DISBURSEMENT_FAILED_EVENT).
+ */
+export const IMPERSONATION_STARTED_EVENT = 'iam.user.impersonation_started';
+
+export interface ImpersonationStartedEventPayload {
+  tenantId: string;
+  targetUserId: string;
+  actingAdminId: string;
+  reason: string;
+}
 
 @Injectable()
 export class UserService {
@@ -22,10 +48,15 @@ export class UserService {
     private readonly refreshTokens: RefreshTokenRepository,
     private readonly revocation: TokenRevocationService,
     private readonly audit: AuditService,
+    private readonly tokens: JwtTokenService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async create(dto: CreateUserDto, actor: RequestUser): Promise<User> {
     const tenantId = this.resolveCreateTenantId(dto, actor);
+    const organizationId = tenantId
+      ? await this.resolveOrganizationId(tenantId, dto.role, dto.organizationId)
+      : null;
 
     const passwordErrors = getPasswordRequirementErrors(dto.password);
     if (passwordErrors.length > 0) {
@@ -41,6 +72,7 @@ export class UserService {
 
     const user = await this.users.create({
       tenantId,
+      organizationId,
       email: dto.email,
       passwordHash,
       firstName: dto.firstName,
@@ -74,7 +106,7 @@ export class UserService {
     return this.users.listByTenant(tenantId);
   }
 
-  async updateRole(actor: RequestUser, id: string, role: SystemRole): Promise<User> {
+  async updateRole(actor: RequestUser, id: string, role: SystemRole, organizationId?: string): Promise<User> {
     const tenantId = this.requireTenantScope(actor);
     await this.findById(actor, id);
 
@@ -82,7 +114,8 @@ export class UserService {
       throw new BadRequestException('Cannot assign PLATFORM_ADMIN within a tenant');
     }
 
-    const user = await this.users.updateRole(tenantId, id, role, actor.sub);
+    const resolvedOrganizationId = await this.resolveOrganizationId(tenantId, role, organizationId);
+    const user = await this.users.updateRole(tenantId, id, role, resolvedOrganizationId, actor.sub);
 
     await this.audit.record({
       tenantId,
@@ -296,7 +329,13 @@ export class UserService {
     return user;
   }
 
-  async updateRoleForTenant(tenantId: string, id: string, role: SystemRole, actorId?: string): Promise<User> {
+  async updateRoleForTenant(
+    tenantId: string,
+    id: string,
+    role: SystemRole,
+    actorId?: string,
+    organizationId?: string,
+  ): Promise<User> {
     const existing = await this.users.findById(tenantId, id);
     if (!existing) {
       throw new NotFoundException(`User "${id}" not found`);
@@ -305,7 +344,8 @@ export class UserService {
       throw new BadRequestException('Cannot assign PLATFORM_ADMIN within a tenant');
     }
 
-    const user = await this.users.updateRole(tenantId, id, role, actorId);
+    const resolvedOrganizationId = await this.resolveOrganizationId(tenantId, role, organizationId);
+    const user = await this.users.updateRole(tenantId, id, role, resolvedOrganizationId, actorId);
 
     await this.audit.record({
       tenantId,
@@ -339,6 +379,65 @@ export class UserService {
   }
 
   /**
+   * Issues a short-lived (see JwtTokenService.signImpersonationToken), read-
+   * only (see JwtAuthGuard) access token for `id`, carrying an `act` claim
+   * naming `actor` - the platform admin actually driving the session, per
+   * RFC 8693's actor-claim pattern. Deliberately never touches the actor's
+   * own password, session, or refresh token: the point is that the admin
+   * never learns or uses the target's credentials at all.
+   *
+   * No session row is created and there is no corresponding "end"
+   * endpoint - ending impersonation is purely a client-side matter (the
+   * frontend simply refreshes back to its own, never-touched refresh
+   * token; see apps/web/src/app/api/auth/impersonate/route.ts's doc
+   * comment). What IS recorded, synchronously, before this returns: an
+   * audit entry attributed to the admin (not the target), and - via
+   * IMPERSONATION_STARTED_EVENT - a notice to the impersonated user, so
+   * this is never a silent capability.
+   */
+  async impersonateForTenant(
+    tenantId: string,
+    id: string,
+    reason: string,
+    actor: RequestUser,
+  ): Promise<ImpersonationTokenResponseDto> {
+    const target = await this.users.findById(tenantId, id);
+    if (!target) {
+      throw new NotFoundException(`User "${id}" not found`);
+    }
+    if (!target.isActive) {
+      throw new BadRequestException('Cannot impersonate a deactivated user');
+    }
+
+    const accessToken = this.tokens.signImpersonationToken({
+      sub: target.id,
+      email: target.email,
+      role: target.role,
+      tenantId: target.tenantId,
+      organizationId: target.organizationId,
+      act: { sub: actor.sub, email: actor.email },
+    });
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actor.sub,
+      action: 'user.impersonation_started',
+      resourceType: 'User',
+      resourceId: target.id,
+      metadata: { targetEmail: target.email, reason },
+    });
+
+    this.eventEmitter.emit(IMPERSONATION_STARTED_EVENT, {
+      tenantId,
+      targetUserId: target.id,
+      actingAdminId: actor.sub,
+      reason,
+    } satisfies ImpersonationStartedEventPayload);
+
+    return { accessToken, expiresInSeconds: IMPERSONATION_TOKEN_TTL_SECONDS };
+  }
+
+  /**
    * Platform admins may create the first user for a tenant they've just
    * provisioned (or another platform admin, by omitting tenantId) — this is
    * the one case where the actor's own tenant isn't the target tenant.
@@ -361,6 +460,36 @@ export class UserService {
     }
 
     return this.requireTenantScope(actor);
+  }
+
+  /**
+   * ORG_ADMIN requires an organizationId that actually belongs to
+   * tenantId; every other role must not carry one (a stray org id sitting
+   * on a tenant-wide role's JWT would be meaningless and confusing, so
+   * it's rejected rather than silently dropped).
+   */
+  private async resolveOrganizationId(
+    tenantId: string,
+    role: SystemRole,
+    organizationId?: string,
+  ): Promise<string | null> {
+    if (role !== SystemRole.ORG_ADMIN) {
+      if (organizationId) {
+        throw new BadRequestException('organizationId is only accepted when role is ORG_ADMIN');
+      }
+      return null;
+    }
+
+    if (!organizationId) {
+      throw new BadRequestException('organizationId is required when role is ORG_ADMIN');
+    }
+
+    const belongsToTenant = await this.users.organizationExistsInTenant(tenantId, organizationId);
+    if (!belongsToTenant) {
+      throw new NotFoundException(`Organization "${organizationId}" not found`);
+    }
+
+    return organizationId;
   }
 
   /**

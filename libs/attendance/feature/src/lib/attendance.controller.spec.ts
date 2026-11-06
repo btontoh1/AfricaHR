@@ -12,6 +12,7 @@ describe('AttendanceController', () => {
     email: 'hr@acme.com',
     role: SystemRole.HR_MANAGER,
     tenantId: 'tenant-1',
+    organizationId: null,
     iat: 1,
     exp: 2,
   };

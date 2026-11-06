@@ -3,12 +3,28 @@ import { PayslipRepository } from './payslip.repository';
 
 describe('PayslipRepository', () => {
   let repository: PayslipRepository;
-  let tx: { payslip: { upsert: jest.Mock; findFirst: jest.Mock; findMany: jest.Mock; update: jest.Mock } };
+  let tx: {
+    payslip: {
+      upsert: jest.Mock;
+      findFirst: jest.Mock;
+      findFirstOrThrow: jest.Mock;
+      findMany: jest.Mock;
+      update: jest.Mock;
+      updateMany: jest.Mock;
+    };
+  };
   let prisma: { withTenantContext: jest.Mock };
 
   beforeEach(() => {
     tx = {
-      payslip: { upsert: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), update: jest.fn() },
+      payslip: {
+        upsert: jest.fn(),
+        findFirst: jest.fn(),
+        findFirstOrThrow: jest.fn(),
+        findMany: jest.fn(),
+        update: jest.fn(),
+        updateMany: jest.fn(),
+      },
     };
     prisma = { withTenantContext: jest.fn((_tenantId, fn) => fn(tx)) };
     repository = new PayslipRepository(prisma as unknown as PrismaService);
@@ -62,20 +78,40 @@ describe('PayslipRepository', () => {
   });
 
   describe('recordDisbursementInitiated', () => {
-    it('marks the payslip PENDING and stores the Paystack references', async () => {
-      await repository.recordDisbursementInitiated('tenant-1', 'payslip-1', {
+    it('marks the payslip PENDING and stores the Paystack references when the claim succeeds', async () => {
+      tx.payslip.updateMany.mockResolvedValue({ count: 1 });
+      tx.payslip.findFirstOrThrow.mockResolvedValue({ id: 'payslip-1', disbursementStatus: 'PENDING' });
+
+      const result = await repository.recordDisbursementInitiated('tenant-1', 'payslip-1', {
         paystackRecipientCode: 'RCP_abc',
         paystackTransferReference: 'ref-123',
       });
 
-      expect(tx.payslip.update).toHaveBeenCalledWith({
-        where: { id: 'payslip-1' },
+      expect(tx.payslip.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: 'payslip-1',
+          tenantId: 'tenant-1',
+          disbursementStatus: { in: ['NOT_INITIATED', 'FAILED'] },
+        },
         data: {
           disbursementStatus: 'PENDING',
           paystackRecipientCode: 'RCP_abc',
           paystackTransferReference: 'ref-123',
         },
       });
+      expect(result).toEqual({ id: 'payslip-1', disbursementStatus: 'PENDING' });
+    });
+
+    it('returns null without claiming when the payslip is no longer NOT_INITIATED/FAILED (lost the race)', async () => {
+      tx.payslip.updateMany.mockResolvedValue({ count: 0 });
+
+      const result = await repository.recordDisbursementInitiated('tenant-1', 'payslip-1', {
+        paystackRecipientCode: 'RCP_abc',
+        paystackTransferReference: 'ref-123',
+      });
+
+      expect(result).toBeNull();
+      expect(tx.payslip.findFirstOrThrow).not.toHaveBeenCalled();
     });
   });
 

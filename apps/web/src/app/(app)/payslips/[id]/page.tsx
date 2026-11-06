@@ -17,6 +17,7 @@ export default function PayslipDetailPage({ params }: { params: Promise<{ id: st
       <PageHeader
         title="Payslip"
         description="Your pay breakdown for this pay run."
+        backHref="/payslips"
         action={
           // The browser's own print dialog offers "Save as PDF", so this
           // one button covers both printing and downloading a PDF copy —

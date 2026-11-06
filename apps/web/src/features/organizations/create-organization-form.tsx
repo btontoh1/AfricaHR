@@ -10,7 +10,7 @@ import { organizationFormSchema, type OrganizationFormValues } from './organizat
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 
 function toOptional(value: string | undefined): string | undefined {
@@ -31,6 +31,7 @@ export function CreateOrganizationForm() {
       countryCode: '',
       registrationNumber: '',
       taxIdentificationNumber: '',
+      address: '',
     },
   });
 
@@ -42,6 +43,7 @@ export function CreateOrganizationForm() {
         countryCode: values.countryCode,
         registrationNumber: values.registrationNumber,
         taxIdentificationNumber: toOptional(values.taxIdentificationNumber),
+        address: toOptional(values.address),
       });
       toast.success('Organization created');
       router.push(`/organizations/${organization.id}`);
@@ -119,6 +121,20 @@ export function CreateOrganizationForm() {
                   <FormControl>
                     <Input placeholder="C0012345678" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="address"
+              render={({ field }) => (
+                <FormItem className="sm:col-span-2">
+                  <FormLabel>Address (optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="12 Independence Ave, Accra, Ghana" {...field} />
+                  </FormControl>
+                  <FormDescription>Shown as the employer&apos;s address on payslips.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

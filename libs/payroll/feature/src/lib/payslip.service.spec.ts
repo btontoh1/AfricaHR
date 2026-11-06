@@ -8,6 +8,7 @@ import {
   PayRunRepository,
   PayrollEmployeeRepository,
   PayrollLeaveRequestRepository,
+  PayrollOrganizationRepository,
   PayslipLineItemRepository,
   PayslipRepository,
   StatutoryRateRepository,
@@ -21,6 +22,7 @@ describe('PayslipService', () => {
   let lineItems: jest.Mocked<PayslipLineItemRepository>;
   let payRuns: jest.Mocked<PayRunRepository>;
   let employees: jest.Mocked<PayrollEmployeeRepository>;
+  let organizations: jest.Mocked<PayrollOrganizationRepository>;
   let taxBands: jest.Mocked<StatutoryTaxBandRepository>;
   let rates: jest.Mocked<StatutoryRateRepository>;
   let benefitEnrollments: jest.Mocked<PayrollBenefitEnrollmentRepository>;
@@ -113,6 +115,13 @@ describe('PayslipService', () => {
       findByUserId: jest.fn(),
     } as unknown as jest.Mocked<PayrollEmployeeRepository>;
 
+    organizations = {
+      findById: jest.fn().mockResolvedValue({ id: 'org-1', legalName: 'Acme Ghana Ltd', address: '1 High St, Accra' }),
+      findManyByIds: jest.fn().mockResolvedValue([
+        { id: 'org-1', legalName: 'Acme Ghana Ltd', address: '1 High St, Accra' },
+      ]),
+    } as unknown as jest.Mocked<PayrollOrganizationRepository>;
+
     taxBands = {
       findEffective: jest.fn().mockResolvedValue([{ order: 1, lowerBound: 0, upperBound: null, rate: 0.1 }]),
     } as unknown as jest.Mocked<StatutoryTaxBandRepository>;
@@ -141,6 +150,7 @@ describe('PayslipService', () => {
       lineItems,
       payRuns,
       employees,
+      organizations,
       taxBands,
       rates,
       benefitEnrollments,
@@ -170,6 +180,8 @@ describe('PayslipService', () => {
       expect(result.payDate).toEqual(new Date('2026-02-01'));
       expect(result.employeeFirstName).toBe('Ama');
       expect(result.employeeLastName).toBe('Owusu');
+      expect(result.organizationName).toBe('Acme Ghana Ltd');
+      expect(result.organizationAddress).toBe('1 High St, Accra');
     });
 
     it('throws NotFoundException when the pay run behind the payslip is gone', async () => {
@@ -185,6 +197,16 @@ describe('PayslipService', () => {
       payslips.findById.mockResolvedValue(makePayslip());
       payRuns.findById.mockResolvedValue(makePayRun());
       employees.findById.mockResolvedValue(null);
+
+      await expect(service.findByIdWithPeriod('tenant-1', 'payslip-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('throws NotFoundException when the organization behind the payslip is gone', async () => {
+      payslips.findById.mockResolvedValue(makePayslip());
+      payRuns.findById.mockResolvedValue(makePayRun());
+      organizations.findById.mockResolvedValue(null);
 
       await expect(service.findByIdWithPeriod('tenant-1', 'payslip-1')).rejects.toThrow(
         NotFoundException,
@@ -241,6 +263,8 @@ describe('PayslipService', () => {
           payDate: expect.any(Date),
           employeeFirstName: 'Ama',
           employeeLastName: 'Owusu',
+          organizationName: 'Acme Ghana Ltd',
+          organizationAddress: '1 High St, Accra',
         },
       ]);
     });

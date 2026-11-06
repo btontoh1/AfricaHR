@@ -1,0 +1,324 @@
+import { Injectable } from '@nestjs/common';
+import { GlJournalEntrySourceType, Prisma } from '@prisma/client';
+import { PrismaService } from '@africahr/platform-database';
+import { GlAccountCode } from '@africahr/finance-domain';
+
+export type GlJournalEntryWithLines = Prisma.GlJournalEntryGetPayload<{
+  include: { lines: { include: { account: true } }; organizationUnit: true; costCenter: true };
+}>;
+
+export type GlJournalLineWithAccount = Prisma.GlJournalLineGetPayload<{
+  include: { account: true; journalEntry: { select: { currency: true } } };
+}>;
+
+export type GlJournalLineForReconciliation = Prisma.GlJournalLineGetPayload<{
+  include: { account: true; journalEntry: { select: { currency: true; organizationId: true; entryDate: true; description: true } } };
+}>;
+
+export interface CreateJournalEntryLineInput {
+  accountId: string;
+  debit: Prisma.Decimal | number;
+  credit: Prisma.Decimal | number;
+}
+
+export interface CreateJournalEntryInput {
+  organizationId: string;
+  entryDate: Date;
+  description: string;
+  currency: string;
+  sourceType: GlJournalEntrySourceType;
+  sourceId: string;
+  createdBy?: string;
+  /** Only set when this entry is itself a reversal - see voidEntry below. */
+  reversalOfId?: string;
+  /** Cost-accounting dimensions - manual entries only today, see the
+   * schema's own doc comment on GlJournalEntry.organizationUnitId. */
+  organizationUnitId?: string;
+  costCenterId?: string;
+  lines: CreateJournalEntryLineInput[];
+}
+
+@Injectable()
+export class GlJournalEntryRepository {
+  constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Returns null instead of throwing when an entry for this exact
+   * (sourceType, sourceId) already exists - the unique constraint on those
+   * two columns is the actual idempotency guard, enforced at the database
+   * level so it holds even under concurrent event delivery; this just turns
+   * that constraint violation into a quiet no-op rather than a 500 for the
+   * (already-defended-elsewhere) case of an event firing twice.
+   */
+  async createIfNotExists(
+    tenantId: string,
+    input: CreateJournalEntryInput,
+  ): Promise<GlJournalEntryWithLines | null> {
+    try {
+      return await this.prisma.withTenantContext(tenantId, (tx) =>
+        tx.glJournalEntry.create({
+          data: {
+            tenantId,
+            organizationId: input.organizationId,
+            entryDate: input.entryDate,
+            description: input.description,
+            currency: input.currency,
+            sourceType: input.sourceType,
+            sourceId: input.sourceId,
+            createdBy: input.createdBy,
+            reversalOfId: input.reversalOfId,
+            organizationUnitId: input.organizationUnitId,
+            costCenterId: input.costCenterId,
+            lines: {
+              create: input.lines.map((line) => ({
+                tenantId,
+                accountId: line.accountId,
+                debit: line.debit,
+                credit: line.credit,
+              })),
+            },
+          },
+          include: { lines: { include: { account: true } }, organizationUnit: true, costCenter: true },
+        }),
+      );
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  findById(tenantId: string, id: string): Promise<GlJournalEntryWithLines | null> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.glJournalEntry.findFirst({
+        where: { id, tenantId },
+        include: { lines: { include: { account: true } }, organizationUnit: true, costCenter: true },
+      }),
+    );
+  }
+
+  /**
+   * Atomically creates the reversing entry and marks the original as
+   * voided - both succeed or both fail in the same transaction, so a void
+   * can never leave the ledger with a reversal but no voidedAt, or vice
+   * versa. Returns null instead of throwing if the original was already
+   * voided concurrently (reversalOfId's unique constraint is the
+   * database-level backstop - see FinanceService.voidEntry for the
+   * business-rule checks that normally catch this first).
+   */
+  async voidEntry(
+    tenantId: string,
+    originalId: string,
+    reversal: CreateJournalEntryInput,
+  ): Promise<GlJournalEntryWithLines | null> {
+    try {
+      return await this.prisma.withTenantContext(tenantId, async (tx) => {
+        const reversalEntry = await tx.glJournalEntry.create({
+          data: {
+            tenantId,
+            organizationId: reversal.organizationId,
+            entryDate: reversal.entryDate,
+            description: reversal.description,
+            currency: reversal.currency,
+            sourceType: reversal.sourceType,
+            sourceId: reversal.sourceId,
+            reversalOfId: originalId,
+            createdBy: reversal.createdBy,
+            organizationUnitId: reversal.organizationUnitId,
+            costCenterId: reversal.costCenterId,
+            lines: {
+              create: reversal.lines.map((line) => ({
+                tenantId,
+                accountId: line.accountId,
+                debit: line.debit,
+                credit: line.credit,
+              })),
+            },
+          },
+          include: { lines: { include: { account: true } }, organizationUnit: true, costCenter: true },
+        });
+        await tx.glJournalEntry.update({
+          where: { id: originalId },
+          data: { voidedAt: new Date(), voidedBy: reversal.createdBy },
+        });
+        return reversalEntry;
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  list(tenantId: string, organizationId?: string): Promise<GlJournalEntryWithLines[]> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.glJournalEntry.findMany({
+        where: { tenantId, organizationId },
+        include: { lines: { include: { account: true } }, organizationUnit: true, costCenter: true },
+        orderBy: { entryDate: 'desc' },
+      }),
+    );
+  }
+
+  /**
+   * Every journal line whose entry falls within [from, to] (inclusive),
+   * account included - the raw material FinanceReportsService aggregates
+   * into a P&L/cash-flow report. Deliberately unfiltered by account type;
+   * the report layer decides which lines matter for which report.
+   */
+  listLinesInRange(
+    tenantId: string,
+    range: { organizationId?: string; from: Date; to: Date },
+  ): Promise<GlJournalLineWithAccount[]> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.glJournalLine.findMany({
+        where: {
+          tenantId,
+          journalEntry: {
+            organizationId: range.organizationId,
+            entryDate: { gte: range.from, lte: range.to },
+          },
+        },
+        include: { account: true, journalEntry: { select: { currency: true } } },
+      }),
+    );
+  }
+
+  /** A balance sheet is a snapshot as of a date, not a period - every line
+   * from account inception through asOf, unlike listLinesInRange's bounded
+   * window (see computeBalanceSheet's own doc comment for why). */
+  listLinesUpTo(
+    tenantId: string,
+    query: { organizationId?: string; asOf: Date },
+  ): Promise<GlJournalLineWithAccount[]> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.glJournalLine.findMany({
+        where: {
+          tenantId,
+          journalEntry: {
+            organizationId: query.organizationId,
+            entryDate: { lte: query.asOf },
+          },
+        },
+        include: { account: true, journalEntry: { select: { currency: true } } },
+      }),
+    );
+  }
+
+  /**
+   * Cash and Bank lines eligible for a reconciliation - dated on or before
+   * the statement date, in this organization/currency, and either not yet
+   * claimed by any reconciliation or already claimed by this one (so an
+   * in-progress reconciliation's own previously-cleared lines still show up
+   * when its detail page is reopened). A line claimed by a *different*
+   * reconciliation (necessarily an earlier, already-completed one - see
+   * BankReconciliationService) never appears here again.
+   */
+  listCashLinesForReconciliation(
+    tenantId: string,
+    query: { organizationId: string; currency: string; statementDate: Date; reconciliationId: string },
+  ): Promise<GlJournalLineForReconciliation[]> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.glJournalLine.findMany({
+        where: {
+          tenantId,
+          account: { code: GlAccountCode.CASH_AND_BANK },
+          journalEntry: {
+            organizationId: query.organizationId,
+            currency: query.currency,
+            entryDate: { lte: query.statementDate },
+          },
+          OR: [{ reconciliationId: null }, { reconciliationId: query.reconciliationId }],
+        },
+        include: {
+          account: true,
+          journalEntry: { select: { currency: true, organizationId: true, entryDate: true, description: true } },
+        },
+        orderBy: { journalEntry: { entryDate: 'asc' } },
+      }),
+    );
+  }
+
+  findLineById(tenantId: string, lineId: string): Promise<GlJournalLineForReconciliation | null> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.glJournalLine.findFirst({
+        where: { id: lineId, tenantId },
+        include: {
+          account: true,
+          journalEntry: { select: { currency: true, organizationId: true, entryDate: true, description: true } },
+        },
+      }),
+    );
+  }
+
+  /** Claims (reconciliationId set) or releases (reconciliationId null) one
+   * line - BankReconciliationService is what enforces a line can only ever
+   * be claimed by one reconciliation at a time. */
+  setLineReconciliation(
+    tenantId: string,
+    lineId: string,
+    reconciliationId: string | null,
+  ): Promise<GlJournalLineForReconciliation> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.glJournalLine.update({
+        where: { id: lineId },
+        data: { reconciliationId },
+        include: {
+          account: true,
+          journalEntry: { select: { currency: true, organizationId: true, entryDate: true, description: true } },
+        },
+      }),
+    );
+  }
+
+  /** Every cleared line for one reconciliation - used to compute the
+   * cleared balance (see finance-domain's computeClearedBalance) and to
+   * release them all back to null when an in-progress reconciliation is
+   * deleted. */
+  listClearedLines(tenantId: string, reconciliationId: string): Promise<GlJournalLineForReconciliation[]> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.glJournalLine.findMany({
+        where: { tenantId, reconciliationId },
+        include: {
+          account: true,
+          journalEntry: { select: { currency: true, organizationId: true, entryDate: true, description: true } },
+        },
+      }),
+    );
+  }
+
+  /** Releases every line a reconciliation had claimed back to unclaimed -
+   * called when an IN_PROGRESS reconciliation is deleted, so its lines
+   * become eligible for a future reconciliation again. */
+  releaseClearedLines(tenantId: string, reconciliationId: string): Promise<Prisma.BatchPayload> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.glJournalLine.updateMany({ where: { tenantId, reconciliationId }, data: { reconciliationId: null } }),
+    );
+  }
+
+  /**
+   * Batch-resolves user ids (createdBy/approvedBy) to a "First Last" display
+   * name, for rendering Prepared by/Approved by. The users table carries a
+   * tenant_isolation RLS policy same as everything else, so this must run
+   * through withTenantContext like any other tenant-scoped read - a plain
+   * this.prisma.user.findMany() here would see zero rows (current_setting
+   * returns null with no GUC set, and `tenant_id = null` never matches).
+   * An id not found (e.g. a deleted user) is simply absent from the
+   * returned map - the caller falls back to "System".
+   */
+  async resolveUserNames(tenantId: string, userIds: Array<string | null | undefined>): Promise<Map<string, string>> {
+    const distinctIds = [...new Set(userIds.filter((id): id is string => Boolean(id)))];
+    if (distinctIds.length === 0) {
+      return new Map();
+    }
+    const users = await this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.user.findMany({
+        where: { tenantId, id: { in: distinctIds } },
+        select: { id: true, firstName: true, lastName: true, email: true },
+      }),
+    );
+    return new Map(users.map((user) => [user.id, `${user.firstName} ${user.lastName}`.trim() || user.email]));
+  }
+}

@@ -6,7 +6,20 @@ export const SystemRole = {
   TENANT_ADMIN: 'TENANT_ADMIN',
   HR_MANAGER: 'HR_MANAGER',
   PAYROLL_MANAGER: 'PAYROLL_MANAGER',
+  // Narrower than PAYROLL_MANAGER - holds Permission.PAYROLL_PREPARE but not
+  // PAYROLL_MANAGE, so it can prepare a pay run but not approve/pay it. See
+  // that permission's own comment for the separation-of-duties reasoning.
+  PAYROLL_OFFICER: 'PAYROLL_OFFICER',
+  // Scoped to exactly one Organization within the tenant (User.organizationId)
+  // - see assertOrganizationScope. Every other role here is tenant-wide.
+  ORG_ADMIN: 'ORG_ADMIN',
   EMPLOYEE: 'EMPLOYEE',
+  // Read-only, Finance-only - an external bookkeeper/accountant a tenant
+  // invites without giving them any other tenant-admin capability. No
+  // Employee record is expected or required (see UserService.create - a
+  // User never needs one). Tenant-wide like TENANT_ADMIN's own finance
+  // access (assertOrganizationScope only restricts ORG_ADMIN).
+  ACCOUNTANT: 'ACCOUNTANT',
 } as const;
 
 export type SystemRole = (typeof SystemRole)[keyof typeof SystemRole];
@@ -16,6 +29,12 @@ export type SystemRole = (typeof SystemRole)[keyof typeof SystemRole];
 // was chosen over dynamic per-tenant RBAC — a deliberate v1 scope cut).
 export const Permission = {
   PLATFORM_TENANT_MANAGE: 'platform:tenant:manage',
+  // Deliberately its own permission, not folded into PLATFORM_TENANT_MANAGE
+  // above - "who can edit a tenant's settings" and "who can sign in as one
+  // of its users" are different enough questions (for a security review,
+  // an auditor, and the service agreement) to want a separately nameable
+  // grant, even though today only PLATFORM_ADMIN holds either one.
+  PLATFORM_USER_IMPERSONATE: 'platform:user:impersonate',
   ORGANIZATION_MANAGE: 'organization:manage',
   // Added when Organization got its first read-only consumer (the
   // Employee frontend's organization picker) — Module 1 predates the
@@ -26,8 +45,29 @@ export const Permission = {
   USER_READ: 'user:read',
   EMPLOYEE_MANAGE: 'employee:manage',
   EMPLOYEE_READ: 'employee:read',
+  // Covers the whole pay-run lifecycle: create, process, approve, pay,
+  // close, cancel, plus payslip line-item edits and disbursement retries.
+  // See PAYROLL_PREPARE for the narrower prepare-only slice PAYROLL_OFFICER
+  // holds instead - PAYROLL_MANAGE stays reserved for approve/pay/close/
+  // cancel/retry-disbursement (the money-releasing actions).
   PAYROLL_MANAGE: 'payroll:manage',
   PAYROLL_READ: 'payroll:read',
+  // Prepare-only slice of payroll: create a pay run, process it (compute
+  // payslips), and add/remove payslip line items - everything up to but not
+  // including approve/pay/close/cancel/retry-disbursement, which stay
+  // PAYROLL_MANAGE-only. Deliberate separation of duties so the person
+  // entering payroll data isn't necessarily the same one releasing funds.
+  // Every role holding PAYROLL_MANAGE also holds this one (see
+  // ROLE_PERMISSIONS) so approvers can still prepare a run themselves.
+  PAYROLL_PREPARE: 'payroll:prepare',
+  // The tenant's own prefunded payroll balance (see TenantPayrollWallet) -
+  // tenant-scoped, not PLATFORM_BILLING_MANAGE-gated like Invoice, since
+  // topping it up is the tenant deciding to fund their own upcoming
+  // payroll, not a platform admin acting on their behalf. Same
+  // PAYROLL_MANAGE/PAYROLL_READ role distribution as the rest of payroll -
+  // whoever can mark a pay run paid is who needs to keep this funded.
+  PAYROLL_WALLET_MANAGE: 'payroll:wallet:manage',
+  PAYROLL_WALLET_READ: 'payroll:wallet:read',
   LEAVE_MANAGE: 'leave:manage',
   LEAVE_READ: 'leave:read',
   ATTENDANCE_MANAGE: 'attendance:manage',
@@ -36,6 +76,10 @@ export const Permission = {
   BENEFITS_READ: 'benefits:read',
   PERFORMANCE_MANAGE: 'performance:manage',
   PERFORMANCE_READ: 'performance:read',
+  // Narrower than PERFORMANCE_MANAGE (which HR_MANAGER also holds, for
+  // editing) - deleting a goal permanently erases performance history, so
+  // only TENANT_ADMIN/PLATFORM_ADMIN get it.
+  PERFORMANCE_GOAL_DELETE: 'performance:goal:delete',
   RECRUITMENT_MANAGE: 'recruitment:manage',
   RECRUITMENT_READ: 'recruitment:read',
   // Read-only — reports are computed on demand, never created/edited, so
@@ -55,6 +99,10 @@ export const Permission = {
   // their own branding, unlike PLATFORM_TENANT_MANAGE's ops-only lifecycle
   // actions (status changes, etc).
   TENANT_BRANDING_MANAGE: 'tenant:branding:manage',
+  // Tenant-scoped, separate from TENANT_BRANDING_MANAGE: module-behavior
+  // toggles (currently just Performance Management's Balanced Scorecard
+  // framework switch) rather than branding/identity.
+  TENANT_SETTINGS_MANAGE: 'tenant:settings:manage',
   // Platform-admin only: subscriptions/invoices are assigned and managed by
   // the platform admin in v1 (no tenant self-serve checkout - see project
   // scoping decision), so there is no tenant-level counterpart yet.
@@ -76,6 +124,41 @@ export const Permission = {
   // those emails go through. No tenant-level counterpart, same reasoning
   // as PLATFORM_AUDIT_READ/PLATFORM_DISBURSEMENT_READ.
   PLATFORM_NOTIFICATION_READ: 'platform:notification:read',
+  // Deliberately its own permission, not folded into PLATFORM_NOTIFICATION_READ
+  // above - that one is read-only (the delivery-health dashboard), this one
+  // sends a real email + in-app notice to every tenant's admin at once, a
+  // materially different and separately auditable grant (same reasoning as
+  // PLATFORM_USER_IMPERSONATE being split from PLATFORM_TENANT_MANAGE).
+  PLATFORM_NOTIFICATION_BROADCAST: 'platform:notification:broadcast',
+  // An organization's own external billing tool (customers it invoices),
+  // not an internal HR function - deliberately granted to ORG_ADMIN despite
+  // that role otherwise being scoped to employees only (see ORG_ADMIN's own
+  // permission list below), since invoicing is the org's own business
+  // operation, not tenant-wide HR administration.
+  INVOICING_MANAGE: 'invoicing:manage',
+  INVOICING_READ: 'invoicing:read',
+  // General ledger: manual journal entries plus the automatic postings from
+  // payroll disbursement and customer invoicing. Restricted to
+  // PLATFORM_ADMIN/TENANT_ADMIN only, unlike INVOICING_MANAGE - the GL spans
+  // every organization under the tenant and misposting it corrupts financial
+  // reports, so it isn't handed to ORG_ADMIN/HR_MANAGER the way an org's own
+  // customer invoicing is.
+  FINANCE_MANAGE: 'finance:manage',
+  FINANCE_READ: 'finance:read',
+  // Vendor bills (Accounts Payable) - the AP mirror of INVOICING_MANAGE/READ,
+  // same reasoning and same role distribution: Vendor/VendorBill are
+  // organization-scoped external-party transactions (an org's own vendors),
+  // not tenant-spanning GL configuration, so this stays separate from
+  // FINANCE_MANAGE/READ's PLATFORM_ADMIN/TENANT_ADMIN-only restriction and is
+  // handed to ORG_ADMIN/HR_MANAGER too.
+  AP_MANAGE: 'ap:manage',
+  AP_READ: 'ap:read',
+  // Platform-admin only: the "How it works" tutorial catalog is the same
+  // curated content shown to every tenant, so only the platform admin
+  // curates it - no tenant-level counterpart, same reasoning as
+  // PLATFORM_PAYROLL_CONFIG_MANAGE. Read side needs no permission at all
+  // (every authenticated user can view - see HowItWorksVideoController).
+  HOW_IT_WORKS_MANAGE: 'platform:how-it-works:manage',
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
@@ -83,6 +166,7 @@ export type Permission = (typeof Permission)[keyof typeof Permission];
 export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
   [SystemRole.PLATFORM_ADMIN]: [
     Permission.PLATFORM_TENANT_MANAGE,
+    Permission.PLATFORM_USER_IMPERSONATE,
     Permission.ORGANIZATION_MANAGE,
     Permission.ORGANIZATION_READ,
     Permission.USER_MANAGE,
@@ -90,7 +174,10 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.EMPLOYEE_MANAGE,
     Permission.EMPLOYEE_READ,
     Permission.PAYROLL_MANAGE,
+    Permission.PAYROLL_PREPARE,
     Permission.PAYROLL_READ,
+    Permission.PAYROLL_WALLET_MANAGE,
+    Permission.PAYROLL_WALLET_READ,
     Permission.PLATFORM_PAYROLL_CONFIG_MANAGE,
     Permission.PLATFORM_ORGANIZATION_VERIFY,
     Permission.LEAVE_MANAGE,
@@ -101,18 +188,28 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.BENEFITS_READ,
     Permission.PERFORMANCE_MANAGE,
     Permission.PERFORMANCE_READ,
+    Permission.PERFORMANCE_GOAL_DELETE,
     Permission.RECRUITMENT_MANAGE,
     Permission.RECRUITMENT_READ,
     Permission.REPORTING_READ,
     Permission.NOTIFICATIONS_MANAGE,
     Permission.NOTIFICATIONS_READ,
+    Permission.INVOICING_MANAGE,
+    Permission.INVOICING_READ,
+    Permission.FINANCE_MANAGE,
+    Permission.FINANCE_READ,
+    Permission.AP_MANAGE,
+    Permission.AP_READ,
     Permission.PLATFORM_BILLING_MANAGE,
     Permission.PLATFORM_AUDIT_READ,
     Permission.PLATFORM_DISBURSEMENT_READ,
     Permission.PLATFORM_NOTIFICATION_READ,
+    Permission.PLATFORM_NOTIFICATION_BROADCAST,
+    Permission.HOW_IT_WORKS_MANAGE,
   ],
   [SystemRole.TENANT_ADMIN]: [
     Permission.TENANT_BRANDING_MANAGE,
+    Permission.TENANT_SETTINGS_MANAGE,
     Permission.ORGANIZATION_MANAGE,
     Permission.ORGANIZATION_READ,
     Permission.USER_MANAGE,
@@ -120,7 +217,10 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.EMPLOYEE_MANAGE,
     Permission.EMPLOYEE_READ,
     Permission.PAYROLL_MANAGE,
+    Permission.PAYROLL_PREPARE,
     Permission.PAYROLL_READ,
+    Permission.PAYROLL_WALLET_MANAGE,
+    Permission.PAYROLL_WALLET_READ,
     Permission.LEAVE_MANAGE,
     Permission.LEAVE_READ,
     Permission.ATTENDANCE_MANAGE,
@@ -129,11 +229,18 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.BENEFITS_READ,
     Permission.PERFORMANCE_MANAGE,
     Permission.PERFORMANCE_READ,
+    Permission.PERFORMANCE_GOAL_DELETE,
     Permission.RECRUITMENT_MANAGE,
     Permission.RECRUITMENT_READ,
     Permission.REPORTING_READ,
     Permission.NOTIFICATIONS_MANAGE,
     Permission.NOTIFICATIONS_READ,
+    Permission.INVOICING_MANAGE,
+    Permission.INVOICING_READ,
+    Permission.FINANCE_MANAGE,
+    Permission.FINANCE_READ,
+    Permission.AP_MANAGE,
+    Permission.AP_READ,
   ],
   [SystemRole.HR_MANAGER]: [
     Permission.ORGANIZATION_READ,
@@ -154,15 +261,60 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.REPORTING_READ,
     Permission.NOTIFICATIONS_MANAGE,
     Permission.NOTIFICATIONS_READ,
+    Permission.INVOICING_MANAGE,
+    Permission.INVOICING_READ,
+    Permission.AP_MANAGE,
+    Permission.AP_READ,
   ],
   [SystemRole.PAYROLL_MANAGER]: [
     Permission.ORGANIZATION_READ,
     Permission.EMPLOYEE_READ,
     Permission.PAYROLL_MANAGE,
+    Permission.PAYROLL_PREPARE,
     Permission.PAYROLL_READ,
+    Permission.PAYROLL_WALLET_MANAGE,
+    Permission.PAYROLL_WALLET_READ,
     Permission.REPORTING_READ,
   ],
+  // Prepare-only counterpart to PAYROLL_MANAGER (see Permission.PAYROLL_PREPARE) -
+  // same visibility (organization/employee read, reports) but no
+  // PAYROLL_MANAGE, so approve/pay/close/cancel/retry-disbursement stay out
+  // of reach. Same split for the wallet: can see the balance
+  // (PAYROLL_WALLET_READ) but not top it up or spend it.
+  [SystemRole.PAYROLL_OFFICER]: [
+    Permission.ORGANIZATION_READ,
+    Permission.EMPLOYEE_READ,
+    Permission.PAYROLL_PREPARE,
+    Permission.PAYROLL_READ,
+    Permission.PAYROLL_WALLET_READ,
+    Permission.REPORTING_READ,
+  ],
+  // Deliberately narrow (v1 scope cut): employee management only, within
+  // whichever single Organization User.organizationId points at
+  // (assertOrganizationScope enforces the "within" part - this list alone
+  // doesn't). No leave/attendance/payroll/recruitment - those stay
+  // TENANT_ADMIN/HR_MANAGER-only for now. USER_READ (not MANAGE) mirrors
+  // HR_MANAGER's own grant - both need to list tenant users to link one to
+  // an Employee.userId (granting portal access), but neither can invite,
+  // deactivate, or change the role of a User themselves. INVOICING/AP are
+  // the exceptions to "employee management only": they're the organization's
+  // own external billing tools (customers it invoices, vendors it owes), not
+  // an internal HR function, so they're in scope even though
+  // leave/attendance/payroll aren't.
+  [SystemRole.ORG_ADMIN]: [
+    Permission.ORGANIZATION_READ,
+    Permission.USER_READ,
+    Permission.EMPLOYEE_MANAGE,
+    Permission.EMPLOYEE_READ,
+    Permission.INVOICING_MANAGE,
+    Permission.INVOICING_READ,
+    Permission.AP_MANAGE,
+    Permission.AP_READ,
+  ],
   [SystemRole.EMPLOYEE]: [],
+  // Read-only Finance access and nothing else - see the role's own comment
+  // above for why (no Employee record, external bookkeeper).
+  [SystemRole.ACCOUNTANT]: [Permission.FINANCE_READ],
 };
 
 export function hasPermission(role: SystemRole, permission: Permission): boolean {

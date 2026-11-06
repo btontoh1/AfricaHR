@@ -70,4 +70,25 @@ describe('ApplicationRepository', () => {
       data: expect.objectContaining({ stage: 'OFFER', offeredSalary: 5000, offerSentAt }),
     });
   });
+
+  it('updates resume and identity document fields', async () => {
+    await repository.update('tenant-1', 'app-1', {
+      resumeStorageKey: 'resumes/tenant-1/abc-resume.pdf',
+      resumeFileName: 'resume.pdf',
+      identityDocumentStorageKey: 'identity-documents/tenant-1/abc-id.pdf',
+      identityDocumentFileName: 'ghana-card.pdf',
+      identityDocumentType: 'NATIONAL_ID',
+    });
+
+    expect(tx.application.update).toHaveBeenCalledWith({
+      where: { id: 'app-1' },
+      data: expect.objectContaining({
+        resumeStorageKey: 'resumes/tenant-1/abc-resume.pdf',
+        resumeFileName: 'resume.pdf',
+        identityDocumentStorageKey: 'identity-documents/tenant-1/abc-id.pdf',
+        identityDocumentFileName: 'ghana-card.pdf',
+        identityDocumentType: 'NATIONAL_ID',
+      }),
+    });
+  });
 });

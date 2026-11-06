@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
 import type {
+  BulkImportEmployeesInput,
   CreateEmployeeInput,
   PaymentMethodType,
   UpdateEmployeeInput,
@@ -88,6 +89,26 @@ export function useUpdateEmployee(tenantId: string, id: string) {
   });
 }
 
+/** Partial-success import: a non-empty `errors` array in the result is not itself a mutation failure - the request still succeeded, some rows just didn't create. */
+export function useBulkImportEmployees(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: BulkImportEmployeesInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/employees/bulk-import', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (result) => {
+      if (result.created > 0) {
+        queryClient.invalidateQueries({ queryKey: employeesKey(tenantId) });
+      }
+    },
+  });
+}
+
 // --- Self-service ---
 
 export function useMyPaymentMethod(tenantId: string) {
@@ -133,6 +154,22 @@ export function useUpsertMyPaymentMethod(tenantId: string) {
       return data;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: myPaymentMethodKey(tenantId) }),
+  });
+}
+
+export function useDeleteEmployee(tenantId: string, id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await apiClient.DELETE('/api/tenants/{tenantId}/employees/{id}', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: employeesKey(tenantId) });
+      queryClient.removeQueries({ queryKey: employeeKey(tenantId, id) });
+    },
   });
 }
 

@@ -15,6 +15,7 @@ import {
   PaystackTransferClient,
   RealPaystackTransferClient,
 } from './paystack-transfer-client';
+import { PaystackTransferClientRegistry } from './paystack-transfer-client-registry';
 import { PayrollTransferWebhookListener } from './payroll-transfer-webhook.listener';
 import { PlatformDisbursementService } from './platform-disbursement.service';
 import { PlatformDisbursementController } from './platform-disbursement.controller';
@@ -39,14 +40,19 @@ import { PlatformDisbursementController } from './platform-disbursement.controll
     PayrollTransferWebhookListener,
     PlatformDisbursementService,
     {
-      provide: PaystackTransferClient,
+      provide: PaystackTransferClientRegistry,
       inject: [AppConfigService],
-      // Real payroll disbursement only when PAYSTACK_SECRET_KEY is set -
-      // falls back to the log placeholder otherwise (local/dev/CI), same
-      // posture as billing's PaystackClient/NotificationDispatcher.
+      // One PaystackTransferClient per currency/account - Real when that
+      // currency's secret key is configured, the log placeholder
+      // otherwise (local/dev/CI, or a currency not yet activated), same
+      // posture as billing's PaystackClientRegistry/NotificationDispatcher.
       useFactory: (config: AppConfigService) => {
-        const secretKey = config.paystackSecretKey;
-        return secretKey ? new RealPaystackTransferClient(secretKey) : new LogPaystackTransferClient();
+        const keysByCurrency = config.paystackSecretKeysByCurrency;
+        const clients = new Map<string, PaystackTransferClient>();
+        for (const [currency, secretKey] of Object.entries(keysByCurrency)) {
+          clients.set(currency, secretKey ? new RealPaystackTransferClient(secretKey) : new LogPaystackTransferClient());
+        }
+        return new PaystackTransferClientRegistry(clients);
       },
     },
   ],

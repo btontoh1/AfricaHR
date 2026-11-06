@@ -30,6 +30,17 @@ export const editLeaveTypeFormSchema = z.object({
 
 export type EditLeaveTypeFormValues = z.infer<typeof editLeaveTypeFormSchema>;
 
+// Mirrors UpdateLeaveRequestDto (libs/leave/feature/src/lib/dto/update-leave-request.dto.ts) —
+// startDate/endDate are optional there (PATCH semantics), but the edit
+// dialog always pre-fills and sends both, so they're required here.
+export const editLeaveRequestFormSchema = z.object({
+  startDate: z.string().min(1, 'Start date is required'),
+  endDate: z.string().min(1, 'End date is required'),
+  reason: z.string().max(500).optional().or(z.literal('')),
+});
+
+export type EditLeaveRequestFormValues = z.infer<typeof editLeaveRequestFormSchema>;
+
 export const rejectLeaveRequestFormSchema = z.object({
   rejectionReason: z.string().min(1, 'A reason is required').max(500),
 });

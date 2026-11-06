@@ -4,10 +4,11 @@ import Link from 'next/link';
 import { Receipt } from 'lucide-react';
 import { useMyPayslips } from './queries';
 import { PayslipStatusBadge } from './payslip-status-badge';
-import { getApiErrorMessage } from '@/lib/api-error';
+import { getApiErrorMessage, isNoEmployeeLinkedError } from '@/lib/api-error';
 import { formatCurrency } from '@/lib/format-currency';
 import { TableCard } from '@/components/table-card';
 import { EmptyState } from '@/components/empty-state';
+import { EmployeeLinkRequiredState } from '@/components/employee-link-required-state';
 import { TableSkeleton } from '@/components/loading-state';
 import { ErrorState } from '@/components/error-state';
 import {
@@ -27,6 +28,9 @@ export function MyPayslipsTable({ tenantId }: { tenantId: string }) {
   }
 
   if (isError) {
+    if (isNoEmployeeLinkedError(error)) {
+      return <EmployeeLinkRequiredState />;
+    }
     return <ErrorState message={getApiErrorMessage(error, 'Failed to load payslips')} />;
   }
 

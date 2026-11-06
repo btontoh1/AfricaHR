@@ -14,10 +14,12 @@ export class AttendanceRecordResponseDto {
   @ApiPropertyOptional({ nullable: true }) clockInLongitude?: string | null;
   @ApiPropertyOptional({ nullable: true }) clockInDistanceMeters?: number | null;
   @ApiPropertyOptional({ nullable: true }) clockInOutsideGeofence?: boolean | null;
+  @ApiPropertyOptional({ nullable: true }) clockInLocationName?: string | null;
   @ApiPropertyOptional({ nullable: true }) clockOutLatitude?: string | null;
   @ApiPropertyOptional({ nullable: true }) clockOutLongitude?: string | null;
   @ApiPropertyOptional({ nullable: true }) clockOutDistanceMeters?: number | null;
   @ApiPropertyOptional({ nullable: true }) clockOutOutsideGeofence?: boolean | null;
+  @ApiPropertyOptional({ nullable: true }) clockOutLocationName?: string | null;
   @ApiProperty() createdAt!: string;
   @ApiProperty() updatedAt!: string;
 }

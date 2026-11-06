@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Employee, EmployeeFamilyMember, Prisma } from '@prisma/client';
 import { wouldCreateCycle } from '@africahr/platform-core';
+import { assertOrganizationScope, RequestUser, SystemRole } from '@africahr/platform-auth';
 import { AuditService } from '@africahr/platform-audit';
 import {
   EmployeeRepository,
@@ -77,8 +78,10 @@ export class EmployeeService {
   async create(
     tenantId: string,
     dto: CreateEmployeeDto,
-    actorId?: string,
+    actor: RequestUser,
   ): Promise<EmployeeWithFamilyMembers> {
+    assertOrganizationScope(actor, dto.organizationId);
+    const actorId = actor.sub;
     const employeeNumber = dto.employeeNumber ?? (await this.generateEmployeeNumber(tenantId));
     if (!isValidEmployeeNumber(employeeNumber)) {
       throw new BadRequestException(`"${employeeNumber}" is not a valid employee number`);
@@ -129,30 +132,44 @@ export class EmployeeService {
     return { ...employee, familyMembers };
   }
 
-  async findById(tenantId: string, id: string): Promise<EmployeeWithFamilyMembers> {
-    const employee = await this.findEmployeeOrThrow(tenantId, id);
+  async findById(tenantId: string, id: string, actor: RequestUser): Promise<EmployeeWithFamilyMembers> {
+    const employee = await this.findEmployeeOrThrow(tenantId, id, actor);
     const familyMembers = await this.familyMembers.listByEmployee(tenantId, id);
     return { ...employee, familyMembers };
   }
 
-  /** Internal lookup for callers that only need the Employee row itself, not its family members. */
-  private async findEmployeeOrThrow(tenantId: string, id: string): Promise<Employee> {
+  /**
+   * Internal lookup for callers that only need the Employee row itself, not
+   * its family members. Also the one place that enforces ORG_ADMIN scoping
+   * for every id-addressed route (findById/update/updateStatus/softDelete/
+   * getHistory) - those routes only carry `id`, not organizationId, so the
+   * check can only happen after the row is fetched.
+   */
+  private async findEmployeeOrThrow(tenantId: string, id: string, actor: RequestUser): Promise<Employee> {
     const employee = await this.employees.findById(tenantId, id);
     if (!employee) {
       throw new NotFoundException(`Employee "${id}" not found`);
     }
+    assertOrganizationScope(actor, employee.organizationId);
     return employee;
   }
 
   list(
     tenantId: string,
     params: { organizationId?: string; organizationUnitId?: string } = {},
+    actor: RequestUser,
   ): Promise<Employee[]> {
-    return this.employees.list(tenantId, params);
+    // ORG_ADMIN is hard-scoped to their own organization regardless of what
+    // was requested - not just rejected if mismatched, since a list
+    // endpoint has no single "the" organizationId to compare against like
+    // assertOrganizationScope expects.
+    const scopedParams =
+      actor.role === SystemRole.ORG_ADMIN ? { ...params, organizationId: actor.organizationId ?? undefined } : params;
+    return this.employees.list(tenantId, scopedParams);
   }
 
-  async getHistory(tenantId: string, id: string) {
-    await this.findEmployeeOrThrow(tenantId, id);
+  async getHistory(tenantId: string, id: string, actor: RequestUser) {
+    await this.findEmployeeOrThrow(tenantId, id, actor);
     return this.history.listByEmployee(tenantId, id);
   }
 
@@ -160,9 +177,10 @@ export class EmployeeService {
     tenantId: string,
     id: string,
     dto: UpdateEmployeeDto,
-    actorId?: string,
+    actor: RequestUser,
   ): Promise<EmployeeWithFamilyMembers> {
-    const existing = await this.findEmployeeOrThrow(tenantId, id);
+    const actorId = actor.sub;
+    const existing = await this.findEmployeeOrThrow(tenantId, id, actor);
 
     if (dto.managerId !== undefined && dto.managerId !== null) {
       if (dto.managerId === id) {
@@ -231,10 +249,11 @@ export class EmployeeService {
     tenantId: string,
     id: string,
     status: EmploymentStatus,
-    terminationDate?: string,
-    actorId?: string,
+    terminationDate: string | undefined,
+    actor: RequestUser,
   ): Promise<Employee> {
-    const existing = await this.findEmployeeOrThrow(tenantId, id);
+    const actorId = actor.sub;
+    const existing = await this.findEmployeeOrThrow(tenantId, id, actor);
 
     if (!canTransitionEmploymentStatus(existing.employmentStatus, status)) {
       throw new ConflictException(
@@ -296,8 +315,9 @@ export class EmployeeService {
     return updated;
   }
 
-  async softDelete(tenantId: string, id: string, actorId?: string): Promise<Employee> {
-    await this.findEmployeeOrThrow(tenantId, id);
+  async softDelete(tenantId: string, id: string, actor: RequestUser): Promise<Employee> {
+    const actorId = actor.sub;
+    await this.findEmployeeOrThrow(tenantId, id, actor);
     const deleted = await this.employees.softDelete(tenantId, id, actorId);
 
     await this.audit.record({

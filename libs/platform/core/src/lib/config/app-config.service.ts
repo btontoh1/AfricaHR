@@ -83,7 +83,31 @@ export class AppConfigService {
     return this.configService.get('PAYSTACK_SECRET_KEY', { infer: true });
   }
 
+  /**
+   * One secret key per Paystack account, keyed by that account's
+   * settlement currency - see PAYSTACK_SECRET_KEY_GHS/NGN/KES's doc
+   * comment in env.schema.ts for why these are genuinely separate
+   * accounts, not one multi-currency account. GHS falls back to the
+   * legacy single-account paystackSecretKey above so an existing
+   * deployment keeps working unchanged until/unless PAYSTACK_SECRET_KEY_GHS
+   * is set explicitly.
+   */
+  get paystackSecretKeysByCurrency(): Readonly<Record<'GHS' | 'NGN' | 'KES', string | undefined>> {
+    return {
+      GHS: this.configService.get('PAYSTACK_SECRET_KEY_GHS', { infer: true }) ?? this.paystackSecretKey,
+      NGN: this.configService.get('PAYSTACK_SECRET_KEY_NGN', { infer: true }),
+      KES: this.configService.get('PAYSTACK_SECRET_KEY_KES', { infer: true }),
+    };
+  }
+
   get paymentMethodEncryptionKey(): string | undefined {
     return this.configService.get('PAYMENT_METHOD_ENCRYPTION_KEY', { infer: true });
+  }
+
+  get swaggerBasicAuth(): { user?: string; password?: string } {
+    return {
+      user: this.configService.get('SWAGGER_BASIC_AUTH_USER', { infer: true }),
+      password: this.configService.get('SWAGGER_BASIC_AUTH_PASSWORD', { infer: true }),
+    };
   }
 }

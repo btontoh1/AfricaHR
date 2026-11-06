@@ -1,0 +1,19 @@
+{
+  "name": "invoicing-feature",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/invoicing/feature/src",
+  "projectType": "library",
+  "tags": ["scope:invoicing", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/invoicing/feature",
+        "main": "libs/invoicing/feature/src/index.ts",
+        "tsConfig": "libs/invoicing/feature/tsconfig.lib.json",
+        "assets": ["libs/invoicing/feature/*.md"]
+      }
+    }
+  }
+}

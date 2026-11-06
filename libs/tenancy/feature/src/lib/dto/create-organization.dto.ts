@@ -29,6 +29,12 @@ export class CreateOrganizationDto {
   @Length(1, 100)
   taxIdentificationNumber?: string;
 
+  @ApiPropertyOptional({ example: '12 Independence Ave, Accra, Ghana', description: "Shown as the employer's address on payslips" })
+  @IsOptional()
+  @IsString()
+  @Length(0, 500)
+  address?: string;
+
   @ApiPropertyOptional({
     example: { ssnitEmployerNumber: 'SS123456' },
     description: 'Country-specific registration fields without a dedicated column',

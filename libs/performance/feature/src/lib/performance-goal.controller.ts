@@ -1,22 +1,25 @@
-import { Body, Controller, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
+  AddOnGuard,
   assertTenantScope,
   CurrentUser,
   JwtAuthGuard,
   Permission,
   PermissionsGuard,
   RequestUser,
+  RequireAddOn,
   RequirePermissions,
 } from '@africahr/platform-auth';
-import { PerformanceGoalStatus } from '@prisma/client';
+import { AddOnModule, PerformanceGoalStatus } from '@prisma/client';
 import { PerformanceGoalService } from './performance-goal.service';
 import { PerformanceGoalResponseDto } from './dto/performance-goal-response.dto';
 import { UpdatePerformanceGoalDto } from './dto/update-performance-goal.dto';
 
 @ApiTags('performance-goals')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, AddOnGuard)
+@RequireAddOn(AddOnModule.PERFORMANCE)
 @Controller('tenants/:tenantId/performance-goals')
 export class PerformanceGoalController {
   constructor(private readonly goals: PerformanceGoalService) {}
@@ -59,5 +62,22 @@ export class PerformanceGoalController {
   ) {
     assertTenantScope(actor, tenantId);
     return this.goals.update(tenantId, id, dto, actor.sub);
+  }
+
+  // Narrower than the Patch above - PERFORMANCE_GOAL_DELETE, not
+  // PERFORMANCE_MANAGE, so HR_MANAGER can edit goals but not delete them.
+  // Only exposed here (admin surface), not on the self-service
+  // MyPerformanceGoalController - an employee can't erase their own
+  // performance history.
+  @Delete(':id')
+  @RequirePermissions(Permission.PERFORMANCE_GOAL_DELETE)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: RequestUser,
+  ): Promise<void> {
+    assertTenantScope(actor, tenantId);
+    return this.goals.remove(tenantId, id, actor.sub);
   }
 }

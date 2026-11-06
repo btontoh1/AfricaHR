@@ -6,6 +6,7 @@ export type LeaveType = components['schemas']['LeaveTypeResponseDto'];
 export type LeaveBalance = components['schemas']['LeaveBalanceResponseDto'];
 export type AdjustLeaveBalanceInput = components['schemas']['AdjustLeaveBalanceDto'];
 export type CreateLeaveRequestInput = components['schemas']['CreateLeaveRequestDto'];
+export type UpdateLeaveRequestInput = components['schemas']['UpdateLeaveRequestDto'];
 export type CreateLeaveTypeInput = components['schemas']['CreateLeaveTypeDto'];
 export type UpdateLeaveTypeInput = components['schemas']['UpdateLeaveTypeDto'];
 export type LeaveRequestStatus = LeaveRequest['status'];

@@ -4,3 +4,5 @@ export * from './lib/attendance-policy.controller';
 export * from './lib/attendance-record.service';
 export * from './lib/my-attendance.controller';
 export * from './lib/attendance.controller';
+export * from './lib/attendance-location.service';
+export * from './lib/attendance-location.controller';

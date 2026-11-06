@@ -1,7 +1,13 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/session';
 import { needsSetup } from '@/lib/setup-status';
 import { SetupWizardForm } from '@/features/setup/setup-wizard-form';
+
+export const metadata: Metadata = {
+  title: 'Set up your account',
+  robots: { index: false, follow: false },
+};
 
 export default async function SetupPage() {
   const session = await getSession();

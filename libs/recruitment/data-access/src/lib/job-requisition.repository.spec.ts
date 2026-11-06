@@ -4,13 +4,16 @@ import { JobRequisitionRepository } from './job-requisition.repository';
 describe('JobRequisitionRepository', () => {
   let repository: JobRequisitionRepository;
   let tx: { jobRequisition: { create: jest.Mock; findFirst: jest.Mock; findMany: jest.Mock; update: jest.Mock } };
-  let prisma: { withTenantContext: jest.Mock };
+  let prisma: { withTenantContext: jest.Mock; $queryRaw: jest.Mock };
 
   beforeEach(() => {
     tx = {
       jobRequisition: { create: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), update: jest.fn() },
     };
-    prisma = { withTenantContext: jest.fn((_tenantId, fn) => fn(tx)) };
+    prisma = {
+      withTenantContext: jest.fn((_tenantId, fn) => fn(tx)),
+      $queryRaw: jest.fn(),
+    };
     repository = new JobRequisitionRepository(prisma as unknown as PrismaService);
   });
 
@@ -54,5 +57,21 @@ describe('JobRequisitionRepository', () => {
       where: { id: 'req-1' },
       data: expect.objectContaining({ status: 'OPEN', updatedBy: 'hr-1' }),
     });
+  });
+
+  it('findOpenByIdAcrossTenants looks up an OPEN requisition without a tenant filter via the SECURITY DEFINER function', async () => {
+    prisma.$queryRaw.mockResolvedValue([{ id: 'req-1', status: 'OPEN' }]);
+
+    const result = await repository.findOpenByIdAcrossTenants('req-1');
+
+    expect(prisma.withTenantContext).not.toHaveBeenCalled();
+    expect(prisma.$queryRaw).toHaveBeenCalled();
+    expect(result).toEqual({ id: 'req-1', status: 'OPEN' });
+  });
+
+  it('findOpenByIdAcrossTenants returns null when no requisition matches', async () => {
+    prisma.$queryRaw.mockResolvedValue([]);
+
+    await expect(repository.findOpenByIdAcrossTenants('missing')).resolves.toBeNull();
   });
 });

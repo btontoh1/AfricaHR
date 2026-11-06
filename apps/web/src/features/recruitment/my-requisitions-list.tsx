@@ -4,9 +4,10 @@ import Link from 'next/link';
 import { Briefcase } from 'lucide-react';
 import { useMyRequisitions } from './queries';
 import { RequisitionStatusBadge } from './requisition-status-badge';
-import { getApiErrorMessage } from '@/lib/api-error';
+import { getApiErrorMessage, isNoEmployeeLinkedError } from '@/lib/api-error';
 import { TableCard } from '@/components/table-card';
 import { EmptyState } from '@/components/empty-state';
+import { EmployeeLinkRequiredState } from '@/components/employee-link-required-state';
 import { TableSkeleton } from '@/components/loading-state';
 import { ErrorState } from '@/components/error-state';
 import {
@@ -26,6 +27,9 @@ export function MyRequisitionsList({ tenantId }: { tenantId: string }) {
   }
 
   if (isError) {
+    if (isNoEmployeeLinkedError(error)) {
+      return <EmployeeLinkRequiredState />;
+    }
     return <ErrorState message={getApiErrorMessage(error, 'Failed to load your job requisitions')} />;
   }
 

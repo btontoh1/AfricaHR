@@ -1,4 +1,5 @@
 import {
+  attendanceLocationFormSchema,
   attendancePolicyFormSchema,
   createAttendanceRecordFormSchema,
   updateAttendanceRecordFormSchema,
@@ -45,35 +46,29 @@ describe('attendancePolicyFormSchema', () => {
   it('rejects an empty value', () => {
     expect(attendancePolicyFormSchema.safeParse({ standardDailyHours: '' }).success).toBe(false);
   });
+});
 
-  it('accepts geofence fields left entirely blank', () => {
-    expect(
-      attendancePolicyFormSchema.safeParse({
-        standardDailyHours: '8',
-        geofenceLatitude: '',
-        geofenceLongitude: '',
-        geofenceRadiusMeters: '',
-      }).success,
-    ).toBe(true);
+describe('attendanceLocationFormSchema', () => {
+  const validInput = {
+    name: 'East Legon Office',
+    latitude: '5.6',
+    longitude: '-0.19',
+    radiusMeters: '150',
+  };
+
+  it('accepts a valid submission', () => {
+    expect(attendanceLocationFormSchema.safeParse(validInput).success).toBe(true);
   });
 
-  it('accepts geofence fields all set together', () => {
-    expect(
-      attendancePolicyFormSchema.safeParse({
-        standardDailyHours: '8',
-        geofenceLatitude: '5.6',
-        geofenceLongitude: '-0.19',
-        geofenceRadiusMeters: '150',
-      }).success,
-    ).toBe(true);
+  it('rejects a missing name', () => {
+    expect(attendanceLocationFormSchema.safeParse({ ...validInput, name: '' }).success).toBe(false);
   });
 
-  it('rejects a partially-filled geofence', () => {
-    expect(
-      attendancePolicyFormSchema.safeParse({
-        standardDailyHours: '8',
-        geofenceLatitude: '5.6',
-      }).success,
-    ).toBe(false);
+  it('rejects a missing latitude', () => {
+    expect(attendanceLocationFormSchema.safeParse({ ...validInput, latitude: '' }).success).toBe(false);
+  });
+
+  it('rejects a missing radius', () => {
+    expect(attendanceLocationFormSchema.safeParse({ ...validInput, radiusMeters: '' }).success).toBe(false);
   });
 });

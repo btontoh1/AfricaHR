@@ -1,0 +1,19 @@
+{
+  "name": "invoicing-domain",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/invoicing/domain/src",
+  "projectType": "library",
+  "tags": ["scope:invoicing", "type:domain"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/invoicing/domain",
+        "main": "libs/invoicing/domain/src/index.ts",
+        "tsConfig": "libs/invoicing/domain/tsconfig.lib.json",
+        "assets": ["libs/invoicing/domain/*.md"]
+      }
+    }
+  }
+}

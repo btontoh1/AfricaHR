@@ -8,6 +8,7 @@ import { useEmployees } from '@/features/employees/queries';
 import { LeaveRequestStatusBadge } from './leave-request-status-badge';
 import { LeaveRequestReasonCell } from './leave-request-reason-cell';
 import { RejectLeaveRequestDialog } from './reject-leave-request-dialog';
+import { EditLeaveRequestDialog } from './edit-leave-request-dialog';
 import { getApiErrorMessage } from '@/lib/api-error';
 import type { LeaveRequestStatus } from './types';
 import { Button } from '@/components/ui/button';
@@ -115,14 +116,19 @@ export function LeaveApprovalQueue({ tenantId }: { tenantId: string }) {
                     />
                   </TableCell>
                   <TableCell>
-                    {request.status === 'PENDING' && (
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={() => handleApprove(request.id)} disabled={approveRequest.isPending}>
-                          Approve
-                        </Button>
-                        <RejectLeaveRequestDialog tenantId={tenantId} id={request.id} />
-                      </div>
-                    )}
+                    <div className="flex gap-2">
+                      {request.status === 'PENDING' && (
+                        <>
+                          <Button size="sm" onClick={() => handleApprove(request.id)} disabled={approveRequest.isPending}>
+                            Approve
+                          </Button>
+                          <RejectLeaveRequestDialog tenantId={tenantId} id={request.id} />
+                        </>
+                      )}
+                      {(request.status === 'PENDING' || request.status === 'APPROVED') && (
+                        <EditLeaveRequestDialog tenantId={tenantId} request={request} />
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

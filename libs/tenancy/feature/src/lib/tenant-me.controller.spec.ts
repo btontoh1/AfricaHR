@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { RequestUser, SystemRole } from '@africahr/platform-auth';
-import { Tenant } from '@prisma/client';
+import { PerformanceFramework, Tenant } from '@prisma/client';
 import { TenantStatus } from '@africahr/tenancy-domain';
 import { TenantMeController } from './tenant-me.controller';
 import { TenantService } from './tenant.service';
@@ -14,6 +14,7 @@ describe('TenantMeController', () => {
     email: 'hr@acme.com',
     role: SystemRole.TENANT_ADMIN,
     tenantId: 'tenant-1',
+    organizationId: null,
     iat: 1,
     exp: 2,
   };
@@ -23,6 +24,7 @@ describe('TenantMeController', () => {
     email: 'ops@africahr.com',
     role: SystemRole.PLATFORM_ADMIN,
     tenantId: null,
+    organizationId: null,
     iat: 1,
     exp: 2,
   };
@@ -36,6 +38,8 @@ describe('TenantMeController', () => {
     currency: 'GHS',
     timezone: 'Africa/Accra',
     logoStorageKey: null,
+    performanceFramework: PerformanceFramework.STANDARD,
+    enabledAddOns: [],
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
@@ -60,7 +64,10 @@ describe('TenantMeController', () => {
     await expect(controller.findMine(tenantUser)).resolves.toEqual({
       name: 'Acme Ghana Ltd',
       slug: 'acme-ghana-ltd',
+      currency: 'GHS',
       logoUrl: 'https://storage.example/view?sig=xyz',
+      performanceFramework: PerformanceFramework.STANDARD,
+      enabledAddOns: [],
     });
     expect(tenants.findById).toHaveBeenCalledWith('tenant-1');
   });

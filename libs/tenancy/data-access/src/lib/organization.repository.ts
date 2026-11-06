@@ -8,6 +8,7 @@ export interface CreateOrganizationInput {
   countryCode: string;
   registrationNumber: string;
   taxIdentificationNumber?: string;
+  address?: string;
   metadata?: Prisma.InputJsonValue;
   createdBy?: string;
 }
@@ -18,6 +19,7 @@ export interface UpdateOrganizationInput {
   countryCode?: string;
   registrationNumber?: string;
   taxIdentificationNumber?: string;
+  address?: string;
   metadata?: Prisma.InputJsonValue;
   updatedBy?: string;
 }
@@ -36,6 +38,7 @@ export class OrganizationRepository {
           countryCode: input.countryCode,
           registrationNumber: input.registrationNumber,
           taxIdentificationNumber: input.taxIdentificationNumber,
+          address: input.address,
           metadata: input.metadata,
           createdBy: input.createdBy,
           updatedBy: input.createdBy,
@@ -69,6 +72,7 @@ export class OrganizationRepository {
           countryCode: input.countryCode,
           registrationNumber: input.registrationNumber,
           taxIdentificationNumber: input.taxIdentificationNumber,
+          address: input.address,
           metadata: input.metadata,
           updatedBy: input.updatedBy,
         },
@@ -81,6 +85,15 @@ export class OrganizationRepository {
       tx.organization.update({
         where: { id },
         data: { deletedAt: new Date(), updatedBy },
+      }),
+    );
+  }
+
+  updateLogo(tenantId: string, id: string, logoStorageKey: string | null, updatedBy?: string): Promise<Organization> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.organization.update({
+        where: { id },
+        data: { logoStorageKey, updatedBy },
       }),
     );
   }

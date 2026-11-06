@@ -15,6 +15,8 @@ export interface ListPayRunsParams {
 }
 
 export interface UpdatePayRunStatusInput {
+  /** The status this pay run must currently be in for the write to apply - see updateStatus's docstring. */
+  fromStatus: PayRunStatus;
   status: PayRunStatus;
   approvedAt?: Date;
   approvedBy?: string;
@@ -64,10 +66,19 @@ export class PayRunRepository {
     );
   }
 
-  updateStatus(tenantId: string, id: string, input: UpdatePayRunStatusInput): Promise<PayRun> {
-    return this.prisma.withTenantContext(tenantId, (tx) =>
-      tx.payRun.update({
-        where: { id },
+  /**
+   * Conditional on the pay run still being in fromStatus - two concurrent
+   * requests for the same transition (a double-click, a client retry after
+   * a timeout) must not both succeed. Returns null if the row wasn't in
+   * fromStatus when this ran (another request already moved it, or it was
+   * never there), so the caller can tell a genuine race from a normal write
+   * and respond accordingly instead of silently repeating side effects
+   * (audit records, Paystack disbursement) a second time.
+   */
+  async updateStatus(tenantId: string, id: string, input: UpdatePayRunStatusInput): Promise<PayRun | null> {
+    return this.prisma.withTenantContext(tenantId, async (tx) => {
+      const { count } = await tx.payRun.updateMany({
+        where: { id, tenantId, status: input.fromStatus },
         data: {
           status: input.status,
           approvedAt: input.approvedAt,
@@ -75,7 +86,11 @@ export class PayRunRepository {
           paidAt: input.paidAt,
           updatedBy: input.updatedBy,
         },
-      }),
-    );
+      });
+      if (count === 0) {
+        return null;
+      }
+      return tx.payRun.findFirstOrThrow({ where: { id, tenantId } });
+    });
   }
 }

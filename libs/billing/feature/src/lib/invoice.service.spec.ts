@@ -11,6 +11,8 @@ import {
 } from '@africahr/billing-data-access';
 import { InvoiceService, PAYSTACK_TRANSFER_UPDATED_EVENT } from './invoice.service';
 import { PaystackClient } from './paystack-client';
+import { PaystackClientRegistry } from './paystack-client-registry';
+import { TenantPayrollWalletService } from './tenant-payroll-wallet.service';
 
 describe('InvoiceService', () => {
   let service: InvoiceService;
@@ -20,8 +22,10 @@ describe('InvoiceService', () => {
   let tenantContacts: jest.Mocked<BillingTenantContactRepository>;
   let platformBilling: jest.Mocked<PlatformBillingRepository>;
   let paystack: jest.Mocked<PaystackClient>;
+  let paystackRegistry: jest.Mocked<PaystackClientRegistry>;
   let audit: jest.Mocked<AuditService>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
+  let wallet: jest.Mocked<TenantPayrollWalletService>;
 
   const activeSubscription: Subscription = {
     id: 'sub-1',
@@ -82,8 +86,14 @@ describe('InvoiceService', () => {
       initializeTransaction: jest.fn(),
       verifyWebhookSignature: jest.fn(),
     } as unknown as jest.Mocked<PaystackClient>;
+    paystackRegistry = {
+      forCurrency: jest.fn().mockReturnValue(paystack),
+    } as unknown as jest.Mocked<PaystackClientRegistry>;
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
     eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
+    wallet = {
+      creditTopUpByReference: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<TenantPayrollWalletService>;
 
     service = new InvoiceService(
       invoices,
@@ -91,9 +101,10 @@ describe('InvoiceService', () => {
       employeeCounts,
       tenantContacts,
       platformBilling,
-      paystack,
+      paystackRegistry,
       audit,
       eventEmitter,
+      wallet,
     );
   });
 
@@ -223,9 +234,17 @@ describe('InvoiceService', () => {
     it('rejects a webhook with an invalid signature', async () => {
       paystack.verifyWebhookSignature.mockReturnValue(false);
 
-      await expect(service.handlePaystackWebhook('{}', 'bad-signature')).rejects.toThrow(
+      await expect(service.handlePaystackWebhook('{}', 'bad-signature', 'GHS')).rejects.toThrow(
         UnauthorizedException,
       );
+    });
+
+    it('verifies the signature against the account for the given currency', async () => {
+      paystack.verifyWebhookSignature.mockReturnValue(true);
+
+      await service.handlePaystackWebhook(JSON.stringify({ event: 'charge.failed' }), 'sig', 'NGN');
+
+      expect(paystackRegistry.forCurrency).toHaveBeenCalledWith('NGN');
     });
 
     it('marks the matching invoice paid on a successful charge', async () => {
@@ -250,7 +269,7 @@ describe('InvoiceService', () => {
       subscriptions.findByTenant.mockResolvedValue(activeSubscription);
 
       const rawBody = JSON.stringify({ event: 'charge.success', data: { reference: 'ref-123' } });
-      await service.handlePaystackWebhook(rawBody, 'valid-signature');
+      await service.handlePaystackWebhook(rawBody, 'valid-signature', 'GHS');
 
       expect(invoices.update).toHaveBeenCalledWith(
         'tenant-1',
@@ -270,21 +289,24 @@ describe('InvoiceService', () => {
       await service.handlePaystackWebhook(
         JSON.stringify({ event: 'charge.failed', data: { reference: 'ref-123' } }),
         'valid-signature',
+        'GHS',
       );
 
       expect(platformBilling.findInvoiceByPaystackReference).not.toHaveBeenCalled();
     });
 
-    it('ignores a reference that does not match any invoice', async () => {
+    it('falls back to the wallet top-up path when a reference does not match any invoice', async () => {
       paystack.verifyWebhookSignature.mockReturnValue(true);
       platformBilling.findInvoiceByPaystackReference.mockResolvedValue(null);
 
       await service.handlePaystackWebhook(
-        JSON.stringify({ event: 'charge.success', data: { reference: 'unknown' } }),
+        JSON.stringify({ event: 'charge.success', data: { reference: 'topup-ref' } }),
         'valid-signature',
+        'GHS',
       );
 
       expect(invoices.update).not.toHaveBeenCalled();
+      expect(wallet.creditTopUpByReference).toHaveBeenCalledWith('topup-ref');
     });
 
     it('re-emits a transfer.success event instead of handling it as billing', async () => {
@@ -293,6 +315,7 @@ describe('InvoiceService', () => {
       await service.handlePaystackWebhook(
         JSON.stringify({ event: 'transfer.success', data: { reference: 'ref-456' } }),
         'valid-signature',
+        'GHS',
       );
 
       expect(eventEmitter.emit).toHaveBeenCalledWith(PAYSTACK_TRANSFER_UPDATED_EVENT, {
@@ -308,6 +331,7 @@ describe('InvoiceService', () => {
       await service.handlePaystackWebhook(
         JSON.stringify({ event: 'transfer.failed', data: { reference: 'ref-456' } }),
         'valid-signature',
+        'GHS',
       );
 
       expect(eventEmitter.emit).toHaveBeenCalledWith(PAYSTACK_TRANSFER_UPDATED_EVENT, {
@@ -322,6 +346,7 @@ describe('InvoiceService', () => {
       await service.handlePaystackWebhook(
         JSON.stringify({ event: 'transfer.reversed', data: { reference: 'ref-456' } }),
         'valid-signature',
+        'GHS',
       );
 
       expect(eventEmitter.emit).toHaveBeenCalledWith(PAYSTACK_TRANSFER_UPDATED_EVENT, {

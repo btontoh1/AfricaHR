@@ -16,6 +16,7 @@ import {
   remainingDays,
 } from '@africahr/leave-domain';
 import { CreateLeaveRequestDto } from './dto/create-leave-request.dto';
+import { UpdateLeaveRequestDto } from './dto/update-leave-request.dto';
 import { AdjustLeaveBalanceDto } from './dto/adjust-leave-balance.dto';
 
 export interface LeaveRequestWithEmployeeName extends LeaveRequest {
@@ -176,6 +177,108 @@ export class LeaveRequestService {
     await this.notifyOfNewRequest(tenantId, employeeId, request);
 
     return request;
+  }
+
+  /**
+   * HR/Tenant Admin correction of an existing request's dates (e.g. the
+   * employee entered the wrong range) - not a resubmission-for-approval
+   * flow, so status is deliberately left untouched: an already-APPROVED
+   * request stays APPROVED, just with corrected dates/day-count. Editable
+   * while PENDING or APPROVED only - REJECTED/CANCELLED are terminal, same
+   * boundary cancelRequest() already enforces via canTransitionLeaveRequestStatus,
+   * though this isn't a status transition itself so that helper doesn't apply here.
+   *
+   * If the request was already APPROVED, its old day count is already
+   * baked into LeaveBalance.usedDays (see approve()) - the balance check
+   * and the increment/decrement below both work in terms of the *delta*
+   * between the old and new day count, not the new count in isolation,
+   * so a same-or-fewer-days edit never gets incorrectly blocked by the
+   * request's own already-applied days.
+   */
+  async update(
+    tenantId: string,
+    id: string,
+    dto: UpdateLeaveRequestDto,
+    actorId?: string,
+  ): Promise<LeaveRequest> {
+    const request = await this.findById(tenantId, id);
+    if (request.status !== LeaveRequestStatus.PENDING && request.status !== LeaveRequestStatus.APPROVED) {
+      throw new ConflictException(`Cannot edit a leave request in status ${request.status}`);
+    }
+
+    const startDate = dto.startDate ? new Date(dto.startDate) : request.startDate;
+    const endDate = dto.endDate ? new Date(dto.endDate) : request.endDate;
+    if (endDate < startDate) {
+      throw new BadRequestException('endDate must not be before startDate');
+    }
+
+    const daysRequested = countWorkingDays(startDate, endDate);
+    if (daysRequested === 0) {
+      throw new BadRequestException('The requested date range contains no working days');
+    }
+
+    const previousDays = Number(request.daysRequested);
+    const wasApproved = request.status === LeaveRequestStatus.APPROVED;
+
+    const year = startDate.getUTCFullYear();
+    const { balance, leaveType, entitledDays, usedDays } = await this.resolveEffectiveBalance(
+      tenantId,
+      request.employeeId,
+      request.leaveTypeId,
+      year,
+    );
+    const usedDaysExcludingThisRequest = wasApproved ? usedDays - previousDays : usedDays;
+    if (!hasSufficientBalance(entitledDays, usedDaysExcludingThisRequest, daysRequested)) {
+      throw new ConflictException(
+        `Insufficient balance: ${remainingDays(entitledDays, usedDaysExcludingThisRequest)} day(s) remaining, ${daysRequested} requested`,
+      );
+    }
+
+    const updated = await this.requests.updateDates(tenantId, id, {
+      startDate,
+      endDate,
+      daysRequested,
+      reason: dto.reason ?? request.reason ?? undefined,
+      updatedBy: actorId,
+    });
+
+    if (wasApproved && daysRequested !== previousDays) {
+      const balanceId =
+        balance?.id ??
+        (
+          await this.balances.upsertEntitlement(tenantId, {
+            employeeId: request.employeeId,
+            leaveTypeId: request.leaveTypeId,
+            year,
+            entitledDays: leaveType.defaultEntitlementDays,
+            actorId,
+          })
+        ).id;
+      const delta = daysRequested - previousDays;
+      if (delta > 0) {
+        await this.balances.incrementUsedDays(tenantId, balanceId, delta, actorId);
+      } else {
+        await this.balances.decrementUsedDays(tenantId, balanceId, -delta, actorId);
+      }
+    }
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'leave.request.updated',
+      resourceType: 'LeaveRequest',
+      resourceId: id,
+      metadata: {
+        previousStartDate: request.startDate.toISOString().slice(0, 10),
+        previousEndDate: request.endDate.toISOString().slice(0, 10),
+        previousDaysRequested: previousDays,
+        newStartDate: startDate.toISOString().slice(0, 10),
+        newEndDate: endDate.toISOString().slice(0, 10),
+        newDaysRequested: daysRequested,
+      },
+    });
+
+    return updated;
   }
 
   /**

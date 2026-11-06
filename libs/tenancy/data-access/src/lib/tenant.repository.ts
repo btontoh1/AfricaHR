@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, Tenant, TenantStatus } from '@prisma/client';
+import { AddOnModule, PerformanceFramework, Prisma, Tenant, TenantStatus } from '@prisma/client';
 import { PrismaService } from '@africahr/platform-database';
 
 export interface CreateTenantInput {
@@ -8,6 +8,7 @@ export interface CreateTenantInput {
   country: string;
   currency: string;
   timezone: string;
+  enabledAddOns?: AddOnModule[];
   createdBy?: string;
 }
 
@@ -32,6 +33,7 @@ export class TenantRepository {
         country: input.country,
         currency: input.currency,
         timezone: input.timezone,
+        enabledAddOns: input.enabledAddOns,
         createdBy: input.createdBy,
         updatedBy: input.createdBy,
       },
@@ -89,6 +91,17 @@ export class TenantRepository {
     });
   }
 
+  updatePerformanceFramework(
+    id: string,
+    performanceFramework: PerformanceFramework,
+    updatedBy?: string,
+  ): Promise<Tenant> {
+    return this.prisma.tenant.update({
+      where: { id },
+      data: { performanceFramework, updatedBy },
+    });
+  }
+
   softDelete(id: string, updatedBy?: string): Promise<Tenant> {
     return this.prisma.tenant.update({
       where: { id },
@@ -100,6 +113,13 @@ export class TenantRepository {
     return this.prisma.tenant.update({
       where: { id },
       data: { logoStorageKey, updatedBy },
+    });
+  }
+
+  setEnabledAddOns(id: string, enabledAddOns: AddOnModule[], updatedBy?: string): Promise<Tenant> {
+    return this.prisma.tenant.update({
+      where: { id },
+      data: { enabledAddOns, updatedBy },
     });
   }
 }

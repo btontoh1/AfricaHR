@@ -167,22 +167,44 @@ export class PayslipRepository {
     );
   }
 
-  /** Called by PayRunService.disburse just *before* it calls Paystack's Initiate Transfer, not after - see that method's docstring for why. reference is unique, used to match the later webhook. */
-  recordDisbursementInitiated(
+  /**
+   * Called by PayRunService.disburse just *before* it calls Paystack's
+   * Initiate Transfer, not after - see that method's docstring for why.
+   * reference is unique, used to match the later webhook.
+   *
+   * Conditional on disbursementStatus still being NOT_INITIATED/FAILED -
+   * this is the actual lock against a duplicate Paystack transfer. Two
+   * concurrent calls for the same payslip (a racing markPaid + retry, or
+   * two overlapping markPaid requests) both pass their in-memory checks,
+   * but only one updateMany here can win the conditional write; the loser
+   * gets count 0 and must not call Paystack. Returns the claimed row on
+   * success, null if the claim was lost.
+   */
+  async recordDisbursementInitiated(
     tenantId: string,
     id: string,
     input: { paystackRecipientCode: string; paystackTransferReference: string },
-  ): Promise<Payslip> {
-    return this.prisma.withTenantContext(tenantId, (tx) =>
-      tx.payslip.update({
-        where: { id },
+  ): Promise<Payslip | null> {
+    return this.prisma.withTenantContext(tenantId, async (tx) => {
+      const { count } = await tx.payslip.updateMany({
+        where: {
+          id,
+          tenantId,
+          disbursementStatus: {
+            in: [PayslipDisbursementStatus.NOT_INITIATED, PayslipDisbursementStatus.FAILED],
+          },
+        },
         data: {
           disbursementStatus: PayslipDisbursementStatus.PENDING,
           paystackRecipientCode: input.paystackRecipientCode,
           paystackTransferReference: input.paystackTransferReference,
         },
-      }),
-    );
+      });
+      if (count === 0) {
+        return null;
+      }
+      return tx.payslip.findFirstOrThrow({ where: { id, tenantId } });
+    });
   }
 
   /** Called by PayrollTransferWebhookListener once the transfer.success/transfer.failed webhook arrives. */

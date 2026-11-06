@@ -76,6 +76,21 @@ export class JobRequisitionRepository {
     );
   }
 
+  /**
+   * Cross-tenant by design: a public careers-page link carries a
+   * requisition id with no tenant known yet (no session, no JWT). Goes
+   * through find_open_job_requisition_for_public_apply(), a narrow
+   * SECURITY DEFINER function scoped to OPEN, non-deleted requisitions only
+   * - same §5 pattern as OrganizationRepository.findByIdAcrossTenants (see
+   * RLS_CONVENTION.md).
+   */
+  async findOpenByIdAcrossTenants(id: string): Promise<JobRequisition | null> {
+    const rows = await this.prisma.$queryRaw<
+      JobRequisition[]
+    >`SELECT * FROM find_open_job_requisition_for_public_apply(${id})`;
+    return rows[0] ?? null;
+  }
+
   update(
     tenantId: string,
     id: string,

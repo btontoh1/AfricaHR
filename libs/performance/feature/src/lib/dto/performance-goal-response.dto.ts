@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { PerformanceGoalStatus } from '@prisma/client';
+import { GoalPerspective, PerformanceGoalStatus } from '@prisma/client';
 
 export class PerformanceGoalResponseDto {
   @ApiProperty() id!: string;
@@ -10,6 +10,7 @@ export class PerformanceGoalResponseDto {
   @ApiPropertyOptional({ nullable: true }) targetDate?: string | null;
   @ApiProperty({ enum: Object.values(PerformanceGoalStatus) }) status!: PerformanceGoalStatus;
   @ApiProperty() progressPercent!: number;
+  @ApiPropertyOptional({ enum: Object.values(GoalPerspective), nullable: true }) perspective?: GoalPerspective | null;
   @ApiProperty() createdAt!: string;
   @ApiProperty() updatedAt!: string;
 }

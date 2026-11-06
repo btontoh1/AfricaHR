@@ -5,6 +5,7 @@ import { Building2, Database, HardDrive, Activity } from 'lucide-react';
 import { usePlatformDashboard } from './queries';
 import { TenantStatusBadge } from './tenant-status-badge';
 import { PlatformBillingSummary } from '@/features/billing/platform-billing-summary';
+import { LtvToCacAlertBanner } from '@/features/billing/ltv-to-cac-alert-banner';
 import { PlatformDisbursementSummary } from '@/features/platform-disbursements/platform-disbursement-summary';
 import { PlatformNotificationSummary } from '@/features/platform-notifications/platform-notification-summary';
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -52,6 +53,8 @@ export function PlatformAdminOverview() {
 
   return (
     <div className="space-y-6">
+      <LtvToCacAlertBanner />
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard label="Total tenants" value={summary.totalTenants} icon={Building2} />
         <StatCard

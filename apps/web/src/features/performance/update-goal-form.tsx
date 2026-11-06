@@ -9,6 +9,8 @@ import {
   updateGoalFormSchema,
   type UpdateGoalFormValues,
 } from './performance-form-schema';
+import { GOAL_PERSPECTIVES, GOAL_PERSPECTIVE_LABEL } from './goal-perspective-labels';
+import { useMyTenant } from '@/features/settings/queries';
 import { getApiErrorMessage } from '@/lib/api-error';
 import type { PerformanceGoal } from './types';
 import { Button } from '@/components/ui/button';
@@ -32,6 +34,8 @@ export function UpdateGoalForm({
   onDone: () => void;
 }) {
   const updateGoal = useUpdateMyGoal(tenantId, goal.id);
+  const { data: tenant } = useMyTenant();
+  const isBalancedScorecard = tenant?.performanceFramework === 'BALANCED_SCORECARD';
 
   const form = useForm<UpdateGoalFormValues>({
     resolver: zodResolver(updateGoalFormSchema),
@@ -41,6 +45,7 @@ export function UpdateGoalForm({
       targetDate: goal.targetDate ? goal.targetDate.slice(0, 10) : '',
       status: goal.status,
       progressPercent: String(goal.progressPercent),
+      perspective: goal.perspective ?? '',
     },
   });
 
@@ -52,6 +57,7 @@ export function UpdateGoalForm({
         targetDate: values.targetDate ? values.targetDate : undefined,
         status: values.status,
         progressPercent: Number(values.progressPercent),
+        perspective: values.perspective || undefined,
       });
       toast.success('Goal updated');
       onDone();
@@ -126,6 +132,32 @@ export function UpdateGoalForm({
             </FormItem>
           )}
         />
+        {isBalancedScorecard && (
+          <FormField
+            control={form.control}
+            name="perspective"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Perspective</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger className="w-44">
+                      <SelectValue placeholder="Select one" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {GOAL_PERSPECTIVES.map((perspective) => (
+                      <SelectItem key={perspective} value={perspective}>
+                        {GOAL_PERSPECTIVE_LABEL[perspective]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
         <Button type="submit" disabled={form.formState.isSubmitting}>
           {form.formState.isSubmitting ? 'Saving…' : 'Save'}
         </Button>

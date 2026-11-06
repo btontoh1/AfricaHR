@@ -7,6 +7,7 @@ import {
   PayRunRepository,
   PayrollEmployeeRepository,
   PayrollLeaveRequestRepository,
+  PayrollOrganizationRepository,
   PayslipLineItemRepository,
   PayslipRepository,
   StatutoryRateRepository,
@@ -20,19 +21,22 @@ import {
 } from '@africahr/payroll-domain';
 import { CreatePayslipLineItemDto } from './dto/create-payslip-line-item.dto';
 
-/** A payslip only carries payRunId/employeeId - callers displaying a payslip (rather than mutating it) also need the pay run's dates and the employee's name, so this is what the read-facing methods below return. */
+/** A payslip only carries payRunId/employeeId - callers displaying a payslip (rather than mutating it) also need the pay run's dates, the employee's name, and the employer's (organization's) name/address for the payslip header. */
 export type PayslipWithPeriod = Payslip & {
   periodStart: Date;
   periodEnd: Date;
   payDate: Date;
   employeeFirstName: string;
   employeeLastName: string;
+  organizationName: string;
+  organizationAddress: string | null;
 };
 
 function mergePeriodAndEmployee(
   payslip: Payslip,
   payRun: PayRun,
   employee: { firstName: string; lastName: string },
+  organization: { legalName: string; address: string | null },
 ): PayslipWithPeriod {
   return {
     ...payslip,
@@ -41,6 +45,8 @@ function mergePeriodAndEmployee(
     payDate: payRun.payDate,
     employeeFirstName: employee.firstName,
     employeeLastName: employee.lastName,
+    organizationName: organization.legalName,
+    organizationAddress: organization.address,
   };
 }
 
@@ -51,6 +57,7 @@ export class PayslipService {
     private readonly lineItems: PayslipLineItemRepository,
     private readonly payRuns: PayRunRepository,
     private readonly employees: PayrollEmployeeRepository,
+    private readonly organizations: PayrollOrganizationRepository,
     private readonly taxBands: StatutoryTaxBandRepository,
     private readonly rates: StatutoryRateRepository,
     private readonly benefitEnrollments: PayrollBenefitEnrollmentRepository,
@@ -78,7 +85,11 @@ export class PayslipService {
     if (!employee) {
       throw new NotFoundException(`Employee "${payslip.employeeId}" not found`);
     }
-    return mergePeriodAndEmployee(payslip, payRun, employee);
+    const organization = await this.organizations.findById(tenantId, employee.organizationId);
+    if (!organization) {
+      throw new NotFoundException(`Organization "${employee.organizationId}" not found`);
+    }
+    return mergePeriodAndEmployee(payslip, payRun, employee, organization);
   }
 
   async listByPayRun(tenantId: string, payRunId: string): Promise<PayslipWithPeriod[]> {
@@ -127,6 +138,10 @@ export class PayslipService {
     const employees = await this.employees.findManyByIds(tenantId, employeeIds);
     const employeeById = new Map(employees.map((employee) => [employee.id, employee]));
 
+    const organizationIds = [...new Set(employees.map((employee) => employee.organizationId))];
+    const organizations = await this.organizations.findManyByIds(tenantId, organizationIds);
+    const organizationById = new Map(organizations.map((organization) => [organization.id, organization]));
+
     return payslips.map((payslip) => {
       const payRun = payRunById.get(payslip.payRunId);
       if (!payRun) {
@@ -136,7 +151,11 @@ export class PayslipService {
       if (!employee) {
         throw new NotFoundException(`Employee "${payslip.employeeId}" not found`);
       }
-      return mergePeriodAndEmployee(payslip, payRun, employee);
+      const organization = organizationById.get(employee.organizationId);
+      if (!organization) {
+        throw new NotFoundException(`Organization "${employee.organizationId}" not found`);
+      }
+      return mergePeriodAndEmployee(payslip, payRun, employee, organization);
     });
   }
 

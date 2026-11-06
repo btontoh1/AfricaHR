@@ -1,12 +1,22 @@
 import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { assertTenantScope, CurrentUser, JwtAuthGuard, PermissionsGuard, RequestUser } from '@africahr/platform-auth';
+import {
+  AddOnGuard,
+  assertTenantScope,
+  CurrentUser,
+  JwtAuthGuard,
+  PermissionsGuard,
+  RequestUser,
+  RequireAddOn,
+} from '@africahr/platform-auth';
+import { AddOnModule } from '@prisma/client';
 import { ApplicationService } from './application.service';
 import { AdvanceApplicationDto } from './dto/advance-application.dto';
 import {
   ApplicationResponseDto,
   ApplicationWithRelationsResponseDto,
 } from './dto/application-response.dto';
+import { DocumentViewUrlResponseDto } from './dto/document-view-url-response.dto';
 
 /**
  * Hiring-manager access: no @RequirePermissions — authorization is checked
@@ -21,7 +31,8 @@ import {
  */
 @ApiTags('recruitment-applications')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, AddOnGuard)
+@RequireAddOn(AddOnModule.RECRUITMENT)
 @Controller('tenants/:tenantId/applications/mine')
 export class MyApplicationController {
   constructor(private readonly applications: ApplicationService) {}
@@ -54,5 +65,33 @@ export class MyApplicationController {
   ) {
     assertTenantScope(actor, tenantId);
     return this.applications.advanceAsHiringManager(tenantId, actor.sub, id, dto);
+  }
+
+  @Get(':id/resume-view-url')
+  @ApiOkResponse({ type: DocumentViewUrlResponseDto })
+  async getResumeViewUrl(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: RequestUser,
+  ): Promise<DocumentViewUrlResponseDto> {
+    assertTenantScope(actor, tenantId);
+    const viewUrl = await this.applications.getResumeViewUrlForHiringManager(tenantId, actor.sub, id);
+    return { viewUrl };
+  }
+
+  @Get(':id/identity-document-view-url')
+  @ApiOkResponse({ type: DocumentViewUrlResponseDto })
+  async getIdentityDocumentViewUrl(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: RequestUser,
+  ): Promise<DocumentViewUrlResponseDto> {
+    assertTenantScope(actor, tenantId);
+    const viewUrl = await this.applications.getIdentityDocumentViewUrlForHiringManager(
+      tenantId,
+      actor.sub,
+      id,
+    );
+    return { viewUrl };
   }
 }

@@ -7,6 +7,7 @@ import type {
   CreateLeaveRequestInput,
   CreateLeaveTypeInput,
   LeaveRequestStatus,
+  UpdateLeaveRequestInput,
   UpdateLeaveTypeInput,
 } from './types';
 
@@ -160,6 +161,22 @@ export function useApproveLeaveRequest(tenantId: string) {
         '/api/tenants/{tenantId}/leave-requests/{id}/approve',
         { params: { path: { tenantId, id } } },
       );
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: leaveRequestsKey(tenantId) }),
+  });
+}
+
+/** HR/Tenant Admin correction of an existing request's dates - see UpdateLeaveRequestDto. */
+export function useUpdateLeaveRequest(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, input }: { id: string; input: UpdateLeaveRequestInput }) => {
+      const { data, error } = await apiClient.PATCH('/api/tenants/{tenantId}/leave-requests/{id}', {
+        params: { path: { tenantId, id } },
+        body: input,
+      });
       if (error) throw error;
       return data;
     },

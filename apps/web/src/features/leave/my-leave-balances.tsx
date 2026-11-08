@@ -3,9 +3,10 @@
 import { CalendarDays } from 'lucide-react';
 import { useMyLeaveBalances } from './queries';
 import { EmptyState } from '@/components/empty-state';
+import { EmployeeLinkRequiredState } from '@/components/employee-link-required-state';
 import { TableSkeleton } from '@/components/loading-state';
 import { ErrorState } from '@/components/error-state';
-import { getApiErrorMessage } from '@/lib/api-error';
+import { getApiErrorMessage, isNoEmployeeLinkedError } from '@/lib/api-error';
 import { TableCard } from '@/components/table-card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
@@ -17,6 +18,9 @@ export function MyLeaveBalances({ tenantId }: { tenantId: string }) {
   }
 
   if (isError) {
+    if (isNoEmployeeLinkedError(error)) {
+      return <EmployeeLinkRequiredState />;
+    }
     return <ErrorState message={getApiErrorMessage(error, 'Failed to load leave balances')} />;
   }
 

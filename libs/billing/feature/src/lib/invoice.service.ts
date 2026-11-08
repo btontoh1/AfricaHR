@@ -17,7 +17,8 @@ import {
   SubscriptionRepository,
 } from '@africahr/billing-data-access';
 import { calculateInvoiceAmount, nextBillingPeriod } from '@africahr/billing-domain';
-import { PaystackClient } from './paystack-client';
+import { PaystackClientRegistry } from './paystack-client-registry';
+import { TenantPayrollWalletService } from './tenant-payroll-wallet.service';
 
 interface PaystackWebhookPayload {
   event: string;
@@ -58,9 +59,10 @@ export class InvoiceService {
     private readonly employeeCounts: BillingEmployeeCountRepository,
     private readonly tenantContacts: BillingTenantContactRepository,
     private readonly platformBilling: PlatformBillingRepository,
-    private readonly paystack: PaystackClient,
+    private readonly paystack: PaystackClientRegistry,
     private readonly audit: AuditService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly wallet: TenantPayrollWalletService,
   ) {}
 
   async generate(tenantId: string, actorId?: string): Promise<Invoice> {
@@ -92,7 +94,7 @@ export class InvoiceService {
     }
 
     const reference = randomUUID();
-    const checkout = await this.paystack.initializeTransaction({
+    const checkout = await this.paystack.forCurrency(subscription.currency).initializeTransaction({
       email: adminEmail,
       amount,
       currency: subscription.currency,
@@ -189,12 +191,18 @@ export class InvoiceService {
 
   /**
    * Verifies the Paystack webhook signature against the *raw* request body
-   * (see PaystackClient.verifyWebhookSignature) - this is the only
-   * Paystack webhook endpoint in the app (Paystack allows just one per
-   * account), so it dispatches by event type: charge.success marks the
+   * (see PaystackClient.verifyWebhookSignature) - one Paystack account per
+   * currency (PaystackClientRegistry), each with its own signing secret
+   * and its own webhook URL (see PaystackWebhookController), so `currency`
+   * picks which account's client verifies this delivery. Each account
+   * dispatches by event type the same way: charge.success marks the
    * matching invoice paid and rolls its subscription's billing period
-   * forward; transfer.success/transfer.failed/transfer.reversed (payroll
-   * payouts, not this service's own concern) are re-emitted as
+   * forward, or - if the reference doesn't match any invoice - credits a
+   * payroll wallet top-up instead (see TenantPayrollWalletService); both
+   * are Paystack "Initialize Transaction" checkouts, so the webhook can't
+   * tell them apart except by which one's reference matches.
+   * transfer.success/transfer.failed/transfer.reversed (payroll payouts,
+   * not this service's own concern) are re-emitted as
    * PaystackTransferUpdatedEvent for payroll-feature to consume - see
    * that event's doc comment for why. Anything else it doesn't recognize
    * (a different event type, an already-paid or unknown reference) is
@@ -205,8 +213,9 @@ export class InvoiceService {
   async handlePaystackWebhook(
     rawBody: string,
     signatureHeader: string | undefined,
+    currency: string,
   ): Promise<void> {
-    if (!this.paystack.verifyWebhookSignature(rawBody, signatureHeader)) {
+    if (!this.paystack.forCurrency(currency).verifyWebhookSignature(rawBody, signatureHeader)) {
       throw new UnauthorizedException('Invalid Paystack webhook signature');
     }
 
@@ -225,7 +234,14 @@ export class InvoiceService {
     }
 
     const invoice = await this.platformBilling.findInvoiceByPaystackReference(reference);
-    if (!invoice || invoice.status === 'PAID') {
+    if (!invoice) {
+      // Not an invoice reference — try the payroll wallet top-up path
+      // (TenantPayrollWalletService.creditTopUpByReference is itself a
+      // silent no-op on an unknown reference, same posture as this method).
+      await this.wallet.creditTopUpByReference(reference);
+      return;
+    }
+    if (invoice.status === 'PAID') {
       return;
     }
 

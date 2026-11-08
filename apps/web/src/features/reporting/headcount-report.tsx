@@ -5,6 +5,9 @@ import { useHeadcountReport } from './queries';
 import { OrganizationFilter, ALL_ORGANIZATIONS } from './organization-filter';
 import { useAllOrganizationUnits, useOrganizations } from '@/features/organizations/queries';
 import { StatCard } from './stat-card';
+import { ReportViewTabs, type ReportView } from './report-view-tabs';
+import { ReportBarChart } from './report-bar-chart';
+import { CHART_COLORS } from './chart-colors';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,6 +27,7 @@ export function HeadcountReport({ tenantId }: { tenantId: string }) {
   const [organizationId, setOrganizationId] = useState(ALL_ORGANIZATIONS);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [view, setView] = useState<ReportView>('table');
 
   const { data: report, isLoading, isError, error } = useHeadcountReport(tenantId, {
     organizationId: organizationId === ALL_ORGANIZATIONS ? undefined : organizationId,
@@ -70,51 +74,87 @@ export function HeadcountReport({ tenantId }: { tenantId: string }) {
             )}
           </div>
 
-          <div>
-            <h2 className="mb-2 text-sm font-medium text-muted-foreground">By employment type</h2>
-            <TableCard>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Count</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {report.byEmploymentType.map((row) => (
-                    <TableRow key={row.employmentType}>
-                      <TableCell>{row.employmentType.replace('_', ' ')}</TableCell>
-                      <TableCell>{row.count}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableCard>
-          </div>
+          <ReportViewTabs
+            view={view}
+            onViewChange={setView}
+            table={
+              <div className="space-y-6">
+                <div>
+                  <h2 className="mb-2 text-sm font-medium text-muted-foreground">By employment type</h2>
+                  <TableCard>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Count</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {report.byEmploymentType.map((row) => (
+                          <TableRow key={row.employmentType}>
+                            <TableCell>{row.employmentType.replace('_', ' ')}</TableCell>
+                            <TableCell>{row.count}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableCard>
+                </div>
 
-          <div>
-            <h2 className="mb-2 text-sm font-medium text-muted-foreground">By organization unit</h2>
-            <TableCard>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Unit</TableHead>
-                    <TableHead>Count</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {report.byOrganizationUnit.map((row) => (
-                    <TableRow key={row.organizationUnitId ?? 'none'}>
-                      <TableCell>
-                        {row.organizationUnitId ? unitName(row.organizationUnitId) : 'No unit'}
-                      </TableCell>
-                      <TableCell>{row.count}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableCard>
-          </div>
+                <div>
+                  <h2 className="mb-2 text-sm font-medium text-muted-foreground">By organization unit</h2>
+                  <TableCard>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Unit</TableHead>
+                          <TableHead>Count</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {report.byOrganizationUnit.map((row) => (
+                          <TableRow key={row.organizationUnitId ?? 'none'}>
+                            <TableCell>
+                              {row.organizationUnitId ? unitName(row.organizationUnitId) : 'No unit'}
+                            </TableCell>
+                            <TableCell>{row.count}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableCard>
+                </div>
+              </div>
+            }
+            chart={
+              <div className="space-y-6">
+                <div>
+                  <h2 className="mb-2 text-sm font-medium text-muted-foreground">By employment type</h2>
+                  <ReportBarChart
+                    data={report.byEmploymentType.map((row) => ({
+                      name: row.employmentType.replace('_', ' '),
+                      count: row.count,
+                    }))}
+                    categoryKey="name"
+                    series={[{ key: 'count', label: 'Employees', color: CHART_COLORS[0] }]}
+                  />
+                </div>
+
+                <div>
+                  <h2 className="mb-2 text-sm font-medium text-muted-foreground">By organization unit</h2>
+                  <ReportBarChart
+                    data={report.byOrganizationUnit.map((row) => ({
+                      name: row.organizationUnitId ? unitName(row.organizationUnitId) : 'No unit',
+                      count: row.count,
+                    }))}
+                    categoryKey="name"
+                    series={[{ key: 'count', label: 'Employees', color: CHART_COLORS[0] }]}
+                    layout="vertical"
+                  />
+                </div>
+              </div>
+            }
+          />
         </div>
       )}
     </div>

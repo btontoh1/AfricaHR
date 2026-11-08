@@ -5,11 +5,12 @@ import { Payslip, PayslipDisbursementStatus } from '@prisma/client';
 import {
   PayrollDisbursementRepository,
   PayrollEmployeeRepository,
+  PayrollWalletRepository,
   PayRunRepository,
   PayslipRepository,
   StalePendingDisbursement,
 } from '@africahr/payroll-data-access';
-import { PaystackTransferClient } from './paystack-transfer-client';
+import { PaystackTransferClientRegistry } from './paystack-transfer-client-registry';
 
 /**
  * Consumes the event billing-feature's InvoiceService re-emits when the
@@ -111,7 +112,8 @@ export class PayrollTransferWebhookListener {
     private readonly payRuns: PayRunRepository,
     private readonly employees: PayrollEmployeeRepository,
     private readonly eventEmitter: EventEmitter2,
-    private readonly paystack: PaystackTransferClient,
+    private readonly paystack: PaystackTransferClientRegistry,
+    private readonly wallet: PayrollWalletRepository,
   ) {}
 
   @OnEvent('payroll.paystack_transfer.updated')
@@ -142,7 +144,7 @@ export class PayrollTransferWebhookListener {
 
     for (const item of stale) {
       try {
-        const verified = await this.paystack.verifyTransfer(item.paystackTransferReference);
+        const verified = await this.paystack.forCurrency(item.currency).verifyTransfer(item.paystackTransferReference);
         const status = mapVerifiedStatus(verified.status);
         if (status) {
           await this.resolveIfPending(item.paystackTransferReference, status);
@@ -220,6 +222,11 @@ export class PayrollTransferWebhookListener {
     }
 
     if (status === PayslipDisbursementStatus.FAILED) {
+      // The transfer reference that reached this point was committed with
+      // a reservation already taken against the wallet (see
+      // PayRunService.disburse) - now that Paystack has definitively said
+      // it failed, that reservation is returned.
+      await this.wallet.refund(updated.tenantId, updated.currency, Number(updated.netPay));
       await this.notifyOfFailedDisbursement(updated);
     }
   }

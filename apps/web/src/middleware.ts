@@ -1,7 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from '@/lib/auth-cookie-names';
 
-const PUBLIC_PATHS = ['/login', '/setup'];
+// /careers is the public job-application flow — a candidate reaches it from
+// a link a company embeds on its own website, never a logged-in session.
+const PUBLIC_PATHS = [
+  '/login',
+  '/setup',
+  '/careers',
+  '/about',
+  '/faq',
+  '/support',
+  '/testimonials',
+  '/terms',
+  '/privacy',
+  '/refund-policy',
+  '/sitemap.xml',
+  '/robots.txt',
+];
 
 // Fast, cookie-presence-only gate — not a full JWT verification (Edge
 // middleware has no easy access to the backend's signing secret, and
@@ -12,7 +27,15 @@ const PUBLIC_PATHS = ['/login', '/setup'];
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (PUBLIC_PATHS.some((path) => pathname.startsWith(path)) || pathname.startsWith('/api')) {
+  // Root is the public marketing homepage (RootPage itself still redirects
+  // a *logged-in* visitor straight to /dashboard) - deliberately an exact
+  // match, not startsWith, since every path starts with "/" and that would
+  // blow the gate open for the whole app.
+  if (
+    pathname === '/' ||
+    PUBLIC_PATHS.some((path) => pathname.startsWith(path)) ||
+    pathname.startsWith('/api')
+  ) {
     return NextResponse.next();
   }
 
@@ -30,5 +53,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|logo.png).*)'],
 };

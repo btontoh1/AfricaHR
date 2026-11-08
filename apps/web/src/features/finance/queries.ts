@@ -1,0 +1,778 @@
+'use client';
+
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '@/lib/api-client';
+import type {
+  CreateBankReconciliationInput,
+  CreateCostCenterInput,
+  CreateExpenseInput,
+  CreateFixedAssetInput,
+  CreateGlAccountInput,
+  CreateManualJournalEntryInput,
+  CreateRecurringJournalEntryInput,
+  DisposeFixedAssetInput,
+  ReimburseExpenseInput,
+  RunDepreciationInput,
+  RunFxRevaluationInput,
+  SetBudgetInput,
+  SetHomeCurrencyInput,
+  SetPeriodCloseInput,
+  UpdateGlAccountInput,
+  UpdateRecurringJournalEntryInput,
+} from './types';
+
+function journalEntriesListKey(tenantId: string) {
+  return ['finance', 'journal-entries', tenantId] as const;
+}
+
+function accountsListKey(tenantId: string) {
+  return ['finance', 'accounts', tenantId] as const;
+}
+
+export function useAccounts(tenantId: string) {
+  return useQuery({
+    queryKey: accountsListKey(tenantId),
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/accounts', {
+        params: { path: { tenantId } },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useCreateAccount(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateGlAccountInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/accounts', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: accountsListKey(tenantId) });
+    },
+  });
+}
+
+export function useRenameAccount(tenantId: string, id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UpdateGlAccountInput) => {
+      const { data, error } = await apiClient.PATCH('/api/tenants/{tenantId}/finance/accounts/{id}', {
+        params: { path: { tenantId, id } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: accountsListKey(tenantId) });
+    },
+  });
+}
+
+export function useJournalEntries(tenantId: string, organizationId?: string) {
+  return useQuery({
+    queryKey: [...journalEntriesListKey(tenantId), organizationId ?? ''],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/journal-entries', {
+        params: { path: { tenantId }, query: organizationId ? { organizationId } : undefined },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useCreateJournalEntry(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateManualJournalEntryInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/journal-entries', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: journalEntriesListKey(tenantId) });
+    },
+  });
+}
+
+export function useVoidJournalEntry(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/journal-entries/{id}/void', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: journalEntriesListKey(tenantId) });
+    },
+  });
+}
+
+export function useProfitAndLossReport(
+  tenantId: string,
+  filters: { organizationId?: string; from: string; to: string },
+) {
+  return useQuery({
+    queryKey: ['finance', 'profit-and-loss', tenantId, filters.organizationId ?? '', filters.from, filters.to],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/reports/profit-and-loss', {
+        params: { path: { tenantId }, query: filters },
+      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: Boolean(filters.from && filters.to),
+  });
+}
+
+export function useCashFlowReport(
+  tenantId: string,
+  filters: { organizationId?: string; from: string; to: string },
+) {
+  return useQuery({
+    queryKey: ['finance', 'cash-flow', tenantId, filters.organizationId ?? '', filters.from, filters.to],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/reports/cash-flow', {
+        params: { path: { tenantId }, query: filters },
+      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: Boolean(filters.from && filters.to),
+  });
+}
+
+export function useBalanceSheetReport(
+  tenantId: string,
+  filters: { organizationId?: string; asOf: string },
+) {
+  return useQuery({
+    queryKey: ['finance', 'balance-sheet', tenantId, filters.organizationId ?? '', filters.asOf],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/reports/balance-sheet', {
+        params: { path: { tenantId }, query: filters },
+      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: Boolean(filters.asOf),
+  });
+}
+
+export function useTrialBalanceReport(
+  tenantId: string,
+  filters: { organizationId?: string; asOf: string },
+) {
+  return useQuery({
+    queryKey: ['finance', 'trial-balance', tenantId, filters.organizationId ?? '', filters.asOf],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/reports/trial-balance', {
+        params: { path: { tenantId }, query: filters },
+      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: Boolean(filters.asOf),
+  });
+}
+
+function periodCloseQueryOptions(tenantId: string, organizationId: string) {
+  return {
+    queryKey: ['finance', 'period-close', tenantId, organizationId],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/period-close', {
+        params: { path: { tenantId }, query: { organizationId } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: Boolean(organizationId),
+  };
+}
+
+export function usePeriodClose(tenantId: string, organizationId: string) {
+  return useQuery(periodCloseQueryOptions(tenantId, organizationId));
+}
+
+/** Resolves every organization's period-close status in one screen - same fan-out pattern as useAllOrganizationUnits. */
+export function usePeriodCloses(tenantId: string, organizationIds: string[]) {
+  return useQueries({
+    queries: organizationIds.map((organizationId) => periodCloseQueryOptions(tenantId, organizationId)),
+    combine: (results) => ({
+      data: results.map((result) => result.data),
+      isLoading: results.some((result) => result.isLoading),
+    }),
+  });
+}
+
+export function useSetPeriodClose(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: SetPeriodCloseInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/period-close', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({
+        queryKey: ['finance', 'period-close', tenantId, result.organizationId],
+      });
+    },
+  });
+}
+
+/** Same-origin, proxied through /api/* like every other request - the
+ * browser includes auth cookies automatically for a plain navigation/anchor
+ * click, no fetch() or bearer token handling needed here. Same convention
+ * as invoices' getInvoicePdfUrl. organizationId is required - a report PDF
+ * is always one organization's own letterhead, never "all organizations". */
+export function getProfitAndLossPdfUrl(
+  tenantId: string,
+  filters: { organizationId: string; from: string; to: string },
+  download: boolean,
+): string {
+  const params = new URLSearchParams({ organizationId: filters.organizationId, from: filters.from, to: filters.to });
+  if (download) params.set('download', 'true');
+  return `/api/tenants/${tenantId}/finance/reports/profit-and-loss/pdf?${params.toString()}`;
+}
+
+export function getCashFlowPdfUrl(
+  tenantId: string,
+  filters: { organizationId: string; from: string; to: string },
+  download: boolean,
+): string {
+  const params = new URLSearchParams({ organizationId: filters.organizationId, from: filters.from, to: filters.to });
+  if (download) params.set('download', 'true');
+  return `/api/tenants/${tenantId}/finance/reports/cash-flow/pdf?${params.toString()}`;
+}
+
+export function getBalanceSheetPdfUrl(
+  tenantId: string,
+  filters: { organizationId: string; asOf: string },
+  download: boolean,
+): string {
+  const params = new URLSearchParams({ organizationId: filters.organizationId, asOf: filters.asOf });
+  if (download) params.set('download', 'true');
+  return `/api/tenants/${tenantId}/finance/reports/balance-sheet/pdf?${params.toString()}`;
+}
+
+function budgetsListKey(tenantId: string) {
+  return ['finance', 'budgets', tenantId] as const;
+}
+
+export function useBudgets(tenantId: string, filters: { organizationId?: string; fiscalYear?: number }) {
+  return useQuery({
+    queryKey: [...budgetsListKey(tenantId), filters.organizationId ?? '', filters.fiscalYear ?? ''],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/budgets', {
+        params: {
+          path: { tenantId },
+          query: {
+            organizationId: filters.organizationId,
+            fiscalYear: filters.fiscalYear ? String(filters.fiscalYear) : undefined,
+          },
+        },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useSetBudget(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: SetBudgetInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/budgets', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: budgetsListKey(tenantId) });
+      queryClient.invalidateQueries({ queryKey: ['finance', 'budget-vs-actual', tenantId] });
+    },
+  });
+}
+
+export function useDeleteBudget(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await apiClient.DELETE('/api/tenants/{tenantId}/finance/budgets/{id}', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: budgetsListKey(tenantId) });
+      queryClient.invalidateQueries({ queryKey: ['finance', 'budget-vs-actual', tenantId] });
+    },
+  });
+}
+
+export function useBudgetVsActualReport(tenantId: string, filters: { organizationId?: string; fiscalYear: number }) {
+  return useQuery({
+    queryKey: ['finance', 'budget-vs-actual', tenantId, filters.organizationId ?? '', filters.fiscalYear],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/reports/budget-vs-actual', {
+        params: {
+          path: { tenantId },
+          query: { organizationId: filters.organizationId, fiscalYear: String(filters.fiscalYear) },
+        },
+      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: Boolean(filters.fiscalYear),
+  });
+}
+
+function reconciliationsListKey(tenantId: string) {
+  return ['finance', 'bank-reconciliations', tenantId] as const;
+}
+
+function reconciliationDetailKey(tenantId: string, id: string) {
+  return ['finance', 'bank-reconciliations', tenantId, id] as const;
+}
+
+export function useBankReconciliations(tenantId: string, organizationId?: string) {
+  return useQuery({
+    queryKey: [...reconciliationsListKey(tenantId), organizationId ?? ''],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/bank-reconciliations', {
+        params: { path: { tenantId }, query: organizationId ? { organizationId } : undefined },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useCreateBankReconciliation(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateBankReconciliationInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/bank-reconciliations', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: reconciliationsListKey(tenantId) });
+    },
+  });
+}
+
+export function useBankReconciliationDetail(tenantId: string, id: string) {
+  return useQuery({
+    queryKey: reconciliationDetailKey(tenantId, id),
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/bank-reconciliations/{id}', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: Boolean(id),
+  });
+}
+
+export function useToggleReconciliationLine(tenantId: string, id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (lineId: string) => {
+      const { data, error } = await apiClient.POST(
+        '/api/tenants/{tenantId}/finance/bank-reconciliations/{id}/lines/{lineId}/toggle',
+        { params: { path: { tenantId, id, lineId } } },
+      );
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: reconciliationDetailKey(tenantId, id) });
+    },
+  });
+}
+
+export function useCompleteBankReconciliation(tenantId: string, id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/bank-reconciliations/{id}/complete', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: reconciliationDetailKey(tenantId, id) });
+      queryClient.invalidateQueries({ queryKey: reconciliationsListKey(tenantId) });
+    },
+  });
+}
+
+export function useDeleteBankReconciliation(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await apiClient.DELETE('/api/tenants/{tenantId}/finance/bank-reconciliations/{id}', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: reconciliationsListKey(tenantId) });
+    },
+  });
+}
+
+export function getTrialBalancePdfUrl(
+  tenantId: string,
+  filters: { organizationId: string; asOf: string },
+  download: boolean,
+): string {
+  const params = new URLSearchParams({ organizationId: filters.organizationId, asOf: filters.asOf });
+  if (download) params.set('download', 'true');
+  return `/api/tenants/${tenantId}/finance/reports/trial-balance/pdf?${params.toString()}`;
+}
+
+function recurringJournalEntriesListKey(tenantId: string) {
+  return ['finance', 'recurring-journal-entries', tenantId] as const;
+}
+
+export function useRecurringJournalEntries(tenantId: string, organizationId?: string) {
+  return useQuery({
+    queryKey: [...recurringJournalEntriesListKey(tenantId), organizationId ?? ''],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/recurring-journal-entries', {
+        params: { path: { tenantId }, query: organizationId ? { organizationId } : undefined },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useCreateRecurringJournalEntry(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateRecurringJournalEntryInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/recurring-journal-entries', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: recurringJournalEntriesListKey(tenantId) });
+    },
+  });
+}
+
+export function useSetRecurringJournalEntryActive(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
+      const input: UpdateRecurringJournalEntryInput = { isActive };
+      const { data, error } = await apiClient.PATCH('/api/tenants/{tenantId}/finance/recurring-journal-entries/{id}', {
+        params: { path: { tenantId, id } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: recurringJournalEntriesListKey(tenantId) });
+    },
+  });
+}
+
+export function useDeleteRecurringJournalEntry(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await apiClient.DELETE('/api/tenants/{tenantId}/finance/recurring-journal-entries/{id}', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: recurringJournalEntriesListKey(tenantId) });
+    },
+  });
+}
+
+function homeCurrencyQueryOptions(tenantId: string, organizationId: string) {
+  return {
+    queryKey: ['finance', 'home-currency', tenantId, organizationId],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/home-currency', {
+        params: { path: { tenantId }, query: { organizationId } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: Boolean(organizationId),
+  };
+}
+
+export function useHomeCurrency(tenantId: string, organizationId: string) {
+  return useQuery(homeCurrencyQueryOptions(tenantId, organizationId));
+}
+
+/** Resolves every organization's home currency in one screen - same
+ * fan-out pattern as usePeriodCloses. */
+export function useHomeCurrencies(tenantId: string, organizationIds: string[]) {
+  return useQueries({
+    queries: organizationIds.map((organizationId) => homeCurrencyQueryOptions(tenantId, organizationId)),
+    combine: (results) => ({
+      data: results.map((result) => result.data),
+      isLoading: results.some((result) => result.isLoading),
+    }),
+  });
+}
+
+export function useSetHomeCurrency(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: SetHomeCurrencyInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/home-currency', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['finance', 'home-currency', tenantId, result.organizationId] });
+    },
+  });
+}
+
+function fxRevaluationsListKey(tenantId: string) {
+  return ['finance', 'fx-revaluations', tenantId] as const;
+}
+
+export function useFxRevaluations(tenantId: string, organizationId?: string) {
+  return useQuery({
+    queryKey: [...fxRevaluationsListKey(tenantId), organizationId ?? ''],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/fx-revaluations', {
+        params: { path: { tenantId }, query: organizationId ? { organizationId } : undefined },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useRunFxRevaluation(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: RunFxRevaluationInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/fx-revaluations', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: fxRevaluationsListKey(tenantId) });
+    },
+  });
+}
+
+function fixedAssetsListKey(tenantId: string) {
+  return ['finance', 'fixed-assets', tenantId] as const;
+}
+
+export function useFixedAssets(tenantId: string, organizationId?: string) {
+  return useQuery({
+    queryKey: [...fixedAssetsListKey(tenantId), organizationId ?? ''],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/fixed-assets', {
+        params: { path: { tenantId }, query: organizationId ? { organizationId } : undefined },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useCreateFixedAsset(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateFixedAssetInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/fixed-assets', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: fixedAssetsListKey(tenantId) });
+    },
+  });
+}
+
+export function useDisposeFixedAsset(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...input }: DisposeFixedAssetInput & { id: string }) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/fixed-assets/{id}/dispose', {
+        params: { path: { tenantId, id } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: fixedAssetsListKey(tenantId) });
+    },
+  });
+}
+
+function depreciationRunsListKey(tenantId: string) {
+  return ['finance', 'depreciation-runs', tenantId] as const;
+}
+
+export function useDepreciationRuns(tenantId: string, organizationId?: string) {
+  return useQuery({
+    queryKey: [...depreciationRunsListKey(tenantId), organizationId ?? ''],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/depreciation-runs', {
+        params: { path: { tenantId }, query: organizationId ? { organizationId } : undefined },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useRunDepreciation(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: RunDepreciationInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/depreciation-runs', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: fixedAssetsListKey(tenantId) });
+      queryClient.invalidateQueries({ queryKey: depreciationRunsListKey(tenantId) });
+    },
+  });
+}
+
+function expensesListKey(tenantId: string) {
+  return ['finance', 'expenses', tenantId] as const;
+}
+
+export function useExpenses(tenantId: string, organizationId?: string) {
+  return useQuery({
+    queryKey: [...expensesListKey(tenantId), organizationId ?? ''],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/expenses', {
+        params: { path: { tenantId }, query: organizationId ? { organizationId } : undefined },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useCreateExpense(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateExpenseInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/expenses', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: expensesListKey(tenantId) });
+    },
+  });
+}
+
+export function useReimburseExpense(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...input }: ReimburseExpenseInput & { id: string }) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/expenses/{id}/reimburse', {
+        params: { path: { tenantId, id } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: expensesListKey(tenantId) });
+    },
+  });
+}
+
+function costCentersListKey(tenantId: string) {
+  return ['finance', 'cost-centers', tenantId] as const;
+}
+
+export function useCostCenters(tenantId: string, organizationId?: string) {
+  return useQuery({
+    queryKey: [...costCentersListKey(tenantId), organizationId ?? ''],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/finance/cost-centers', {
+        params: { path: { tenantId }, query: organizationId ? { organizationId } : undefined },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useCreateCostCenter(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateCostCenterInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/finance/cost-centers', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: costCentersListKey(tenantId) });
+    },
+  });
+}

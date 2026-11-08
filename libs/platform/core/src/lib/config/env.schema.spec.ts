@@ -91,4 +91,10 @@ describe('validateEnv', () => {
       validateEnv({ ...validEnv, SENDGRID_FROM_EMAIL: 'not-an-email' }),
     ).toThrow(/SENDGRID_FROM_EMAIL/);
   });
+
+  it('accepts a present-but-blank SENDGRID_FROM_EMAIL, same as unset', () => {
+    const result = validateEnv({ ...validEnv, SENDGRID_FROM_EMAIL: '' });
+
+    expect(result.SENDGRID_FROM_EMAIL).toBe('');
+  });
 });

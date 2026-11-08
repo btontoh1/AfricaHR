@@ -27,6 +27,10 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
   --radius-sm: calc(var(--radius) - 6px);
   --radius-md: calc(var(--radius) - 3px);
   --radius-lg: var(--radius);
@@ -79,6 +83,15 @@
   --border: #e5e7eb;
   --input: #e5e7eb;
   --ring: #0f766e;
+
+  /* Chart series - a validated colorblind-safe categorical order (fixed
+     order, never cycled or reassigned per-filter). Independent of the
+     brand colors above: these must stay stable and distinguishable across
+     both themes, which the brand palette wasn't chosen for. */
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
 }
 
 .dark {
@@ -117,6 +130,11 @@
   --border: rgb(255 255 255 / 10%);
   --input: rgb(255 255 255 / 15%);
   --ring: #2dd4bf;
+
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
 }
 
 body {

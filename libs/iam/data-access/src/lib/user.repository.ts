@@ -5,6 +5,7 @@ import { withScope } from './tenant-scoped';
 
 export interface CreateUserInput {
   tenantId: string | null;
+  organizationId?: string | null;
   email: string;
   passwordHash: string;
   firstName: string;
@@ -19,9 +20,18 @@ export interface UpdateUserProfileInput {
   email?: string;
 }
 
+export interface ActiveTenantAdmin {
+  id: string;
+  tenantId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+}
+
 export interface UserForLogin {
   id: string;
   tenantId: string | null;
+  organizationId: string | null;
   email: string;
   passwordHash: string;
   firstName: string;
@@ -51,6 +61,20 @@ export class UserRepository {
       UserForLogin[]
     >`SELECT * FROM find_user_for_login(${email})`;
     return rows[0] ?? null;
+  }
+
+  /**
+   * Cross-tenant by design: a platform-wide broadcast (e.g. "the Terms
+   * changed") needs one recipient per tenant, across every tenant at once -
+   * same genuinely-cross-tenant shape as
+   * OrganizationRepository.listPendingReview(). "users" has the
+   * nullable-tenant §4 RLS policy, but withPlatformScope only surfaces the
+   * tenant_id IS NULL rows (platform admins themselves) - a real tenant's
+   * User rows stay invisible to the sentinel, so this goes through the same
+   * §5 SECURITY DEFINER escape hatch as findByEmail.
+   */
+  findActiveTenantAdmins(): Promise<ActiveTenantAdmin[]> {
+    return this.prisma.$queryRaw<ActiveTenantAdmin[]>`SELECT * FROM find_active_tenant_admins()`;
   }
 
   findById(tenantId: string | null, id: string): Promise<User | null> {
@@ -84,6 +108,7 @@ export class UserRepository {
       client.user.create({
         data: {
           tenantId: input.tenantId,
+          organizationId: input.organizationId,
           email: input.email,
           passwordHash: input.passwordHash,
           firstName: input.firstName,
@@ -102,15 +127,37 @@ export class UserRepository {
     );
   }
 
+  /**
+   * organizationId is always written (not merged) alongside role - a role
+   * change away from ORG_ADMIN must clear it, same as a change into it must
+   * set it, so the caller (UserService) always passes the field it wants,
+   * never omits it to "leave as-is".
+   */
   updateRole(
     tenantId: string | null,
     id: string,
     role: SystemRole,
+    organizationId: string | null,
     updatedBy?: string,
   ): Promise<User> {
     return withScope(this.prisma, tenantId, (client) =>
-      client.user.update({ where: { id }, data: { role, updatedBy } }),
+      client.user.update({ where: { id }, data: { role, organizationId, updatedBy } }),
     );
+  }
+
+  /**
+   * Existence check run under the given tenant's RLS context (see
+   * RLS_CONVENTION.md) - if organizationId belongs to a different tenant,
+   * it's simply invisible here and this returns false, same effect as "not
+   * found". Used to validate ORG_ADMIN assignment without iam depending on
+   * the tenancy bounded context (see EmployeeService's analogous comment on
+   * why cross-context reaches go through the shared PrismaService instead).
+   */
+  async organizationExistsInTenant(tenantId: string, organizationId: string): Promise<boolean> {
+    const org = await this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.organization.findFirst({ where: { id: organizationId, deletedAt: null }, select: { id: true } }),
+    );
+    return org !== null;
   }
 
   setActive(

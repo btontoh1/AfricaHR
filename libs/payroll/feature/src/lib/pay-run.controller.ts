@@ -21,7 +21,7 @@ export class PayRunController {
   constructor(private readonly payRuns: PayRunService) {}
 
   @Post()
-  @RequirePermissions(Permission.PAYROLL_MANAGE)
+  @RequirePermissions(Permission.PAYROLL_PREPARE)
   @ApiOkResponse({ type: PayRunResponseDto })
   create(
     @Param('tenantId') tenantId: string,
@@ -58,7 +58,7 @@ export class PayRunController {
   }
 
   @Post(':id/process')
-  @RequirePermissions(Permission.PAYROLL_MANAGE)
+  @RequirePermissions(Permission.PAYROLL_PREPARE)
   @ApiOkResponse({ type: PayRunResponseDto })
   process(
     @Param('tenantId') tenantId: string,

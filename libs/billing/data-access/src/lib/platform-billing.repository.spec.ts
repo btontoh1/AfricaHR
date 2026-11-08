@@ -81,4 +81,25 @@ describe('PlatformBillingRepository', () => {
     expect(result).toEqual(new Map());
     expect(prisma.tenant.findMany).not.toHaveBeenCalled();
   });
+
+  it('lists every invoice for analytics and parses the decimal amount', async () => {
+    prisma.$queryRaw.mockResolvedValue([
+      { tenantId: 'tenant-1', currency: 'GHS', amount: '250.00', periodStart: new Date('2026-01-01'), status: 'PAID' },
+    ]);
+
+    const result = await repository.listInvoicesForAnalytics();
+
+    expect(result).toEqual([
+      { tenantId: 'tenant-1', currency: 'GHS', amount: 250, periodStart: new Date('2026-01-01'), status: 'PAID' },
+    ]);
+  });
+
+  it('looks up tenant signup months via a plain unscoped query', async () => {
+    prisma.tenant.findMany.mockResolvedValue([{ id: 'tenant-1', createdAt: new Date('2026-01-15') }]);
+
+    const result = await repository.listTenantSignupMonths();
+
+    expect(result).toEqual(new Map([['tenant-1', new Date('2026-01-15')]]));
+    expect(prisma.tenant.findMany).toHaveBeenCalledWith({ select: { id: true, createdAt: true } });
+  });
 });

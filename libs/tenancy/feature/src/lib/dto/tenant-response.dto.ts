@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { AddOnModule } from '@prisma/client';
 
 export class TenantResponseDto {
   @ApiProperty()
@@ -24,6 +25,9 @@ export class TenantResponseDto {
 
   @ApiPropertyOptional({ nullable: true })
   logoStorageKey?: string | null;
+
+  @ApiProperty({ enum: Object.values(AddOnModule), isArray: true })
+  enabledAddOns!: AddOnModule[];
 
   @ApiProperty()
   createdAt!: string;

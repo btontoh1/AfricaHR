@@ -24,6 +24,9 @@ export class OrganizationResponseDto {
   @ApiPropertyOptional()
   taxIdentificationNumber?: string | null;
 
+  @ApiPropertyOptional({ description: "Shown as the employer's address on payslips" })
+  address?: string | null;
+
   @ApiProperty({ enum: OrganizationVerificationStatus })
   verificationStatus!: OrganizationVerificationStatus;
 
@@ -32,6 +35,9 @@ export class OrganizationResponseDto {
 
   @ApiPropertyOptional()
   verifiedAt?: string | null;
+
+  @ApiPropertyOptional({ description: "Storage key for the organization's own logo, shown on its invoices" })
+  logoStorageKey?: string | null;
 
   @ApiProperty()
   createdAt!: string;

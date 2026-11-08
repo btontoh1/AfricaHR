@@ -1,0 +1,681 @@
+'use client';
+
+import Link from 'next/link';
+import { AlertTriangle, Fuel, Gauge, Scale, Sparkles, TrendingDown, TrendingUp, Users, Zap } from 'lucide-react';
+import {
+  useAcquisitionCosts,
+  useCashBalances,
+  useOperatingCosts,
+  usePlatformSaasMetrics,
+  useSetAcquisitionCost,
+  useSetCashBalance,
+} from './queries';
+import { CohortRetentionTable } from './cohort-retention-table';
+import { SetOperatingCostDialog } from './set-operating-cost-dialog';
+import { SetFinancialInputDialog } from './set-financial-input-dialog';
+import { LtvToCacAlertBanner } from './ltv-to-cac-alert-banner';
+import type {
+  BurnAndRunwayEntry,
+  FinancialInput,
+  LtvToCacEntry,
+  MagicNumberEntry,
+  QuickRatioEntry,
+  RevenueConcentrationEntry,
+  RevenueRetentionEntry,
+  RuleOf40Entry,
+} from './types';
+import { getApiErrorMessage } from '@/lib/api-error';
+import { formatCurrency } from '@/lib/format-currency';
+import { CardSkeleton } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
+import { PageHeader } from '@/components/page-header';
+import { StatCard } from '@/features/reporting/stat-card';
+import { ReportLineChart } from '@/features/reporting/report-line-chart';
+import { ReportBarChart } from '@/features/reporting/report-bar-chart';
+import { CHART_COLORS } from '@/features/reporting/chart-colors';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+const RULE_OF_40_HEALTHY_THRESHOLD = 40;
+
+function ruleOf40BadgeVariant(score: number): 'success' | 'warning' {
+  return score >= RULE_OF_40_HEALTHY_THRESHOLD ? 'success' : 'warning';
+}
+
+function RuleOf40Card({ entries }: { entries: RuleOf40Entry[] }) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Gauge className="size-4 text-muted-foreground" />
+          Rule of 40
+        </CardTitle>
+        <SetOperatingCostDialog />
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Revenue growth rate plus profit margin - a score of 40 or above is considered healthy,
+          trading off growth against profitability. Profit margin needs an operating cost entered for
+          the month; a currency with no cost entered doesn&apos;t appear here yet.
+        </p>
+        {entries.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No score yet - enter an operating cost for the latest billed month to see one.
+          </p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {entries.map((entry) => (
+              <div key={entry.currency} className="space-y-2 rounded-lg border p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {entry.currency} — {entry.month}
+                  </span>
+                  <Badge variant={ruleOf40BadgeVariant(entry.score)}>{entry.score}</Badge>
+                </div>
+                <dl className="grid grid-cols-2 gap-x-2 gap-y-1 text-sm">
+                  <dt className="text-muted-foreground">Growth rate</dt>
+                  <dd className="text-right">{entry.revenueGrowthRatePercent}%</dd>
+                  <dt className="text-muted-foreground">Profit margin</dt>
+                  <dd className="text-right">{entry.profitMarginPercent}%</dd>
+                  <dt className="text-muted-foreground">Revenue</dt>
+                  <dd className="text-right">{formatCurrency(entry.revenue, entry.currency)}</dd>
+                  <dt className="text-muted-foreground">Cost</dt>
+                  <dd className="text-right">{formatCurrency(entry.cost, entry.currency)}</dd>
+                </dl>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function FinancialInputsTable({ entries }: { entries: FinancialInput[] }) {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Month</TableHead>
+          <TableHead>Currency</TableHead>
+          <TableHead className="text-right">Amount</TableHead>
+          <TableHead>Notes</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {entries.map((entry) => (
+          <TableRow key={entry.id}>
+            <TableCell>{entry.month}</TableCell>
+            <TableCell>{entry.currency}</TableCell>
+            <TableCell className="text-right">{formatCurrency(entry.amount, entry.currency)}</TableCell>
+            <TableCell className="text-muted-foreground">{entry.notes ?? '—'}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+function OperatingCostsCard() {
+  const { data: costs, isLoading } = useOperatingCosts();
+
+  if (isLoading || !costs || costs.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Operating costs entered</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <FinancialInputsTable entries={costs} />
+      </CardContent>
+    </Card>
+  );
+}
+
+function RevenueRetentionCard({ entries }: { entries: RevenueRetentionEntry[] }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Scale className="size-4 text-muted-foreground" />
+          Revenue retention
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {entries.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No figure yet - needs at least two months of billing history to compare against.
+          </p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {entries.map((entry) => (
+              <StatCard
+                key={`net-${entry.currency}`}
+                label={`Net revenue retention (${entry.currency})`}
+                value={`${entry.netRevenueRetentionPercent}%`}
+                icon={TrendingUp}
+              />
+            ))}
+            {entries.map((entry) => (
+              <StatCard
+                key={`gross-${entry.currency}`}
+                label={`Gross revenue retention (${entry.currency})`}
+                value={`${entry.grossRevenueRetentionPercent}%`}
+                icon={Scale}
+              />
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function quickRatioBadgeVariant(value: number): 'success' | 'warning' | 'destructive' {
+  if (value >= 4) return 'success';
+  if (value >= 1) return 'warning';
+  return 'destructive';
+}
+
+function QuickRatioCard({ entries }: { entries: QuickRatioEntry[] }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Zap className="size-4 text-muted-foreground" />
+          Quick ratio
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          (New + expansion) over (contraction + churn) - a growth-efficiency measure. Above 4 is
+          excellent, 1-4 is sustainable growth, below 1 means shrinking.
+        </p>
+        {entries.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No figure yet - needs at least two months of billing history to compare against.
+          </p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {entries.map((entry) => (
+              <div key={entry.currency} className="flex items-center justify-between gap-2 rounded-lg border p-4">
+                <span className="text-sm font-medium text-muted-foreground">
+                  {entry.currency} — {entry.month}
+                </span>
+                {entry.value === null ? (
+                  <Badge variant="outline">N/A</Badge>
+                ) : (
+                  <Badge variant={quickRatioBadgeVariant(entry.value)}>{entry.value}</Badge>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function MagicNumberCard({ entries }: { entries: MagicNumberEntry[] }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Sparkles className="size-4 text-muted-foreground" />
+          Magic number
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Net-new MRR this month divided by the prior month&apos;s acquisition spend - above 0.75 is
+          considered capital-efficient. Needs an acquisition cost entered for the PRIOR billed month; a
+          currency with no cost entered for that month doesn&apos;t appear here yet.
+        </p>
+        {entries.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No figure yet - enter an acquisition cost for an earlier month to see one once the next
+            month is billed.
+          </p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {entries.map((entry) => (
+              <div key={entry.currency} className="flex items-center justify-between gap-2 rounded-lg border p-4">
+                <span className="text-sm font-medium text-muted-foreground">
+                  {entry.currency} — {entry.previousMonth} → {entry.month}
+                </span>
+                {entry.value === null ? (
+                  <Badge variant="outline">N/A</Badge>
+                ) : (
+                  <Badge variant={entry.value >= 0.75 ? 'success' : 'warning'}>{entry.value}</Badge>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function RevenueConcentrationCard({ entries }: { entries: RevenueConcentrationEntry[] }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Revenue concentration</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <p className="text-sm text-muted-foreground">
+          The largest tenants by share of the latest month&apos;s MRR - a customer-concentration risk
+          signal for investors.
+        </p>
+        {entries.length === 0 && (
+          <p className="text-sm text-muted-foreground">No billed activity yet - this builds up once invoices are paid.</p>
+        )}
+        {entries.map((entry) => (
+          <div key={entry.currency} className="space-y-2">
+            <div className="flex items-baseline justify-between gap-2">
+              <h3 className="text-sm font-medium text-muted-foreground">
+                {entry.currency} — {entry.month}
+              </h3>
+              <span className="text-sm">
+                <span className="text-muted-foreground">Top {entry.topTenants.length} share </span>
+                <span className="font-medium">{entry.topTenantsSharePercent}%</span>
+              </span>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tenant</TableHead>
+                  <TableHead className="text-right">MRR</TableHead>
+                  <TableHead className="text-right">Share</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {entry.topTenants.map((tenant) => (
+                  <TableRow key={tenant.tenantId}>
+                    <TableCell>{tenant.tenantName}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(tenant.amount, entry.currency)}</TableCell>
+                    <TableCell className="text-right">{tenant.sharePercent}%</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function LtvToCacCard({ entries }: { entries: LtvToCacEntry[] }) {
+  const setAcquisitionCost = useSetAcquisitionCost();
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
+        <CardTitle className="text-base">LTV : CAC</CardTitle>
+        <SetFinancialInputDialog
+          triggerLabel="Enter acquisition cost"
+          title="Enter acquisition cost"
+          amountLabel="Total acquisition (sales + marketing) spend"
+          notesPlaceholder="Ads, sales salaries, and tooling"
+          onSubmit={(input) => setAcquisitionCost.mutateAsync(input)}
+          successMessage="Acquisition cost saved"
+          errorMessage="Failed to save acquisition cost"
+          description={
+            <>
+              ParotHR&apos;s own total sales+marketing spend for one month. Entering a cost again for
+              the same month and currency overwrites it. This feeds the CAC half of LTV:CAC below.
+            </>
+          }
+        />
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Lifetime value (ARPU over the logo churn rate) divided by customer acquisition cost - 3:1 or
+          better is the common SaaS benchmark. Needs an acquisition cost entered for the month; a
+          currency with no cost entered doesn&apos;t appear here yet.
+        </p>
+        {entries.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No ratio yet - enter an acquisition cost for the latest billed month to see one.
+          </p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {entries.map((entry) => (
+              <div key={entry.currency} className="space-y-2 rounded-lg border p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {entry.currency} — {entry.month}
+                  </span>
+                  <Badge variant={entry.ratio >= 3 ? 'success' : 'warning'}>{entry.ratio}:1</Badge>
+                </div>
+                <dl className="grid grid-cols-2 gap-x-2 gap-y-1 text-sm">
+                  <dt className="text-muted-foreground">LTV</dt>
+                  <dd className="text-right">{formatCurrency(entry.ltv, entry.currency)}</dd>
+                  <dt className="text-muted-foreground">CAC</dt>
+                  <dd className="text-right">{formatCurrency(entry.cac, entry.currency)}</dd>
+                  <dt className="text-muted-foreground">CAC payback</dt>
+                  <dd className="text-right">{entry.paybackMonths === null ? 'N/A' : `${entry.paybackMonths} mo`}</dd>
+                </dl>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AcquisitionCostsCard() {
+  const { data: costs, isLoading } = useAcquisitionCosts();
+
+  if (isLoading || !costs || costs.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Acquisition costs entered</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <FinancialInputsTable entries={costs} />
+      </CardContent>
+    </Card>
+  );
+}
+
+function BurnAndRunwayCard({ entries }: { entries: BurnAndRunwayEntry[] }) {
+  const setCashBalance = useSetCashBalance();
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Fuel className="size-4 text-muted-foreground" />
+          Burn &amp; runway
+        </CardTitle>
+        <SetFinancialInputDialog
+          triggerLabel="Enter cash balance"
+          title="Enter cash balance"
+          amountLabel="End-of-month cash on hand"
+          notesPlaceholder="Operating bank balance"
+          onSubmit={(input) => setCashBalance.mutateAsync(input)}
+          successMessage="Cash balance saved"
+          errorMessage="Failed to save cash balance"
+          description={
+            <>
+              ParotHR&apos;s own end-of-month cash on hand. Entering a balance again for the same month
+              and currency overwrites it. This feeds runway and the burn multiple below, alongside the
+              operating cost entered for Rule of 40.
+            </>
+          }
+        />
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Net burn (cost minus revenue), months of runway at the current burn rate, and the burn
+          multiple (net burn over net-new MRR - below 1 is excellent, above 2 concerning). Needs both
+          an operating cost and a cash balance entered for the month.
+        </p>
+        {entries.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No figures yet - enter both an operating cost and a cash balance for the latest billed
+            month to see them.
+          </p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {entries.map((entry) => (
+              <div key={entry.currency} className="space-y-2 rounded-lg border p-4">
+                <span className="text-sm font-medium text-muted-foreground">
+                  {entry.currency} — {entry.month}
+                </span>
+                <dl className="grid grid-cols-2 gap-x-2 gap-y-1 text-sm">
+                  <dt className="text-muted-foreground">Net burn</dt>
+                  <dd className="text-right">{formatCurrency(entry.netBurn, entry.currency)}</dd>
+                  <dt className="text-muted-foreground">Cash balance</dt>
+                  <dd className="text-right">{formatCurrency(entry.cashBalance, entry.currency)}</dd>
+                  <dt className="text-muted-foreground">Runway</dt>
+                  <dd className="text-right">{entry.runwayMonths === null ? 'Not burning' : `${entry.runwayMonths} mo`}</dd>
+                  <dt className="text-muted-foreground">Burn multiple</dt>
+                  <dd className="text-right">{entry.burnMultiple === null ? 'N/A' : `${entry.burnMultiple}x`}</dd>
+                </dl>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function CashBalancesCard() {
+  const { data: balances, isLoading } = useCashBalances();
+
+  if (isLoading || !balances || balances.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Cash balances entered</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <FinancialInputsTable entries={balances} />
+      </CardContent>
+    </Card>
+  );
+}
+
+function distinctCurrencies(currencies: string[]): string[] {
+  return [...new Set(currencies)].sort();
+}
+
+function SectionHeading({ title }: { title: string }) {
+  return <h2 className="pt-2 text-xs font-semibold tracking-wide text-muted-foreground/70 uppercase">{title}</h2>;
+}
+
+export function PlatformSaasMetrics() {
+  const { data: metrics, isLoading, isError, error } = usePlatformSaasMetrics();
+
+  if (isLoading) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <CardSkeleton key={i} />
+        ))}
+      </div>
+    );
+  }
+
+  if (isError || !metrics) {
+    return <ErrorState message={getApiErrorMessage(error, 'Failed to load SaaS metrics')} />;
+  }
+
+  const currencies = distinctCurrencies(metrics.mrrHistory.map((point) => point.currency));
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="SaaS Analytics"
+        description="MRR history, net-new movement, churn, and cohort retention - investor/board-style metrics for the platform."
+        action={
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/platform-admin/analytics/board-summary">View board summary</Link>
+          </Button>
+        }
+      />
+
+      <LtvToCacAlertBanner linkToAnalytics={false} />
+
+      <SectionHeading title="Growth & retention" />
+
+      {/*
+        One section per currency for anything money-shaped, never blended -
+        same "never blend currencies" convention as every finance report.
+      */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">MRR &amp; ARR history</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {currencies.length === 0 && (
+            <p className="text-sm text-muted-foreground">No billed activity yet - MRR history builds up as invoices are paid.</p>
+          )}
+          {currencies.map((currency) => {
+            const points = metrics.mrrHistory.filter((point) => point.currency === currency);
+            const arr = metrics.arr.find((entry) => entry.currency === currency);
+            const avgRevenue = metrics.averageRevenuePerTenant.find((entry) => entry.currency === currency);
+            return (
+              <div key={currency} className="space-y-3">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <h3 className="text-sm font-medium text-muted-foreground">{currency}</h3>
+                  <div className="flex flex-wrap gap-4 text-sm">
+                    {arr && (
+                      <span>
+                        <span className="text-muted-foreground">ARR </span>
+                        <span className="font-medium">{formatCurrency(arr.arr, currency)}</span>
+                      </span>
+                    )}
+                    {avgRevenue && (
+                      <span>
+                        <span className="text-muted-foreground">Avg revenue/tenant </span>
+                        <span className="font-medium">{formatCurrency(avgRevenue.amount, currency)}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <ReportLineChart
+                  data={points.map((point) => ({ month: point.month, mrr: point.mrr }))}
+                  categoryKey="month"
+                  series={[{ key: 'mrr', label: `MRR (${currency})`, color: CHART_COLORS[0] }]}
+                  valueFormatter={(value) => formatCurrency(value, currency)}
+                  height={240}
+                />
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Net-new MRR waterfall</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {metrics.waterfall.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              Needs at least two months of billing history to compare against.
+            </p>
+          )}
+          {metrics.waterfall.map((waterfall) => (
+            <div key={waterfall.currency} className="space-y-3">
+              <h3 className="text-sm font-medium text-muted-foreground">
+                {waterfall.currency} — {waterfall.previousMonth} to {waterfall.month}
+              </h3>
+              <ReportBarChart
+                data={[
+                  { label: 'Starting', value: waterfall.startingMrr },
+                  { label: '+ New', value: waterfall.newMrr },
+                  { label: '+ Expansion', value: waterfall.expansionMrr },
+                  { label: '− Contraction', value: -waterfall.contractionMrr },
+                  { label: '− Churned', value: -waterfall.churnedMrr },
+                  { label: 'Ending', value: waterfall.endingMrr },
+                ]}
+                categoryKey="label"
+                series={[{ key: 'value', label: waterfall.currency, color: CHART_COLORS[0] }]}
+                valueFormatter={(value) => formatCurrency(value, waterfall.currency)}
+                height={260}
+              />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {metrics.churnRates.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Churn</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {metrics.churnRates.map((churn) => (
+              <StatCard
+                key={`logo-${churn.currency}`}
+                label={`Logo churn (${churn.currency})`}
+                value={`${churn.logoChurnRatePercent}%`}
+                icon={TrendingDown}
+              />
+            ))}
+            {metrics.churnRates.map((churn) => (
+              <StatCard
+                key={`revenue-${churn.currency}`}
+                label={`Revenue churn (${churn.currency})`}
+                value={`${churn.revenueChurnRatePercent}%`}
+                icon={AlertTriangle}
+              />
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      <RevenueRetentionCard entries={metrics.revenueRetention} />
+      <QuickRatioCard entries={metrics.quickRatio} />
+
+      <SectionHeading title="Unit economics & profitability" />
+
+      <RuleOf40Card entries={metrics.ruleOf40} />
+      <OperatingCostsCard />
+
+      <LtvToCacCard entries={metrics.ltvToCac} />
+      <AcquisitionCostsCard />
+
+      <MagicNumberCard entries={metrics.magicNumber} />
+
+      <SectionHeading title="Capital efficiency & risk" />
+
+      <BurnAndRunwayCard entries={metrics.burnAndRunway} />
+      <CashBalancesCard />
+
+      <RevenueConcentrationCard entries={metrics.revenueConcentration} />
+
+      <SectionHeading title="Funnel & cohorts" />
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Users className="size-4 text-muted-foreground" />
+            Subscription funnel
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ReportBarChart
+            data={metrics.subscriptionFunnel.map((entry) => ({
+              status: entry.status.replace('_', ' '),
+              count: entry.count,
+            }))}
+            categoryKey="status"
+            series={[{ key: 'count', label: 'Tenants', color: CHART_COLORS[0] }]}
+            height={260}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <TrendingUp className="size-4 text-muted-foreground" />
+            Cohort retention by signup month
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CohortRetentionTable cohortRetention={metrics.cohortRetention} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

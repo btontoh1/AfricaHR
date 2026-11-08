@@ -25,6 +25,14 @@ export interface UpdateLeaveRequestStatusInput {
   updatedBy?: string;
 }
 
+export interface UpdateLeaveRequestDatesInput {
+  startDate: Date;
+  endDate: Date;
+  daysRequested: number;
+  reason?: string;
+  updatedBy?: string;
+}
+
 @Injectable()
 export class LeaveRequestRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -75,6 +83,26 @@ export class LeaveRequestRepository {
           approverUserId: input.approverUserId,
           approvedAt: input.approvedAt,
           rejectionReason: input.rejectionReason,
+          updatedBy: input.updatedBy,
+        },
+      }),
+    );
+  }
+
+  /** Dates/day-count correction only - status is untouched (see LeaveRequestService.update's doc comment). */
+  updateDates(
+    tenantId: string,
+    id: string,
+    input: UpdateLeaveRequestDatesInput,
+  ): Promise<LeaveRequest> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.leaveRequest.update({
+        where: { id },
+        data: {
+          startDate: input.startDate,
+          endDate: input.endDate,
+          daysRequested: input.daysRequested,
+          reason: input.reason,
           updatedBy: input.updatedBy,
         },
       }),

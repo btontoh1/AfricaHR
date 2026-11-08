@@ -21,25 +21,19 @@ export const updateAttendanceRecordFormSchema = z.object({
 export type UpdateAttendanceRecordFormValues = z.infer<typeof updateAttendanceRecordFormSchema>;
 
 // Mirrors UpsertAttendancePolicyDto (libs/attendance/feature/src/lib/dto/upsert-attendance-policy.dto.ts).
-export const attendancePolicyFormSchema = z
-  .object({
-    standardDailyHours: z.string().min(1, 'Standard daily hours is required'),
-    geofenceLatitude: z.string().optional().or(z.literal('')),
-    geofenceLongitude: z.string().optional().or(z.literal('')),
-    geofenceRadiusMeters: z.string().optional().or(z.literal('')),
-    geofenceLocationName: z.string().max(200).optional().or(z.literal('')),
-  })
-  .refine(
-    (values) => {
-      const provided = [values.geofenceLatitude, values.geofenceLongitude, values.geofenceRadiusMeters].filter(
-        (value) => value !== undefined && value !== '',
-      );
-      return provided.length === 0 || provided.length === 3;
-    },
-    {
-      message: 'Set latitude, longitude, and radius together to enable geofencing, or leave all three blank to disable it',
-      path: ['geofenceRadiusMeters'],
-    },
-  );
+export const attendancePolicyFormSchema = z.object({
+  standardDailyHours: z.string().min(1, 'Standard daily hours is required'),
+});
 
 export type AttendancePolicyFormValues = z.infer<typeof attendancePolicyFormSchema>;
+
+// Mirrors CreateAttendanceLocationDto/UpdateAttendanceLocationDto
+// (libs/attendance/feature/src/lib/dto/{create,update}-attendance-location.dto.ts).
+export const attendanceLocationFormSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(200),
+  latitude: z.string().min(1, 'Latitude is required'),
+  longitude: z.string().min(1, 'Longitude is required'),
+  radiusMeters: z.string().min(1, 'Radius is required'),
+});
+
+export type AttendanceLocationFormValues = z.infer<typeof attendanceLocationFormSchema>;

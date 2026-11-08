@@ -14,10 +14,26 @@ export { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from './auth-cookie-names';
 export interface SessionUser {
   sub: string;
   email: string;
-  role: 'PLATFORM_ADMIN' | 'TENANT_ADMIN' | 'HR_MANAGER' | 'PAYROLL_MANAGER' | 'EMPLOYEE';
+  role:
+    | 'PLATFORM_ADMIN'
+    | 'TENANT_ADMIN'
+    | 'HR_MANAGER'
+    | 'PAYROLL_MANAGER'
+    | 'PAYROLL_OFFICER'
+    | 'ORG_ADMIN'
+    | 'EMPLOYEE'
+    | 'ACCOUNTANT';
   tenantId: string | null;
+  organizationId: string | null;
   iat: number;
   exp: number;
+  /**
+   * Present only when this session is a platform admin impersonating this
+   * user (see the backend's JwtPayload.act) - names the real actor driving
+   * the session, so the UI can render the "Viewing as ... " banner. Every
+   * other field above still describes the impersonated user themselves.
+   */
+  act?: { sub: string; email: string };
 }
 
 export function decodeAccessToken(token: string): SessionUser | null {

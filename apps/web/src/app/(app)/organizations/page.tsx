@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Building2, Plus } from 'lucide-react';
 import { useSession } from '../session-provider';
 import { useOrganizations } from '@/features/organizations/queries';
+import { BulkImportOrganizationAddressesDialog } from '@/features/organizations/bulk-import-addresses-dialog';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/page-header';
@@ -35,12 +36,15 @@ export default function OrganizationsPage() {
             : undefined
         }
         action={
-          <Button asChild>
-            <Link href="/organizations/new">
-              <Plus className="size-4" />
-              Add organization
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <BulkImportOrganizationAddressesDialog tenantId={tenantId} />
+            <Button asChild>
+              <Link href="/organizations/new">
+                <Plus className="size-4" />
+                Add organization
+              </Link>
+            </Button>
+          </div>
         }
       />
 
@@ -73,6 +77,7 @@ export default function OrganizationsPage() {
                 <TableHead>Trading name</TableHead>
                 <TableHead>Country</TableHead>
                 <TableHead>Registration #</TableHead>
+                <TableHead>Address</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -86,6 +91,7 @@ export default function OrganizationsPage() {
                   <TableCell className="text-muted-foreground">{organization.tradingName ?? '—'}</TableCell>
                   <TableCell className="text-muted-foreground">{organization.countryCode}</TableCell>
                   <TableCell className="text-muted-foreground">{organization.registrationNumber}</TableCell>
+                  <TableCell className="text-muted-foreground">{organization.address ?? '—'}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

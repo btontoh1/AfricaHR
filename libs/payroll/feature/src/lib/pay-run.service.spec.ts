@@ -5,11 +5,13 @@ import { PayRun, Prisma } from '@prisma/client';
 import { AppConfigService, encryptAesGcm } from '@africahr/platform-core';
 import { AuditService } from '@africahr/platform-audit';
 import {
+  InsufficientWalletBalanceError,
   PayrollAttendanceRecordRepository,
   PayrollBenefitEnrollmentRepository,
   PayRunRepository,
   PayrollEmployeeRepository,
   PayrollLeaveRequestRepository,
+  PayrollWalletRepository,
   PayslipRepository,
   PayslipWithLineItems,
   StatutoryRateRepository,
@@ -17,6 +19,7 @@ import {
 } from '@africahr/payroll-data-access';
 import { PAY_RUN_PROCESSED_EVENT, PayRunService } from './pay-run.service';
 import { PaystackTransferClient } from './paystack-transfer-client';
+import { PaystackTransferClientRegistry } from './paystack-transfer-client-registry';
 
 const validEncryptionKey = randomBytes(32).toString('hex');
 
@@ -37,6 +40,8 @@ describe('PayRunService', () => {
   let audit: jest.Mocked<AuditService>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let paystack: jest.Mocked<PaystackTransferClient>;
+  let paystackRegistry: jest.Mocked<PaystackTransferClientRegistry>;
+  let wallet: jest.Mocked<PayrollWalletRepository>;
   let config: AppConfigService;
 
   function makePayslip(overrides: Partial<PayslipWithLineItems> = {}): PayslipWithLineItems {
@@ -53,6 +58,17 @@ describe('PayRunService', () => {
       payeTax: new Prisma.Decimal(89),
       ssnitEmployee: new Prisma.Decimal(55),
       ssnitEmployer: new Prisma.Decimal(130),
+      ghanaTier2PensionEmployer: new Prisma.Decimal(0),
+      kenyaShifEmployee: new Prisma.Decimal(0),
+      kenyaHousingLevyEmployee: new Prisma.Decimal(0),
+      kenyaHousingLevyEmployer: new Prisma.Decimal(0),
+      nigeriaNsitfEmployer: new Prisma.Decimal(0),
+      nigeriaNhisEmployee: new Prisma.Decimal(0),
+      nigeriaNhisEmployer: new Prisma.Decimal(0),
+      benefitsEmployeeDeduction: new Prisma.Decimal(0),
+      benefitsEmployerCost: new Prisma.Decimal(0),
+      unpaidLeaveDeduction: new Prisma.Decimal(0),
+      overtimePay: new Prisma.Decimal(0),
       totalDeductions: new Prisma.Decimal(144),
       netPay: new Prisma.Decimal(856),
       currency: 'GHS',
@@ -96,7 +112,13 @@ describe('PayRunService', () => {
       create: jest.fn(),
       findById: jest.fn(),
       list: jest.fn(),
-      updateStatus: jest.fn(),
+      // Defaults to a truthy "the transition succeeded" result - tests that
+      // don't care about the exact returned pay run (most of them) would
+      // otherwise get a null back from this mock and see updateStatusOrThrow
+      // throw ConflictException, since jest.fn() with no implementation
+      // resolves to undefined. Tests asserting a specific transition still
+      // override this per-call below.
+      updateStatus: jest.fn().mockResolvedValue(makePayRun()),
     } as unknown as jest.Mocked<PayRunRepository>;
 
     payslips = {
@@ -105,7 +127,10 @@ describe('PayRunService', () => {
       findByPayRunAndEmployee: jest.fn().mockResolvedValue(null),
       listByPayRun: jest.fn().mockResolvedValue([]),
       updateManyStatusByPayRun: jest.fn(),
-      recordDisbursementInitiated: jest.fn(),
+      // Defaults to a won claim (see the comment on payRuns.updateStatus
+      // above) - tests exercising the lost-the-race path override this to
+      // resolve null.
+      recordDisbursementInitiated: jest.fn().mockResolvedValue(makePayslip()),
       recordDisbursementResult: jest.fn(),
     } as unknown as jest.Mocked<PayslipRepository>;
 
@@ -145,6 +170,14 @@ describe('PayRunService', () => {
       createRecipient: jest.fn(),
       initiateTransfer: jest.fn(),
     } as unknown as jest.Mocked<PaystackTransferClient>;
+    paystackRegistry = {
+      forCurrency: jest.fn().mockReturnValue(paystack),
+    } as unknown as jest.Mocked<PaystackTransferClientRegistry>;
+    wallet = {
+      reserveForDisbursement: jest.fn().mockResolvedValue(undefined),
+      refund: jest.fn().mockResolvedValue(undefined),
+      getBalances: jest.fn(),
+    } as unknown as jest.Mocked<PayrollWalletRepository>;
     config = { paymentMethodEncryptionKey: validEncryptionKey } as unknown as AppConfigService;
 
     service = new PayRunService(
@@ -158,7 +191,8 @@ describe('PayRunService', () => {
       attendanceRecords,
       audit,
       eventEmitter,
-      paystack,
+      paystackRegistry,
+      wallet,
       config,
     );
   });
@@ -179,7 +213,8 @@ describe('PayRunService', () => {
           attendanceRecords,
           audit,
           eventEmitter,
-          paystack,
+          paystackRegistry,
+          wallet,
           badConfig,
         ),
     ).toThrow(/PAYMENT_METHOD_ENCRYPTION_KEY must be set/);
@@ -772,6 +807,21 @@ describe('PayRunService', () => {
       expect(payslips.updateManyStatusByPayRun).toHaveBeenCalledWith('tenant-1', 'run-1', 'PAID', 'mgr-1');
     });
 
+    it('throws ConflictException instead of re-disbursing when a concurrent request already moved the pay run out of APPROVED', async () => {
+      // Simulates the double-click / retry race: this request read APPROVED
+      // and passed assertTransition, but by the time its conditional write
+      // runs, a concurrent markPaid call already won and moved the row to
+      // PAID - the repository's conditional updateMany then reports 0 rows
+      // changed, surfaced here as null.
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
+      payRuns.updateStatus.mockResolvedValueOnce(null);
+
+      await expect(service.markPaid('tenant-1', 'run-1', 'mgr-1')).rejects.toThrow(ConflictException);
+
+      expect(payslips.updateManyStatusByPayRun).not.toHaveBeenCalled();
+      expect(paystack.initiateTransfer).not.toHaveBeenCalled();
+    });
+
     it('initiates a Paystack transfer for a payslip whose employee has a usable payment method', async () => {
       payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
       payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PAID' }));
@@ -799,6 +849,7 @@ describe('PayRunService', () => {
 
       await service.markPaid('tenant-1', 'run-1', 'mgr-1');
 
+      expect(paystackRegistry.forCurrency).toHaveBeenCalledWith('GHS');
       expect(paystack.createRecipient).toHaveBeenCalledWith({
         type: 'ghipss',
         name: 'Kwame Asante',
@@ -964,7 +1015,124 @@ describe('PayRunService', () => {
         expect.objectContaining({ paystackRecipientCode: 'RCP_abc' }),
       );
       expect(payslips.recordDisbursementResult).not.toHaveBeenCalled();
-      expect(eventEmitter.emit).not.toHaveBeenCalled();
+      // The pay run itself was still successfully marked PAID (that's what
+      // this test is exercising - the Paystack failure happens downstream
+      // of that), so the GL-posting event still fires; no
+      // payslip-disbursement-failure event does, since nothing was ever
+      // resolved as FAILED here (it's left PENDING for reconciliation).
+      expect(eventEmitter.emit).toHaveBeenCalledTimes(1);
+      expect(eventEmitter.emit).toHaveBeenCalledWith('payroll.pay_run.disbursed', expect.any(Object));
+    });
+
+    it('never calls Paystack for a payslip whose disbursement was already claimed by a concurrent request', async () => {
+      // The actual regression test for the double-payment bug: two
+      // concurrent attempts to disburse the same payslip (overlapping
+      // markPaid calls, or a markPaid racing retryDisbursement) both reach
+      // disburse(), but recordDisbursementInitiated's conditional write can
+      // only be won once. The loser must never call Paystack.
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PAID' }));
+      payslips.listByPayRun.mockResolvedValue([makePayslip({ countryCode: 'GH', currency: 'GHS' })]);
+      employees.findPaymentMethodByEmployeeId.mockResolvedValue({
+        type: 'BANK_ACCOUNT',
+        bankCode: encrypt('040'),
+        accountNumber: encrypt('1234567890'),
+        accountName: encrypt('Test Employee'),
+        mobileMoneyNumber: null,
+        paystackRecipientCode: null,
+      });
+      employees.findById.mockResolvedValue({
+        id: 'emp-1',
+        organizationId: 'org-1',
+        firstName: 'Test',
+        lastName: 'Employee',
+        baseSalary: new Prisma.Decimal(1000),
+        currency: 'GHS',
+        annualRentPaid: null,
+        countryCode: 'GH',
+      });
+      paystack.createRecipient.mockResolvedValue({ recipientCode: 'RCP_abc' });
+      payslips.recordDisbursementInitiated.mockResolvedValueOnce(null);
+
+      await service.markPaid('tenant-1', 'run-1', 'mgr-1');
+
+      expect(paystack.initiateTransfer).not.toHaveBeenCalled();
+    });
+
+    it('reserves the total net pay per currency against the wallet before disbursing', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PAID' }));
+      payslips.listByPayRun.mockResolvedValue([
+        makePayslip({ id: 'payslip-1', currency: 'GHS', netPay: new Prisma.Decimal(500) }),
+        makePayslip({ id: 'payslip-2', currency: 'GHS', netPay: new Prisma.Decimal(300) }),
+        makePayslip({ id: 'payslip-3', currency: 'USD', netPay: new Prisma.Decimal(100) }),
+      ]);
+
+      await service.markPaid('tenant-1', 'run-1', 'mgr-1');
+
+      expect(wallet.reserveForDisbursement).toHaveBeenCalledWith('tenant-1', [
+        { currency: 'GHS', amount: 800 },
+        { currency: 'USD', amount: 100 },
+      ]);
+    });
+
+    it('rejects marking paid when the wallet balance is insufficient, before touching the pay run', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
+      payslips.listByPayRun.mockResolvedValue([
+        makePayslip({ currency: 'GHS', netPay: new Prisma.Decimal(500) }),
+      ]);
+      wallet.reserveForDisbursement.mockRejectedValue(
+        new InsufficientWalletBalanceError([{ currency: 'GHS', required: 500, available: 100 }]),
+      );
+
+      await expect(service.markPaid('tenant-1', 'run-1', 'mgr-1')).rejects.toThrow(ConflictException);
+
+      expect(payRuns.updateStatus).not.toHaveBeenCalled();
+      expect(payslips.updateManyStatusByPayRun).not.toHaveBeenCalled();
+    });
+
+    it('refunds the wallet when an employee has no usable payment method', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PAID' }));
+      payslips.listByPayRun.mockResolvedValue([
+        makePayslip({ currency: 'GHS', netPay: new Prisma.Decimal(856) }),
+      ]);
+      employees.findPaymentMethodByEmployeeId.mockResolvedValue(null);
+
+      await service.markPaid('tenant-1', 'run-1', 'mgr-1');
+
+      expect(wallet.refund).toHaveBeenCalledWith('tenant-1', 'GHS', 856);
+    });
+  });
+
+  describe('retryDisbursement', () => {
+    it('re-reserves the wallet before retrying a FAILED disbursement', async () => {
+      payslips.findById.mockResolvedValue(
+        makePayslip({ disbursementStatus: 'FAILED', currency: 'GHS', netPay: new Prisma.Decimal(856) }),
+      );
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'PAID' }));
+
+      await service.retryDisbursement('tenant-1', 'payslip-1', 'mgr-1');
+
+      expect(wallet.reserveForDisbursement).toHaveBeenCalledWith('tenant-1', [
+        { currency: 'GHS', amount: 856 },
+      ]);
+    });
+
+    it('rejects retrying when the wallet balance is insufficient', async () => {
+      payslips.findById.mockResolvedValue(
+        makePayslip({ disbursementStatus: 'FAILED', currency: 'GHS', netPay: new Prisma.Decimal(856) }),
+      );
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'PAID' }));
+      wallet.reserveForDisbursement.mockRejectedValue(
+        new InsufficientWalletBalanceError([{ currency: 'GHS', required: 856, available: 0 }]),
+      );
+
+      await expect(service.retryDisbursement('tenant-1', 'payslip-1', 'mgr-1')).rejects.toThrow(
+        ConflictException,
+      );
+
+      expect(paystack.createRecipient).not.toHaveBeenCalled();
     });
   });
 

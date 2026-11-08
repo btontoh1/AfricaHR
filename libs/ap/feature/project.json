@@ -1,0 +1,19 @@
+{
+  "name": "ap-feature",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/ap/feature/src",
+  "projectType": "library",
+  "tags": ["scope:ap", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/ap/feature",
+        "main": "libs/ap/feature/src/index.ts",
+        "tsConfig": "libs/ap/feature/tsconfig.lib.json",
+        "assets": ["libs/ap/feature/*.md"]
+      }
+    }
+  }
+}

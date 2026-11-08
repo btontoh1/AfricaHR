@@ -1,6 +1,7 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PerformanceGoal } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
+import { PrismaService } from '@africahr/platform-database';
 import { PerformanceEmployeeRepository, PerformanceGoalRepository } from '@africahr/performance-data-access';
 import { PerformanceGoalService } from './performance-goal.service';
 
@@ -9,6 +10,7 @@ describe('PerformanceGoalService', () => {
   let goals: jest.Mocked<PerformanceGoalRepository>;
   let employees: jest.Mocked<PerformanceEmployeeRepository>;
   let audit: jest.Mocked<AuditService>;
+  let prisma: jest.Mocked<PrismaService>;
 
   function makeGoal(overrides: Partial<PerformanceGoal> = {}): PerformanceGoal {
     return {
@@ -45,7 +47,13 @@ describe('PerformanceGoalService', () => {
 
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
 
-    service = new PerformanceGoalService(goals, employees, audit);
+    prisma = {
+      tenant: {
+        findUniqueOrThrow: jest.fn().mockResolvedValue({ performanceFramework: 'STANDARD' }),
+      },
+    } as unknown as jest.Mocked<PrismaService>;
+
+    service = new PerformanceGoalService(goals, employees, audit, prisma);
   });
 
   describe('resolveOwnEmployeeId', () => {

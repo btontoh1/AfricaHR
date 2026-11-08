@@ -20,6 +20,7 @@ describe('AuthService', () => {
   const user: User = {
     id: 'user-1',
     tenantId: 'tenant-1',
+    organizationId: null,
     email: 'hr@acme.com',
     passwordHash: 'hashed',
     firstName: 'Kofi',
@@ -115,6 +116,23 @@ describe('AuthService', () => {
       expect(users.updateLastLogin).toHaveBeenCalledWith(user.tenantId, user.id);
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'auth.login', actorUserId: user.id }),
+      );
+    });
+
+    it('embeds organizationId in the signed access token for an ORG_ADMIN', async () => {
+      users.findByEmail.mockResolvedValue({
+        ...user,
+        role: SystemRole.ORG_ADMIN,
+        organizationId: 'org-1',
+      });
+      (argon2.verify as jest.Mock).mockResolvedValue(true);
+      users.updateLastLogin.mockResolvedValue(user);
+      refreshTokens.create.mockResolvedValue({} as RefreshToken);
+
+      await service.login({ email: user.email, password: 'correct' });
+
+      expect(tokens.signAccessToken).toHaveBeenCalledWith(
+        expect.objectContaining({ role: SystemRole.ORG_ADMIN, organizationId: 'org-1' }),
       );
     });
 

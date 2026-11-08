@@ -3,13 +3,15 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
+import { useSession } from '@/app/(app)/session-provider';
 import { useCreateUser } from './queries';
 import {
-  ASSIGNABLE_ROLE_OPTIONS,
+  CREATE_ROLE_OPTIONS,
   createUserFormSchema,
   type CreateUserFormValues,
 } from './team-members-form-schema';
 import { getApiErrorMessage } from '@/lib/api-error';
+import { OrganizationPicker } from '@/features/organizations/organization-picker';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -23,18 +25,29 @@ import {
 import { PASSWORD_REQUIREMENTS_TEXT } from '@/lib/password-schema';
 
 export function CreateUserForm() {
+  const session = useSession();
+  const tenantId = session.tenantId as string;
   const createUser = useCreateUser();
 
   const form = useForm<CreateUserFormValues>({
     resolver: zodResolver(createUserFormSchema),
-    defaultValues: { email: '', password: '', firstName: '', lastName: '', role: 'EMPLOYEE' },
+    defaultValues: { email: '', password: '', firstName: '', lastName: '', role: 'EMPLOYEE', organizationId: '' },
   });
+
+  const role = form.watch('role');
 
   async function onSubmit(values: CreateUserFormValues) {
     try {
-      await createUser.mutateAsync(values);
+      await createUser.mutateAsync({
+        email: values.email,
+        password: values.password,
+        firstName: values.firstName,
+        lastName: values.lastName,
+        role: values.role,
+        organizationId: values.role === 'ORG_ADMIN' ? values.organizationId : undefined,
+      });
       toast.success('User account created');
-      form.reset({ email: '', password: '', firstName: '', lastName: '', role: values.role });
+      form.reset({ email: '', password: '', firstName: '', lastName: '', role: values.role, organizationId: '' });
     } catch (error) {
       toast.error(getApiErrorMessage(error, 'Failed to create user account'));
     }
@@ -109,9 +122,9 @@ export function CreateUserForm() {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {ASSIGNABLE_ROLE_OPTIONS.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      {role.replace('_', ' ')}
+                  {CREATE_ROLE_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option.replace('_', ' ')}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -120,6 +133,21 @@ export function CreateUserForm() {
             </FormItem>
           )}
         />
+        {role === 'ORG_ADMIN' && (
+          <FormField
+            control={form.control}
+            name="organizationId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Organization</FormLabel>
+                <FormControl>
+                  <OrganizationPicker tenantId={tenantId} value={field.value ?? ''} onChange={field.onChange} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
         <Button type="submit" disabled={form.formState.isSubmitting}>
           {form.formState.isSubmitting ? 'Creating…' : 'Create account'}
         </Button>

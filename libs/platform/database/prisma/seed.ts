@@ -57,6 +57,17 @@ const d = (value: string) => new Prisma.Decimal(value);
  * applyGhanaInsurableEarningsCap in payroll-domain, since it's a cap on
  * the calculation, not a rate to seed.
  *
+ * SSNIT_EMPLOYER here is Tier 1's employer share ALONE (8%, the portion
+ * actually remitted to SSNIT itself), not the commonly-quoted "13%
+ * employer contribution" headline figure - that 13% is total employer
+ * pension cost across BOTH tiers (Tier 1's 8% + Tier 2's 5%), and storing
+ * the full 13% under SSNIT_EMPLOYER while also adding Tier 2's 5% as a
+ * separate contribution would double-count Tier 2, overstating employer
+ * pension cost as 18% instead of the correct 13% (5.5% employee + 13%
+ * employer = the correct 18.5% total, not 23.5%). Fixed 2026-09-03 after
+ * cross-checking against independent research - see the paired data
+ * migration that corrects any already-seeded 13% row.
+ *
  * Also seeds Tier 2's mandatory occupational pension rate (5% of basic
  * salary, employer-only, paid to a licensed private trustee rather than
  * SSNIT itself) under GHANA_TIER2_PENSION_EMPLOYER - a genuinely separate
@@ -140,7 +151,7 @@ async function seedGhanaStatutoryData(prisma: PrismaClient): Promise<void> {
         {
           countryCode,
           code: StatutoryRateCode.SSNIT_EMPLOYER,
-          rate: 0.13,
+          rate: 0.08,
           effectiveFrom,
         },
         {

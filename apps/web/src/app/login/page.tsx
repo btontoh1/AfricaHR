@@ -1,9 +1,15 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { ShieldCheck, Users, Wallet } from 'lucide-react';
 import { getSession } from '@/lib/session';
 import { needsSetup } from '@/lib/setup-status';
 import { Logo } from '@/components/logo';
 import { LoginForm } from './login-form';
+
+export const metadata: Metadata = {
+  title: 'Log in',
+  alternates: { canonical: '/login' },
+};
 
 const highlights = [
   { icon: Users, text: 'One system for employees, payroll, and performance' },

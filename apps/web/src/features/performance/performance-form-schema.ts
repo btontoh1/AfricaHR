@@ -1,12 +1,17 @@
 import { z } from 'zod';
 
 const GOAL_STATUSES = ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const;
+const GOAL_PERSPECTIVES = ['FINANCIAL', 'CUSTOMER', 'PEOPLE', 'RISK_CONTROL'] as const;
 
-// Mirrors CreatePerformanceGoalDto.
+// Mirrors CreatePerformanceGoalDto. perspective is validated as optional
+// here regardless of the tenant's framework - GoalForm only renders (and
+// requires) the field when the tenant is in Balanced Scorecard mode; the
+// backend is the actual source of truth for whether it's required.
 export const createGoalFormSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
   description: z.string().max(1000).optional().or(z.literal('')),
   targetDate: z.string().optional().or(z.literal('')),
+  perspective: z.enum(GOAL_PERSPECTIVES).optional().or(z.literal('')),
 });
 
 export type CreateGoalFormValues = z.infer<typeof createGoalFormSchema>;
@@ -19,6 +24,7 @@ export const updateGoalFormSchema = z.object({
   targetDate: z.string().optional().or(z.literal('')),
   status: z.enum(GOAL_STATUSES),
   progressPercent: z.string().min(1, 'Progress is required'),
+  perspective: z.enum(GOAL_PERSPECTIVES).optional().or(z.literal('')),
 });
 
 export type UpdateGoalFormValues = z.infer<typeof updateGoalFormSchema>;

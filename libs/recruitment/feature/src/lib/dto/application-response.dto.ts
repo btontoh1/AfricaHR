@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ApplicationStage } from '@prisma/client';
+import { ApplicationStage, IdentityDocumentType } from '@prisma/client';
 import { CandidateResponseDto } from './candidate-response.dto';
 import { JobRequisitionResponseDto } from './job-requisition-response.dto';
 
@@ -23,6 +23,15 @@ export class ApplicationResponseDto {
   @ApiPropertyOptional({ nullable: true }) offerRespondedAt?: string | null;
   @ApiPropertyOptional({ nullable: true }) offerAccepted?: boolean | null;
   @ApiPropertyOptional({ nullable: true }) hiredEmployeeId?: string | null;
+  // Deliberately no resumeStorageKey/identityDocumentStorageKey field —
+  // same reasoning as OrganizationVerificationDocumentResponseDto omitting
+  // storageKey. The client only ever gets the file name, and fetches a
+  // fresh short-lived view URL on demand (see ApplicationController's
+  // resume-view-url / identity-document-view-url routes).
+  @ApiPropertyOptional({ nullable: true }) resumeFileName?: string | null;
+  @ApiPropertyOptional({ nullable: true }) identityDocumentFileName?: string | null;
+  @ApiPropertyOptional({ enum: Object.values(IdentityDocumentType), nullable: true })
+  identityDocumentType?: IdentityDocumentType | null;
   @ApiProperty() createdAt!: string;
   @ApiProperty() updatedAt!: string;
 }

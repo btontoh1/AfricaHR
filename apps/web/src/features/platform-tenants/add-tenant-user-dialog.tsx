@@ -27,7 +27,9 @@ const ROLE_LABEL: Record<AddTenantUserFormValues['role'], string> = {
   TENANT_ADMIN: 'Tenant Admin',
   HR_MANAGER: 'HR Manager',
   PAYROLL_MANAGER: 'Payroll Manager',
+  PAYROLL_OFFICER: 'Payroll Officer',
   EMPLOYEE: 'Employee',
+  ACCOUNTANT: 'Accountant',
 };
 
 export function AddTenantUserDialog({ tenantId }: { tenantId: string }) {

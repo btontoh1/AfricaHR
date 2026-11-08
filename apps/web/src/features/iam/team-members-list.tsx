@@ -35,7 +35,7 @@ function RoleControl({ id, role }: { id: string; role: SystemRole }) {
 
   async function handleChange(next: string) {
     try {
-      await updateRole.mutateAsync(next as SystemRole);
+      await updateRole.mutateAsync({ role: next as SystemRole });
       toast.success('Role updated');
     } catch (error) {
       toast.error(getApiErrorMessage(error, 'Failed to update role'));
@@ -48,6 +48,14 @@ function RoleControl({ id, role }: { id: string; role: SystemRole }) {
   // selectable option that would 400 if resubmitted unchanged.
   if (role === 'PLATFORM_ADMIN') {
     return <span className="text-sm">PLATFORM ADMIN</span>;
+  }
+
+  // Same reasoning as PLATFORM_ADMIN above - ORG_ADMIN also carries data
+  // (organizationId) this inline control has no way to collect, so an
+  // existing org admin's role can't be changed from here (see
+  // CreateUserForm for how one gets created in the first place).
+  if (role === 'ORG_ADMIN') {
+    return <span className="text-sm">ORG ADMIN</span>;
   }
 
   return (

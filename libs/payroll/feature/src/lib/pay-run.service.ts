@@ -11,6 +11,7 @@ import {
 import { AppConfigService, decryptAesGcm, deriveEncryptionKey } from '@africahr/platform-core';
 import { AuditService } from '@africahr/platform-audit';
 import {
+  InsufficientWalletBalanceError,
   PayrollAttendanceRecordRepository,
   PayrollBenefitEnrollmentRepository,
   PayrollEligibleEmployee,
@@ -18,10 +19,12 @@ import {
   PayRunRepository,
   PayrollEmployeeRepository,
   PayrollLeaveRequestRepository,
+  PayrollWalletRepository,
   PayslipRepository,
   PayslipWithLineItems,
   StatutoryRateRepository,
   StatutoryTaxBandRepository,
+  UpdatePayRunStatusInput,
 } from '@africahr/payroll-data-access';
 import {
   BenefitEnrollmentContribution,
@@ -33,7 +36,7 @@ import {
   resolvePaystackRecipientType,
 } from '@africahr/payroll-domain';
 import { CreatePayRunDto } from './dto/create-pay-run.dto';
-import { PaystackTransferClient } from './paystack-transfer-client';
+import { PaystackTransferClientRegistry } from './paystack-transfer-client-registry';
 import { buildDisbursementFailedEvent, PAYROLL_DISBURSEMENT_FAILED_EVENT } from './payroll-transfer-webhook.listener';
 
 /** BANK_ACCOUNT uses accountNumber; MOBILE_MONEY uses the phone number Paystack treats as the recipient's "account number." */
@@ -82,6 +85,46 @@ export interface PayRunProcessedEvent {
   actorUserId: string | null;
 }
 
+/**
+ * Emitted every time markPaid() successfully transitions a pay run to PAID
+ * - the point this codebase treats as "payroll disbursed" for accounting
+ * purposes, even though the actual Paystack transfers it kicks off
+ * (initiateDisbursements) resolve asynchronously via webhook afterwards.
+ * Consumed by finance-feature's PayrollGlPostingListener to post the pay
+ * run's GL journal entry - scope:payroll is not allowed to depend on
+ * scope:finance (see eslint.config.mjs module boundaries), same decoupling
+ * reasoning as PAY_RUN_PROCESSED_EVENT above. totalGrossPay/
+ * totalEmployerOnlyCost/totalNetPay are summed here (not recomputed by the
+ * listener) because scope:finance can't read Payslip rows itself.
+ */
+export const PAY_RUN_DISBURSED_EVENT = 'payroll.pay_run.disbursed';
+
+export interface PayRunCurrencyTotals {
+  currency: string;
+  totalGrossPay: number;
+  /** Sum of every employer-only statutory/benefit cost across every
+   * payslip in this currency group - see payslip-calculator.ts's own doc
+   * comments for why each of these is never deducted from the employee. */
+  totalEmployerOnlyCost: number;
+  totalNetPay: number;
+}
+
+export interface PayRunDisbursedEvent {
+  tenantId: string;
+  organizationId: string;
+  payRunId: string;
+  /** ISO date (YYYY-MM-DD). */
+  payDate: string;
+  /** ISO dates (YYYY-MM-DD) - used only to make the resulting journal
+   * entry's description readable, since PayRun has no separate "number". */
+  periodStart: string;
+  periodEnd: string;
+  /** One entry per currency present among this pay run's payslips - almost
+   * always exactly one (an Organization has one country), but PayRun itself
+   * carries no currency column, so this is never assumed. */
+  byCurrency: PayRunCurrencyTotals[];
+}
+
 @Injectable()
 export class PayRunService {
   private readonly logger = new Logger(PayRunService.name);
@@ -98,7 +141,8 @@ export class PayRunService {
     private readonly attendanceRecords: PayrollAttendanceRecordRepository,
     private readonly audit: AuditService,
     private readonly eventEmitter: EventEmitter2,
-    private readonly paystack: PaystackTransferClient,
+    private readonly paystack: PaystackTransferClientRegistry,
+    private readonly wallet: PayrollWalletRepository,
     config: AppConfigService,
   ) {
     // Derived once at construction (Nest instantiates providers eagerly).
@@ -251,7 +295,8 @@ export class PayRunService {
 
     const isFirstProcessing = payRun.status === PrismaPayRunStatus.DRAFT;
     const updated = isFirstProcessing
-      ? await this.payRuns.updateStatus(tenantId, id, {
+      ? await this.updateStatusOrThrow(tenantId, id, {
+          fromStatus: PrismaPayRunStatus.DRAFT,
           status: PrismaPayRunStatus.PROCESSING,
           updatedBy: actorId,
         })
@@ -373,7 +418,8 @@ export class PayRunService {
       throw new ConflictException('Cannot approve a pay run with no payslips — process it first');
     }
 
-    const updated = await this.payRuns.updateStatus(tenantId, id, {
+    const updated = await this.updateStatusOrThrow(tenantId, id, {
+      fromStatus: payRun.status,
       status: PrismaPayRunStatus.APPROVED,
       approvedAt: new Date(),
       approvedBy: actorId,
@@ -396,7 +442,53 @@ export class PayRunService {
     const payRun = await this.findById(tenantId, id);
     this.assertTransition(payRun.status, PayRunStatus.PAID);
 
-    const updated = await this.payRuns.updateStatus(tenantId, id, {
+    const payslips = await this.payslips.listByPayRun(tenantId, id);
+    const totalsByCurrency = new Map<string, PayRunCurrencyTotals>();
+    for (const payslip of payslips) {
+      const running = totalsByCurrency.get(payslip.currency) ?? {
+        currency: payslip.currency,
+        totalGrossPay: 0,
+        totalEmployerOnlyCost: 0,
+        totalNetPay: 0,
+      };
+      running.totalGrossPay += Number(payslip.grossPay);
+      running.totalEmployerOnlyCost +=
+        Number(payslip.ssnitEmployer) +
+        Number(payslip.ghanaTier2PensionEmployer) +
+        Number(payslip.kenyaHousingLevyEmployer) +
+        Number(payslip.nigeriaNsitfEmployer) +
+        Number(payslip.nigeriaNhisEmployer) +
+        Number(payslip.benefitsEmployerCost);
+      running.totalNetPay += Number(payslip.netPay);
+      totalsByCurrency.set(payslip.currency, running);
+    }
+
+    // Reserves the full disbursement total, in every currency this run
+    // needs, before anything else commits - a tenant short of funds in any
+    // one currency gets a clear error and the pay run stays APPROVED,
+    // rather than being marked PAID with transfers that then fail against
+    // Paystack's real balance. See PayrollWalletRepository.reserveForDisbursement
+    // for why this is all-or-nothing across currencies.
+    try {
+      await this.wallet.reserveForDisbursement(
+        tenantId,
+        [...totalsByCurrency.values()].map((totals) => ({
+          currency: totals.currency,
+          amount: totals.totalNetPay,
+        })),
+      );
+    } catch (error) {
+      if (error instanceof InsufficientWalletBalanceError) {
+        const detail = error.shortfalls
+          .map((s) => `${s.currency} ${s.required.toFixed(2)} required, ${s.available.toFixed(2)} available`)
+          .join('; ');
+        throw new ConflictException(`Insufficient payroll wallet balance: ${detail} — top up before marking paid`);
+      }
+      throw error;
+    }
+
+    const updated = await this.updateStatusOrThrow(tenantId, id, {
+      fromStatus: payRun.status,
       status: PrismaPayRunStatus.PAID,
       paidAt: new Date(),
       updatedBy: actorId,
@@ -410,6 +502,17 @@ export class PayRunService {
       resourceType: 'PayRun',
       resourceId: id,
     });
+
+    const disbursedEvent: PayRunDisbursedEvent = {
+      tenantId,
+      organizationId: payRun.organizationId,
+      payRunId: id,
+      payDate: payRun.payDate.toISOString().slice(0, 10),
+      periodStart: payRun.periodStart.toISOString().slice(0, 10),
+      periodEnd: payRun.periodEnd.toISOString().slice(0, 10),
+      byCurrency: [...totalsByCurrency.values()],
+    };
+    this.eventEmitter.emit(PAY_RUN_DISBURSED_EVENT, disbursedEvent);
 
     await this.initiateDisbursements(tenantId, id);
 
@@ -457,6 +560,10 @@ export class PayRunService {
     const paymentMethod = this.decryptPaymentMethod(encryptedPaymentMethod);
     const accountNumber = resolveAccountNumber(paymentMethod);
     if (!paymentMethod || !paymentMethod.bankCode || !accountNumber) {
+      // markPaid() reserved this payslip's netPay against the wallet before
+      // ever reaching here - since this employee will never actually be
+      // sent a transfer, that reservation is returned.
+      await this.wallet.refund(tenantId, payslip.currency, Number(payslip.netPay));
       return;
     }
 
@@ -465,11 +572,13 @@ export class PayRunService {
       this.logger.warn(
         `No Paystack transfer recipient type for country "${payslip.countryCode}" / method "${paymentMethod.type}" - skipping payslip "${payslip.id}"`,
       );
+      await this.wallet.refund(tenantId, payslip.currency, Number(payslip.netPay));
       return;
     }
 
     const employee = await this.employees.findById(tenantId, payslip.employeeId);
     if (!employee) {
+      await this.wallet.refund(tenantId, payslip.currency, Number(payslip.netPay));
       return;
     }
 
@@ -482,7 +591,7 @@ export class PayRunService {
     let recipientCode = encryptedPaymentMethod?.paystackRecipientCode ?? null;
     if (!recipientCode) {
       try {
-        const recipient = await this.paystack.createRecipient({
+        const recipient = await this.paystack.forCurrency(payslip.currency).createRecipient({
           type: recipientType,
           name: paymentMethod.accountName ?? `${employee.firstName} ${employee.lastName}`,
           accountNumber,
@@ -511,14 +620,27 @@ export class PayRunService {
     // is allowed to resolve (retryDisbursement's FAILED/NOT_INITIATED
     // guard deliberately excludes PENDING, so a human can't retry an
     // in-flight disbursement either).
+    //
+    // This write is also the actual lock against a duplicate transfer: two
+    // concurrent calls into disburse() for the same payslip (overlapping
+    // markPaid requests, or a markPaid racing a retryDisbursement) both
+    // reach this point, but recordDisbursementInitiated's conditional
+    // update lets only one of them win. The loser gets null back and must
+    // stop here, before ever calling Paystack.
     const reference = randomUUID();
-    await this.payslips.recordDisbursementInitiated(tenantId, payslip.id, {
+    const claimed = await this.payslips.recordDisbursementInitiated(tenantId, payslip.id, {
       paystackRecipientCode: recipientCode,
       paystackTransferReference: reference,
     });
+    if (!claimed) {
+      this.logger.warn(
+        `Payslip "${payslip.id}" (employee "${payslip.employeeId}") disbursement was already claimed by a concurrent request - skipping to avoid a duplicate transfer`,
+      );
+      return;
+    }
 
     try {
-      await this.paystack.initiateTransfer({
+      await this.paystack.forCurrency(payslip.currency).initiateTransfer({
         amount: Number(payslip.netPay),
         currency: payslip.currency,
         recipientCode,
@@ -557,6 +679,11 @@ export class PayRunService {
     employee: PayrollEligibleEmployee,
   ): Promise<void> {
     await this.payslips.recordDisbursementResult(tenantId, payslip.id, PayslipDisbursementStatus.FAILED);
+    // Reached before any transfer reference was ever committed, so the
+    // reservation markPaid()/retryDisbursement() made for this payslip is
+    // definitely never spent - return it now rather than waiting on a
+    // webhook that will never arrive for a transfer that was never sent.
+    await this.wallet.refund(tenantId, payslip.currency, Number(payslip.netPay));
 
     const payRun = await this.payRuns.findById(tenantId, payslip.payRunId);
     if (!payRun) {
@@ -595,6 +722,25 @@ export class PayRunService {
       throw new ConflictException(`Cannot retry a disbursement for a pay run in status ${payRun.status}`);
     }
 
+    // Whatever took this payslip to FAILED/NOT_INITIATED already refunded
+    // its reservation (see disburse()'s skip branches,
+    // markDisbursementInitiationFailed, and PayrollTransferWebhookListener's
+    // FAILED resolution) - re-reserve it here, same as markPaid(), before
+    // attempting the transfer again.
+    try {
+      await this.wallet.reserveForDisbursement(tenantId, [
+        { currency: payslip.currency, amount: Number(payslip.netPay) },
+      ]);
+    } catch (error) {
+      if (error instanceof InsufficientWalletBalanceError) {
+        const detail = error.shortfalls
+          .map((s) => `${s.currency} ${s.required.toFixed(2)} required, ${s.available.toFixed(2)} available`)
+          .join('; ');
+        throw new ConflictException(`Insufficient payroll wallet balance: ${detail} — top up before retrying`);
+      }
+      throw error;
+    }
+
     await this.disburse(tenantId, payslip);
 
     await this.audit.record({
@@ -628,7 +774,8 @@ export class PayRunService {
     const payRun = await this.findById(tenantId, id);
     this.assertTransition(payRun.status, PayRunStatus.CLOSED);
 
-    const updated = await this.payRuns.updateStatus(tenantId, id, {
+    const updated = await this.updateStatusOrThrow(tenantId, id, {
+      fromStatus: payRun.status,
       status: PrismaPayRunStatus.CLOSED,
       updatedBy: actorId,
     });
@@ -648,7 +795,8 @@ export class PayRunService {
     const payRun = await this.findById(tenantId, id);
     this.assertTransition(payRun.status, PayRunStatus.CANCELLED);
 
-    const updated = await this.payRuns.updateStatus(tenantId, id, {
+    const updated = await this.updateStatusOrThrow(tenantId, id, {
+      fromStatus: payRun.status,
       status: PrismaPayRunStatus.CANCELLED,
       updatedBy: actorId,
     });
@@ -668,5 +816,29 @@ export class PayRunService {
     if (!canTransitionPayRunStatus(from as PayRunStatus, to)) {
       throw new ConflictException(`Cannot transition a pay run from ${from} to ${to}`);
     }
+  }
+
+  /**
+   * Thin wrapper around PayRunRepository.updateStatus's conditional write -
+   * every call site here has already read the pay run and validated the
+   * transition against that snapshot, so a null result means another
+   * request won a race for the same transition between that read and this
+   * write. Surfacing it as a 409 (rather than silently repeating audit
+   * records / re-triggering disbursement) is what actually closes the
+   * double-payment window on markPaid, on top of the payslip-level claim in
+   * disburse() below.
+   */
+  private async updateStatusOrThrow(
+    tenantId: string,
+    id: string,
+    input: UpdatePayRunStatusInput,
+  ): Promise<PayRun> {
+    const updated = await this.payRuns.updateStatus(tenantId, id, input);
+    if (!updated) {
+      throw new ConflictException(
+        `Pay run "${id}" was already moved out of ${input.fromStatus} by another request - reload and retry`,
+      );
+    }
+    return updated;
   }
 }

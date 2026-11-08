@@ -54,9 +54,21 @@ describe('hasPermission', () => {
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.EMPLOYEE_MANAGE)).toBe(false);
   });
 
-  it('grants payroll managers full payroll management', () => {
+  it('grants payroll managers full payroll management, including prepare', () => {
     expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.PAYROLL_MANAGE)).toBe(true);
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.PAYROLL_PREPARE)).toBe(true);
     expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.PAYROLL_READ)).toBe(true);
+  });
+
+  it('grants payroll officers prepare and read, but not approve/pay (separation of duties)', () => {
+    expect(hasPermission(SystemRole.PAYROLL_OFFICER, Permission.PAYROLL_PREPARE)).toBe(true);
+    expect(hasPermission(SystemRole.PAYROLL_OFFICER, Permission.PAYROLL_READ)).toBe(true);
+    expect(hasPermission(SystemRole.PAYROLL_OFFICER, Permission.PAYROLL_MANAGE)).toBe(false);
+  });
+
+  it('grants tenant and platform admins prepare as well as manage', () => {
+    expect(hasPermission(SystemRole.TENANT_ADMIN, Permission.PAYROLL_PREPARE)).toBe(true);
+    expect(hasPermission(SystemRole.PLATFORM_ADMIN, Permission.PAYROLL_PREPARE)).toBe(true);
   });
 
   it('grants HR managers read-only payroll access', () => {
@@ -222,6 +234,14 @@ describe('hasPermission', () => {
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.PLATFORM_AUDIT_READ)).toBe(false);
   });
 
+  it('restricts user impersonation to platform admins', () => {
+    expect(hasPermission(SystemRole.PLATFORM_ADMIN, Permission.PLATFORM_USER_IMPERSONATE)).toBe(true);
+    expect(hasPermission(SystemRole.TENANT_ADMIN, Permission.PLATFORM_USER_IMPERSONATE)).toBe(false);
+    expect(hasPermission(SystemRole.HR_MANAGER, Permission.PLATFORM_USER_IMPERSONATE)).toBe(false);
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.PLATFORM_USER_IMPERSONATE)).toBe(false);
+    expect(hasPermission(SystemRole.EMPLOYEE, Permission.PLATFORM_USER_IMPERSONATE)).toBe(false);
+  });
+
   it('restricts disbursement visibility to platform admins', () => {
     expect(hasPermission(SystemRole.PLATFORM_ADMIN, Permission.PLATFORM_DISBURSEMENT_READ)).toBe(true);
     expect(hasPermission(SystemRole.TENANT_ADMIN, Permission.PLATFORM_DISBURSEMENT_READ)).toBe(false);
@@ -230,11 +250,55 @@ describe('hasPermission', () => {
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.PLATFORM_DISBURSEMENT_READ)).toBe(false);
   });
 
+  it('grants org admins employee management, org read, user read, and their own invoicing/AP, but nothing tenant-wide', () => {
+    expect(hasPermission(SystemRole.ORG_ADMIN, Permission.EMPLOYEE_MANAGE)).toBe(true);
+    expect(hasPermission(SystemRole.ORG_ADMIN, Permission.EMPLOYEE_READ)).toBe(true);
+    expect(hasPermission(SystemRole.ORG_ADMIN, Permission.ORGANIZATION_READ)).toBe(true);
+    expect(hasPermission(SystemRole.ORG_ADMIN, Permission.USER_READ)).toBe(true);
+    expect(hasPermission(SystemRole.ORG_ADMIN, Permission.INVOICING_MANAGE)).toBe(true);
+    expect(hasPermission(SystemRole.ORG_ADMIN, Permission.AP_MANAGE)).toBe(true);
+    expect(hasPermission(SystemRole.ORG_ADMIN, Permission.USER_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.ORG_ADMIN, Permission.ORGANIZATION_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.ORG_ADMIN, Permission.PAYROLL_READ)).toBe(false);
+    expect(hasPermission(SystemRole.ORG_ADMIN, Permission.LEAVE_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.ORG_ADMIN, Permission.RECRUITMENT_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.ORG_ADMIN, Permission.REPORTING_READ)).toBe(false);
+    expect(hasPermission(SystemRole.ORG_ADMIN, Permission.FINANCE_READ)).toBe(false);
+  });
+
+  it('grants Accounts Payable to platform/tenant admins, HR managers, and org admins, mirroring invoicing', () => {
+    expect(hasPermission(SystemRole.PLATFORM_ADMIN, Permission.AP_MANAGE)).toBe(true);
+    expect(hasPermission(SystemRole.TENANT_ADMIN, Permission.AP_MANAGE)).toBe(true);
+    expect(hasPermission(SystemRole.HR_MANAGER, Permission.AP_MANAGE)).toBe(true);
+    expect(hasPermission(SystemRole.ORG_ADMIN, Permission.AP_MANAGE)).toBe(true);
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.AP_READ)).toBe(false);
+    expect(hasPermission(SystemRole.EMPLOYEE, Permission.AP_READ)).toBe(false);
+    expect(hasPermission(SystemRole.ACCOUNTANT, Permission.AP_READ)).toBe(false);
+  });
+
   it('restricts notification delivery visibility to platform admins', () => {
     expect(hasPermission(SystemRole.PLATFORM_ADMIN, Permission.PLATFORM_NOTIFICATION_READ)).toBe(true);
     expect(hasPermission(SystemRole.TENANT_ADMIN, Permission.PLATFORM_NOTIFICATION_READ)).toBe(false);
     expect(hasPermission(SystemRole.HR_MANAGER, Permission.PLATFORM_NOTIFICATION_READ)).toBe(false);
     expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.PLATFORM_NOTIFICATION_READ)).toBe(false);
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.PLATFORM_NOTIFICATION_READ)).toBe(false);
+  });
+
+  it('restricts platform-wide broadcast to platform admins', () => {
+    expect(hasPermission(SystemRole.PLATFORM_ADMIN, Permission.PLATFORM_NOTIFICATION_BROADCAST)).toBe(true);
+    expect(hasPermission(SystemRole.TENANT_ADMIN, Permission.PLATFORM_NOTIFICATION_BROADCAST)).toBe(false);
+    expect(hasPermission(SystemRole.HR_MANAGER, Permission.PLATFORM_NOTIFICATION_BROADCAST)).toBe(false);
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.PLATFORM_NOTIFICATION_BROADCAST)).toBe(false);
+    expect(hasPermission(SystemRole.EMPLOYEE, Permission.PLATFORM_NOTIFICATION_BROADCAST)).toBe(false);
+  });
+
+  it('grants accountants read-only finance access and nothing else', () => {
+    expect(hasPermission(SystemRole.ACCOUNTANT, Permission.FINANCE_READ)).toBe(true);
+    expect(hasPermission(SystemRole.ACCOUNTANT, Permission.FINANCE_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.ACCOUNTANT, Permission.EMPLOYEE_READ)).toBe(false);
+    expect(hasPermission(SystemRole.ACCOUNTANT, Permission.PAYROLL_READ)).toBe(false);
+    expect(hasPermission(SystemRole.ACCOUNTANT, Permission.ORGANIZATION_READ)).toBe(false);
+    expect(hasPermission(SystemRole.ACCOUNTANT, Permission.REPORTING_READ)).toBe(false);
+    expect(hasPermission(SystemRole.ACCOUNTANT, Permission.INVOICING_READ)).toBe(false);
   });
 });

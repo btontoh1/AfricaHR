@@ -32,4 +32,11 @@ export class CreateUserDto {
   @ApiProperty({ enum: Object.values(SystemRole) })
   @IsEnum(SystemRole)
   role!: SystemRole;
+
+  @ApiPropertyOptional({
+    description: 'Required when role is ORG_ADMIN (which Organization they administer); rejected otherwise.',
+  })
+  @IsOptional()
+  @IsUUID()
+  organizationId?: string;
 }

@@ -1,0 +1,19 @@
+{
+  "name": "finance-domain",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/finance/domain/src",
+  "projectType": "library",
+  "tags": ["scope:finance", "type:domain"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/finance/domain",
+        "main": "libs/finance/domain/src/index.ts",
+        "tsConfig": "libs/finance/domain/tsconfig.lib.json",
+        "assets": ["libs/finance/domain/*.md"]
+      }
+    }
+  }
+}

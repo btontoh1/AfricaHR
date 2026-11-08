@@ -12,6 +12,7 @@ describe('PayrollCostReportController', () => {
     email: 'payroll@acme.com',
     role: SystemRole.PAYROLL_MANAGER,
     tenantId: 'tenant-1',
+    organizationId: null,
     iat: 1,
     exp: 2,
   };

@@ -1,0 +1,19 @@
+{
+  "name": "finance-data-access",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/finance/data-access/src",
+  "projectType": "library",
+  "tags": ["scope:finance", "type:data-access"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/finance/data-access",
+        "main": "libs/finance/data-access/src/index.ts",
+        "tsConfig": "libs/finance/data-access/tsconfig.lib.json",
+        "assets": ["libs/finance/data-access/*.md"]
+      }
+    }
+  }
+}

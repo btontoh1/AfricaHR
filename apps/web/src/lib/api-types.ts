@@ -123,6 +123,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/me/performance-framework": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Switch the tenant's Performance Management framework (Standard or Balanced Scorecard) */
+        patch: operations["TenantMeController_updatePerformanceFramework"];
+        trace?: never;
+    };
     "/api/tenants/me/logo/upload-url": {
         parameters: {
             query?: never;
@@ -203,6 +220,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["TenantController_updateStatus"];
+        trace?: never;
+    };
+    "/api/tenants/{id}/add-ons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["TenantController_updateAddOn"];
         trace?: never;
     };
     "/api/organizations/verification-queue": {
@@ -301,6 +334,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/organizations/bulk-import-addresses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["OrganizationController_bulkImportAddresses"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/organizations/{id}": {
         parameters: {
             query?: never;
@@ -373,6 +422,54 @@ export interface paths {
             cookie?: never;
         };
         get: operations["OrganizationController_getVerificationDocumentViewUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/organizations/{id}/logo/upload-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["OrganizationController_requestLogoUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/organizations/{id}/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["OrganizationController_removeLogo"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/organizations/{id}/logo-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OrganizationController_getLogoUrl"];
         put?: never;
         post?: never;
         delete?: never;
@@ -457,6 +554,57 @@ export interface paths {
         get: operations["PlatformAuditLogController_list"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/demo-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit a "Book a demo" request from the public marketing site */
+        post: operations["DemoRequestPublicController_submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform-admin/demo-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List recent "Book a demo" submissions for platform admin follow-up */
+        get: operations["DemoRequestAdminController_listRecent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform-admin/demo-requests/mark-all-viewed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark every unviewed demo request as viewed, clearing the admin notification badge */
+        post: operations["DemoRequestAdminController_markAllViewed"];
         delete?: never;
         options?: never;
         head?: never;
@@ -852,6 +1000,22 @@ export interface paths {
         patch: operations["PlatformTenantUsersController_setActive"];
         trace?: never;
     };
+    "/api/tenants/{tenantId}/users/{id}/impersonate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PlatformTenantUsersController_impersonate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{slug}/login": {
         parameters: {
             query?: never;
@@ -863,6 +1027,168 @@ export interface paths {
         put?: never;
         /** Authenticate with email + password, scoped to a tenant by slug */
         post: operations["TenantAuthController_login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform-admin/notifications/broadcast": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Email + in-app notice to every active tenant's admin at once */
+        post: operations["PlatformBroadcastController_send"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/notification-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["NotificationTemplateController_list"];
+        put?: never;
+        post: operations["NotificationTemplateController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/notification-templates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["NotificationTemplateController_findById"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["NotificationTemplateController_update"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/notifications/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyNotificationController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/notifications/me/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MyNotificationController_markRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/notifications/me/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["MyNotificationController_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["NotificationController_list"];
+        put?: never;
+        post: operations["NotificationController_send"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/notifications/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["NotificationController_findById"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/notifications/from-template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["NotificationController_sendFromTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform-admin/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cross-tenant email delivery health for the platform admin dashboard */
+        get: operations["PlatformNotificationController_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -885,6 +1211,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/employees/bulk-import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["EmployeeController_bulkImportEmployees"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/employees/{id}": {
         parameters: {
             query?: never;
@@ -895,7 +1237,7 @@ export interface paths {
         get: operations["EmployeeController_findById"];
         put?: never;
         post?: never;
-        delete?: never;
+        delete: operations["EmployeeController_softDelete"];
         options?: never;
         head?: never;
         patch: operations["EmployeeController_update"];
@@ -1395,7 +1737,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        patch: operations["LeaveRequestController_update"];
         trace?: never;
     };
     "/api/tenants/{tenantId}/leave-requests/{id}/approve": {
@@ -1460,6 +1802,38 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/attendance-locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AttendanceLocationController_list"];
+        put?: never;
+        post: operations["AttendanceLocationController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/attendance-locations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["AttendanceLocationController_remove"];
+        options?: never;
+        head?: never;
+        patch: operations["AttendanceLocationController_update"];
         trace?: never;
     };
     "/api/tenants/{tenantId}/attendance/me": {
@@ -1744,7 +2118,7 @@ export interface paths {
         get: operations["PerformanceGoalController_findById"];
         put?: never;
         post?: never;
-        delete?: never;
+        delete: operations["PerformanceGoalController_remove"];
         options?: never;
         head?: never;
         patch: operations["PerformanceGoalController_update"];
@@ -2086,6 +2460,38 @@ export interface paths {
         patch: operations["MyApplicationController_advance"];
         trace?: never;
     };
+    "/api/tenants/{tenantId}/applications/mine/{id}/resume-view-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyApplicationController_getResumeViewUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/applications/mine/{id}/identity-document-view-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyApplicationController_getIdentityDocumentViewUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/applications": {
         parameters: {
             query?: never;
@@ -2182,6 +2588,106 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/applications/{id}/resume-view-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ApplicationController_getResumeViewUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/applications/{id}/identity-document-view-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ApplicationController_getIdentityDocumentViewUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/job-requisitions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get an open job posting's public details, for a company's careers page */
+        get: operations["PublicApplicationController_getOpenRequisition"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/job-requisitions/{id}/resume-upload-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Get a short-lived URL to upload a resume for a public application */
+        post: operations["PublicApplicationController_requestResumeUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/job-requisitions/{id}/identity-document-upload-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Get a short-lived URL to upload a government ID for a public application */
+        post: operations["PublicApplicationController_requestIdentityDocumentUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/job-requisitions/{id}/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit a job application from a public careers page */
+        post: operations["PublicApplicationController_apply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/reports/headcount": {
         parameters: {
             query?: never;
@@ -2254,151 +2760,6 @@ export interface paths {
             cookie?: never;
         };
         get: operations["RecruitmentPipelineReportController_generate"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/notification-templates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["NotificationTemplateController_list"];
-        put?: never;
-        post: operations["NotificationTemplateController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/notification-templates/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["NotificationTemplateController_findById"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: operations["NotificationTemplateController_update"];
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/notifications/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["MyNotificationController_list"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/notifications/me/{id}/read": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["MyNotificationController_markRead"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/notifications/me/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete: operations["MyNotificationController_delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/notifications": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["NotificationController_list"];
-        put?: never;
-        post: operations["NotificationController_send"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/notifications/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["NotificationController_findById"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/notifications/from-template": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["NotificationController_sendFromTemplate"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/platform-admin/notifications": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Cross-tenant email delivery health for the platform admin dashboard */
-        get: operations["PlatformNotificationController_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2510,6 +2871,834 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/platform-admin/billing/saas-metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** MRR history, net-new MRR waterfall, churn, Rule of 40, subscription funnel, and cohort retention */
+        get: operations["PlatformBillingController_getSaasMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform-admin/billing/operating-costs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** ParotHR's own hand-entered monthly operating costs, feeding the Rule of 40 profit margin */
+        get: operations["PlatformBillingController_listOperatingCosts"];
+        put?: never;
+        /** Set (or overwrite) the operating cost for one month/currency */
+        post: operations["PlatformBillingController_setOperatingCost"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform-admin/billing/acquisition-costs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** ParotHR's own hand-entered monthly acquisition (sales+marketing) spend, feeding LTV:CAC */
+        get: operations["PlatformBillingController_listAcquisitionCosts"];
+        put?: never;
+        /** Set (or overwrite) the acquisition cost for one month/currency */
+        post: operations["PlatformBillingController_setAcquisitionCost"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform-admin/billing/cash-balances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** ParotHR's own hand-entered end-of-month cash balance, feeding runway and the burn multiple */
+        get: operations["PlatformBillingController_listCashBalances"];
+        put?: never;
+        /** Set (or overwrite) the cash balance for one month/currency */
+        post: operations["PlatformBillingController_setCashBalance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/payroll-wallet/balances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TenantPayrollWalletController_balances"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/payroll-wallet/top-ups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TenantPayrollWalletController_listTopUps"];
+        put?: never;
+        /** Starts a Paystack checkout to fund the tenant payroll wallet for one currency */
+        post: operations["TenantPayrollWalletController_requestTopUp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/customers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomerController_list"];
+        put?: never;
+        post: operations["CustomerController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/customers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomerController_findById"];
+        put?: never;
+        post?: never;
+        delete: operations["CustomerController_softDelete"];
+        options?: never;
+        head?: never;
+        patch: operations["CustomerController_update"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/customer-invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomerInvoiceController_list"];
+        put?: never;
+        post: operations["CustomerInvoiceController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/customer-invoices/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomerInvoiceController_findById"];
+        put?: never;
+        post?: never;
+        delete: operations["CustomerInvoiceController_softDelete"];
+        options?: never;
+        head?: never;
+        patch: operations["CustomerInvoiceController_update"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/customer-invoices/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["CustomerInvoiceController_updateStatus"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/customer-invoices/{id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomerInvoiceController_downloadPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/how-it-works-videos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List tutorial videos, in display order */
+        get: operations["HowItWorksVideoController_list"];
+        put?: never;
+        /** Add a tutorial video (platform admin only) */
+        post: operations["HowItWorksVideoController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/how-it-works-videos/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a tutorial video (platform admin only) */
+        delete: operations["HowItWorksVideoController_remove"];
+        options?: never;
+        head?: never;
+        /** Update a tutorial video (platform admin only) */
+        patch: operations["HowItWorksVideoController_update"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_listAccounts"];
+        put?: never;
+        post: operations["FinanceController_createAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/accounts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["FinanceController_renameAccount"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/journal-entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_listJournalEntries"];
+        put?: never;
+        post: operations["FinanceController_createJournalEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/journal-entries/{id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["FinanceController_voidJournalEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/reports/profit-and-loss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_profitAndLoss"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/reports/profit-and-loss/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_downloadProfitAndLossPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/reports/cash-flow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_cashFlow"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/reports/cash-flow/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_downloadCashFlowPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/reports/balance-sheet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_balanceSheet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/reports/balance-sheet/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_downloadBalanceSheetPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/reports/trial-balance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_trialBalance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/reports/trial-balance/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_downloadTrialBalancePdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/reports/budget-vs-actual": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_budgetVsActual"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/budgets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_listBudgets"];
+        put?: never;
+        post: operations["FinanceController_setBudget"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/budgets/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["FinanceController_deleteBudget"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/period-close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_getPeriodClose"];
+        put?: never;
+        post: operations["FinanceController_setPeriodClose"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/bank-reconciliations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_listReconciliations"];
+        put?: never;
+        post: operations["FinanceController_createReconciliation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/bank-reconciliations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_getReconciliationDetail"];
+        put?: never;
+        post?: never;
+        delete: operations["FinanceController_deleteReconciliation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/bank-reconciliations/{id}/lines/{lineId}/toggle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["FinanceController_toggleReconciliationLine"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/bank-reconciliations/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["FinanceController_completeReconciliation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/recurring-journal-entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_listRecurringJournalEntries"];
+        put?: never;
+        post: operations["FinanceController_createRecurringJournalEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/recurring-journal-entries/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["FinanceController_deleteRecurringJournalEntry"];
+        options?: never;
+        head?: never;
+        patch: operations["FinanceController_setRecurringJournalEntryActive"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/home-currency": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_getHomeCurrency"];
+        put?: never;
+        post: operations["FinanceController_setHomeCurrency"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/fx-revaluations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_listFxRevaluations"];
+        put?: never;
+        post: operations["FinanceController_runFxRevaluation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/fixed-assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_listFixedAssets"];
+        put?: never;
+        post: operations["FinanceController_createFixedAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/fixed-assets/{id}/dispose": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["FinanceController_disposeFixedAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/depreciation-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_listDepreciationRuns"];
+        put?: never;
+        post: operations["FinanceController_runDepreciation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/expenses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_listExpenses"];
+        put?: never;
+        post: operations["FinanceController_createExpense"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/expenses/{id}/reimburse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["FinanceController_reimburseExpense"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/finance/cost-centers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceController_listCostCenters"];
+        put?: never;
+        post: operations["FinanceController_createCostCenter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/vendors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["VendorController_list"];
+        put?: never;
+        post: operations["VendorController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/vendors/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["VendorController_findById"];
+        put?: never;
+        post?: never;
+        delete: operations["VendorController_softDelete"];
+        options?: never;
+        head?: never;
+        patch: operations["VendorController_update"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/vendor-bills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["VendorBillController_list"];
+        put?: never;
+        post: operations["VendorBillController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/vendor-bills/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["VendorBillController_findById"];
+        put?: never;
+        post?: never;
+        delete: operations["VendorBillController_softDelete"];
+        options?: never;
+        head?: never;
+        patch: operations["VendorBillController_update"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/vendor-bills/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["VendorBillController_updateStatus"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/vendor-payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["VendorPaymentController_list"];
+        put?: never;
+        post: operations["VendorPaymentController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/vendor-payments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["VendorPaymentController_findById"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2560,8 +3749,20 @@ export interface components {
             name: string;
             /** @example acme-ghana-ltd */
             slug: string;
+            /**
+             * @description The tenant's operating currency (ISO 4217)
+             * @example GHS
+             */
+            currency: string;
             /** @description Signed view URL for the uploaded business logo, or null if none set */
             logoUrl?: string;
+            /** @enum {string} */
+            performanceFramework: "STANDARD" | "BALANCED_SCORECARD";
+            enabledAddOns: ("INVOICING" | "RECRUITMENT" | "PERFORMANCE" | "FINANCE")[];
+        };
+        UpdatePerformanceFrameworkDto: {
+            /** @enum {string} */
+            performanceFramework: "STANDARD" | "BALANCED_SCORECARD";
         };
         RequestTenantLogoUploadDto: {
             /** @example logo.png */
@@ -2607,6 +3808,7 @@ export interface components {
             currency: string;
             timezone: string;
             logoStorageKey?: string | null;
+            enabledAddOns: ("INVOICING" | "RECRUITMENT" | "PERFORMANCE" | "FINANCE")[];
             createdAt: string;
             updatedAt: string;
             deletedAt?: string | null;
@@ -2641,6 +3843,11 @@ export interface components {
             /** @enum {string} */
             status: "TRIAL" | "ACTIVE" | "SUSPENDED" | "CLOSED";
         };
+        UpdateTenantAddOnDto: {
+            /** @enum {string} */
+            module: "INVOICING" | "RECRUITMENT" | "PERFORMANCE" | "FINANCE";
+            enabled: boolean;
+        };
         OrganizationResponseDto: {
             id: string;
             legalName: string;
@@ -2648,11 +3855,15 @@ export interface components {
             countryCode: string;
             registrationNumber: string;
             taxIdentificationNumber?: string;
+            /** @description Shown as the employer's address on payslips */
+            address?: string;
             /** @enum {string} */
             verificationStatus: "UNVERIFIED" | "PENDING_REVIEW" | "VERIFIED" | "REJECTED";
             /** @description Reviewer note, set on rejection */
             verificationNote?: string;
             verifiedAt?: string;
+            /** @description Storage key for the organization's own logo, shown on its invoices */
+            logoStorageKey?: string;
             createdAt: string;
             updatedAt: string;
         };
@@ -2670,7 +3881,6 @@ export interface components {
             createdAt: string;
         };
         DocumentViewUrlResponseDto: {
-            /** @description Short-lived signed URL to view/download the document directly from storage */
             viewUrl: string;
         };
         CreateOrganizationDto: {
@@ -2688,12 +3898,31 @@ export interface components {
             /** @example C0012345678 */
             taxIdentificationNumber?: string;
             /**
+             * @description Shown as the employer's address on payslips
+             * @example 12 Independence Ave, Accra, Ghana
+             */
+            address?: string;
+            /**
              * @description Country-specific registration fields without a dedicated column
              * @example {
              *       "ssnitEmployerNumber": "SS123456"
              *     }
              */
             metadata?: Record<string, never>;
+        };
+        BulkUpdateOrganizationAddressesDto: {
+            /** @description Raw CSV content, including the header row - columns: id, address */
+            csv: string;
+        };
+        OrganizationAddressImportRowErrorDto: {
+            /** @description 1-indexed row number as it would appear in a spreadsheet (header is row 1) */
+            row: number;
+            message: string;
+        };
+        OrganizationAddressImportResultDto: {
+            /** @description Number of organizations whose address was updated */
+            updated: number;
+            errors: components["schemas"]["OrganizationAddressImportRowErrorDto"][];
         };
         UpdateOrganizationDto: {
             /** @example Acme Ghana Ltd */
@@ -2709,6 +3938,11 @@ export interface components {
             registrationNumber?: string;
             /** @example C0012345678 */
             taxIdentificationNumber?: string;
+            /**
+             * @description Shown as the employer's address on payslips
+             * @example 12 Independence Ave, Accra, Ghana
+             */
+            address?: string;
             /**
              * @description Country-specific registration fields without a dedicated column
              * @example {
@@ -2729,6 +3963,20 @@ export interface components {
             /** @description Short-lived signed URL — PUT the file bytes here directly, not through this API */
             uploadUrl: string;
             documentId: string;
+        };
+        RequestOrganizationLogoUploadDto: {
+            /** @example logo.png */
+            fileName: string;
+            /** @enum {string} */
+            contentType: "image/png" | "image/jpeg" | "image/webp" | "image/svg+xml";
+        };
+        RequestOrganizationLogoUploadResponseDto: {
+            /** @description Short-lived signed URL — PUT the file bytes here directly, not through this API */
+            uploadUrl: string;
+        };
+        OrganizationLogoUrlResponseDto: {
+            /** @description Short-lived signed URL, or null if no logo is set */
+            viewUrl?: string | null;
         };
         CreateOrganizationUnitDto: {
             organizationId: string;
@@ -2809,6 +4057,37 @@ export interface components {
             items: components["schemas"]["AuditLogEntryDto"][];
             /** @description Total rows matching the current filters, across all pages */
             totalCount: number;
+        };
+        SubmitDemoRequestDto: {
+            fullName: string;
+            email: string;
+            phoneNumber: string;
+            /** @default false */
+            isWhatsapp: boolean;
+            organizationName: string;
+            numberOfEmployees?: string;
+            preferredDate?: string;
+            preferredTime?: string;
+        };
+        DemoRequestResponseDto: {
+            id: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        DemoRequestAdminResponseDto: {
+            id: string;
+            fullName: string;
+            email: string;
+            phoneNumber: string;
+            isWhatsapp: boolean;
+            organizationName: string;
+            numberOfEmployees?: string;
+            preferredDate?: string;
+            preferredTime?: string;
+            /** Format: date-time */
+            viewedAt?: string;
+            /** Format: date-time */
+            createdAt: string;
         };
         MfaChallengeResponseDto: {
             /** @enum {boolean} */
@@ -2899,16 +4178,19 @@ export interface components {
             firstName: string;
             lastName: string;
             /** @enum {string} */
-            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "EMPLOYEE";
+            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "PAYROLL_OFFICER" | "ORG_ADMIN" | "EMPLOYEE" | "ACCOUNTANT";
+            /** @description Required when role is ORG_ADMIN (which Organization they administer); rejected otherwise. */
+            organizationId?: string;
         };
         UserResponseDto: {
             id: string;
             tenantId?: string | null;
+            organizationId?: string | null;
             email: string;
             firstName: string;
             lastName: string;
             /** @enum {string} */
-            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "EMPLOYEE";
+            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "PAYROLL_OFFICER" | "ORG_ADMIN" | "EMPLOYEE" | "ACCOUNTANT";
             isActive: boolean;
             lastLoginAt?: string | null;
             createdAt: string;
@@ -2926,10 +4208,137 @@ export interface components {
         };
         UpdateUserRoleDto: {
             /** @enum {string} */
-            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "EMPLOYEE";
+            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "PAYROLL_OFFICER" | "ORG_ADMIN" | "EMPLOYEE" | "ACCOUNTANT";
+            /** @description Required when role is ORG_ADMIN (which Organization they administer); rejected otherwise. */
+            organizationId?: string;
         };
         UpdateUserActiveDto: {
             isActive: boolean;
+        };
+        ImpersonateUserDto: {
+            /**
+             * @description Why this session is needed - stored with the audit entry and included in the notice sent to the impersonated user, so it must be a real, specific reason, not a placeholder.
+             * @example Investigating payroll error #412 reported by the tenant
+             */
+            reason: string;
+        };
+        ImpersonationTokenResponseDto: {
+            /** @description Short-lived access token for the impersonated user - carries an `act` claim naming the acting admin. */
+            accessToken: string;
+            /** @description No refresh token is issued for an impersonation session - once this expires, the session is simply over. */
+            expiresInSeconds: number;
+        };
+        BroadcastNotificationDto: {
+            /**
+             * @description Short, human-readable subject line
+             * @example Updated Terms of Service
+             */
+            subject: string;
+            /**
+             * @description Plain-text body sent by email and shown in-app
+             * @example We've updated our Terms of Service to describe how our support team accesses accounts for troubleshooting. See https://parothr.com/terms for details.
+             */
+            body: string;
+        };
+        BroadcastResultDto: {
+            /** @description How many tenants had an active TENANT_ADMIN to notify */
+            recipientCount: number;
+            /** @description How many individual email/in-app deliveries failed - a failure here never aborts the rest of the broadcast */
+            failureCount: number;
+        };
+        NotificationTemplateResponseDto: {
+            id: string;
+            tenantId: string;
+            code: string;
+            name: string;
+            /** @enum {string} */
+            channel: "IN_APP" | "EMAIL";
+            subjectTemplate: string;
+            bodyTemplate: string;
+            isActive: boolean;
+            createdAt: string;
+            updatedAt: string;
+        };
+        CreateNotificationTemplateDto: {
+            /**
+             * @description Unique within the tenant
+             * @example LEAVE_APPROVED
+             */
+            code: string;
+            name: string;
+            /** @enum {string} */
+            channel: "IN_APP" | "EMAIL";
+            /** @example Your leave request was approved */
+            subjectTemplate: string;
+            /** @example Hi {{firstName}}, your leave from {{startDate}} to {{endDate}} was approved. */
+            bodyTemplate: string;
+        };
+        UpdateNotificationTemplateDto: {
+            name?: string;
+            subjectTemplate?: string;
+            bodyTemplate?: string;
+            isActive?: boolean;
+        };
+        NotificationResponseDto: {
+            id: string;
+            tenantId: string;
+            userId: string;
+            /** @enum {string} */
+            channel: "IN_APP" | "EMAIL";
+            subject: string;
+            body: string;
+            /** @enum {string} */
+            status: "PENDING" | "SENT" | "FAILED";
+            isRead: boolean;
+            readAt?: string | null;
+            sentAt?: string | null;
+            failureReason?: string | null;
+            createdAt: string;
+            updatedAt: string;
+        };
+        SendNotificationDto: {
+            /** @description The User (not Employee) who will receive this notification */
+            userId: string;
+            /** @enum {string} */
+            channel: "IN_APP" | "EMAIL";
+            subject: string;
+            body: string;
+        };
+        SendFromTemplateDto: {
+            /** @description The User (not Employee) who will receive this notification */
+            userId: string;
+            templateId: string;
+            /**
+             * @example {
+             *       "firstName": "Ama",
+             *       "startDate": "2026-06-08"
+             *     }
+             */
+            variables?: {
+                [key: string]: string;
+            };
+        };
+        NotificationDeliveryCountsDto: {
+            sent: number;
+            failed: number;
+            pending: number;
+        };
+        FailedNotificationDto: {
+            id: string;
+            tenantId: string;
+            tenantName?: string | null;
+            userId: string;
+            userEmail: string;
+            userFirstName: string;
+            userLastName: string;
+            subject: string;
+            failureReason?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        NotificationDeliveryResponseDto: {
+            counts: components["schemas"]["NotificationDeliveryCountsDto"];
+            failed: components["schemas"]["FailedNotificationDto"][];
         };
         FamilyMemberDto: {
             /** @enum {string} */
@@ -3015,6 +4424,22 @@ export interface components {
             countryCode: string;
             createdAt: string;
             updatedAt: string;
+        };
+        BulkImportEmployeesDto: {
+            /** @description Every row in the CSV is created under this organization */
+            organizationId: string;
+            /** @description Raw CSV content, including the header row */
+            csv: string;
+        };
+        BulkImportRowErrorDto: {
+            /** @description 1-indexed row number as it would appear in a spreadsheet (header is row 1) */
+            row: number;
+            message: string;
+        };
+        BulkImportResultDto: {
+            /** @description Number of employees successfully created */
+            created: number;
+            errors: components["schemas"]["BulkImportRowErrorDto"][];
         };
         UpdateEmployeeDto: {
             /** @description Set to null to unassign the department */
@@ -3170,6 +4595,10 @@ export interface components {
             employeeId: string;
             employeeFirstName: string;
             employeeLastName: string;
+            /** @description The employing organization's legal name */
+            organizationName: string;
+            /** @description The employing organization's address, if one has been set */
+            organizationAddress?: string;
             /** @enum {string} */
             status: "DRAFT" | "APPROVED" | "PAID";
             countryCode: string;
@@ -3336,6 +4765,11 @@ export interface components {
             /** @example Insufficient team coverage for the requested dates */
             rejectionReason: string;
         };
+        UpdateLeaveRequestDto: {
+            startDate?: string;
+            endDate?: string;
+            reason?: string;
+        };
         AdjustLeaveBalanceDto: {
             employeeId: string;
             leaveTypeId: string;
@@ -3351,31 +4785,47 @@ export interface components {
              * @example 8
              */
             standardDailyHours: number;
-            /** @description Work-site geofence center latitude — set together with geofenceLongitude and geofenceRadiusMeters, or leave all three unset to disable geofencing */
-            geofenceLatitude?: number;
-            /** @description Work-site geofence center longitude */
-            geofenceLongitude?: number;
-            /**
-             * @description Radius in meters around the geofence center within which a clock-in/out is not flagged
-             * @example 150
-             */
-            geofenceRadiusMeters?: number;
-            /**
-             * @description Human-readable label for the geofence, shown on the attendance dashboard. Independent of the three fields above — purely cosmetic.
-             * @example East Legon Office
-             */
-            geofenceLocationName?: string;
         };
         AttendancePolicyResponseDto: {
             id: string;
             tenantId: string;
             standardDailyHours: string;
-            geofenceLatitude?: string | null;
-            geofenceLongitude?: string | null;
-            geofenceRadiusMeters?: number | null;
-            geofenceLocationName?: string | null;
             createdAt: string;
             updatedAt: string;
+        };
+        AttendanceLocationResponseDto: {
+            id: string;
+            tenantId: string;
+            name: string;
+            latitude: string;
+            longitude: string;
+            radiusMeters: number;
+            createdAt: string;
+            updatedAt: string;
+        };
+        CreateAttendanceLocationDto: {
+            /**
+             * @description Human-readable label for the location
+             * @example East Legon Office
+             */
+            name: string;
+            /** @description Location center latitude */
+            latitude: number;
+            /** @description Location center longitude */
+            longitude: number;
+            /**
+             * @description Radius in meters around the center within which a clock-in/out is not flagged
+             * @example 150
+             */
+            radiusMeters: number;
+        };
+        UpdateAttendanceLocationDto: {
+            /** @example East Legon Office */
+            name?: string;
+            latitude?: number;
+            longitude?: number;
+            /** @example 150 */
+            radiusMeters?: number;
         };
         AttendanceRecordResponseDto: {
             id: string;
@@ -3391,10 +4841,12 @@ export interface components {
             clockInLongitude?: string | null;
             clockInDistanceMeters?: number | null;
             clockInOutsideGeofence?: boolean | null;
+            clockInLocationName?: string | null;
             clockOutLatitude?: string | null;
             clockOutLongitude?: string | null;
             clockOutDistanceMeters?: number | null;
             clockOutOutsideGeofence?: boolean | null;
+            clockOutLocationName?: string | null;
             createdAt: string;
             updatedAt: string;
         };
@@ -3507,6 +4959,8 @@ export interface components {
             /** @enum {string} */
             status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
             progressPercent: number;
+            /** @enum {string|null} */
+            perspective?: "FINANCIAL" | "CUSTOMER" | "PEOPLE" | "RISK_CONTROL" | null;
             createdAt: string;
             updatedAt: string;
         };
@@ -3515,6 +4969,8 @@ export interface components {
             title: string;
             description?: string;
             targetDate?: string;
+            /** @enum {string} */
+            perspective?: "FINANCIAL" | "CUSTOMER" | "PEOPLE" | "RISK_CONTROL";
         };
         UpdatePerformanceGoalDto: {
             title?: string;
@@ -3523,6 +4979,8 @@ export interface components {
             /** @enum {string} */
             status?: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
             progressPercent?: number;
+            /** @enum {string} */
+            perspective?: "FINANCIAL" | "CUSTOMER" | "PEOPLE" | "RISK_CONTROL";
         };
         CreateReviewCycleDto: {
             /** @example Q1 2026 Review */
@@ -3684,6 +5142,10 @@ export interface components {
             offerRespondedAt?: string | null;
             offerAccepted?: boolean | null;
             hiredEmployeeId?: string | null;
+            resumeFileName?: string | null;
+            identityDocumentFileName?: string | null;
+            /** @enum {string|null} */
+            identityDocumentType?: "PASSPORT" | "NATIONAL_ID" | "DRIVERS_LICENSE" | "OTHER" | null;
             createdAt: string;
             updatedAt: string;
             candidate: components["schemas"]["CandidateResponseDto"];
@@ -3712,6 +5174,10 @@ export interface components {
             offerRespondedAt?: string | null;
             offerAccepted?: boolean | null;
             hiredEmployeeId?: string | null;
+            resumeFileName?: string | null;
+            identityDocumentFileName?: string | null;
+            /** @enum {string|null} */
+            identityDocumentType?: "PASSPORT" | "NATIONAL_ID" | "DRIVERS_LICENSE" | "OTHER" | null;
             createdAt: string;
             updatedAt: string;
         };
@@ -3730,6 +5196,44 @@ export interface components {
         LinkHiredEmployeeDto: {
             /** @description The Employee record HR created for this hire via the Employee module */
             employeeId: string;
+        };
+        PublicJobRequisitionResponseDto: {
+            id: string;
+            title: string;
+            description?: string | null;
+            /** @enum {string} */
+            employmentType: "FULL_TIME" | "PART_TIME" | "CONTRACT" | "INTERN";
+        };
+        RequestPublicResumeUploadDto: {
+            /** @example kwame-mensah-resume.pdf */
+            fileName: string;
+            /** @enum {string} */
+            contentType: "application/pdf" | "application/msword" | "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        };
+        PublicDocumentUploadUrlResponseDto: {
+            uploadUrl: string;
+            storageKey: string;
+        };
+        RequestPublicIdentityDocumentUploadDto: {
+            /** @example ghana-card-front.jpg */
+            fileName: string;
+            /** @enum {string} */
+            contentType: "application/pdf" | "image/png" | "image/jpeg";
+        };
+        SubmitPublicApplicationDto: {
+            firstName: string;
+            lastName: string;
+            email: string;
+            phone?: string;
+            resumeStorageKey?: string;
+            resumeFileName?: string;
+            identityDocumentStorageKey?: string;
+            identityDocumentFileName?: string;
+            /** @enum {string} */
+            identityDocumentType?: "PASSPORT" | "NATIONAL_ID" | "DRIVERS_LICENSE" | "OTHER";
+        };
+        PublicApplicationResponseDto: {
+            applicationId: string;
         };
         HeadcountByEmploymentTypeResponseDto: {
             /** @enum {string} */
@@ -3779,100 +5283,6 @@ export interface components {
             openRequisitions: number;
             applicationsByStage: components["schemas"]["ApplicationsByStageResponseDto"][];
             averageTimeToHireDays: number;
-        };
-        NotificationTemplateResponseDto: {
-            id: string;
-            tenantId: string;
-            code: string;
-            name: string;
-            /** @enum {string} */
-            channel: "IN_APP" | "EMAIL";
-            subjectTemplate: string;
-            bodyTemplate: string;
-            isActive: boolean;
-            createdAt: string;
-            updatedAt: string;
-        };
-        CreateNotificationTemplateDto: {
-            /**
-             * @description Unique within the tenant
-             * @example LEAVE_APPROVED
-             */
-            code: string;
-            name: string;
-            /** @enum {string} */
-            channel: "IN_APP" | "EMAIL";
-            /** @example Your leave request was approved */
-            subjectTemplate: string;
-            /** @example Hi {{firstName}}, your leave from {{startDate}} to {{endDate}} was approved. */
-            bodyTemplate: string;
-        };
-        UpdateNotificationTemplateDto: {
-            name?: string;
-            subjectTemplate?: string;
-            bodyTemplate?: string;
-            isActive?: boolean;
-        };
-        NotificationResponseDto: {
-            id: string;
-            tenantId: string;
-            userId: string;
-            /** @enum {string} */
-            channel: "IN_APP" | "EMAIL";
-            subject: string;
-            body: string;
-            /** @enum {string} */
-            status: "PENDING" | "SENT" | "FAILED";
-            isRead: boolean;
-            readAt?: string | null;
-            sentAt?: string | null;
-            failureReason?: string | null;
-            createdAt: string;
-            updatedAt: string;
-        };
-        SendNotificationDto: {
-            /** @description The User (not Employee) who will receive this notification */
-            userId: string;
-            /** @enum {string} */
-            channel: "IN_APP" | "EMAIL";
-            subject: string;
-            body: string;
-        };
-        SendFromTemplateDto: {
-            /** @description The User (not Employee) who will receive this notification */
-            userId: string;
-            templateId: string;
-            /**
-             * @example {
-             *       "firstName": "Ama",
-             *       "startDate": "2026-06-08"
-             *     }
-             */
-            variables?: {
-                [key: string]: string;
-            };
-        };
-        NotificationDeliveryCountsDto: {
-            sent: number;
-            failed: number;
-            pending: number;
-        };
-        FailedNotificationDto: {
-            id: string;
-            tenantId: string;
-            tenantName?: string | null;
-            userId: string;
-            userEmail: string;
-            userFirstName: string;
-            userLastName: string;
-            subject: string;
-            failureReason?: string | null;
-            /** Format: date-time */
-            createdAt: string;
-        };
-        NotificationDeliveryResponseDto: {
-            counts: components["schemas"]["NotificationDeliveryCountsDto"];
-            failed: components["schemas"]["FailedNotificationDto"][];
         };
         SubscriptionResponseDto: {
             id: string;
@@ -3943,6 +5353,927 @@ export interface components {
             /** @description All-time paid invoice total, grouped by currency */
             platformRevenue: components["schemas"]["RevenueByCurrencyResponseDto"][];
             expiringSubscriptions: components["schemas"]["ExpiringSubscriptionResponseDto"][];
+        };
+        MrrHistoryPointResponseDto: {
+            /** @description YYYY-MM */
+            month: string;
+            currency: string;
+            mrr: number;
+            /** @description Distinct tenants billed that month */
+            tenantCount: number;
+        };
+        ArrByCurrencyResponseDto: {
+            currency: string;
+            /** @description Latest month's MRR x 12 */
+            arr: number;
+        };
+        MrrWaterfallResponseDto: {
+            currency: string;
+            /** @description The month this waterfall ends on */
+            month: string;
+            previousMonth: string;
+            startingMrr: number;
+            newMrr: number;
+            expansionMrr: number;
+            contractionMrr: number;
+            churnedMrr: number;
+            endingMrr: number;
+            netNewMrr: number;
+            startingTenantCount: number;
+            newTenantCount: number;
+            churnedTenantCount: number;
+        };
+        ChurnRatesResponseDto: {
+            currency: string;
+            month: string;
+            logoChurnRatePercent: number;
+            revenueChurnRatePercent: number;
+        };
+        RevenueRetentionResponseDto: {
+            currency: string;
+            /** @description The month this compares against the previous one */
+            month: string;
+            previousMonth: string;
+            /** @description Can exceed 100% when expansion outpaces churn */
+            netRevenueRetentionPercent: number;
+            /** @description Never exceeds 100% - doesn't count new business */
+            grossRevenueRetentionPercent: number;
+        };
+        QuickRatioResponseDto: {
+            currency: string;
+            month: string;
+            /** @description (new + expansion) / (contraction + churn) - above 4 is excellent, 1-4 is sustainable growth, below 1 means shrinking. Null when there was no contraction or churn to divide by. */
+            value: number | null;
+        };
+        RuleOf40ResponseDto: {
+            currency: string;
+            /** @description The month this compares against the previous one */
+            month: string;
+            previousMonth: string;
+            /** @description Revenue for `month`, from MRR history */
+            revenue: number;
+            /** @description Operating cost entered for `month` - 0 if none was entered */
+            cost: number;
+            revenueGrowthRatePercent: number;
+            profitMarginPercent: number;
+            /** @description growth rate + profit margin - 40 or above is considered healthy */
+            score: number;
+        };
+        LtvToCacResponseDto: {
+            currency: string;
+            month: string;
+            /** @description Average revenue per tenant divided by the monthly logo churn rate */
+            ltv: number;
+            /** @description Acquisition cost entered for `month` divided by tenants acquired that month */
+            cac: number;
+            /** @description LTV divided by CAC - 3 or higher is the common SaaS benchmark */
+            ratio: number;
+            /** @description Months to recoup CAC from revenue alone (CAC / ARPU) - null when there is no ARPU to recoup it from */
+            paybackMonths: number | null;
+        };
+        BurnAndRunwayResponseDto: {
+            currency: string;
+            month: string;
+            /** @description Operating cost minus revenue - positive means burning cash */
+            netBurn: number;
+            /** @description Cash balance entered for `month` */
+            cashBalance: number;
+            /** @description Months of cash left at the current burn rate - null when not burning cash */
+            runwayMonths: number | null;
+            /** @description Net burn divided by net-new MRR - null when there was no growth to divide by */
+            burnMultiple: number | null;
+        };
+        MagicNumberResponseDto: {
+            currency: string;
+            /** @description The month this compares against the previous one */
+            month: string;
+            previousMonth: string;
+            /** @description Net-new MRR this month divided by the PRIOR month's acquisition spend - above 0.75 is considered capital-efficient. Null when no acquisition cost was entered for the prior month. */
+            value: number | null;
+        };
+        TenantRevenueShareResponseDto: {
+            tenantId: string;
+            tenantName: string;
+            amount: number;
+            sharePercent: number;
+        };
+        RevenueConcentrationResponseDto: {
+            currency: string;
+            /** @description The latest billed month this snapshot is for */
+            month: string;
+            topTenants: components["schemas"]["TenantRevenueShareResponseDto"][];
+            /** @description Combined share of the tenants above - a customer-concentration/whale-risk signal */
+            topTenantsSharePercent: number;
+        };
+        SubscriptionFunnelEntryResponseDto: {
+            status: string;
+            count: number;
+        };
+        AverageRevenuePerTenantResponseDto: {
+            currency: string;
+            amount: number;
+        };
+        CohortRetentionRowResponseDto: {
+            /** @description YYYY-MM signup month */
+            cohortMonth: string;
+            cohortSize: number;
+            /** @description Retention percent by months elapsed since the cohort month - index 0 (the cohort month itself) is always 100 */
+            retentionByMonthsElapsed: number[];
+        };
+        PlatformSaasMetricsResponseDto: {
+            mrrHistory: components["schemas"]["MrrHistoryPointResponseDto"][];
+            arr: components["schemas"]["ArrByCurrencyResponseDto"][];
+            /** @description Most recent complete month-over-month comparison, per currency - empty until at least 2 months of billing history exist */
+            waterfall: components["schemas"]["MrrWaterfallResponseDto"][];
+            churnRates: components["schemas"]["ChurnRatesResponseDto"][];
+            /** @description Net/gross revenue retention - empty until at least 2 months of billing history exist */
+            revenueRetention: components["schemas"]["RevenueRetentionResponseDto"][];
+            /** @description Growth efficiency - empty until at least 2 months of billing history exist */
+            quickRatio: components["schemas"]["QuickRatioResponseDto"][];
+            /** @description Empty until both 2+ months of billing history and a matching operating cost entry exist */
+            ruleOf40: components["schemas"]["RuleOf40ResponseDto"][];
+            /** @description Empty until both 2+ months of billing history and a matching acquisition cost entry exist */
+            ltvToCac: components["schemas"]["LtvToCacResponseDto"][];
+            /** @description Empty until both an operating cost and a cash balance entry exist for the latest billed month */
+            burnAndRunway: components["schemas"]["BurnAndRunwayResponseDto"][];
+            /** @description Empty until both 2+ months of billing history and an acquisition cost entry for the PRIOR month exist */
+            magicNumber: components["schemas"]["MagicNumberResponseDto"][];
+            /** @description Customer-concentration risk for the latest billed month, per currency */
+            revenueConcentration: components["schemas"]["RevenueConcentrationResponseDto"][];
+            subscriptionFunnel: components["schemas"]["SubscriptionFunnelEntryResponseDto"][];
+            averageRevenuePerTenant: components["schemas"]["AverageRevenuePerTenantResponseDto"][];
+            cohortRetention: components["schemas"]["CohortRetentionRowResponseDto"][];
+        };
+        OperatingCostResponseDto: {
+            id: string;
+            month: string;
+            currency: string;
+            amount: number;
+            notes: string | null;
+        };
+        SetOperatingCostDto: {
+            /**
+             * @description Calendar month this cost covers
+             * @example 2026-01
+             */
+            month: string;
+            /** @example GHS */
+            currency: string;
+            /** @description Setting a cost again for the same month/currency overwrites this amount */
+            amount: number;
+            /** @example Payroll, hosting, and tooling */
+            notes?: string;
+        };
+        FinancialInputResponseDto: {
+            id: string;
+            month: string;
+            currency: string;
+            amount: number;
+            notes: string | null;
+        };
+        SetFinancialInputDto: {
+            /**
+             * @description Calendar month this entry covers
+             * @example 2026-01
+             */
+            month: string;
+            /** @example GHS */
+            currency: string;
+            /** @description Setting an entry again for the same month/currency overwrites this amount */
+            amount: number;
+            notes?: string;
+        };
+        WalletBalanceResponseDto: {
+            currency: string;
+            balance: number;
+        };
+        WalletTopUpResponseDto: {
+            id: string;
+            tenantId: string;
+            currency: string;
+            amount: number;
+            /** @enum {string} */
+            status: "PENDING" | "PAID" | "CANCELLED";
+            checkoutUrl?: string | null;
+            /** Format: date-time */
+            paidAt?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        RequestWalletTopUpDto: {
+            /**
+             * @description Must match the tenant's own operating currency
+             * @example GHS
+             */
+            currency: string;
+            /**
+             * @description Major currency units (e.g. GHS, not pesewas)
+             * @example 5000
+             */
+            amount: number;
+        };
+        CreateCustomerDto: {
+            organizationId: string;
+            name: string;
+            email?: string;
+            phone?: string;
+            billingAddress?: string;
+        };
+        CustomerResponseDto: {
+            id: string;
+            organizationId: string;
+            name: string;
+            email?: string;
+            phone?: string;
+            billingAddress?: string;
+            createdAt: string;
+            updatedAt: string;
+        };
+        UpdateCustomerDto: {
+            name?: string;
+            email?: string;
+            phone?: string;
+            billingAddress?: string;
+        };
+        InvoiceLineItemDto: {
+            description: string;
+            quantity: number;
+            unitPrice: number;
+        };
+        CreateCustomerInvoiceDto: {
+            organizationId: string;
+            customerId: string;
+            issueDate: string;
+            dueDate: string;
+            /** @example GHS */
+            currency: string;
+            notes?: string;
+            /**
+             * @description Percent, e.g. 15 for 15%
+             * @default 0
+             */
+            taxRate: number;
+            lineItems: components["schemas"]["InvoiceLineItemDto"][];
+        };
+        CustomerInvoiceLineItemResponseDto: {
+            id: string;
+            description: string;
+            quantity: string;
+            unitPrice: string;
+            amount: string;
+            sortOrder: number;
+        };
+        CustomerInvoiceResponseDto: {
+            id: string;
+            organizationId: string;
+            customerId: string;
+            customerName: string;
+            invoiceNumber: string;
+            issueDate: string;
+            dueDate: string;
+            currency: string;
+            /** @enum {string} */
+            status: "DRAFT" | "SENT" | "PAID" | "OVERDUE" | "CANCELLED";
+            notes?: string;
+            taxRate: string;
+            subtotal: string;
+            taxAmount: string;
+            total: string;
+            sentAt?: string;
+            paidAt?: string;
+            lineItems: components["schemas"]["CustomerInvoiceLineItemResponseDto"][];
+            createdAt: string;
+            updatedAt: string;
+        };
+        UpdateCustomerInvoiceDto: {
+            customerId?: string;
+            issueDate?: string;
+            dueDate?: string;
+            /** @example GHS */
+            currency?: string;
+            notes?: string;
+            /** @description Percent, e.g. 15 for 15% */
+            taxRate?: number;
+            lineItems?: components["schemas"]["InvoiceLineItemDto"][];
+        };
+        UpdateInvoiceStatusDto: {
+            /** @enum {string} */
+            status: "DRAFT" | "SENT" | "PAID" | "OVERDUE" | "CANCELLED";
+        };
+        HowItWorksVideoResponseDto: {
+            id: string;
+            title: string;
+            description?: string;
+            videoUrl: string;
+            category?: string;
+            sortOrder: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CreateHowItWorksVideoDto: {
+            title: string;
+            description?: string;
+            /** @example https://www.youtube.com/watch?v=... */
+            videoUrl: string;
+            /** @example Getting Started */
+            category?: string;
+            /**
+             * @description Lower numbers appear first
+             * @default 0
+             */
+            sortOrder: number;
+        };
+        UpdateHowItWorksVideoDto: {
+            title?: string;
+            description?: string;
+            videoUrl?: string;
+            category?: string;
+            /** @description Lower numbers appear first */
+            sortOrder?: number;
+        };
+        GlAccountResponseDto: {
+            id: string;
+            code: string;
+            name: string;
+            type: string;
+        };
+        CreateGlAccountDto: {
+            /**
+             * @description Unique per tenant - not tied to any numbering convention
+             * @example 5100
+             */
+            code: string;
+            /** @example Rent Expense */
+            name: string;
+            /** @enum {string} */
+            type: "ASSET" | "LIABILITY" | "EQUITY" | "REVENUE" | "EXPENSE";
+        };
+        UpdateGlAccountDto: {
+            /** @description Display name only - the account code and type are fixed. */
+            name: string;
+        };
+        ManualJournalEntryLineDto: {
+            /** @enum {string} */
+            accountCode: "1000" | "1100" | "2000" | "2100" | "2200" | "4000" | "5000" | "5900" | "4900" | "1500" | "1550" | "5200" | "2300";
+            /** @description Set exactly one of debit/credit per line, never both. */
+            debit?: number;
+            credit?: number;
+        };
+        CreateManualJournalEntryDto: {
+            organizationId: string;
+            entryDate: string;
+            description: string;
+            /** @example GHS */
+            currency: string;
+            lines: components["schemas"]["ManualJournalEntryLineDto"][];
+            /** @description Department this entry belongs to - an OrganizationUnit id. */
+            organizationUnitId?: string;
+            /** @description Cost center this entry belongs to. */
+            costCenterId?: string;
+        };
+        JournalEntryLineResponseDto: {
+            accountCode: string;
+            accountName: string;
+            debit: string;
+            credit: string;
+        };
+        JournalEntryResponseDto: {
+            id: string;
+            organizationId: string;
+            entryDate: string;
+            description: string;
+            currency: string;
+            sourceType: string;
+            sourceId: string;
+            /** @description Set once this entry has been voided by a reversal. */
+            voidedAt: string | null;
+            /** @description Set when this entry is itself the reversal of another. */
+            reversalOfId: string | null;
+            createdAt: string;
+            /** @description "System" for automatic postings, the preparer's name for manual entries. */
+            preparedByName: string | null;
+            /** @description Null until the (not yet built) approval workflow sets it. */
+            approvedAt: string | null;
+            approvedByName: string | null;
+            organizationUnitId: string | null;
+            /** @description Department this entry is tagged with, if any. */
+            organizationUnitName: string | null;
+            costCenterId: string | null;
+            costCenterName: string | null;
+            lines: components["schemas"]["JournalEntryLineResponseDto"][];
+        };
+        ProfitAndLossByCurrencyDto: {
+            currency: string;
+            /** @description Only reflects revenue/expense actually posted so far - payroll disbursement and customer invoicing today, plus whatever manual journal entries have been recorded. Not a complete P&L until other expense sources (rent, subscriptions, etc) are also entered. */
+            totalRevenue: number;
+            totalExpense: number;
+            netIncome: number;
+        };
+        ProfitAndLossResponseDto: {
+            organizationId?: string;
+            from: string;
+            to: string;
+            /** @description One entry per currency the tenant has posted activity in - never blended together, since summing different currencies into one number would be meaningless. */
+            byCurrency: components["schemas"]["ProfitAndLossByCurrencyDto"][];
+        };
+        CashFlowByCurrencyDto: {
+            currency: string;
+            /** @description Net change in Cash and Bank over the period, classified entirely as Operating - there is no AP/investing/financing activity yet to split out into the other standard cash-flow sections. */
+            netCashChange: number;
+        };
+        CashFlowResponseDto: {
+            organizationId?: string;
+            from: string;
+            to: string;
+            /** @description One entry per currency the tenant has posted cash activity in - never blended together. */
+            byCurrency: components["schemas"]["CashFlowByCurrencyDto"][];
+        };
+        BalanceSheetByCurrencyDto: {
+            currency: string;
+            totalAssets: number;
+            totalLiabilities: number;
+            /** @description Retained earnings since inception (cumulative revenue minus cumulative expense as of the balance sheet date) - there is no dedicated Equity account in the default chart of accounts. */
+            totalEquity: number;
+        };
+        BalanceSheetResponseDto: {
+            organizationId?: string;
+            /** @description The balance sheet date - a snapshot as of this point in time, not a period */
+            asOf: string;
+            /** @description One entry per currency the tenant has posted activity in - never blended together. */
+            byCurrency: components["schemas"]["BalanceSheetByCurrencyDto"][];
+        };
+        TrialBalanceAccountRowDto: {
+            accountCode: string;
+            accountName: string;
+            debit: number;
+            credit: number;
+        };
+        TrialBalanceByCurrencyDto: {
+            currency: string;
+            /** @description Only accounts with any activity - not every account in the chart of accounts */
+            accounts: components["schemas"]["TrialBalanceAccountRowDto"][];
+            /** @description Always equal to totalCredit - proves the ledger balances as of this date */
+            totalDebit: number;
+            totalCredit: number;
+        };
+        TrialBalanceResponseDto: {
+            organizationId?: string;
+            /** @description A snapshot as of this point in time, not a period */
+            asOf: string;
+            /** @description One entry per currency the tenant has posted activity in - never blended together. */
+            byCurrency: components["schemas"]["TrialBalanceByCurrencyDto"][];
+        };
+        BudgetVsActualRowDto: {
+            accountCode: string;
+            accountName: string;
+            budgetAmount: number;
+            actualAmount: number;
+            /** @description actualAmount - budgetAmount - positive means over budget */
+            varianceAmount: number;
+            /** @description Null when budgetAmount is 0 */
+            variancePercent: number | null;
+        };
+        BudgetVsActualByCurrencyDto: {
+            currency: string;
+            /** @description Only accounts that have a budget set for this year - not every account in the chart of accounts */
+            rows: components["schemas"]["BudgetVsActualRowDto"][];
+            totalBudget: number;
+            totalActual: number;
+            totalVariance: number;
+        };
+        BudgetVsActualResponseDto: {
+            organizationId?: string;
+            fiscalYear: number;
+            /** @description One entry per currency that has a budget set for this year - never blended together. */
+            byCurrency: components["schemas"]["BudgetVsActualByCurrencyDto"][];
+        };
+        BudgetResponseDto: {
+            id: string;
+            organizationId: string;
+            accountId: string;
+            accountCode: string;
+            accountName: string;
+            fiscalYear: number;
+            currency: string;
+            amount: string;
+            createdAt: string;
+            updatedAt: string;
+        };
+        SetBudgetDto: {
+            organizationId: string;
+            /** @description A GlAccount id from this tenant's chart of accounts */
+            accountId: string;
+            /**
+             * @description Calendar year (Jan 1 - Dec 31) - no custom fiscal-year-start support
+             * @example 2026
+             */
+            fiscalYear: number;
+            /** @example GHS */
+            currency: string;
+            /** @description Setting a budget again for the same account/year/currency overwrites this amount */
+            amount: number;
+        };
+        PeriodCloseResponseDto: {
+            organizationId: string;
+            /** @description Null if this organization has never been closed - every manual entry date is postable/voidable */
+            closedThrough?: string;
+            closedAt?: string;
+            closedBy?: string;
+        };
+        SetPeriodCloseDto: {
+            organizationId: string;
+            /** @description Manual journal entries dated on or before this date can no longer be posted or voided */
+            closedThrough: string;
+        };
+        BankReconciliationResponseDto: {
+            id: string;
+            organizationId: string;
+            currency: string;
+            statementDate: string;
+            statementEndingBalance: string;
+            /** @enum {string} */
+            status: "IN_PROGRESS" | "COMPLETED";
+            completedAt?: string;
+            createdAt: string;
+            updatedAt: string;
+        };
+        CreateBankReconciliationDto: {
+            organizationId: string;
+            /** @example GHS */
+            currency: string;
+            /** @description The bank statement date - every Cash and Bank line on or before this date is eligible to clear */
+            statementDate: string;
+            /** @description The bank statement's own ending balance - what the reconciliation's cleared lines must sum to before it can be completed */
+            statementEndingBalance: number;
+        };
+        BankReconciliationLineResponseDto: {
+            id: string;
+            entryDate: string;
+            description: string;
+            debit: string;
+            credit: string;
+            /** @description Whether this line is cleared in this reconciliation */
+            cleared: boolean;
+        };
+        BankReconciliationDetailResponseDto: {
+            id: string;
+            organizationId: string;
+            currency: string;
+            statementDate: string;
+            statementEndingBalance: string;
+            /** @enum {string} */
+            status: "IN_PROGRESS" | "COMPLETED";
+            completedAt?: string;
+            createdAt: string;
+            updatedAt: string;
+            /** @description Every Cash and Bank line on or before the statement date that is unclaimed or claimed by this reconciliation */
+            lines: components["schemas"]["BankReconciliationLineResponseDto"][];
+            /** @description Net balance of every line currently marked cleared */
+            clearedBalance: number;
+            /** @description clearedBalance - statementEndingBalance - zero when balanced */
+            difference: number;
+            isBalanced: boolean;
+        };
+        RecurringJournalEntryLineResponseDto: {
+            id: string;
+            accountId: string;
+            accountCode: string;
+            accountName: string;
+            debit: string;
+            credit: string;
+        };
+        RecurringJournalEntryResponseDto: {
+            id: string;
+            organizationId: string;
+            description: string;
+            currency: string;
+            dayOfMonth: number;
+            startDate: string;
+            endDate?: string;
+            nextRunDate: string;
+            lastRunDate?: string;
+            isActive: boolean;
+            lines: components["schemas"]["RecurringJournalEntryLineResponseDto"][];
+            createdAt: string;
+            updatedAt: string;
+        };
+        RecurringJournalEntryLineDto: {
+            /** @description A GlAccount id from this tenant's chart of accounts */
+            accountId: string;
+            /** @description Set exactly one of debit/credit per line, never both. */
+            debit?: number;
+            credit?: number;
+        };
+        CreateRecurringJournalEntryDto: {
+            organizationId: string;
+            description: string;
+            /** @example GHS */
+            currency: string;
+            /**
+             * @description Day of the month this posts on - capped at 28 so every month has that day
+             * @example 5
+             */
+            dayOfMonth: number;
+            /** @description The first run is the first occurrence of dayOfMonth on or after this date */
+            startDate: string;
+            /** @description Once a scheduled run would fall after this date, the template deactivates itself instead of posting */
+            endDate?: string;
+            lines: components["schemas"]["RecurringJournalEntryLineDto"][];
+        };
+        UpdateRecurringJournalEntryDto: {
+            isActive: boolean;
+        };
+        HomeCurrencyResponseDto: {
+            organizationId: string;
+            /** @description Null if this organization has never had a home currency set - FX revaluation cannot run for it yet */
+            currency?: string;
+        };
+        SetHomeCurrencyDto: {
+            organizationId: string;
+            /**
+             * @description The currency every FX revaluation for this organization converts foreign balances into
+             * @example GHS
+             */
+            currency: string;
+        };
+        FxRevaluationResponseDto: {
+            id: string;
+            organizationId: string;
+            currency: string;
+            asOfDate: string;
+            rate: string;
+            /** @description Null on the very first revaluation ever run for this organization/currency - it only establishes the baseline rate */
+            previousRate?: string;
+            /** @description Home-currency amount; null when previousRate is null, or 0 when no monetary balance in this currency existed as of asOfDate */
+            gainLoss?: string;
+            /** @description Null when nothing was posted (first run, or every monetary balance was zero) */
+            journalEntryId?: string;
+            createdAt: string;
+        };
+        RunFxRevaluationDto: {
+            organizationId: string;
+            /**
+             * @description The foreign currency being revalued - must differ from the organization's home currency
+             * @example USD
+             */
+            currency: string;
+            /** @description Every monetary account balance in this currency is revalued as of this date */
+            asOfDate: string;
+            /** @description Units of the home currency per 1 unit of currency, as of asOfDate */
+            rate: number;
+        };
+        FixedAssetResponseDto: {
+            id: string;
+            organizationId: string;
+            description: string;
+            currency: string;
+            cost: string;
+            salvageValue: string;
+            usefulLifeMonths: number;
+            acquisitionDate: string;
+            /** @enum {string} */
+            status: "ACTIVE" | "FULLY_DEPRECIATED" | "DISPOSED";
+            accumulatedDepreciation: string;
+            /** @description cost minus accumulatedDepreciation - not persisted, computed on read */
+            netBookValue: string;
+            /** @description Null once FULLY_DEPRECIATED or DISPOSED */
+            nextDepreciationDate?: string;
+            /** @description Null until the first depreciation run includes this asset */
+            lastDepreciationDate?: string;
+            /** @description Set only once status is DISPOSED */
+            disposedAt?: string;
+            createdAt: string;
+        };
+        CreateFixedAssetDto: {
+            organizationId: string;
+            description: string;
+            /** @example GHS */
+            currency: string;
+            /** @description Historical acquisition cost - posts Dr FIXED_ASSETS / Cr CASH_AND_BANK for this amount immediately */
+            cost: number;
+            /**
+             * @description Estimated residual value at the end of usefulLifeMonths - depreciation never reduces the asset below this
+             * @default 0
+             */
+            salvageValue: number;
+            /** @description Straight-line depreciation is spread evenly across this many months */
+            usefulLifeMonths: number;
+            /** @description The depreciation posting day-of-month is derived from this date (capped at 28) */
+            acquisitionDate: string;
+        };
+        DisposeFixedAssetDto: {
+            /** @description Defaults to now if omitted */
+            disposedAt?: string;
+        };
+        DepreciationRunResponseDto: {
+            id: string;
+            organizationId: string;
+            currency: string;
+            asOfDate: string;
+            totalDepreciation: string;
+            /** @description How many assets were due and included in this run */
+            assetCount: number;
+            /** @description Null when nothing was due (assetCount 0) */
+            journalEntryId?: string;
+            createdAt: string;
+        };
+        RunDepreciationDto: {
+            organizationId: string;
+            /** @example GHS */
+            currency: string;
+            /** @description Every ACTIVE asset in this organization/currency whose schedule is due by this date is depreciated for one period */
+            asOfDate: string;
+        };
+        ExpenseResponseDto: {
+            id: string;
+            organizationId: string;
+            description: string;
+            category: string;
+            currency: string;
+            amount: string;
+            expenseDate: string;
+            /** @enum {string} */
+            paidBy: "COMPANY" | "EMPLOYEE";
+            /** @description Set only once an EMPLOYEE-paid expense has been reimbursed */
+            reimbursedAt?: string;
+            notes?: string;
+            createdAt: string;
+        };
+        CreateExpenseDto: {
+            organizationId: string;
+            description: string;
+            /**
+             * @description A reporting tag only - every expense still posts to the one General Expense account
+             * @enum {string}
+             */
+            category: "OFFICE_SUPPLIES" | "TRAVEL" | "UTILITIES" | "MEALS_AND_ENTERTAINMENT" | "PROFESSIONAL_SERVICES" | "RENT" | "OTHER";
+            /** @example GHS */
+            currency: string;
+            amount: number;
+            expenseDate: string;
+            /**
+             * @description COMPANY credits Cash and Bank immediately; EMPLOYEE credits Expense Reimbursements Payable until reimbursed
+             * @enum {string}
+             */
+            paidBy: "COMPANY" | "EMPLOYEE";
+            notes?: string;
+        };
+        ReimburseExpenseDto: {
+            /** @description Defaults to now if omitted */
+            reimbursedAt?: string;
+        };
+        CostCenterResponseDto: {
+            id: string;
+            organizationId: string;
+            name: string;
+            code?: string | null;
+        };
+        CreateCostCenterDto: {
+            organizationId: string;
+            name: string;
+            code?: string;
+        };
+        CreateVendorDto: {
+            organizationId: string;
+            name: string;
+            email?: string;
+            phone?: string;
+            address?: string;
+        };
+        VendorResponseDto: {
+            id: string;
+            organizationId: string;
+            name: string;
+            email?: string;
+            phone?: string;
+            address?: string;
+            createdAt: string;
+            updatedAt: string;
+        };
+        UpdateVendorDto: {
+            name?: string;
+            email?: string;
+            phone?: string;
+            address?: string;
+        };
+        BillLineItemDto: {
+            description: string;
+            quantity: number;
+            unitPrice: number;
+        };
+        CreateVendorBillDto: {
+            organizationId: string;
+            vendorId: string;
+            /** @description The vendor's own invoice/bill number, for matching against the paper they sent */
+            vendorReference?: string;
+            billDate: string;
+            dueDate: string;
+            /** @example GHS */
+            currency: string;
+            notes?: string;
+            /**
+             * @description Percent, e.g. 15 for 15%
+             * @default 0
+             */
+            taxRate: number;
+            lineItems: components["schemas"]["BillLineItemDto"][];
+        };
+        VendorBillLineItemResponseDto: {
+            id: string;
+            description: string;
+            quantity: string;
+            unitPrice: string;
+            amount: string;
+            sortOrder: number;
+        };
+        VendorBillResponseDto: {
+            id: string;
+            organizationId: string;
+            vendorId: string;
+            vendorName: string;
+            billNumber: string;
+            vendorReference?: string;
+            billDate: string;
+            dueDate: string;
+            currency: string;
+            /** @enum {string} */
+            status: "DRAFT" | "APPROVED" | "PARTIALLY_PAID" | "PAID" | "OVERDUE" | "CANCELLED";
+            notes?: string;
+            taxRate: string;
+            subtotal: string;
+            taxAmount: string;
+            total: string;
+            /** @description Sum of every VendorPaymentAllocation recorded against this bill */
+            amountPaid: string;
+            /** @description total minus amountPaid - not persisted, computed on read */
+            balanceDue: string;
+            approvedAt?: string;
+            paidAt?: string;
+            lineItems: components["schemas"]["VendorBillLineItemResponseDto"][];
+            createdAt: string;
+            updatedAt: string;
+        };
+        UpdateVendorBillDto: {
+            vendorId?: string;
+            vendorReference?: string;
+            billDate?: string;
+            dueDate?: string;
+            /** @example GHS */
+            currency?: string;
+            notes?: string;
+            /** @description Percent, e.g. 15 for 15% */
+            taxRate?: number;
+            lineItems?: components["schemas"]["BillLineItemDto"][];
+        };
+        UpdateBillStatusDto: {
+            /** @enum {string} */
+            status: "DRAFT" | "APPROVED" | "PARTIALLY_PAID" | "PAID" | "OVERDUE" | "CANCELLED";
+        };
+        VendorPaymentAllocationDto: {
+            /** @description A VendorBill id belonging to this payment's vendor */
+            billId: string;
+            /** @description Must not exceed this bill's remaining balance (total - amountPaid) */
+            amount: number;
+        };
+        CreateVendorPaymentDto: {
+            organizationId: string;
+            vendorId: string;
+            paymentDate: string;
+            /**
+             * @description Every allocated bill must share this currency
+             * @example GHS
+             */
+            currency: string;
+            /** @enum {string} */
+            method: "BANK_TRANSFER" | "CASH" | "CHEQUE" | "MOBILE_MONEY" | "CARD" | "OTHER";
+            /** @description A bank/mobile-money transaction reference, cheque number, etc. */
+            reference?: string;
+            notes?: string;
+            /** @description The payment's total is the sum of these allocations - one payment can cover several bills, or only part of one */
+            allocations: components["schemas"]["VendorPaymentAllocationDto"][];
+        };
+        VendorPaymentAllocationResponseDto: {
+            id: string;
+            billId: string;
+            billNumber: string;
+            amount: string;
+        };
+        VendorPaymentResponseDto: {
+            id: string;
+            organizationId: string;
+            vendorId: string;
+            vendorName: string;
+            paymentDate: string;
+            currency: string;
+            /** @description The sum of every allocation below */
+            amount: string;
+            method: string;
+            reference?: string;
+            notes?: string;
+            allocations: components["schemas"]["VendorPaymentAllocationResponseDto"][];
+            createdAt: string;
         };
     };
     responses: never;
@@ -4389,6 +6720,29 @@ export interface operations {
             };
         };
     };
+    TenantMeController_updatePerformanceFramework: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePerformanceFrameworkDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantMeResponseDto"];
+                };
+            };
+        };
+    };
     TenantMeController_requestLogoUpload: {
         parameters: {
             query?: never;
@@ -4563,6 +6917,31 @@ export interface operations {
             };
         };
     };
+    TenantController_updateAddOn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTenantAddOnDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantResponseDto"];
+                };
+            };
+        };
+    };
     OrganizationVerificationController_list: {
         parameters: {
             query?: never;
@@ -4716,6 +7095,31 @@ export interface operations {
             };
         };
     };
+    OrganizationController_bulkImportAddresses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkUpdateOrganizationAddressesDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationAddressImportResultDto"];
+                };
+            };
+        };
+    };
     OrganizationController_findById: {
         parameters: {
             query?: never;
@@ -4852,6 +7256,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentViewUrlResponseDto"];
+                };
+            };
+        };
+    };
+    OrganizationController_requestLogoUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestOrganizationLogoUploadDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequestOrganizationLogoUploadResponseDto"];
+                };
+            };
+        };
+    };
+    OrganizationController_removeLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OrganizationController_getLogoUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationLogoUrlResponseDto"];
                 };
             };
         };
@@ -5028,6 +7500,65 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AuditLogPageResponseDto"];
                 };
+            };
+        };
+    };
+    DemoRequestPublicController_submit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitDemoRequestDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoRequestResponseDto"];
+                };
+            };
+        };
+    };
+    DemoRequestAdminController_listRecent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoRequestAdminResponseDto"][];
+                };
+            };
+        };
+    };
+    DemoRequestAdminController_markAllViewed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -5618,6 +8149,32 @@ export interface operations {
             };
         };
     };
+    PlatformTenantUsersController_impersonate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImpersonateUserDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImpersonationTokenResponseDto"];
+                };
+            };
+        };
+    };
     TenantAuthController_login: {
         parameters: {
             query?: never;
@@ -5642,6 +8199,303 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuthResponseDto"] | components["schemas"]["MfaChallengeResponseDto"];
+                };
+            };
+        };
+    };
+    PlatformBroadcastController_send: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BroadcastNotificationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BroadcastResultDto"];
+                };
+            };
+        };
+    };
+    NotificationTemplateController_list: {
+        parameters: {
+            query?: {
+                activeOnly?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationTemplateResponseDto"][];
+                };
+            };
+        };
+    };
+    NotificationTemplateController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateNotificationTemplateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationTemplateResponseDto"];
+                };
+            };
+        };
+    };
+    NotificationTemplateController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationTemplateResponseDto"];
+                };
+            };
+        };
+    };
+    NotificationTemplateController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateNotificationTemplateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationTemplateResponseDto"];
+                };
+            };
+        };
+    };
+    MyNotificationController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationResponseDto"][];
+                };
+            };
+        };
+    };
+    MyNotificationController_markRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationResponseDto"];
+                };
+            };
+        };
+    };
+    MyNotificationController_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    NotificationController_list: {
+        parameters: {
+            query?: {
+                userId?: string;
+                status?: unknown;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationResponseDto"][];
+                };
+            };
+        };
+    };
+    NotificationController_send: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendNotificationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationResponseDto"];
+                };
+            };
+        };
+    };
+    NotificationController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationResponseDto"];
+                };
+            };
+        };
+    };
+    NotificationController_sendFromTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendFromTemplateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationResponseDto"];
+                };
+            };
+        };
+    };
+    PlatformNotificationController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationDeliveryResponseDto"];
                 };
             };
         };
@@ -5695,7 +8549,54 @@ export interface operations {
             };
         };
     };
+    EmployeeController_bulkImportEmployees: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkImportEmployeesDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkImportResultDto"];
+                };
+            };
+        };
+    };
     EmployeeController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmployeeResponseDto"];
+                };
+            };
+        };
+    };
+    EmployeeController_softDelete: {
         parameters: {
             query?: never;
             header?: never;
@@ -6571,6 +9472,32 @@ export interface operations {
             };
         };
     };
+    LeaveRequestController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateLeaveRequestDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaveRequestResponseDto"];
+                };
+            };
+        };
+    };
     LeaveRequestController_approve: {
         parameters: {
             query?: never;
@@ -6686,6 +9613,98 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AttendancePolicyResponseDto"];
+                };
+            };
+        };
+    };
+    AttendanceLocationController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceLocationResponseDto"][];
+                };
+            };
+        };
+    };
+    AttendanceLocationController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAttendanceLocationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceLocationResponseDto"];
+                };
+            };
+        };
+    };
+    AttendanceLocationController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AttendanceLocationController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAttendanceLocationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceLocationResponseDto"];
                 };
             };
         };
@@ -7257,6 +10276,26 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PerformanceGoalResponseDto"];
                 };
+            };
+        };
+    };
+    PerformanceGoalController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -7975,6 +11014,50 @@ export interface operations {
             };
         };
     };
+    MyApplicationController_getResumeViewUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentViewUrlResponseDto"];
+                };
+            };
+        };
+    };
+    MyApplicationController_getIdentityDocumentViewUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentViewUrlResponseDto"];
+                };
+            };
+        };
+    };
     ApplicationController_list: {
         parameters: {
             query?: {
@@ -8151,6 +11234,146 @@ export interface operations {
             };
         };
     };
+    ApplicationController_getResumeViewUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentViewUrlResponseDto"];
+                };
+            };
+        };
+    };
+    ApplicationController_getIdentityDocumentViewUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentViewUrlResponseDto"];
+                };
+            };
+        };
+    };
+    PublicApplicationController_getOpenRequisition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicJobRequisitionResponseDto"];
+                };
+            };
+        };
+    };
+    PublicApplicationController_requestResumeUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestPublicResumeUploadDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicDocumentUploadUrlResponseDto"];
+                };
+            };
+        };
+    };
+    PublicApplicationController_requestIdentityDocumentUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestPublicIdentityDocumentUploadDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicDocumentUploadUrlResponseDto"];
+                };
+            };
+        };
+    };
+    PublicApplicationController_apply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitPublicApplicationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicApplicationResponseDto"];
+                };
+            };
+        };
+    };
     HeadcountReportController_generate: {
         parameters: {
             query?: {
@@ -8270,280 +11493,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RecruitmentPipelineReportResponseDto"];
-                };
-            };
-        };
-    };
-    NotificationTemplateController_list: {
-        parameters: {
-            query?: {
-                activeOnly?: string;
-            };
-            header?: never;
-            path: {
-                tenantId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationTemplateResponseDto"][];
-                };
-            };
-        };
-    };
-    NotificationTemplateController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateNotificationTemplateDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationTemplateResponseDto"];
-                };
-            };
-        };
-    };
-    NotificationTemplateController_findById: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationTemplateResponseDto"];
-                };
-            };
-        };
-    };
-    NotificationTemplateController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateNotificationTemplateDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationTemplateResponseDto"];
-                };
-            };
-        };
-    };
-    MyNotificationController_list: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationResponseDto"][];
-                };
-            };
-        };
-    };
-    MyNotificationController_markRead: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationResponseDto"];
-                };
-            };
-        };
-    };
-    MyNotificationController_delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    NotificationController_list: {
-        parameters: {
-            query?: {
-                userId?: string;
-                status?: unknown;
-            };
-            header?: never;
-            path: {
-                tenantId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationResponseDto"][];
-                };
-            };
-        };
-    };
-    NotificationController_send: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SendNotificationDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationResponseDto"];
-                };
-            };
-        };
-    };
-    NotificationController_findById: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationResponseDto"];
-                };
-            };
-        };
-    };
-    NotificationController_sendFromTemplate: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SendFromTemplateDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationResponseDto"];
-                };
-            };
-        };
-    };
-    PlatformNotificationController_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationDeliveryResponseDto"];
                 };
             };
         };
@@ -8712,6 +11661,1955 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlatformBillingSummaryResponseDto"];
+                };
+            };
+        };
+    };
+    PlatformBillingController_getSaasMetrics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformSaasMetricsResponseDto"];
+                };
+            };
+        };
+    };
+    PlatformBillingController_listOperatingCosts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperatingCostResponseDto"][];
+                };
+            };
+        };
+    };
+    PlatformBillingController_setOperatingCost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetOperatingCostDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperatingCostResponseDto"];
+                };
+            };
+        };
+    };
+    PlatformBillingController_listAcquisitionCosts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinancialInputResponseDto"][];
+                };
+            };
+        };
+    };
+    PlatformBillingController_setAcquisitionCost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetFinancialInputDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinancialInputResponseDto"];
+                };
+            };
+        };
+    };
+    PlatformBillingController_listCashBalances: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinancialInputResponseDto"][];
+                };
+            };
+        };
+    };
+    PlatformBillingController_setCashBalance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetFinancialInputDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinancialInputResponseDto"];
+                };
+            };
+        };
+    };
+    TenantPayrollWalletController_balances: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalletBalanceResponseDto"][];
+                };
+            };
+        };
+    };
+    TenantPayrollWalletController_listTopUps: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalletTopUpResponseDto"][];
+                };
+            };
+        };
+    };
+    TenantPayrollWalletController_requestTopUp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestWalletTopUpDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalletTopUpResponseDto"];
+                };
+            };
+        };
+    };
+    CustomerController_list: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerResponseDto"][];
+                };
+            };
+        };
+    };
+    CustomerController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCustomerDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerResponseDto"];
+                };
+            };
+        };
+    };
+    CustomerController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerResponseDto"];
+                };
+            };
+        };
+    };
+    CustomerController_softDelete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerResponseDto"];
+                };
+            };
+        };
+    };
+    CustomerController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCustomerDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerResponseDto"];
+                };
+            };
+        };
+    };
+    CustomerInvoiceController_list: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerInvoiceResponseDto"][];
+                };
+            };
+        };
+    };
+    CustomerInvoiceController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCustomerInvoiceDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerInvoiceResponseDto"];
+                };
+            };
+        };
+    };
+    CustomerInvoiceController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerInvoiceResponseDto"];
+                };
+            };
+        };
+    };
+    CustomerInvoiceController_softDelete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CustomerInvoiceController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCustomerInvoiceDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerInvoiceResponseDto"];
+                };
+            };
+        };
+    };
+    CustomerInvoiceController_updateStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateInvoiceStatusDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerInvoiceResponseDto"];
+                };
+            };
+        };
+    };
+    CustomerInvoiceController_downloadPdf: {
+        parameters: {
+            query: {
+                download: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HowItWorksVideoController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HowItWorksVideoResponseDto"][];
+                };
+            };
+        };
+    };
+    HowItWorksVideoController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateHowItWorksVideoDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HowItWorksVideoController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HowItWorksVideoController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateHowItWorksVideoDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    FinanceController_listAccounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GlAccountResponseDto"][];
+                };
+            };
+        };
+    };
+    FinanceController_createAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateGlAccountDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GlAccountResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_renameAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateGlAccountDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GlAccountResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_listJournalEntries: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JournalEntryResponseDto"][];
+                };
+            };
+        };
+    };
+    FinanceController_createJournalEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateManualJournalEntryDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JournalEntryResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_voidJournalEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JournalEntryResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_profitAndLoss: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfitAndLossResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_downloadProfitAndLossPdf: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                organizationId: string;
+                download: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    FinanceController_cashFlow: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashFlowResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_downloadCashFlowPdf: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                organizationId: string;
+                download: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    FinanceController_balanceSheet: {
+        parameters: {
+            query: {
+                asOf: string;
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BalanceSheetResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_downloadBalanceSheetPdf: {
+        parameters: {
+            query: {
+                asOf: string;
+                organizationId: string;
+                download: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    FinanceController_trialBalance: {
+        parameters: {
+            query: {
+                asOf: string;
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrialBalanceResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_downloadTrialBalancePdf: {
+        parameters: {
+            query: {
+                asOf: string;
+                organizationId: string;
+                download: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    FinanceController_budgetVsActual: {
+        parameters: {
+            query: {
+                fiscalYear: string;
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetVsActualResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_listBudgets: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+                fiscalYear?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetResponseDto"][];
+                };
+            };
+        };
+    };
+    FinanceController_setBudget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetBudgetDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_deleteBudget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    FinanceController_getPeriodClose: {
+        parameters: {
+            query: {
+                organizationId: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PeriodCloseResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_setPeriodClose: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPeriodCloseDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PeriodCloseResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_listReconciliations: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BankReconciliationResponseDto"][];
+                };
+            };
+        };
+    };
+    FinanceController_createReconciliation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBankReconciliationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BankReconciliationResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_getReconciliationDetail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BankReconciliationDetailResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_deleteReconciliation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    FinanceController_toggleReconciliationLine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    FinanceController_completeReconciliation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BankReconciliationResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_listRecurringJournalEntries: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecurringJournalEntryResponseDto"][];
+                };
+            };
+        };
+    };
+    FinanceController_createRecurringJournalEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRecurringJournalEntryDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecurringJournalEntryResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_deleteRecurringJournalEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    FinanceController_setRecurringJournalEntryActive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRecurringJournalEntryDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecurringJournalEntryResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_getHomeCurrency: {
+        parameters: {
+            query: {
+                organizationId: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HomeCurrencyResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_setHomeCurrency: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetHomeCurrencyDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HomeCurrencyResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_listFxRevaluations: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FxRevaluationResponseDto"][];
+                };
+            };
+        };
+    };
+    FinanceController_runFxRevaluation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunFxRevaluationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FxRevaluationResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_listFixedAssets: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FixedAssetResponseDto"][];
+                };
+            };
+        };
+    };
+    FinanceController_createFixedAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateFixedAssetDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FixedAssetResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_disposeFixedAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DisposeFixedAssetDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FixedAssetResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_listDepreciationRuns: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepreciationRunResponseDto"][];
+                };
+            };
+        };
+    };
+    FinanceController_runDepreciation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunDepreciationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepreciationRunResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_listExpenses: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpenseResponseDto"][];
+                };
+            };
+        };
+    };
+    FinanceController_createExpense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateExpenseDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpenseResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_reimburseExpense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReimburseExpenseDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpenseResponseDto"];
+                };
+            };
+        };
+    };
+    FinanceController_listCostCenters: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostCenterResponseDto"][];
+                };
+            };
+        };
+    };
+    FinanceController_createCostCenter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCostCenterDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostCenterResponseDto"];
+                };
+            };
+        };
+    };
+    VendorController_list: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorResponseDto"][];
+                };
+            };
+        };
+    };
+    VendorController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateVendorDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorResponseDto"];
+                };
+            };
+        };
+    };
+    VendorController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorResponseDto"];
+                };
+            };
+        };
+    };
+    VendorController_softDelete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorResponseDto"];
+                };
+            };
+        };
+    };
+    VendorController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateVendorDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorResponseDto"];
+                };
+            };
+        };
+    };
+    VendorBillController_list: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorBillResponseDto"][];
+                };
+            };
+        };
+    };
+    VendorBillController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateVendorBillDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorBillResponseDto"];
+                };
+            };
+        };
+    };
+    VendorBillController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorBillResponseDto"];
+                };
+            };
+        };
+    };
+    VendorBillController_softDelete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    VendorBillController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateVendorBillDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorBillResponseDto"];
+                };
+            };
+        };
+    };
+    VendorBillController_updateStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBillStatusDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorBillResponseDto"];
+                };
+            };
+        };
+    };
+    VendorPaymentController_list: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+                vendorId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorPaymentResponseDto"][];
+                };
+            };
+        };
+    };
+    VendorPaymentController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateVendorPaymentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorPaymentResponseDto"];
+                };
+            };
+        };
+    };
+    VendorPaymentController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorPaymentResponseDto"];
                 };
             };
         };

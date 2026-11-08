@@ -42,7 +42,12 @@ export const envSchema = z.object({
   // LogNotificationDispatcher (logs instead of sending) rather than
   // failing to boot, so local/dev/CI environments never need a real key.
   SENDGRID_API_KEY: z.string().optional(),
-  SENDGRID_FROM_EMAIL: z.string().email().optional(),
+  // .optional() alone only accepts a missing key (undefined) - an env file
+  // with the line present but blank (SENDGRID_FROM_EMAIL=), which is how
+  // Docker Compose represents "left unset" from an .env file, still hands
+  // Zod an empty string, and .email() rejects that. Accept '' explicitly
+  // so the documented "leave it blank" story above actually works.
+  SENDGRID_FROM_EMAIL: z.union([z.string().email(), z.literal('')]).optional(),
 
   // AES-256 key (64-char hex = 32 bytes) for encrypting TOTP secrets at
   // rest. Optional at the env-schema level only so the Zod validator's
@@ -52,14 +57,30 @@ export const envSchema = z.object({
   // same posture as JWT_ACCESS_SECRET.
   MFA_ENCRYPTION_KEY: z.string().optional(),
 
-  // Real payment collection (billing/subscriptions) AND real payroll
-  // disbursement (Paystack Transfers) - same account, two API surfaces,
-  // one key. Optional - when unset, PaystackClient/PaystackTransferClient
-  // both fall back to a placeholder that logs instead of calling the real
-  // API (same "optional at schema level, enforced by the consuming
-  // service" posture as SENDGRID_API_KEY), so local/dev/CI environments
-  // never need a real key.
+  // Legacy single-account key, still the live production Ghana account's
+  // secret - kept working as the GHS fallback (see
+  // AppConfigService.paystackSecretKeysByCurrency) so an existing
+  // deployment's .env.production doesn't need to change. Real payment
+  // collection (billing/subscriptions) AND real payroll disbursement
+  // (Paystack Transfers) for GHS use this unless PAYSTACK_SECRET_KEY_GHS
+  // is set instead. Optional - when unset, PaystackClient/
+  // PaystackTransferClient both fall back to a placeholder that logs
+  // instead of calling the real API (same "optional at schema level,
+  // enforced by the consuming service" posture as SENDGRID_API_KEY), so
+  // local/dev/CI environments never need a real key.
   PAYSTACK_SECRET_KEY: z.string().optional(),
+
+  // Paystack requires a separately registered business + local bank
+  // account per country to settle in that country's currency, so "the
+  // Paystack account for GHS" and "the Paystack account for NGN" are
+  // genuinely different accounts/credentials, not one multi-currency
+  // account - see PaystackClientRegistry/PaystackTransferClientRegistry.
+  // Each is optional and independent: configuring NGN doesn't require
+  // configuring KES, and an unconfigured currency simply falls back to
+  // the same log-only placeholder as PAYSTACK_SECRET_KEY unset today.
+  PAYSTACK_SECRET_KEY_GHS: z.string().optional(),
+  PAYSTACK_SECRET_KEY_NGN: z.string().optional(),
+  PAYSTACK_SECRET_KEY_KES: z.string().optional(),
 
   // Encrypts EmployeePaymentMethod's bank/mobile-money fields at rest
   // (see aes-gcm-cipher.ts and PaymentMethodService). Optional at the
@@ -79,6 +100,15 @@ export const envSchema = z.object({
         .map((origin) => origin.trim())
         .filter(Boolean),
     ),
+
+  // Gates /api/docs (Swagger UI + its raw JSON/YAML document) behind HTTP
+  // Basic Auth in production only - see main.ts. Optional at the schema
+  // level: unset in production means the docs are disabled outright rather
+  // than the app failing to boot, since they're a convenience, not a
+  // requirement (unlike CORS_ORIGINS/JWT secrets above). Unused, and
+  // Swagger stays open, in development/test.
+  SWAGGER_BASIC_AUTH_USER: z.string().optional(),
+  SWAGGER_BASIC_AUTH_PASSWORD: z.string().optional(),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

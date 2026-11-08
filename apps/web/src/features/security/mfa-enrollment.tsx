@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
-import { Check, Copy, MessageSquare, ShieldCheck } from 'lucide-react';
+import { Check, Copy, Eye, EyeOff, MessageSquare, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { mfaStatusKey, useMfaConfirm, useMfaConfirmSms, useMfaSetup, useMfaSetupSms } from './queries';
 import {
@@ -91,6 +91,11 @@ function ConfirmStep({
 }) {
   const confirm = useMfaConfirm();
   const [copied, setCopied] = useState(false);
+  // Hidden by default - this string alone lets whoever holds it generate
+  // valid codes for this account indefinitely, with no phone involved, so
+  // it shouldn't sit on-screen (and in screenshots) by default the way a
+  // QR code that still requires scanning it right now effectively can.
+  const [revealed, setRevealed] = useState(false);
 
   const form = useForm<MfaConfirmFormValues>({
     resolver: zodResolver(mfaConfirmFormSchema),
@@ -126,11 +131,26 @@ function ConfirmStep({
             Scan this QR code with your authenticator app, or enter this code manually:
           </p>
           <div className="flex items-center gap-2">
-            <code className="rounded bg-muted px-2 py-1 font-mono text-xs">{secret}</code>
+            <code className="rounded bg-muted px-2 py-1 font-mono text-xs">
+              {revealed ? secret : '•'.repeat(secret.length)}
+            </code>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setRevealed((value) => !value)}
+              aria-label={revealed ? 'Hide code' : 'Show code'}
+            >
+              {revealed ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </Button>
             <Button type="button" variant="ghost" size="sm" onClick={handleCopySecret}>
               {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
             </Button>
           </div>
+          <p className="text-xs text-destructive">
+            Don&apos;t share this code with anyone, including ParotHR support — it&apos;s enough on its
+            own to sign in as you, indefinitely, from any device.
+          </p>
         </div>
       </div>
 

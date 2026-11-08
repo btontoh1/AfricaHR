@@ -12,24 +12,41 @@ describe('PaystackWebhookController', () => {
     controller = new PaystackWebhookController(service);
   });
 
-  it('forwards the raw body and signature header to InvoiceService', async () => {
-    const rawBody = Buffer.from(JSON.stringify({ event: 'charge.success' }));
-    const request = {
-      rawBody,
-      headers: { 'x-paystack-signature': 'sig-123' },
-    } as unknown as RawBodyRequest<Request>;
+  describe('handle', () => {
+    it('forwards the raw body, signature header, and uppercased currency to InvoiceService', async () => {
+      const rawBody = Buffer.from(JSON.stringify({ event: 'charge.success' }));
+      const request = {
+        rawBody,
+        headers: { 'x-paystack-signature': 'sig-123' },
+      } as unknown as RawBodyRequest<Request>;
 
-    const result = await controller.handle(request);
+      const result = await controller.handle('ngn', request);
 
-    expect(service.handlePaystackWebhook).toHaveBeenCalledWith(rawBody.toString('utf8'), 'sig-123');
-    expect(result).toEqual({ received: true });
+      expect(service.handlePaystackWebhook).toHaveBeenCalledWith(rawBody.toString('utf8'), 'sig-123', 'NGN');
+      expect(result).toEqual({ received: true });
+    });
+
+    it('passes an empty string when there is no raw body', async () => {
+      const request = { headers: {} } as unknown as RawBodyRequest<Request>;
+
+      await controller.handle('GHS', request);
+
+      expect(service.handlePaystackWebhook).toHaveBeenCalledWith('', undefined, 'GHS');
+    });
   });
 
-  it('passes an empty string when there is no raw body', async () => {
-    const request = { headers: {} } as unknown as RawBodyRequest<Request>;
+  describe('handleLegacy', () => {
+    it('defaults to GHS for the original currency-less webhook URL', async () => {
+      const rawBody = Buffer.from(JSON.stringify({ event: 'charge.success' }));
+      const request = {
+        rawBody,
+        headers: { 'x-paystack-signature': 'sig-123' },
+      } as unknown as RawBodyRequest<Request>;
 
-    await controller.handle(request);
+      const result = await controller.handleLegacy(request);
 
-    expect(service.handlePaystackWebhook).toHaveBeenCalledWith('', undefined);
+      expect(service.handlePaystackWebhook).toHaveBeenCalledWith(rawBody.toString('utf8'), 'sig-123', 'GHS');
+      expect(result).toEqual({ received: true });
+    });
   });
 });

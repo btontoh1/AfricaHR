@@ -3,8 +3,10 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
 import type {
+  BulkUpdateOrganizationAddressesInput,
   CreateOrganizationInput,
   CreateOrganizationUnitInput,
+  RequestOrganizationLogoUploadInput,
   RequestVerificationDocumentUploadInput,
   UpdateOrganizationInput,
   UpdateOrganizationUnitInput,
@@ -24,6 +26,10 @@ function organizationUnitsKey(tenantId: string, organizationId: string) {
 
 function verificationDocumentsKey(tenantId: string, organizationId: string) {
   return ['organization-verification-documents', tenantId, organizationId] as const;
+}
+
+function organizationLogoUrlKey(tenantId: string, organizationId: string) {
+  return ['organization-logo-url', tenantId, organizationId] as const;
 }
 
 export function useOrganizations(tenantId: string) {
@@ -84,6 +90,25 @@ export function useUpdateOrganization(tenantId: string, id: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: organizationKey(tenantId, id) });
       queryClient.invalidateQueries({ queryKey: organizationsKey(tenantId) });
+    },
+  });
+}
+
+export function useBulkImportOrganizationAddresses(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: BulkUpdateOrganizationAddressesInput) => {
+      const { data, error } = await apiClient.POST(
+        '/api/tenants/{tenantId}/organizations/bulk-import-addresses',
+        { params: { path: { tenantId } }, body: input },
+      );
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (result) => {
+      if (result.updated > 0) {
+        queryClient.invalidateQueries({ queryKey: organizationsKey(tenantId) });
+      }
     },
   });
 }
@@ -227,6 +252,51 @@ export function useRequestDocumentUpload(tenantId: string, organizationId: strin
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: verificationDocumentsKey(tenantId, organizationId) });
+    },
+  });
+}
+
+// --- Invoice branding (organization's own logo, shown on invoices it
+// sends to its own customers) ---
+
+export function useOrganizationLogoUrl(tenantId: string, organizationId: string) {
+  return useQuery({
+    queryKey: organizationLogoUrlKey(tenantId, organizationId),
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/organizations/{id}/logo-url', {
+        params: { path: { tenantId, id: organizationId } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: Boolean(organizationId),
+  });
+}
+
+export function useRequestOrganizationLogoUpload(tenantId: string, organizationId: string) {
+  return useMutation({
+    mutationFn: async (input: RequestOrganizationLogoUploadInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/organizations/{id}/logo/upload-url', {
+        params: { path: { tenantId, id: organizationId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useRemoveOrganizationLogo(tenantId: string, organizationId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await apiClient.DELETE('/api/tenants/{tenantId}/organizations/{id}/logo', {
+        params: { path: { tenantId, id: organizationId } },
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: organizationLogoUrlKey(tenantId, organizationId) });
     },
   });
 }

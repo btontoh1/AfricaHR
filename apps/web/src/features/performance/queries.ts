@@ -353,3 +353,16 @@ export function useUpdateGoal(tenantId: string, id: string) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: allGoalsKey(tenantId) }),
   });
 }
+
+export function useDeleteGoal(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await apiClient.DELETE('/api/tenants/{tenantId}/performance-goals/{id}', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: allGoalsKey(tenantId) }),
+  });
+}

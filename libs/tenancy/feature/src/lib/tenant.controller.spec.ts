@@ -12,6 +12,7 @@ describe('TenantController', () => {
     email: 'ops@africahr.com',
     role: SystemRole.PLATFORM_ADMIN,
     tenantId: null,
+    organizationId: null,
     iat: 1,
     exp: 2,
   };

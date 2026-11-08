@@ -8,6 +8,8 @@ import { AddTenantUserDialog } from './add-tenant-user-dialog';
 import { DeleteTenantDialog } from './delete-tenant-dialog';
 import { EditTenantDialog } from './edit-tenant-dialog';
 import { TenantUsersTable } from './tenant-users-table';
+import { AddOnsCard } from './add-ons-card';
+import { TenantPayrollWalletCard } from './tenant-payroll-wallet-card';
 import type { TenantStatus } from './types';
 import { useSubscription } from '@/features/billing/queries';
 import { SubscriptionCard } from '@/features/billing/subscription-card';
@@ -62,6 +64,7 @@ export function TenantDetail({ tenantId }: { tenantId: string }) {
       <PageHeader
         title={tenant.name}
         description={`Sign-in slug: ${tenant.slug}`}
+        backHref="/platform-admin/tenants"
         action={
           <div className="flex items-center gap-2">
             <TenantStatusBadge status={tenant.status} />
@@ -108,6 +111,8 @@ export function TenantDetail({ tenantId }: { tenantId: string }) {
 
       <SubscriptionCard tenantId={tenantId} tenantCurrency={tenant.currency} />
 
+      <AddOnsCard tenant={tenant} />
+
       <Card>
         <CardHeader>
           <CardTitle>Invoices</CardTitle>
@@ -119,6 +124,8 @@ export function TenantDetail({ tenantId }: { tenantId: string }) {
           />
         </CardContent>
       </Card>
+
+      <TenantPayrollWalletCard tenantId={tenantId} />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2">

@@ -14,6 +14,7 @@
     "@nestjs/event-emitter": "^3.1.0",
     "@africahr/platform-auth": "0.0.1",
     "@africahr/platform-audit": "0.0.1",
+    "@africahr/platform-database": "0.0.1",
     "@africahr/performance-data-access": "0.0.1",
     "@africahr/performance-domain": "0.0.1"
   }

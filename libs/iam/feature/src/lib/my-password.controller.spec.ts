@@ -11,6 +11,7 @@ describe('MyPasswordController', () => {
     email: 'ama@acme.com',
     role: SystemRole.EMPLOYEE,
     tenantId: 'tenant-1',
+    organizationId: null,
     iat: 1,
     exp: 2,
   };

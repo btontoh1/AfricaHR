@@ -59,6 +59,10 @@ import {
   Tags,
   LifeBuoy,
   Megaphone,
+  Ruler,
+  FolderTree,
+  Warehouse,
+  Boxes,
 } from 'lucide-react';
 import type { SessionUser } from '@/lib/session';
 
@@ -154,6 +158,13 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
   // see RequireAddOn on the *-feature controllers.
   const hasPerformanceAddOn = enabledAddOns.includes('PERFORMANCE');
   const hasRecruitmentAddOn = enabledAddOns.includes('RECRUITMENT');
+  // Inventory & Warehouse Management - gated the same way as Finance/AP
+  // above: TENANT_ADMIN only for now (see Permission.INVENTORY_MANAGE/READ
+  // in system-role.ts, restricted to PLATFORM_ADMIN/TENANT_ADMIN since there
+  // is no dedicated warehouse/procurement staff role yet), plus the tenant's
+  // paid INVENTORY add-on.
+  const hasInventoryAccess =
+    isTenantMember && user.role === 'TENANT_ADMIN' && enabledAddOns.includes('INVENTORY');
 
   const groups: NavGroup[] = [
     {
@@ -259,6 +270,16 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
         ...(hasApAccess ? [{ label: 'Vendors', href: '/vendors', icon: Truck }] : []),
         ...(hasApAccess ? [{ label: 'Bills', href: '/vendor-bills', icon: FileMinus2 }] : []),
         ...(hasApAccess ? [{ label: 'Payments', href: '/vendor-payments', icon: HandCoins }] : []),
+      ],
+    },
+    {
+      label: 'Inventory',
+      items: [
+        ...(hasInventoryAccess ? [{ label: 'Products', href: '/inventory/products', icon: Package }] : []),
+        ...(hasInventoryAccess ? [{ label: 'Categories', href: '/inventory/categories', icon: FolderTree }] : []),
+        ...(hasInventoryAccess ? [{ label: 'Units', href: '/inventory/units', icon: Ruler }] : []),
+        ...(hasInventoryAccess ? [{ label: 'Warehouses', href: '/inventory/warehouses', icon: Warehouse }] : []),
+        ...(hasInventoryAccess ? [{ label: 'Stock', href: '/inventory/stock', icon: Boxes }] : []),
       ],
     },
     {

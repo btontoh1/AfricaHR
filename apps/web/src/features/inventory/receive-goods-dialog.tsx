@@ -1,0 +1,179 @@
+'use client';
+
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { toast } from 'sonner';
+import { z } from 'zod';
+import { PackagePlus } from 'lucide-react';
+import { useReceiveGoods } from './queries';
+import { WarehousePicker } from './warehouse-picker';
+import { ProductPicker } from './product-picker';
+import { getApiErrorMessage } from '@/lib/api-error';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+
+const receiveGoodsFormSchema = z.object({
+  warehouseId: z.string().min(1, 'Required'),
+  productId: z.string().min(1, 'Required'),
+  quantity: z.string().refine((value) => Number(value) > 0, 'Must be greater than zero'),
+  unitCost: z.string().optional(),
+  referenceId: z.string().max(200).optional(),
+  note: z.string().max(1000).optional(),
+});
+
+type ReceiveGoodsFormValues = z.infer<typeof receiveGoodsFormSchema>;
+
+const emptyValues: ReceiveGoodsFormValues = {
+  warehouseId: '',
+  productId: '',
+  quantity: '',
+  unitCost: '',
+  referenceId: '',
+  note: '',
+};
+
+export function ReceiveGoodsDialog({ tenantId }: { tenantId: string }) {
+  const [open, setOpen] = useState(false);
+  const receiveGoods = useReceiveGoods(tenantId);
+
+  const form = useForm<ReceiveGoodsFormValues>({
+    resolver: zodResolver(receiveGoodsFormSchema),
+    defaultValues: emptyValues,
+  });
+
+  async function onSubmit(values: ReceiveGoodsFormValues) {
+    try {
+      await receiveGoods.mutateAsync({
+        warehouseId: values.warehouseId,
+        productId: values.productId,
+        quantity: Number(values.quantity),
+        unitCost: values.unitCost ? Number(values.unitCost) : undefined,
+        referenceId: values.referenceId || undefined,
+        note: values.note || undefined,
+      });
+      toast.success('Goods received');
+      setOpen(false);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Failed to record goods received'));
+    }
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (next) form.reset(emptyValues);
+        setOpen(next);
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button>
+          <PackagePlus className="size-4" />
+          Receive goods
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Receive goods</DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-4">
+            <FormField
+              control={form.control}
+              name="warehouseId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Warehouse</FormLabel>
+                  <FormControl>
+                    <WarehousePicker tenantId={tenantId} value={field.value} onChange={field.onChange} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="productId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Product</FormLabel>
+                  <FormControl>
+                    <ProductPicker tenantId={tenantId} value={field.value} onChange={field.onChange} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="quantity"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Quantity</FormLabel>
+                  <FormControl>
+                    <Input type="number" step="any" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="unitCost"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Unit cost (optional)</FormLabel>
+                  <FormControl>
+                    <Input type="number" step="any" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="referenceId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Reference (optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Supplier delivery note / invoice number" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="note"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Note (optional)</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter>
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? 'Recording…' : 'Receive goods'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -3699,6 +3699,287 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/inventory/units": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List units of measurement */
+        get: operations["InventoryUnitController_list"];
+        put?: never;
+        /** Create a unit of measurement */
+        post: operations["InventoryUnitController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/units/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a unit of measurement */
+        delete: operations["InventoryUnitController_remove"];
+        options?: never;
+        head?: never;
+        /** Update a unit of measurement */
+        patch: operations["InventoryUnitController_update"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/unit-conversions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List unit conversions */
+        get: operations["InventoryUnitConversionController_list"];
+        put?: never;
+        /** Create a unit conversion, e.g. 1 carton = 20 box */
+        post: operations["InventoryUnitConversionController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/unit-conversions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a unit conversion */
+        delete: operations["InventoryUnitConversionController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List product categories */
+        get: operations["InventoryCategoryController_list"];
+        put?: never;
+        /** Create a product category or subcategory */
+        post: operations["InventoryCategoryController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/categories/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a product category */
+        delete: operations["InventoryCategoryController_remove"];
+        options?: never;
+        head?: never;
+        /** Update a product category */
+        patch: operations["InventoryCategoryController_update"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List products, optionally filtered by category */
+        get: operations["InventoryProductController_list"];
+        put?: never;
+        /** Register a product */
+        post: operations["InventoryProductController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/products/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a product */
+        delete: operations["InventoryProductController_remove"];
+        options?: never;
+        head?: never;
+        /** Update a product */
+        patch: operations["InventoryProductController_update"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/warehouses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List warehouses, optionally filtered by organization */
+        get: operations["InventoryWarehouseController_list"];
+        put?: never;
+        /** Create a warehouse */
+        post: operations["InventoryWarehouseController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/warehouses/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a warehouse */
+        delete: operations["InventoryWarehouseController_remove"];
+        options?: never;
+        head?: never;
+        /** Update a warehouse */
+        patch: operations["InventoryWarehouseController_update"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/stock/receive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record goods received into a warehouse */
+        post: operations["InventoryStockController_receive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/stock/issue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record goods issued out of a warehouse - rejected if it would take stock negative */
+        post: operations["InventoryStockController_issue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/stock/transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transfer stock between two warehouses */
+        post: operations["InventoryStockController_transfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/stock/{entryId}/reverse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Correct a posted stock entry - posts a reversal, never edits or deletes the original */
+        post: operations["InventoryStockController_reverse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/stock/balances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Current stock balances, optionally filtered by warehouse */
+        get: operations["InventoryStockController_listBalances"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/stock/ledger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stock movement ledger, optionally filtered by warehouse and/or product */
+        get: operations["InventoryStockController_listLedger"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3758,7 +4039,7 @@ export interface components {
             logoUrl?: string;
             /** @enum {string} */
             performanceFramework: "STANDARD" | "BALANCED_SCORECARD";
-            enabledAddOns: ("INVOICING" | "RECRUITMENT" | "PERFORMANCE" | "FINANCE")[];
+            enabledAddOns: ("INVOICING" | "RECRUITMENT" | "PERFORMANCE" | "FINANCE" | "INVENTORY")[];
         };
         UpdatePerformanceFrameworkDto: {
             /** @enum {string} */
@@ -3808,7 +4089,7 @@ export interface components {
             currency: string;
             timezone: string;
             logoStorageKey?: string | null;
-            enabledAddOns: ("INVOICING" | "RECRUITMENT" | "PERFORMANCE" | "FINANCE")[];
+            enabledAddOns: ("INVOICING" | "RECRUITMENT" | "PERFORMANCE" | "FINANCE" | "INVENTORY")[];
             createdAt: string;
             updatedAt: string;
             deletedAt?: string | null;
@@ -3845,7 +4126,7 @@ export interface components {
         };
         UpdateTenantAddOnDto: {
             /** @enum {string} */
-            module: "INVOICING" | "RECRUITMENT" | "PERFORMANCE" | "FINANCE";
+            module: "INVOICING" | "RECRUITMENT" | "PERFORMANCE" | "FINANCE" | "INVENTORY";
             enabled: boolean;
         };
         OrganizationResponseDto: {
@@ -6274,6 +6555,186 @@ export interface components {
             notes?: string;
             allocations: components["schemas"]["VendorPaymentAllocationResponseDto"][];
             createdAt: string;
+        };
+        InventoryUnitResponseDto: {
+            id: string;
+            name: string;
+            abbreviation: string;
+            isActive: boolean;
+        };
+        CreateInventoryUnitDto: {
+            /** @example Box */
+            name: string;
+            /** @example box */
+            abbreviation: string;
+        };
+        UpdateInventoryUnitDto: {
+            name?: string;
+            abbreviation?: string;
+            isActive?: boolean;
+        };
+        InventoryUnitConversionResponseDto: {
+            id: string;
+            fromUnitId: string;
+            toUnitId: string;
+            factor: string;
+        };
+        CreateInventoryUnitConversionDto: {
+            /** @description The larger unit, e.g. carton */
+            fromUnitId: string;
+            /** @description The smaller unit, e.g. box */
+            toUnitId: string;
+            /**
+             * @description 1 fromUnit = factor * toUnit, e.g. 1 carton = 20 box -> factor 20
+             * @example 20
+             */
+            factor: number;
+        };
+        InventoryCategoryResponseDto: {
+            id: string;
+            name: string;
+            parentId?: string;
+            isActive: boolean;
+        };
+        CreateInventoryCategoryDto: {
+            /** @example Pharmaceuticals */
+            name: string;
+            /** @description Parent category id, for a subcategory */
+            parentId?: string;
+        };
+        UpdateInventoryCategoryDto: {
+            name?: string;
+            parentId?: string;
+            isActive?: boolean;
+        };
+        InventoryProductResponseDto: {
+            id: string;
+            sku: string;
+            name: string;
+            baseUnitId: string;
+            categoryId?: string;
+            barcode?: string;
+            description?: string;
+            brand?: string;
+            manufacturer?: string;
+            purchasePrice: string;
+            sellingPrice?: string;
+            minStockLevel?: string;
+            maxStockLevel?: string;
+            imageStorageKey?: string;
+            tracksBatch: boolean;
+            isActive: boolean;
+        };
+        CreateInventoryProductDto: {
+            /** @example PARA-500 */
+            sku: string;
+            /** @example Paracetamol 500mg */
+            name: string;
+            /** @description The unit every stock-ledger quantity for this product is recorded in */
+            baseUnitId: string;
+            /** @example 2.5 */
+            purchasePrice: number;
+            categoryId?: string;
+            barcode?: string;
+            description?: string;
+            brand?: string;
+            manufacturer?: string;
+            sellingPrice?: number;
+            minStockLevel?: number;
+            maxStockLevel?: number;
+            /** @description Whether this product requires batch/expiry tracking (Phase 2) */
+            tracksBatch?: boolean;
+        };
+        UpdateInventoryProductDto: {
+            name?: string;
+            categoryId?: string;
+            barcode?: string;
+            description?: string;
+            brand?: string;
+            manufacturer?: string;
+            purchasePrice?: number;
+            sellingPrice?: number;
+            minStockLevel?: number;
+            maxStockLevel?: number;
+            tracksBatch?: boolean;
+            isActive?: boolean;
+        };
+        InventoryWarehouseResponseDto: {
+            id: string;
+            organizationId: string;
+            name: string;
+            code: string;
+            managerEmployeeId?: string;
+            address?: string;
+            phone?: string;
+            isActive: boolean;
+        };
+        CreateInventoryWarehouseDto: {
+            organizationId: string;
+            /** @example Accra Central Warehouse */
+            name: string;
+            /** @example ACC-01 */
+            code: string;
+            managerEmployeeId?: string;
+            address?: string;
+            phone?: string;
+        };
+        UpdateInventoryWarehouseDto: {
+            name?: string;
+            managerEmployeeId?: string;
+            address?: string;
+            phone?: string;
+            isActive?: boolean;
+        };
+        ReceiveGoodsDto: {
+            warehouseId: string;
+            productId: string;
+            /** @description Quantity received, in the product's base unit */
+            quantity: number;
+            unitCost?: number;
+            /** @description e.g. a supplier delivery note or invoice number */
+            referenceId?: string;
+            note?: string;
+        };
+        StockLedgerEntryResponseDto: {
+            id: string;
+            warehouseId: string;
+            productId: string;
+            transactionType: string;
+            quantityIn: string;
+            quantityOut: string;
+            unitCost?: string;
+            referenceType?: string;
+            referenceId?: string;
+            reversalOfId?: string;
+            note?: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        IssueGoodsDto: {
+            warehouseId: string;
+            productId: string;
+            /** @description Quantity issued, in the product's base unit */
+            quantity: number;
+            /** @description Why this stock is leaving the warehouse */
+            reason: string;
+        };
+        TransferStockDto: {
+            fromWarehouseId: string;
+            toWarehouseId: string;
+            productId: string;
+            /** @description Quantity transferred, in the product's base unit */
+            quantity: number;
+            note?: string;
+        };
+        ReverseStockEntryDto: {
+            /** @description Why this posted entry is being corrected */
+            reason: string;
+        };
+        StockBalanceResponseDto: {
+            warehouseId: string;
+            productId: string;
+            quantity: number;
         };
     };
     responses: never;
@@ -13610,6 +14071,592 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VendorPaymentResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryUnitController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventoryUnitResponseDto"][];
+                };
+            };
+        };
+    };
+    InventoryUnitController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInventoryUnitDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventoryUnitResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryUnitController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    InventoryUnitController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateInventoryUnitDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventoryUnitResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryUnitConversionController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventoryUnitConversionResponseDto"][];
+                };
+            };
+        };
+    };
+    InventoryUnitConversionController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInventoryUnitConversionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventoryUnitConversionResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryUnitConversionController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    InventoryCategoryController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventoryCategoryResponseDto"][];
+                };
+            };
+        };
+    };
+    InventoryCategoryController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInventoryCategoryDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventoryCategoryResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryCategoryController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    InventoryCategoryController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateInventoryCategoryDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventoryCategoryResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryProductController_list: {
+        parameters: {
+            query?: {
+                categoryId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventoryProductResponseDto"][];
+                };
+            };
+        };
+    };
+    InventoryProductController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInventoryProductDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventoryProductResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryProductController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    InventoryProductController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateInventoryProductDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventoryProductResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryWarehouseController_list: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventoryWarehouseResponseDto"][];
+                };
+            };
+        };
+    };
+    InventoryWarehouseController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInventoryWarehouseDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventoryWarehouseResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryWarehouseController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    InventoryWarehouseController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateInventoryWarehouseDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventoryWarehouseResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryStockController_receive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReceiveGoodsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockLedgerEntryResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryStockController_issue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueGoodsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockLedgerEntryResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryStockController_transfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferStockDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockLedgerEntryResponseDto"][];
+                };
+            };
+        };
+    };
+    InventoryStockController_reverse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReverseStockEntryDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockLedgerEntryResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryStockController_listBalances: {
+        parameters: {
+            query?: {
+                warehouseId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockBalanceResponseDto"][];
+                };
+            };
+        };
+    };
+    InventoryStockController_listLedger: {
+        parameters: {
+            query?: {
+                warehouseId?: string;
+                productId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockLedgerEntryResponseDto"][];
                 };
             };
         };

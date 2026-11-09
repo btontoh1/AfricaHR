@@ -301,4 +301,16 @@ describe('hasPermission', () => {
     expect(hasPermission(SystemRole.ACCOUNTANT, Permission.REPORTING_READ)).toBe(false);
     expect(hasPermission(SystemRole.ACCOUNTANT, Permission.INVOICING_READ)).toBe(false);
   });
+
+  it('restricts inventory to platform/tenant admins, same as finance', () => {
+    expect(hasPermission(SystemRole.PLATFORM_ADMIN, Permission.INVENTORY_MANAGE)).toBe(true);
+    expect(hasPermission(SystemRole.PLATFORM_ADMIN, Permission.INVENTORY_READ)).toBe(true);
+    expect(hasPermission(SystemRole.TENANT_ADMIN, Permission.INVENTORY_MANAGE)).toBe(true);
+    expect(hasPermission(SystemRole.TENANT_ADMIN, Permission.INVENTORY_READ)).toBe(true);
+    expect(hasPermission(SystemRole.HR_MANAGER, Permission.INVENTORY_READ)).toBe(false);
+    expect(hasPermission(SystemRole.ORG_ADMIN, Permission.INVENTORY_READ)).toBe(false);
+    expect(hasPermission(SystemRole.PAYROLL_MANAGER, Permission.INVENTORY_READ)).toBe(false);
+    expect(hasPermission(SystemRole.EMPLOYEE, Permission.INVENTORY_READ)).toBe(false);
+    expect(hasPermission(SystemRole.ACCOUNTANT, Permission.INVENTORY_READ)).toBe(false);
+  });
 });

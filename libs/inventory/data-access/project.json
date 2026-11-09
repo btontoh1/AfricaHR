@@ -1,0 +1,19 @@
+{
+  "name": "inventory-data-access",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/inventory/data-access/src",
+  "projectType": "library",
+  "tags": ["scope:inventory", "type:data-access"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/inventory/data-access",
+        "main": "libs/inventory/data-access/src/index.ts",
+        "tsConfig": "libs/inventory/data-access/tsconfig.lib.json",
+        "assets": ["libs/inventory/data-access/*.md"]
+      }
+    }
+  }
+}

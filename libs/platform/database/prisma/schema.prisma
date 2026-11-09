@@ -61,6 +61,9 @@ enum AddOnModule {
   PERFORMANCE
   /// Opt-in, off by default - same convention as INVOICING.
   FINANCE
+  /// Opt-in, off by default - same convention as INVOICING/FINANCE. See
+  /// InventoryProduct and friends near the end of this file.
+  INVENTORY
 }
 
 /// The SaaS account. Platform-root table — no tenantId, no RLS.
@@ -98,12 +101,19 @@ model Tenant {
   createdBy String?   @map("created_by")
   updatedBy String?   @map("updated_by")
 
-  organizations Organization[]
-  users         User[]
-  subscription  Subscription?
-  invoices      Invoice[]
-  payrollWallets  TenantPayrollWallet[]
-  walletTopUps    TenantWalletTopUp[]
+  organizations            Organization[]
+  users                    User[]
+  subscription             Subscription?
+  invoices                 Invoice[]
+  payrollWallets           TenantPayrollWallet[]
+  walletTopUps             TenantWalletTopUp[]
+  inventoryUnits           InventoryUnit[]
+  inventoryUnitConversions InventoryUnitConversion[]
+  inventoryCategories      InventoryCategory[]
+  inventoryProducts        InventoryProduct[]
+  inventoryWarehouses      InventoryWarehouse[]
+  inventoryStockLedger     InventoryStockLedgerEntry[]
+  inventoryStockBalances   InventoryStockBalance[]
 
   @@map("tenants")
 }
@@ -254,17 +264,17 @@ enum WalletTopUpStatus {
 /// reuse of Invoice) since a top-up isn't tied to a Subscription billing
 /// period and funds payroll, not a subscription fee.
 model TenantWalletTopUp {
-  id       String            @id @default(uuid())
-  tenantId String            @map("tenant_id")
-  currency String
-  amount   Decimal
-  status   WalletTopUpStatus @default(PENDING)
+  id                String            @id @default(uuid())
+  tenantId          String            @map("tenant_id")
+  currency          String
+  amount            Decimal
+  status            WalletTopUpStatus @default(PENDING)
   /// Paystack transaction reference - the join key
   /// find_wallet_topup_by_paystack_reference_across_tenants uses when the
   /// webhook (no tenant context) sees a matching charge.success.
-  paystackReference String?   @unique @map("paystack_reference")
-  checkoutUrl       String?   @map("checkout_url")
-  paidAt            DateTime? @map("paid_at")
+  paystackReference String?           @unique @map("paystack_reference")
+  checkoutUrl       String?           @map("checkout_url")
+  paidAt            DateTime?         @map("paid_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -285,12 +295,12 @@ model TenantWalletTopUp {
 /// platform-wide with no tenantId, same posture as Tenant itself - it's
 /// not scoped to any tenant, so no RLS policy applies here either.
 model PlatformOperatingCost {
-  id        String   @id @default(uuid())
+  id       String  @id @default(uuid())
   /// "YYYY-MM" - matches the month key used throughout the SaaS analytics.
-  month     String
-  currency  String
-  amount    Decimal
-  notes     String?
+  month    String
+  currency String
+  amount   Decimal
+  notes    String?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -405,6 +415,7 @@ model Organization {
   glDepreciationRuns      GlDepreciationRun[]
   expenses                Expense[]
   glCostCenters           GlCostCenter[]
+  inventoryWarehouses     InventoryWarehouse[]
 
   @@index([tenantId])
   @@map("organizations")
@@ -726,6 +737,7 @@ model Employee {
   hiredApplications  Application[]            @relation("ApplicationHiredEmployee")
   paymentMethod      EmployeePaymentMethod?
   familyMembers      EmployeeFamilyMember[]
+  managedWarehouses  InventoryWarehouse[]
 
   @@unique([tenantId, employeeNumber])
   @@index([tenantId])
@@ -1211,12 +1223,12 @@ model AttendancePolicy {
 /// same deliberately flag-only, never-enforced posture as the single
 /// geofence it replaces (device GPS drift makes hard-blocking unreliable).
 model AttendanceLocation {
-  id            String  @id @default(uuid())
-  tenantId      String  @map("tenant_id")
-  name          String
-  latitude      Decimal
-  longitude     Decimal
-  radiusMeters  Int     @map("radius_meters")
+  id           String  @id @default(uuid())
+  tenantId     String  @map("tenant_id")
+  name         String
+  latitude     Decimal
+  longitude    Decimal
+  radiusMeters Int     @map("radius_meters")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -2616,4 +2628,228 @@ model GlPeriodClose {
 
   @@index([tenantId])
   @@map("gl_period_closes")
+}
+
+// ============================================================================
+// Inventory & Warehouse Management (Phase 1: foundation)
+//
+// Gated behind AddOnModule.INVENTORY, same opt-in convention as FINANCE.
+// Products/categories/units are tenant-wide (one shared catalog across a
+// tenant's organizations/branches, same reasoning a company keeps one SKU
+// list even with multiple sites) - warehouses are organization-scoped,
+// same convention as Vendor, since a physical site belongs to one branch.
+//
+// InventoryStockLedgerEntry is the append-only source of truth (same
+// "immutable, reversal-only" shape as GlJournalEntry) - InventoryStockBalance
+// is a materialized running total written in the same DB transaction as
+// every ledger insert, purely so a dashboard/listing read doesn't have to
+// SUM() the whole ledger. If the two ever disagree, the ledger wins.
+// ============================================================================
+
+model InventoryUnit {
+  id           String  @id @default(uuid())
+  tenantId     String  @map("tenant_id")
+  name         String
+  abbreviation String
+  isActive     Boolean @default(true) @map("is_active")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  tenant          Tenant                    @relation(fields: [tenantId], references: [id])
+  products        InventoryProduct[]
+  conversionsFrom InventoryUnitConversion[] @relation("UnitConversionFrom")
+  conversionsTo   InventoryUnitConversion[] @relation("UnitConversionTo")
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("inventory_units")
+}
+
+/// 1 fromUnit = factor * toUnit, e.g. 1 carton = 20 box -> fromUnitId=carton,
+/// toUnitId=box, factor=20. Validated application-side (not something a DB
+/// constraint can express) to reject a conversion that would create a cycle
+/// - see InventoryUnitConversionService in inventory-domain.
+model InventoryUnitConversion {
+  id         String  @id @default(uuid())
+  tenantId   String  @map("tenant_id")
+  fromUnitId String  @map("from_unit_id")
+  toUnitId   String  @map("to_unit_id")
+  factor     Decimal
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  tenant   Tenant        @relation(fields: [tenantId], references: [id])
+  fromUnit InventoryUnit @relation("UnitConversionFrom", fields: [fromUnitId], references: [id])
+  toUnit   InventoryUnit @relation("UnitConversionTo", fields: [toUnitId], references: [id])
+
+  @@unique([tenantId, fromUnitId, toUnitId])
+  @@index([tenantId])
+  @@map("inventory_unit_conversions")
+}
+
+model InventoryCategory {
+  id       String  @id @default(uuid())
+  tenantId String  @map("tenant_id")
+  parentId String? @map("parent_id")
+  name     String
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  tenant   Tenant              @relation(fields: [tenantId], references: [id])
+  parent   InventoryCategory?  @relation("InventoryCategoryToParent", fields: [parentId], references: [id])
+  children InventoryCategory[] @relation("InventoryCategoryToParent")
+  products InventoryProduct[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("inventory_categories")
+}
+
+model InventoryProduct {
+  id              String   @id @default(uuid())
+  tenantId        String   @map("tenant_id")
+  categoryId      String?  @map("category_id")
+  baseUnitId      String   @map("base_unit_id")
+  sku             String
+  barcode         String?
+  name            String
+  description     String?
+  brand           String?
+  manufacturer    String?
+  purchasePrice   Decimal  @map("purchase_price")
+  sellingPrice    Decimal? @map("selling_price")
+  minStockLevel   Decimal? @map("min_stock_level")
+  maxStockLevel   Decimal? @map("max_stock_level")
+  /// Object-storage key for an uploaded product photo, same pattern as
+  /// Tenant.logoStorageKey - a short-lived signed view URL is minted on read.
+  imageStorageKey String?  @map("image_storage_key")
+  /// Whether Phase 2 (batch/expiry tracking, FEFO) applies to this product -
+  /// a per-product toggle, not a tenant-wide switch, since most tenants will
+  /// mix batch-tracked (pharma, perishables) and non-tracked (general
+  /// merchandise) products in the same catalog.
+  tracksBatch     Boolean  @default(false) @map("tracks_batch")
+  isActive        Boolean  @default(true) @map("is_active")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  tenant        Tenant                      @relation(fields: [tenantId], references: [id])
+  category      InventoryCategory?          @relation(fields: [categoryId], references: [id])
+  baseUnit      InventoryUnit               @relation(fields: [baseUnitId], references: [id])
+  ledgerEntries InventoryStockLedgerEntry[]
+  stockBalances InventoryStockBalance[]
+
+  @@unique([tenantId, sku])
+  @@index([tenantId])
+  @@index([categoryId])
+  @@map("inventory_products")
+}
+
+model InventoryWarehouse {
+  id                String  @id @default(uuid())
+  tenantId          String  @map("tenant_id")
+  organizationId    String  @map("organization_id")
+  managerEmployeeId String? @map("manager_employee_id")
+  name              String
+  code              String
+  address           String?
+  phone             String?
+  isActive          Boolean @default(true) @map("is_active")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  tenant        Tenant                      @relation(fields: [tenantId], references: [id])
+  organization  Organization                @relation(fields: [organizationId], references: [id])
+  manager       Employee?                   @relation(fields: [managerEmployeeId], references: [id])
+  ledgerEntries InventoryStockLedgerEntry[]
+  stockBalances InventoryStockBalance[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([organizationId])
+  @@map("inventory_warehouses")
+}
+
+enum InventoryStockTransactionType {
+  GOODS_RECEIVED
+  GOODS_ISSUED
+  TRANSFER_OUT
+  TRANSFER_IN
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  REVERSAL
+}
+
+/// Append-only. Never updated or deleted once posted - a correction is a
+/// new row referencing the entry it reverses (reversalOfId), same
+/// reversal-only discipline as GlJournalEntry. See InventoryStockBalance
+/// for the derived running total this ledger is reconciled against.
+model InventoryStockLedgerEntry {
+  id              String                        @id @default(uuid())
+  tenantId        String                        @map("tenant_id")
+  warehouseId     String                        @map("warehouse_id")
+  productId       String                        @map("product_id")
+  transactionType InventoryStockTransactionType @map("transaction_type")
+  quantityIn      Decimal                       @default(0) @map("quantity_in")
+  quantityOut     Decimal                       @default(0) @map("quantity_out")
+  unitCost        Decimal?                      @map("unit_cost")
+  referenceType   String?                       @map("reference_type")
+  referenceId     String?                       @map("reference_id")
+  reversalOfId    String?                       @unique @map("reversal_of_id")
+  note            String?
+  actorUserId     String?                       @map("actor_user_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant     Tenant                     @relation(fields: [tenantId], references: [id])
+  warehouse  InventoryWarehouse         @relation(fields: [warehouseId], references: [id])
+  product    InventoryProduct           @relation(fields: [productId], references: [id])
+  reversalOf InventoryStockLedgerEntry? @relation("StockLedgerReversal", fields: [reversalOfId], references: [id])
+  reversedBy InventoryStockLedgerEntry? @relation("StockLedgerReversal")
+
+  @@index([tenantId])
+  @@index([warehouseId, productId])
+  @@index([referenceType, referenceId])
+  @@map("inventory_stock_ledger")
+}
+
+/// Materialized balance, always written in the same DB transaction as the
+/// InventoryStockLedgerEntry that changed it - the ledger remains the
+/// source of truth this is reconciled against, this table exists purely so
+/// a dashboard/listing read is an indexed lookup, not a SUM() over history.
+model InventoryStockBalance {
+  id          String  @id @default(uuid())
+  tenantId    String  @map("tenant_id")
+  warehouseId String  @map("warehouse_id")
+  productId   String  @map("product_id")
+  quantity    Decimal @default(0)
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant    Tenant             @relation(fields: [tenantId], references: [id])
+  warehouse InventoryWarehouse @relation(fields: [warehouseId], references: [id])
+  product   InventoryProduct   @relation(fields: [productId], references: [id])
+
+  @@unique([tenantId, warehouseId, productId])
+  @@index([tenantId])
+  @@map("inventory_stock_balances")
 }

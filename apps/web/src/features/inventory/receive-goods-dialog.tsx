@@ -10,6 +10,7 @@ import { useInventoryProducts, useReceiveGoods } from './queries';
 import { WarehousePicker } from './warehouse-picker';
 import { ProductPicker } from './product-picker';
 import { getApiErrorMessage } from '@/lib/api-error';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -48,14 +49,35 @@ const emptyValues: ReceiveGoodsFormValues = {
   manufactureDate: '',
 };
 
-export function ReceiveGoodsDialog({ tenantId }: { tenantId: string }) {
+export function ReceiveGoodsDialog({
+  tenantId,
+  purchaseOrderLineId,
+  presetWarehouseId,
+  presetProductId,
+  trigger,
+}: {
+  tenantId: string;
+  /** Scopes this receipt to a specific PO line - advances its quantityReceived and the PO's status. */
+  purchaseOrderLineId?: string;
+  presetWarehouseId?: string;
+  presetProductId?: string;
+  trigger?: React.ReactNode;
+}) {
   const [open, setOpen] = useState(false);
   const receiveGoods = useReceiveGoods(tenantId);
+  const queryClient = useQueryClient();
   const { data: products } = useInventoryProducts(tenantId);
+
+  const scoped = Boolean(purchaseOrderLineId);
+  const scopedValues: ReceiveGoodsFormValues = {
+    ...emptyValues,
+    warehouseId: presetWarehouseId ?? '',
+    productId: presetProductId ?? '',
+  };
 
   const form = useForm<ReceiveGoodsFormValues>({
     resolver: zodResolver(receiveGoodsFormSchema),
-    defaultValues: emptyValues,
+    defaultValues: scoped ? scopedValues : emptyValues,
   });
 
   const selectedProductId = form.watch('productId');
@@ -79,7 +101,11 @@ export function ReceiveGoodsDialog({ tenantId }: { tenantId: string }) {
         batchNumber: tracksBatch ? values.batchNumber : undefined,
         expiryDate: tracksBatch ? values.expiryDate : undefined,
         manufactureDate: tracksBatch && values.manufactureDate ? values.manufactureDate : undefined,
+        purchaseOrderLineId,
       });
+      if (purchaseOrderLineId) {
+        queryClient.invalidateQueries({ queryKey: ['inventory', 'purchase-orders', tenantId] });
+      }
       toast.success('Goods received');
       setOpen(false);
     } catch (error) {
@@ -91,15 +117,17 @@ export function ReceiveGoodsDialog({ tenantId }: { tenantId: string }) {
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (next) form.reset(emptyValues);
+        if (next) form.reset(scoped ? scopedValues : emptyValues);
         setOpen(next);
       }}
     >
       <DialogTrigger asChild>
-        <Button>
-          <PackagePlus className="size-4" />
-          Receive goods
-        </Button>
+        {trigger ?? (
+          <Button>
+            <PackagePlus className="size-4" />
+            Receive goods
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -114,7 +142,7 @@ export function ReceiveGoodsDialog({ tenantId }: { tenantId: string }) {
                 <FormItem>
                   <FormLabel>Warehouse</FormLabel>
                   <FormControl>
-                    <WarehousePicker tenantId={tenantId} value={field.value} onChange={field.onChange} />
+                    <WarehousePicker tenantId={tenantId} value={field.value} onChange={field.onChange} disabled={scoped} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -127,7 +155,7 @@ export function ReceiveGoodsDialog({ tenantId }: { tenantId: string }) {
                 <FormItem>
                   <FormLabel>Product</FormLabel>
                   <FormControl>
-                    <ProductPicker tenantId={tenantId} value={field.value} onChange={field.onChange} />
+                    <ProductPicker tenantId={tenantId} value={field.value} onChange={field.onChange} disabled={scoped} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

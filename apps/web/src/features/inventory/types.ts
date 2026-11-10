@@ -54,3 +54,4 @@ export type CompanyAssetAssignment = components['schemas']['CompanyAssetAssignme
 export type AssignAssetInput = components['schemas']['AssignAssetDto'];
 export type ReturnAssetInput = components['schemas']['ReturnAssetDto'];
 export type CompanyAssetStatus = CompanyAsset['status'];
+export type MyCompanyAsset = components['schemas']['MyCompanyAssetResponseDto'];

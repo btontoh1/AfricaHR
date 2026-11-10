@@ -25,6 +25,7 @@ import type {
   ReturnAssetInput,
   StockRequestStatus,
   TransferStockInput,
+  UpdateCompanyAssetInput,
   UpdateInventoryCategoryInput,
   UpdateInventoryProductInput,
   UpdateInventoryUnitInput,
@@ -865,11 +866,68 @@ export function useReturnAsset(tenantId: string) {
   });
 }
 
+export function useUpdateCompanyAsset(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...input }: UpdateCompanyAssetInput & { id: string }) => {
+      const { data, error } = await apiClient.PATCH('/api/tenants/{tenantId}/inventory/assets/{id}', {
+        params: { path: { tenantId, id } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => invalidateAssets(queryClient, tenantId),
+  });
+}
+
+export function useDeleteCompanyAsset(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await apiClient.DELETE('/api/tenants/{tenantId}/inventory/assets/{id}', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => invalidateAssets(queryClient, tenantId),
+  });
+}
+
 export function useRetireAsset(tenantId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
       const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/inventory/assets/{id}/retire', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => invalidateAssets(queryClient, tenantId),
+  });
+}
+
+export function useSetAssetMaintenance(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/inventory/assets/{id}/maintenance', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => invalidateAssets(queryClient, tenantId),
+  });
+}
+
+export function useMakeAssetAvailable(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/inventory/assets/{id}/make-available', {
         params: { path: { tenantId, id } },
       });
       if (error) throw error;

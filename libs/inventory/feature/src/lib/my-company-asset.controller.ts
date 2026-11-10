@@ -3,7 +3,7 @@ import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { AddOnModule } from '@prisma/client';
 import { AddOnGuard, assertTenantScope, CurrentUser, JwtAuthGuard, PermissionsGuard, RequestUser, RequireAddOn } from '@africahr/platform-auth';
 import { CompanyAssetService } from './company-asset.service';
-import { CompanyAssetAssignmentResponseDto } from './dto/company-asset-assignment-response.dto';
+import { MyCompanyAssetResponseDto } from './dto/my-company-asset-response.dto';
 
 /**
  * Self-service, read-only: no @RequirePermissions - any authenticated
@@ -21,7 +21,7 @@ export class MyCompanyAssetController {
   constructor(private readonly assets: CompanyAssetService) {}
 
   @Get()
-  @ApiOkResponse({ type: CompanyAssetAssignmentResponseDto, isArray: true })
+  @ApiOkResponse({ type: MyCompanyAssetResponseDto, isArray: true })
   list(@Param('tenantId') tenantId: string, @CurrentUser() actor: RequestUser) {
     assertTenantScope(actor, tenantId);
     return this.assets.listForSelf(tenantId, actor.sub);

@@ -7330,29 +7330,6 @@ export interface components {
             /** @example Out of budget for this item */
             reviewNote: string;
         };
-        CompanyAssetAssignmentResponseDto: {
-            id: string;
-            assetId: string;
-            employeeId: string;
-            /** Format: date-time */
-            assignedAt: string;
-            /** Format: date-time */
-            returnedAt?: string;
-            assignNote?: string;
-            returnNote?: string;
-        };
-        CreateCompanyAssetDto: {
-            organizationId: string;
-            /** @example LAPTOP-001 */
-            assetTag: string;
-            /** @example MacBook Pro 14" */
-            name: string;
-            category?: string;
-            serialNumber?: string;
-            purchaseDate?: string;
-            purchasePrice?: number;
-            notes?: string;
-        };
         CompanyAssetResponseDto: {
             id: string;
             organizationId: string;
@@ -7369,6 +7346,30 @@ export interface components {
             notes?: string;
             isActive: boolean;
         };
+        MyCompanyAssetResponseDto: {
+            id: string;
+            assetId: string;
+            employeeId: string;
+            /** Format: date-time */
+            assignedAt: string;
+            /** Format: date-time */
+            returnedAt?: string;
+            assignNote?: string;
+            returnNote?: string;
+            asset: components["schemas"]["CompanyAssetResponseDto"];
+        };
+        CreateCompanyAssetDto: {
+            organizationId: string;
+            /** @example LAPTOP-001 */
+            assetTag: string;
+            /** @example MacBook Pro 14" */
+            name: string;
+            category?: string;
+            serialNumber?: string;
+            purchaseDate?: string;
+            purchasePrice?: number;
+            notes?: string;
+        };
         UpdateCompanyAssetDto: {
             name?: string;
             category?: string;
@@ -7381,6 +7382,17 @@ export interface components {
         AssignAssetDto: {
             employeeId: string;
             assignNote?: string;
+        };
+        CompanyAssetAssignmentResponseDto: {
+            id: string;
+            assetId: string;
+            employeeId: string;
+            /** Format: date-time */
+            assignedAt: string;
+            /** Format: date-time */
+            returnedAt?: string;
+            assignNote?: string;
+            returnNote?: string;
         };
         ReturnAssetDto: {
             returnNote?: string;
@@ -15844,7 +15856,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CompanyAssetAssignmentResponseDto"][];
+                    "application/json": components["schemas"]["MyCompanyAssetResponseDto"][];
                 };
             };
         };

@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InventoryStockLedgerEntry, InventoryStockTransactionType } from '@prisma/client';
 import {
   InventoryProductRepository,
+  InventoryPurchaseOrderRepository,
   InventoryStockBatchRepository,
   InventoryStockRepository,
   StockBalance,
@@ -12,24 +14,59 @@ import { ReceiveGoodsDto } from './dto/receive-goods.dto';
 import { IssueGoodsDto } from './dto/issue-goods.dto';
 import { TransferStockDto } from './dto/transfer-stock.dto';
 
+/**
+ * Emitted after a receipt posts against a purchase-order line - consumed by
+ * ap-feature's InventoryReceiptBillListener to auto-draft a VendorBill.
+ * Lives as a plain event rather than a direct call because scope:inventory
+ * is not allowed to depend on scope:ap (see eslint.config.mjs's
+ * depConstraints), same decoupling reasoning as ap-feature's own
+ * VENDOR_BILL_STATUS_CHANGED_EVENT. The event name and payload shape below
+ * must match InventoryReceiptBillListener's locally-declared copy literally.
+ */
+export const INVENTORY_GOODS_RECEIVED_EVENT = 'inventory.purchase_order.goods_received';
+
+export interface InventoryGoodsReceivedEventPayload {
+  tenantId: string;
+  organizationId: string;
+  purchaseOrderId: string;
+  poNumber: string;
+  vendorId: string;
+  warehouseId: string;
+  productId: string;
+  /** e.g. "SKU-001 - Widget", for a readable bill line description. */
+  productName: string;
+  /** The quantity received in THIS receiving call, not the PO line's cumulative total. */
+  quantity: number;
+  /** dto.unitCost if provided, else the PO line's own unitCost. */
+  unitCost: number;
+  ledgerEntryId: string;
+  /** ISO timestamp of the receipt. */
+  receivedAt: string;
+}
+
 @Injectable()
 export class InventoryStockService {
+  private readonly logger = new Logger(InventoryStockService.name);
+
   constructor(
     private readonly stock: InventoryStockRepository,
     private readonly batches: InventoryStockBatchRepository,
     private readonly products: InventoryProductRepository,
+    private readonly purchaseOrders: InventoryPurchaseOrderRepository,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async receiveGoods(tenantId: string, dto: ReceiveGoodsDto, actorId?: string): Promise<InventoryStockLedgerEntry> {
     const product = await this.requireProduct(tenantId, dto.productId);
 
+    let entry: InventoryStockLedgerEntry;
     if (product.tracksBatch) {
       if (!dto.batchNumber || !dto.expiryDate) {
         throw new BadRequestException(
           `Product "${product.sku}" tracks batches - batchNumber and expiryDate are required`,
         );
       }
-      return this.stock.postEntry(tenantId, {
+      entry = await this.stock.postEntry(tenantId, {
         warehouseId: dto.warehouseId,
         productId: dto.productId,
         transactionType: InventoryStockTransactionType.GOODS_RECEIVED,
@@ -45,19 +82,68 @@ export class InventoryStockService {
           manufactureDate: dto.manufactureDate ? new Date(dto.manufactureDate) : undefined,
         },
       });
+    } else {
+      entry = await this.stock.postEntry(tenantId, {
+        warehouseId: dto.warehouseId,
+        productId: dto.productId,
+        transactionType: InventoryStockTransactionType.GOODS_RECEIVED,
+        quantityIn: dto.quantity,
+        unitCost: dto.unitCost,
+        referenceId: dto.referenceId,
+        note: dto.note,
+        actorUserId: actorId,
+        purchaseOrderLineId: dto.purchaseOrderLineId,
+      });
     }
 
-    return this.stock.postEntry(tenantId, {
-      warehouseId: dto.warehouseId,
-      productId: dto.productId,
-      transactionType: InventoryStockTransactionType.GOODS_RECEIVED,
-      quantityIn: dto.quantity,
-      unitCost: dto.unitCost,
-      referenceId: dto.referenceId,
-      note: dto.note,
-      actorUserId: actorId,
-      purchaseOrderLineId: dto.purchaseOrderLineId,
-    });
+    if (dto.purchaseOrderLineId) {
+      await this.emitGoodsReceivedForPurchaseOrder(tenantId, dto, product, entry);
+    }
+
+    return entry;
+  }
+
+  /**
+   * Best-effort - a failure here must never undo or surface as an error
+   * against the stock receipt, which has already committed. See
+   * InventoryReceiptBillListener for the consumer.
+   */
+  private async emitGoodsReceivedForPurchaseOrder(
+    tenantId: string,
+    dto: ReceiveGoodsDto,
+    product: { sku: string; name: string },
+    entry: InventoryStockLedgerEntry,
+  ): Promise<void> {
+    try {
+      const line = await this.purchaseOrders.findLineById(tenantId, dto.purchaseOrderLineId as string);
+      if (!line) {
+        return;
+      }
+      const purchaseOrder = await this.purchaseOrders.findById(tenantId, line.purchaseOrderId);
+      if (!purchaseOrder) {
+        return;
+      }
+      const payload: InventoryGoodsReceivedEventPayload = {
+        tenantId,
+        organizationId: purchaseOrder.organizationId,
+        purchaseOrderId: purchaseOrder.id,
+        poNumber: purchaseOrder.poNumber,
+        vendorId: purchaseOrder.vendorId,
+        warehouseId: dto.warehouseId,
+        productId: dto.productId,
+        productName: `${product.sku} - ${product.name}`,
+        quantity: dto.quantity,
+        unitCost: dto.unitCost ?? Number(line.unitCost),
+        ledgerEntryId: entry.id,
+        receivedAt: new Date().toISOString(),
+      };
+      this.eventEmitter.emit(INVENTORY_GOODS_RECEIVED_EVENT, payload);
+    } catch (error) {
+      this.logger.error(
+        `Failed to emit ${INVENTORY_GOODS_RECEIVED_EVENT} for purchase order line "${dto.purchaseOrderLineId}"`,
+        error instanceof Error ? error.stack : error,
+      );
+    }
   }
 
   /**

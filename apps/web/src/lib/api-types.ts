@@ -2768,6 +2768,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/reports/inventory-valuation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["InventoryValuationReportController_generate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/reports/procurement-spend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ProcurementSpendReportController_generate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/reports/low-stock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["LowStockReportController_generate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/reports/asset-register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AssetRegisterReportController_generate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/subscription": {
         parameters: {
             query?: never;
@@ -6015,6 +6079,59 @@ export interface components {
             openRequisitions: number;
             applicationsByStage: components["schemas"]["ApplicationsByStageResponseDto"][];
             averageTimeToHireDays: number;
+        };
+        InventoryValuationRowDto: {
+            warehouseId: string;
+            warehouseName: string;
+            productId: string;
+            productSku: string;
+            productName: string;
+            quantity: number;
+            unitCost: number;
+            totalValue: number;
+        };
+        InventoryValuationReportDto: {
+            rows: components["schemas"]["InventoryValuationRowDto"][];
+            grandTotal: number;
+        };
+        ProcurementSpendByVendorMonthDto: {
+            vendorId: string;
+            vendorName: string;
+            /** @description Calendar month the order was placed in, as YYYY-MM */
+            month: string;
+            totalSpend: number;
+            orderCount: number;
+        };
+        LowStockRowDto: {
+            warehouseId: string;
+            warehouseName: string;
+            productId: string;
+            productSku: string;
+            productName: string;
+            quantity: number;
+            minStockLevel: number;
+            shortfall: number;
+        };
+        AssetRegisterRowDto: {
+            id: string;
+            assetTag: string;
+            name: string;
+            category?: string;
+            /** @enum {string} */
+            status: "AVAILABLE" | "ASSIGNED" | "MAINTENANCE" | "RETIRED";
+            purchasePrice?: number;
+            assignedEmployeeId?: string;
+            assignedEmployeeName?: string;
+        };
+        AssetRegisterStatusCountDto: {
+            /** @enum {string} */
+            status: "AVAILABLE" | "ASSIGNED" | "MAINTENANCE" | "RETIRED";
+            count: number;
+        };
+        AssetRegisterReportDto: {
+            assets: components["schemas"]["AssetRegisterRowDto"][];
+            countsByStatus: components["schemas"]["AssetRegisterStatusCountDto"][];
+            totalPurchasePrice: number;
         };
         SubscriptionResponseDto: {
             id: string;
@@ -12615,6 +12732,101 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RecruitmentPipelineReportResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryValuationReportController_generate: {
+        parameters: {
+            query?: {
+                warehouseId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventoryValuationReportDto"];
+                };
+            };
+        };
+    };
+    ProcurementSpendReportController_generate: {
+        parameters: {
+            query?: {
+                vendorId?: string;
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProcurementSpendByVendorMonthDto"][];
+                };
+            };
+        };
+    };
+    LowStockReportController_generate: {
+        parameters: {
+            query?: {
+                warehouseId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LowStockRowDto"][];
+                };
+            };
+        };
+    };
+    AssetRegisterReportController_generate: {
+        parameters: {
+            query?: {
+                category?: string;
+                status?: "AVAILABLE" | "ASSIGNED" | "MAINTENANCE" | "RETIRED";
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetRegisterReportDto"];
                 };
             };
         };

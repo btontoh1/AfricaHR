@@ -14,6 +14,7 @@
     "class-transformer": "^0.5.1",
     "@africahr/platform-auth": "0.0.1",
     "@africahr/platform-audit": "0.0.1",
+    "@africahr/platform-database": "0.0.1",
     "@africahr/ap-data-access": "0.0.1",
     "@africahr/ap-domain": "0.0.1",
     "@prisma/client": "^7.8.0"

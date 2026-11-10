@@ -4,3 +4,7 @@ export * from './lib/payroll-cost-report.service';
 export * from './lib/leave-utilization-report.service';
 export * from './lib/attendance-report.service';
 export * from './lib/recruitment-pipeline-report.service';
+export * from './lib/inventory-valuation-report.service';
+export * from './lib/procurement-spend-report.service';
+export * from './lib/low-stock-report.service';
+export * from './lib/asset-register-report.service';

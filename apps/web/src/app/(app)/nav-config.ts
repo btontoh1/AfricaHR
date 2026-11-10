@@ -434,6 +434,23 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
         ...(hasFinanceAccess
           ? [{ label: 'Budget vs Actual', href: '/reports/budget-vs-actual', icon: GitCompare }]
           : []),
+        // Gated the same way as the Inventory module's own admin nav items
+        // above (hasInventoryAccess) rather than hasAdminAccess - these
+        // report controllers add RequireAddOn(INVENTORY) on top of
+        // REPORTING_READ, so a tenant without the paid add-on gets nothing
+        // useful from them even if their role holds REPORTING_READ broadly.
+        ...(hasInventoryAccess
+          ? [{ label: 'Inventory Valuation', href: '/reports/inventory-valuation', icon: Coins }]
+          : []),
+        ...(hasInventoryAccess
+          ? [{ label: 'Procurement Spend', href: '/reports/procurement-spend', icon: Receipt }]
+          : []),
+        ...(hasInventoryAccess
+          ? [{ label: 'Low Stock', href: '/reports/low-stock', icon: PackageSearch }]
+          : []),
+        ...(hasInventoryAccess
+          ? [{ label: 'Asset Register', href: '/reports/asset-register', icon: Laptop }]
+          : []),
       ],
     },
     {

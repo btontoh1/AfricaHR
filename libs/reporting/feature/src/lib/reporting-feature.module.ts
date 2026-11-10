@@ -11,6 +11,14 @@ import { AttendanceReportService } from './attendance-report.service';
 import { AttendanceReportController } from './attendance-report.controller';
 import { RecruitmentPipelineReportService } from './recruitment-pipeline-report.service';
 import { RecruitmentPipelineReportController } from './recruitment-pipeline-report.controller';
+import { InventoryValuationReportService } from './inventory-valuation-report.service';
+import { InventoryValuationReportController } from './inventory-valuation-report.controller';
+import { ProcurementSpendReportService } from './procurement-spend-report.service';
+import { ProcurementSpendReportController } from './procurement-spend-report.controller';
+import { LowStockReportService } from './low-stock-report.service';
+import { LowStockReportController } from './low-stock-report.controller';
+import { AssetRegisterReportService } from './asset-register-report.service';
+import { AssetRegisterReportController } from './asset-register-report.controller';
 
 @Module({
   imports: [ReportingDataAccessModule, PlatformAuthModule],
@@ -24,6 +32,10 @@ import { RecruitmentPipelineReportController } from './recruitment-pipeline-repo
     LeaveUtilizationReportController,
     AttendanceReportController,
     RecruitmentPipelineReportController,
+    InventoryValuationReportController,
+    ProcurementSpendReportController,
+    LowStockReportController,
+    AssetRegisterReportController,
   ],
   providers: [
     HeadcountReportService,
@@ -31,6 +43,10 @@ import { RecruitmentPipelineReportController } from './recruitment-pipeline-repo
     LeaveUtilizationReportService,
     AttendanceReportService,
     RecruitmentPipelineReportService,
+    InventoryValuationReportService,
+    ProcurementSpendReportService,
+    LowStockReportService,
+    AssetRegisterReportService,
   ],
   exports: [
     HeadcountReportService,
@@ -38,6 +54,10 @@ import { RecruitmentPipelineReportController } from './recruitment-pipeline-repo
     LeaveUtilizationReportService,
     AttendanceReportService,
     RecruitmentPipelineReportService,
+    InventoryValuationReportService,
+    ProcurementSpendReportService,
+    LowStockReportService,
+    AssetRegisterReportService,
   ],
 })
 export class ReportingFeatureModule {}

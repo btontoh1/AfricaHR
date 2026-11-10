@@ -1,20 +1,24 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InventoryStockTransactionType } from '@prisma/client';
 import {
   InventoryProductRepository,
+  InventoryPurchaseOrderRepository,
   InventoryStockBatchRepository,
   InventoryStockRepository,
 } from '@africahr/inventory-data-access';
-import { InventoryStockService } from './inventory-stock.service';
+import { INVENTORY_GOODS_RECEIVED_EVENT, InventoryStockService } from './inventory-stock.service';
 
 describe('InventoryStockService', () => {
   let service: InventoryStockService;
   let stock: jest.Mocked<InventoryStockRepository>;
   let batches: jest.Mocked<InventoryStockBatchRepository>;
   let products: jest.Mocked<InventoryProductRepository>;
+  let purchaseOrders: jest.Mocked<InventoryPurchaseOrderRepository>;
+  let eventEmitter: jest.Mocked<EventEmitter2>;
 
-  const plainProduct = { id: 'prod-1', sku: 'PARA-500', tracksBatch: false };
-  const batchTrackedProduct = { id: 'prod-1', sku: 'PARA-500', tracksBatch: true };
+  const plainProduct = { id: 'prod-1', sku: 'PARA-500', name: 'Paracetamol 500mg', tracksBatch: false };
+  const batchTrackedProduct = { id: 'prod-1', sku: 'PARA-500', name: 'Paracetamol 500mg', tracksBatch: true };
 
   beforeEach(() => {
     stock = {
@@ -29,7 +33,12 @@ describe('InventoryStockService', () => {
     } as unknown as jest.Mocked<InventoryStockRepository>;
     batches = { list: jest.fn() } as unknown as jest.Mocked<InventoryStockBatchRepository>;
     products = { findById: jest.fn() } as unknown as jest.Mocked<InventoryProductRepository>;
-    service = new InventoryStockService(stock, batches, products);
+    purchaseOrders = {
+      findLineById: jest.fn(),
+      findById: jest.fn(),
+    } as unknown as jest.Mocked<InventoryPurchaseOrderRepository>;
+    eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
+    service = new InventoryStockService(stock, batches, products, purchaseOrders, eventEmitter);
   });
 
   describe('receiveGoods', () => {
@@ -99,6 +108,109 @@ describe('InventoryStockService', () => {
       await expect(
         service.receiveGoods('tenant-1', { warehouseId: 'wh-1', productId: 'missing', quantity: 1 }, 'user-1'),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('does not emit INVENTORY_GOODS_RECEIVED_EVENT when purchaseOrderLineId is not set', async () => {
+      products.findById.mockResolvedValue(plainProduct as never);
+      stock.postEntry.mockResolvedValue({ id: 'entry-1' } as never);
+
+      await service.receiveGoods(
+        'tenant-1',
+        { warehouseId: 'wh-1', productId: 'prod-1', quantity: 100, unitCost: 2.5 },
+        'user-1',
+      );
+
+      expect(eventEmitter.emit).not.toHaveBeenCalled();
+      expect(purchaseOrders.findLineById).not.toHaveBeenCalled();
+    });
+
+    it('emits INVENTORY_GOODS_RECEIVED_EVENT with the receipt unitCost when purchaseOrderLineId is set', async () => {
+      products.findById.mockResolvedValue(plainProduct as never);
+      stock.postEntry.mockResolvedValue({ id: 'entry-1' } as never);
+      purchaseOrders.findLineById.mockResolvedValue({
+        id: 'line-1',
+        purchaseOrderId: 'po-1',
+        unitCost: 9.99,
+      } as never);
+      purchaseOrders.findById.mockResolvedValue({
+        id: 'po-1',
+        organizationId: 'org-1',
+        poNumber: 'PO-0001',
+        vendorId: 'vendor-1',
+      } as never);
+
+      await service.receiveGoods(
+        'tenant-1',
+        {
+          warehouseId: 'wh-1',
+          productId: 'prod-1',
+          quantity: 20,
+          unitCost: 2.5,
+          purchaseOrderLineId: 'line-1',
+        },
+        'user-1',
+      );
+
+      expect(purchaseOrders.findLineById).toHaveBeenCalledWith('tenant-1', 'line-1');
+      expect(purchaseOrders.findById).toHaveBeenCalledWith('tenant-1', 'po-1');
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        INVENTORY_GOODS_RECEIVED_EVENT,
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          organizationId: 'org-1',
+          purchaseOrderId: 'po-1',
+          poNumber: 'PO-0001',
+          vendorId: 'vendor-1',
+          warehouseId: 'wh-1',
+          productId: 'prod-1',
+          productName: 'PARA-500 - Paracetamol 500mg',
+          quantity: 20,
+          unitCost: 2.5,
+          ledgerEntryId: 'entry-1',
+        }),
+      );
+    });
+
+    it('falls back to the PO line unitCost when the receipt did not specify one', async () => {
+      products.findById.mockResolvedValue(plainProduct as never);
+      stock.postEntry.mockResolvedValue({ id: 'entry-1' } as never);
+      purchaseOrders.findLineById.mockResolvedValue({
+        id: 'line-1',
+        purchaseOrderId: 'po-1',
+        unitCost: 9.99,
+      } as never);
+      purchaseOrders.findById.mockResolvedValue({
+        id: 'po-1',
+        organizationId: 'org-1',
+        poNumber: 'PO-0001',
+        vendorId: 'vendor-1',
+      } as never);
+
+      await service.receiveGoods(
+        'tenant-1',
+        { warehouseId: 'wh-1', productId: 'prod-1', quantity: 20, purchaseOrderLineId: 'line-1' },
+        'user-1',
+      );
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        INVENTORY_GOODS_RECEIVED_EVENT,
+        expect.objectContaining({ unitCost: 9.99 }),
+      );
+    });
+
+    it('swallows an error while emitting the PO-receipt event rather than failing the receipt', async () => {
+      products.findById.mockResolvedValue(plainProduct as never);
+      stock.postEntry.mockResolvedValue({ id: 'entry-1' } as never);
+      purchaseOrders.findLineById.mockRejectedValue(new Error('db unavailable'));
+
+      const entry = await service.receiveGoods(
+        'tenant-1',
+        { warehouseId: 'wh-1', productId: 'prod-1', quantity: 20, purchaseOrderLineId: 'line-1' },
+        'user-1',
+      );
+
+      expect(entry).toEqual({ id: 'entry-1' });
+      expect(eventEmitter.emit).not.toHaveBeenCalled();
     });
   });
 

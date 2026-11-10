@@ -25,3 +25,4 @@ export type TransferStockInput = components['schemas']['TransferStockDto'];
 export type ReverseStockEntryInput = components['schemas']['ReverseStockEntryDto'];
 export type StockLedgerEntry = components['schemas']['StockLedgerEntryResponseDto'];
 export type StockBalance = components['schemas']['StockBalanceResponseDto'];
+export type StockBatch = components['schemas']['StockBatchResponseDto'];

@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { PackageMinus } from 'lucide-react';
-import { useIssueGoods } from './queries';
+import { useInventoryProducts, useIssueGoods } from './queries';
 import { WarehousePicker } from './warehouse-picker';
 import { ProductPicker } from './product-picker';
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -36,11 +36,15 @@ const emptyValues: IssueGoodsFormValues = { warehouseId: '', productId: '', quan
 export function IssueGoodsDialog({ tenantId }: { tenantId: string }) {
   const [open, setOpen] = useState(false);
   const issueGoods = useIssueGoods(tenantId);
+  const { data: products } = useInventoryProducts(tenantId);
 
   const form = useForm<IssueGoodsFormValues>({
     resolver: zodResolver(issueGoodsFormSchema),
     defaultValues: emptyValues,
   });
+
+  const selectedProductId = form.watch('productId');
+  const tracksBatch = products?.find((product) => product.id === selectedProductId)?.tracksBatch ?? false;
 
   async function onSubmit(values: IssueGoodsFormValues) {
     try {
@@ -108,6 +112,11 @@ export function IssueGoodsDialog({ tenantId }: { tenantId: string }) {
                     <Input type="number" step="any" {...field} />
                   </FormControl>
                   <FormMessage />
+                  {tracksBatch && (
+                    <p className="text-sm text-muted-foreground">
+                      This product tracks batches - stock is drawn earliest-expiry-first automatically.
+                    </p>
+                  )}
                 </FormItem>
               )}
             />

@@ -3904,7 +3904,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Record goods issued out of a warehouse - rejected if it would take stock negative */
+        /** Record goods issued out of a warehouse - rejected if it would take stock negative. For a batch-tracked product this allocates First-Expired-First-Out and may return more than one entry, one per batch drawn from. */
         post: operations["InventoryStockController_issue"];
         delete?: never;
         options?: never;
@@ -3972,6 +3972,23 @@ export interface paths {
         };
         /** Stock movement ledger, optionally filtered by warehouse and/or product */
         get: operations["InventoryStockController_listLedger"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/stock/batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Batches/lots on hand, with expiry status - optionally filtered by product and/or warehouse */
+        get: operations["InventoryStockController_listBatches"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6695,6 +6712,11 @@ export interface components {
             /** @description e.g. a supplier delivery note or invoice number */
             referenceId?: string;
             note?: string;
+            /** @description Required when the product tracks batches - the lot/batch number this receipt belongs to */
+            batchNumber?: string;
+            /** @description Required when the product tracks batches */
+            expiryDate?: string;
+            manufactureDate?: string;
         };
         StockLedgerEntryResponseDto: {
             id: string;
@@ -6707,6 +6729,8 @@ export interface components {
             referenceType?: string;
             referenceId?: string;
             reversalOfId?: string;
+            /** @description Which batch/lot this leg moved - set only for a tracksBatch product */
+            batchId?: string;
             note?: string;
             /** Format: date-time */
             createdAt: string;
@@ -6735,6 +6759,23 @@ export interface components {
             warehouseId: string;
             productId: string;
             quantity: number;
+        };
+        StockBatchResponseDto: {
+            id: string;
+            productId: string;
+            warehouseId: string;
+            batchNumber: string;
+            /** Format: date-time */
+            expiryDate: string;
+            /** Format: date-time */
+            manufactureDate?: string;
+            receivedQuantity: number;
+            remainingQuantity: number;
+            unitCost?: number;
+            /** @enum {string} */
+            status: "OK" | "EXPIRING_SOON" | "EXPIRED";
+            /** Format: date-time */
+            createdAt: string;
         };
     };
     responses: never;
@@ -14558,7 +14599,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["StockLedgerEntryResponseDto"];
+                    "application/json": components["schemas"]["StockLedgerEntryResponseDto"][];
                 };
             };
         };
@@ -14657,6 +14698,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StockLedgerEntryResponseDto"][];
+                };
+            };
+        };
+    };
+    InventoryStockController_listBatches: {
+        parameters: {
+            query?: {
+                productId?: string;
+                warehouseId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockBatchResponseDto"][];
                 };
             };
         };

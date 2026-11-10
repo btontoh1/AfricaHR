@@ -31,6 +31,9 @@ export class StockLedgerEntryResponseDto {
   @ApiPropertyOptional()
   reversalOfId?: string | null;
 
+  @ApiPropertyOptional({ description: 'Which batch/lot this leg moved - set only for a tracksBatch product' })
+  batchId?: string | null;
+
   @ApiPropertyOptional()
   note?: string | null;
 

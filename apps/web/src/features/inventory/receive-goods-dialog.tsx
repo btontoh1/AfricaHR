@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { PackagePlus } from 'lucide-react';
-import { useReceiveGoods } from './queries';
+import { useInventoryProducts, useReceiveGoods } from './queries';
 import { WarehousePicker } from './warehouse-picker';
 import { ProductPicker } from './product-picker';
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -29,6 +29,9 @@ const receiveGoodsFormSchema = z.object({
   unitCost: z.string().optional(),
   referenceId: z.string().max(200).optional(),
   note: z.string().max(1000).optional(),
+  batchNumber: z.string().optional(),
+  expiryDate: z.string().optional(),
+  manufactureDate: z.string().optional(),
 });
 
 type ReceiveGoodsFormValues = z.infer<typeof receiveGoodsFormSchema>;
@@ -40,18 +43,31 @@ const emptyValues: ReceiveGoodsFormValues = {
   unitCost: '',
   referenceId: '',
   note: '',
+  batchNumber: '',
+  expiryDate: '',
+  manufactureDate: '',
 };
 
 export function ReceiveGoodsDialog({ tenantId }: { tenantId: string }) {
   const [open, setOpen] = useState(false);
   const receiveGoods = useReceiveGoods(tenantId);
+  const { data: products } = useInventoryProducts(tenantId);
 
   const form = useForm<ReceiveGoodsFormValues>({
     resolver: zodResolver(receiveGoodsFormSchema),
     defaultValues: emptyValues,
   });
 
+  const selectedProductId = form.watch('productId');
+  const tracksBatch = products?.find((product) => product.id === selectedProductId)?.tracksBatch ?? false;
+
   async function onSubmit(values: ReceiveGoodsFormValues) {
+    if (tracksBatch && (!values.batchNumber || !values.expiryDate)) {
+      if (!values.batchNumber) form.setError('batchNumber', { message: 'Required for a batch-tracked product' });
+      if (!values.expiryDate) form.setError('expiryDate', { message: 'Required for a batch-tracked product' });
+      return;
+    }
+
     try {
       await receiveGoods.mutateAsync({
         warehouseId: values.warehouseId,
@@ -60,6 +76,9 @@ export function ReceiveGoodsDialog({ tenantId }: { tenantId: string }) {
         unitCost: values.unitCost ? Number(values.unitCost) : undefined,
         referenceId: values.referenceId || undefined,
         note: values.note || undefined,
+        batchNumber: tracksBatch ? values.batchNumber : undefined,
+        expiryDate: tracksBatch ? values.expiryDate : undefined,
+        manufactureDate: tracksBatch && values.manufactureDate ? values.manufactureDate : undefined,
       });
       toast.success('Goods received');
       setOpen(false);
@@ -127,6 +146,49 @@ export function ReceiveGoodsDialog({ tenantId }: { tenantId: string }) {
                 </FormItem>
               )}
             />
+            {tracksBatch && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="batchNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Batch / lot number</FormLabel>
+                      <FormControl>
+                        <Input placeholder="LOT-0001" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="expiryDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Expiry date</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="manufactureDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Manufacture date (optional)</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
             <FormField
               control={form.control}
               name="unitCost"

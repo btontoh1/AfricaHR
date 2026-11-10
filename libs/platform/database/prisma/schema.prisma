@@ -114,6 +114,7 @@ model Tenant {
   inventoryWarehouses      InventoryWarehouse[]
   inventoryStockLedger     InventoryStockLedgerEntry[]
   inventoryStockBalances   InventoryStockBalance[]
+  inventoryStockBatches    InventoryStockBatch[]
 
   @@map("tenants")
 }
@@ -2753,6 +2754,7 @@ model InventoryProduct {
   baseUnit      InventoryUnit               @relation(fields: [baseUnitId], references: [id])
   ledgerEntries InventoryStockLedgerEntry[]
   stockBalances InventoryStockBalance[]
+  stockBatches  InventoryStockBatch[]
 
   @@unique([tenantId, sku])
   @@index([tenantId])
@@ -2782,6 +2784,7 @@ model InventoryWarehouse {
   manager       Employee?                   @relation(fields: [managerEmployeeId], references: [id])
   ledgerEntries InventoryStockLedgerEntry[]
   stockBalances InventoryStockBalance[]
+  stockBatches  InventoryStockBatch[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -2815,6 +2818,10 @@ model InventoryStockLedgerEntry {
   referenceType   String?                       @map("reference_type")
   referenceId     String?                       @map("reference_id")
   reversalOfId    String?                       @unique @map("reversal_of_id")
+  /// Which batch/lot this leg moved - set only for a tracksBatch product.
+  /// Nullable so the ledger schema stays shared between tracked and
+  /// untracked products rather than forking into two tables.
+  batchId         String?                       @map("batch_id")
   note            String?
   actorUserId     String?                       @map("actor_user_id")
 
@@ -2823,12 +2830,14 @@ model InventoryStockLedgerEntry {
   tenant     Tenant                     @relation(fields: [tenantId], references: [id])
   warehouse  InventoryWarehouse         @relation(fields: [warehouseId], references: [id])
   product    InventoryProduct           @relation(fields: [productId], references: [id])
+  batch      InventoryStockBatch?       @relation(fields: [batchId], references: [id])
   reversalOf InventoryStockLedgerEntry? @relation("StockLedgerReversal", fields: [reversalOfId], references: [id])
   reversedBy InventoryStockLedgerEntry? @relation("StockLedgerReversal")
 
   @@index([tenantId])
   @@index([warehouseId, productId])
   @@index([referenceType, referenceId])
+  @@index([batchId])
   @@map("inventory_stock_ledger")
 }
 
@@ -2852,4 +2861,42 @@ model InventoryStockBalance {
   @@unique([tenantId, warehouseId, productId])
   @@index([tenantId])
   @@map("inventory_stock_balances")
+}
+
+/// A received lot of a tracksBatch product, scoped to one warehouse - the
+/// same batch number arriving at two warehouses (e.g. via a transfer) gets
+/// its own row per warehouse, since FEFO allocation and expiry visibility
+/// are both warehouse-local. remainingQuantity is this batch's materialized
+/// balance (the batch-level analogue of InventoryStockBalance.quantity),
+/// kept in lockstep with the ledger via the same guarded-decrement pattern
+/// used for the aggregate warehouse+product balance. receivedQuantity is a
+/// running total of everything ever received into this lot, for display -
+/// unlike remainingQuantity it isn't reconstructed on every reversal, so a
+/// reversed receipt leaves it slightly overstated (acceptable for v1: the
+/// ledger itself remains the source of truth for exact history).
+model InventoryStockBatch {
+  id                String    @id @default(uuid())
+  tenantId          String    @map("tenant_id")
+  productId         String    @map("product_id")
+  warehouseId       String    @map("warehouse_id")
+  batchNumber       String    @map("batch_number")
+  expiryDate        DateTime  @map("expiry_date")
+  manufactureDate   DateTime? @map("manufacture_date")
+  receivedQuantity  Decimal   @default(0) @map("received_quantity")
+  remainingQuantity Decimal   @default(0) @map("remaining_quantity")
+  unitCost          Decimal?  @map("unit_cost")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+
+  tenant        Tenant                      @relation(fields: [tenantId], references: [id])
+  product       InventoryProduct            @relation(fields: [productId], references: [id])
+  warehouse     InventoryWarehouse          @relation(fields: [warehouseId], references: [id])
+  ledgerEntries InventoryStockLedgerEntry[]
+
+  @@unique([tenantId, productId, warehouseId, batchNumber])
+  @@index([tenantId])
+  @@index([tenantId, productId, warehouseId, expiryDate])
+  @@map("inventory_stock_batches")
 }

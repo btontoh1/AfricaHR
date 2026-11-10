@@ -59,6 +59,7 @@ export function ProductsList({ tenantId }: { tenantId: string }) {
             <TableHead>Category</TableHead>
             <TableHead>Base unit</TableHead>
             <TableHead>Purchase price</TableHead>
+            <TableHead>Batches</TableHead>
             <TableHead>Status</TableHead>
             <TableHead />
           </TableRow>
@@ -71,6 +72,13 @@ export function ProductsList({ tenantId }: { tenantId: string }) {
               <TableCell className="text-muted-foreground">{categoryName(product.categoryId)}</TableCell>
               <TableCell className="text-muted-foreground">{unitLabel(product.baseUnitId)}</TableCell>
               <TableCell className="text-muted-foreground">{Number(product.purchasePrice).toFixed(2)}</TableCell>
+              <TableCell>
+                {product.tracksBatch ? (
+                  <Badge variant="outline">Tracked</Badge>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
                   <Switch

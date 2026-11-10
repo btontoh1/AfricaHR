@@ -338,6 +338,10 @@ function stockLedgerListKey(tenantId: string) {
   return ['inventory', 'stock-ledger', tenantId] as const;
 }
 
+function stockBatchesListKey(tenantId: string) {
+  return ['inventory', 'stock-batches', tenantId] as const;
+}
+
 export function useStockBalances(tenantId: string, warehouseId?: string) {
   return useQuery({
     queryKey: [...stockBalancesListKey(tenantId), warehouseId ?? ''],
@@ -364,9 +368,23 @@ export function useStockLedger(tenantId: string, filters: { warehouseId?: string
   });
 }
 
+export function useStockBatches(tenantId: string, filters: { productId?: string; warehouseId?: string } = {}) {
+  return useQuery({
+    queryKey: [...stockBatchesListKey(tenantId), filters.productId ?? '', filters.warehouseId ?? ''],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/inventory/stock/batches', {
+        params: { path: { tenantId }, query: filters },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
 function invalidateStock(queryClient: ReturnType<typeof useQueryClient>, tenantId: string) {
   queryClient.invalidateQueries({ queryKey: stockBalancesListKey(tenantId) });
   queryClient.invalidateQueries({ queryKey: stockLedgerListKey(tenantId) });
+  queryClient.invalidateQueries({ queryKey: stockBatchesListKey(tenantId) });
 }
 
 export function useReceiveGoods(tenantId: string) {

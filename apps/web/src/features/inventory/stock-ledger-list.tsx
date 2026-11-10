@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { History } from 'lucide-react';
-import { useInventoryProducts, useInventoryWarehouses, useStockLedger } from './queries';
+import { useInventoryProducts, useInventoryWarehouses, useStockBatches, useStockLedger } from './queries';
 import { ReverseStockEntryDialog } from './reverse-stock-entry-dialog';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { TableCard } from '@/components/table-card';
@@ -45,6 +45,7 @@ export function StockLedgerList({ tenantId }: { tenantId: string }) {
   const { data: entries, isLoading, isError, error } = useStockLedger(tenantId, { warehouseId: scopedWarehouseId });
   const { data: warehouses } = useInventoryWarehouses(tenantId);
   const { data: products } = useInventoryProducts(tenantId);
+  const { data: batches } = useStockBatches(tenantId);
 
   const warehouseLabel = (id: string) => {
     const warehouse = warehouses?.find((candidate) => candidate.id === id);
@@ -53,6 +54,10 @@ export function StockLedgerList({ tenantId }: { tenantId: string }) {
   const productLabel = (id: string) => {
     const product = products?.find((candidate) => candidate.id === id);
     return product ? `${product.sku} — ${product.name}` : id;
+  };
+  const batchLabel = (id?: string | null) => {
+    if (!id) return null;
+    return batches?.find((candidate) => candidate.id === id)?.batchNumber ?? null;
   };
 
   return (
@@ -88,6 +93,7 @@ export function StockLedgerList({ tenantId }: { tenantId: string }) {
                 <TableHead>Type</TableHead>
                 <TableHead>Warehouse</TableHead>
                 <TableHead>Product</TableHead>
+                <TableHead>Batch</TableHead>
                 <TableHead>In</TableHead>
                 <TableHead>Out</TableHead>
                 <TableHead>Note</TableHead>
@@ -105,6 +111,7 @@ export function StockLedgerList({ tenantId }: { tenantId: string }) {
                   </TableCell>
                   <TableCell className="font-medium">{warehouseLabel(entry.warehouseId)}</TableCell>
                   <TableCell>{productLabel(entry.productId)}</TableCell>
+                  <TableCell className="font-mono text-muted-foreground">{batchLabel(entry.batchId) ?? '—'}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {Number(entry.quantityIn) > 0 ? Number(entry.quantityIn) : '—'}
                   </TableCell>

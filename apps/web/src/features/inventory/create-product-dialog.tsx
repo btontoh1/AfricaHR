@@ -11,6 +11,7 @@ import { UnitPicker } from './unit-picker';
 import { CategoryPicker } from './category-picker';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,7 @@ const createProductFormSchema = z.object({
   categoryId: z.string().optional(),
   purchasePrice: z.string().refine((value) => Number(value) >= 0, 'Must be zero or more'),
   sellingPrice: z.string().optional(),
+  tracksBatch: z.boolean(),
 });
 
 type CreateProductFormValues = z.infer<typeof createProductFormSchema>;
@@ -40,6 +42,7 @@ const emptyValues: CreateProductFormValues = {
   categoryId: '',
   purchasePrice: '',
   sellingPrice: '',
+  tracksBatch: false,
 };
 
 export function CreateProductDialog({ tenantId }: { tenantId: string }) {
@@ -60,6 +63,7 @@ export function CreateProductDialog({ tenantId }: { tenantId: string }) {
         categoryId: values.categoryId || undefined,
         purchasePrice: Number(values.purchasePrice),
         sellingPrice: values.sellingPrice ? Number(values.sellingPrice) : undefined,
+        tracksBatch: values.tracksBatch,
       });
       toast.success('Product added');
       setOpen(false);
@@ -163,6 +167,20 @@ export function CreateProductDialog({ tenantId }: { tenantId: string }) {
                     <Input type="number" step="any" placeholder="3.50" {...field} />
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="tracksBatch"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center gap-2 pb-2">
+                  <FormControl>
+                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                  <FormLabel className="!mt-0">
+                    Tracks batches/expiry (pharmaceuticals, perishables)
+                  </FormLabel>
                 </FormItem>
               )}
             />

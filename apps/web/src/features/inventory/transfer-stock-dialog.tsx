@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { ArrowLeftRight } from 'lucide-react';
-import { useTransferStock } from './queries';
+import { useInventoryProducts, useTransferStock } from './queries';
 import { WarehousePicker } from './warehouse-picker';
 import { ProductPicker } from './product-picker';
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -52,11 +52,15 @@ const emptyValues: TransferStockFormValues = {
 export function TransferStockDialog({ tenantId }: { tenantId: string }) {
   const [open, setOpen] = useState(false);
   const transferStock = useTransferStock(tenantId);
+  const { data: products } = useInventoryProducts(tenantId);
 
   const form = useForm<TransferStockFormValues>({
     resolver: zodResolver(transferStockFormSchema),
     defaultValues: emptyValues,
   });
+
+  const selectedProductId = form.watch('productId');
+  const tracksBatch = products?.find((product) => product.id === selectedProductId)?.tracksBatch ?? false;
 
   async function onSubmit(values: TransferStockFormValues) {
     try {
@@ -130,6 +134,12 @@ export function TransferStockDialog({ tenantId }: { tenantId: string }) {
                     <ProductPicker tenantId={tenantId} value={field.value} onChange={field.onChange} />
                   </FormControl>
                   <FormMessage />
+                  {tracksBatch && (
+                    <p className="text-sm text-muted-foreground">
+                      This product tracks batches - stock is drawn earliest-expiry-first automatically, and the
+                      same batch/expiry carries over to the destination warehouse.
+                    </p>
+                  )}
                 </FormItem>
               )}
             />

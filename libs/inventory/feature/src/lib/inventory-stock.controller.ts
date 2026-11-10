@@ -19,6 +19,7 @@ import { TransferStockDto } from './dto/transfer-stock.dto';
 import { ReverseStockEntryDto } from './dto/reverse-stock-entry.dto';
 import { StockLedgerEntryResponseDto } from './dto/stock-ledger-entry-response.dto';
 import { StockBalanceResponseDto } from './dto/stock-balance-response.dto';
+import { StockBatchResponseDto } from './dto/stock-batch-response.dto';
 
 @ApiTags('inventory')
 @ApiBearerAuth()
@@ -39,8 +40,11 @@ export class InventoryStockController {
 
   @Post('issue')
   @RequirePermissions(Permission.INVENTORY_MANAGE)
-  @ApiOperation({ summary: 'Record goods issued out of a warehouse - rejected if it would take stock negative' })
-  @ApiOkResponse({ type: StockLedgerEntryResponseDto })
+  @ApiOperation({
+    summary:
+      'Record goods issued out of a warehouse - rejected if it would take stock negative. For a batch-tracked product this allocates First-Expired-First-Out and may return more than one entry, one per batch drawn from.',
+  })
+  @ApiOkResponse({ type: StockLedgerEntryResponseDto, isArray: true })
   issue(@Param('tenantId') tenantId: string, @Body() dto: IssueGoodsDto, @CurrentUser() actor: RequestUser) {
     assertTenantScope(actor, tenantId);
     return this.stock.issueGoods(tenantId, dto, actor.sub);
@@ -97,5 +101,21 @@ export class InventoryStockController {
   ) {
     assertTenantScope(actor, tenantId);
     return this.stock.listLedgerEntries(tenantId, { warehouseId, productId });
+  }
+
+  @Get('batches')
+  @RequirePermissions(Permission.INVENTORY_READ)
+  @ApiOperation({ summary: 'Batches/lots on hand, with expiry status - optionally filtered by product and/or warehouse' })
+  @ApiQuery({ name: 'productId', required: false })
+  @ApiQuery({ name: 'warehouseId', required: false })
+  @ApiOkResponse({ type: StockBatchResponseDto, isArray: true })
+  listBatches(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() actor: RequestUser,
+    @Query('productId') productId?: string,
+    @Query('warehouseId') warehouseId?: string,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.stock.listBatches(tenantId, { productId, warehouseId });
   }
 }

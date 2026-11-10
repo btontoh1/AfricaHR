@@ -6,6 +6,7 @@ import { InventoryCategoryRepository } from './inventory-category.repository';
 import { InventoryProductRepository } from './inventory-product.repository';
 import { InventoryWarehouseRepository } from './inventory-warehouse.repository';
 import { InventoryStockRepository } from './inventory-stock.repository';
+import { InventoryStockBatchRepository } from './inventory-stock-batch.repository';
 
 @Module({
   imports: [PrismaModule],
@@ -16,6 +17,7 @@ import { InventoryStockRepository } from './inventory-stock.repository';
     InventoryProductRepository,
     InventoryWarehouseRepository,
     InventoryStockRepository,
+    InventoryStockBatchRepository,
   ],
   exports: [
     InventoryUnitRepository,
@@ -24,6 +26,7 @@ import { InventoryStockRepository } from './inventory-stock.repository';
     InventoryProductRepository,
     InventoryWarehouseRepository,
     InventoryStockRepository,
+    InventoryStockBatchRepository,
   ],
 })
 export class InventoryDataAccessModule {}

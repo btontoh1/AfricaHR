@@ -21,7 +21,7 @@ describe('ProcurementSpendReportService', () => {
     expect(spend.listSpendLines).toHaveBeenCalledWith('tenant-1', {
       vendorId: undefined,
       from: new Date('2026-01-01'),
-      to: new Date('2026-02-28'),
+      to: new Date('2026-02-28T23:59:59.999Z'),
     });
   });
 
@@ -31,5 +31,14 @@ describe('ProcurementSpendReportService', () => {
     const result = await service.generate('tenant-1', {});
 
     expect(result).toEqual([]);
+  });
+
+  it('extends the "to" filter to end-of-day so a same-day order is not excluded', async () => {
+    spend.listSpendLines.mockResolvedValue([]);
+
+    await service.generate('tenant-1', { to: '2026-11-10' });
+
+    const [, params] = spend.listSpendLines.mock.calls[0] as [string, { to?: Date }];
+    expect(params.to).toEqual(new Date('2026-11-10T23:59:59.999Z'));
   });
 });

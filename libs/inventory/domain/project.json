@@ -1,0 +1,19 @@
+{
+  "name": "inventory-domain",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/inventory/domain/src",
+  "projectType": "library",
+  "tags": ["scope:inventory", "type:domain"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/inventory/domain",
+        "main": "libs/inventory/domain/src/index.ts",
+        "tsConfig": "libs/inventory/domain/tsconfig.lib.json",
+        "assets": ["libs/inventory/domain/*.md"]
+      }
+    }
+  }
+}

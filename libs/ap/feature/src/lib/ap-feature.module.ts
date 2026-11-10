@@ -8,11 +8,12 @@ import { VendorBillService } from './vendor-bill.service';
 import { VendorBillController } from './vendor-bill.controller';
 import { VendorPaymentService } from './vendor-payment.service';
 import { VendorPaymentController } from './vendor-payment.controller';
+import { InventoryReceiptBillListener } from './inventory-receipt-bill.listener';
 
 @Module({
   imports: [ApDataAccessModule, PlatformAuthModule, AuditModule],
   controllers: [VendorController, VendorBillController, VendorPaymentController],
-  providers: [VendorService, VendorBillService, VendorPaymentService],
+  providers: [VendorService, VendorBillService, VendorPaymentService, InventoryReceiptBillListener],
   exports: [VendorService, VendorBillService, VendorPaymentService],
 })
 export class ApFeatureModule {}

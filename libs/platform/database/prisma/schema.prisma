@@ -61,6 +61,9 @@ enum AddOnModule {
   PERFORMANCE
   /// Opt-in, off by default - same convention as INVOICING.
   FINANCE
+  /// Opt-in, off by default - same convention as INVOICING/FINANCE. See
+  /// InventoryProduct and friends near the end of this file.
+  INVENTORY
 }
 
 /// The SaaS account. Platform-root table — no tenantId, no RLS.
@@ -98,12 +101,27 @@ model Tenant {
   createdBy String?   @map("created_by")
   updatedBy String?   @map("updated_by")
 
-  organizations Organization[]
-  users         User[]
-  subscription  Subscription?
-  invoices      Invoice[]
-  payrollWallets  TenantPayrollWallet[]
-  walletTopUps    TenantWalletTopUp[]
+  organizations            Organization[]
+  users                    User[]
+  subscription             Subscription?
+  invoices                 Invoice[]
+  payrollWallets           TenantPayrollWallet[]
+  walletTopUps             TenantWalletTopUp[]
+  inventoryUnits           InventoryUnit[]
+  inventoryUnitConversions InventoryUnitConversion[]
+  inventoryCategories      InventoryCategory[]
+  inventoryProducts        InventoryProduct[]
+  inventoryWarehouses      InventoryWarehouse[]
+  inventoryStockLedger     InventoryStockLedgerEntry[]
+  inventoryStockBalances   InventoryStockBalance[]
+  inventoryStockBatches    InventoryStockBatch[]
+  purchaseRequisitions     InventoryPurchaseRequisition[]
+  purchaseRequisitionLines InventoryPurchaseRequisitionLine[]
+  purchaseOrders           InventoryPurchaseOrder[]
+  purchaseOrderLines       InventoryPurchaseOrderLine[]
+  inventoryStockRequests   InventoryStockRequest[]
+  companyAssets            CompanyAsset[]
+  companyAssetAssignments  CompanyAssetAssignment[]
 
   @@map("tenants")
 }
@@ -254,17 +272,17 @@ enum WalletTopUpStatus {
 /// reuse of Invoice) since a top-up isn't tied to a Subscription billing
 /// period and funds payroll, not a subscription fee.
 model TenantWalletTopUp {
-  id       String            @id @default(uuid())
-  tenantId String            @map("tenant_id")
-  currency String
-  amount   Decimal
-  status   WalletTopUpStatus @default(PENDING)
+  id                String            @id @default(uuid())
+  tenantId          String            @map("tenant_id")
+  currency          String
+  amount            Decimal
+  status            WalletTopUpStatus @default(PENDING)
   /// Paystack transaction reference - the join key
   /// find_wallet_topup_by_paystack_reference_across_tenants uses when the
   /// webhook (no tenant context) sees a matching charge.success.
-  paystackReference String?   @unique @map("paystack_reference")
-  checkoutUrl       String?   @map("checkout_url")
-  paidAt            DateTime? @map("paid_at")
+  paystackReference String?           @unique @map("paystack_reference")
+  checkoutUrl       String?           @map("checkout_url")
+  paidAt            DateTime?         @map("paid_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -285,12 +303,12 @@ model TenantWalletTopUp {
 /// platform-wide with no tenantId, same posture as Tenant itself - it's
 /// not scoped to any tenant, so no RLS policy applies here either.
 model PlatformOperatingCost {
-  id        String   @id @default(uuid())
+  id       String  @id @default(uuid())
   /// "YYYY-MM" - matches the month key used throughout the SaaS analytics.
-  month     String
-  currency  String
-  amount    Decimal
-  notes     String?
+  month    String
+  currency String
+  amount   Decimal
+  notes    String?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -405,6 +423,10 @@ model Organization {
   glDepreciationRuns      GlDepreciationRun[]
   expenses                Expense[]
   glCostCenters           GlCostCenter[]
+  inventoryWarehouses     InventoryWarehouse[]
+  purchaseRequisitions    InventoryPurchaseRequisition[]
+  purchaseOrders          InventoryPurchaseOrder[]
+  companyAssets           CompanyAsset[]
 
   @@index([tenantId])
   @@map("organizations")
@@ -709,23 +731,30 @@ model Employee {
   createdBy String?   @map("created_by")
   updatedBy String?   @map("updated_by")
 
-  organization       Organization             @relation(fields: [organizationId], references: [id])
-  organizationUnit   OrganizationUnit?        @relation(fields: [organizationUnitId], references: [id])
-  user               User?                    @relation(fields: [userId], references: [id])
-  manager            Employee?                @relation("EmployeeManager", fields: [managerId], references: [id])
-  directReports      Employee[]               @relation("EmployeeManager")
-  historyEntries     EmploymentHistoryEntry[]
-  payslips           Payslip[]
-  leaveBalances      LeaveBalance[]
-  leaveRequests      LeaveRequest[]
-  attendanceRecords  AttendanceRecord[]
-  benefitEnrollments BenefitEnrollment[]
-  performanceGoals   PerformanceGoal[]
-  performanceReviews PerformanceReview[]
-  hiringRequisitions JobRequisition[]         @relation("JobRequisitionHiringManager")
-  hiredApplications  Application[]            @relation("ApplicationHiredEmployee")
-  paymentMethod      EmployeePaymentMethod?
-  familyMembers      EmployeeFamilyMember[]
+  organization                  Organization                   @relation(fields: [organizationId], references: [id])
+  organizationUnit              OrganizationUnit?              @relation(fields: [organizationUnitId], references: [id])
+  user                          User?                          @relation(fields: [userId], references: [id])
+  manager                       Employee?                      @relation("EmployeeManager", fields: [managerId], references: [id])
+  directReports                 Employee[]                     @relation("EmployeeManager")
+  historyEntries                EmploymentHistoryEntry[]
+  payslips                      Payslip[]
+  leaveBalances                 LeaveBalance[]
+  leaveRequests                 LeaveRequest[]
+  attendanceRecords             AttendanceRecord[]
+  benefitEnrollments            BenefitEnrollment[]
+  performanceGoals              PerformanceGoal[]
+  performanceReviews            PerformanceReview[]
+  hiringRequisitions            JobRequisition[]               @relation("JobRequisitionHiringManager")
+  hiredApplications             Application[]                  @relation("ApplicationHiredEmployee")
+  paymentMethod                 EmployeePaymentMethod?
+  familyMembers                 EmployeeFamilyMember[]
+  managedWarehouses             InventoryWarehouse[]
+  requestedPurchaseRequisitions InventoryPurchaseRequisition[] @relation("RequisitionRequestedBy")
+  reviewedPurchaseRequisitions  InventoryPurchaseRequisition[] @relation("RequisitionReviewedBy")
+  requestedStock                InventoryStockRequest[]        @relation("StockRequestRequestedBy")
+  reviewedStockRequests         InventoryStockRequest[]        @relation("StockRequestReviewedBy")
+  assignedCompanyAssets         CompanyAsset[]
+  companyAssetAssignments       CompanyAssetAssignment[]
 
   @@unique([tenantId, employeeNumber])
   @@index([tenantId])
@@ -1211,12 +1240,12 @@ model AttendancePolicy {
 /// same deliberately flag-only, never-enforced posture as the single
 /// geofence it replaces (device GPS drift makes hard-blocking unreliable).
 model AttendanceLocation {
-  id            String  @id @default(uuid())
-  tenantId      String  @map("tenant_id")
-  name          String
-  latitude      Decimal
-  longitude     Decimal
-  radiusMeters  Int     @map("radius_meters")
+  id           String  @id @default(uuid())
+  tenantId     String  @map("tenant_id")
+  name         String
+  latitude     Decimal
+  longitude    Decimal
+  radiusMeters Int     @map("radius_meters")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1850,9 +1879,10 @@ model Vendor {
   createdBy String?   @map("created_by")
   updatedBy String?   @map("updated_by")
 
-  organization Organization    @relation(fields: [organizationId], references: [id])
-  bills        VendorBill[]
-  payments     VendorPayment[]
+  organization   Organization             @relation(fields: [organizationId], references: [id])
+  bills          VendorBill[]
+  payments       VendorPayment[]
+  purchaseOrders InventoryPurchaseOrder[]
 
   @@index([tenantId])
   @@index([organizationId])
@@ -2616,4 +2646,538 @@ model GlPeriodClose {
 
   @@index([tenantId])
   @@map("gl_period_closes")
+}
+
+// ============================================================================
+// Inventory & Warehouse Management (Phase 1: foundation)
+//
+// Gated behind AddOnModule.INVENTORY, same opt-in convention as FINANCE.
+// Products/categories/units are tenant-wide (one shared catalog across a
+// tenant's organizations/branches, same reasoning a company keeps one SKU
+// list even with multiple sites) - warehouses are organization-scoped,
+// same convention as Vendor, since a physical site belongs to one branch.
+//
+// InventoryStockLedgerEntry is the append-only source of truth (same
+// "immutable, reversal-only" shape as GlJournalEntry) - InventoryStockBalance
+// is a materialized running total written in the same DB transaction as
+// every ledger insert, purely so a dashboard/listing read doesn't have to
+// SUM() the whole ledger. If the two ever disagree, the ledger wins.
+// ============================================================================
+
+model InventoryUnit {
+  id           String  @id @default(uuid())
+  tenantId     String  @map("tenant_id")
+  name         String
+  abbreviation String
+  isActive     Boolean @default(true) @map("is_active")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  tenant          Tenant                    @relation(fields: [tenantId], references: [id])
+  products        InventoryProduct[]
+  conversionsFrom InventoryUnitConversion[] @relation("UnitConversionFrom")
+  conversionsTo   InventoryUnitConversion[] @relation("UnitConversionTo")
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("inventory_units")
+}
+
+/// 1 fromUnit = factor * toUnit, e.g. 1 carton = 20 box -> fromUnitId=carton,
+/// toUnitId=box, factor=20. Validated application-side (not something a DB
+/// constraint can express) to reject a conversion that would create a cycle
+/// - see InventoryUnitConversionService in inventory-domain.
+model InventoryUnitConversion {
+  id         String  @id @default(uuid())
+  tenantId   String  @map("tenant_id")
+  fromUnitId String  @map("from_unit_id")
+  toUnitId   String  @map("to_unit_id")
+  factor     Decimal
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  tenant   Tenant        @relation(fields: [tenantId], references: [id])
+  fromUnit InventoryUnit @relation("UnitConversionFrom", fields: [fromUnitId], references: [id])
+  toUnit   InventoryUnit @relation("UnitConversionTo", fields: [toUnitId], references: [id])
+
+  @@unique([tenantId, fromUnitId, toUnitId])
+  @@index([tenantId])
+  @@map("inventory_unit_conversions")
+}
+
+model InventoryCategory {
+  id       String  @id @default(uuid())
+  tenantId String  @map("tenant_id")
+  parentId String? @map("parent_id")
+  name     String
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  tenant   Tenant              @relation(fields: [tenantId], references: [id])
+  parent   InventoryCategory?  @relation("InventoryCategoryToParent", fields: [parentId], references: [id])
+  children InventoryCategory[] @relation("InventoryCategoryToParent")
+  products InventoryProduct[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("inventory_categories")
+}
+
+model InventoryProduct {
+  id              String   @id @default(uuid())
+  tenantId        String   @map("tenant_id")
+  categoryId      String?  @map("category_id")
+  baseUnitId      String   @map("base_unit_id")
+  sku             String
+  barcode         String?
+  name            String
+  description     String?
+  brand           String?
+  manufacturer    String?
+  purchasePrice   Decimal  @map("purchase_price")
+  sellingPrice    Decimal? @map("selling_price")
+  minStockLevel   Decimal? @map("min_stock_level")
+  maxStockLevel   Decimal? @map("max_stock_level")
+  /// Object-storage key for an uploaded product photo, same pattern as
+  /// Tenant.logoStorageKey - a short-lived signed view URL is minted on read.
+  imageStorageKey String?  @map("image_storage_key")
+  /// Whether Phase 2 (batch/expiry tracking, FEFO) applies to this product -
+  /// a per-product toggle, not a tenant-wide switch, since most tenants will
+  /// mix batch-tracked (pharma, perishables) and non-tracked (general
+  /// merchandise) products in the same catalog.
+  tracksBatch     Boolean  @default(false) @map("tracks_batch")
+  isActive        Boolean  @default(true) @map("is_active")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  tenant                   Tenant                             @relation(fields: [tenantId], references: [id])
+  category                 InventoryCategory?                 @relation(fields: [categoryId], references: [id])
+  baseUnit                 InventoryUnit                      @relation(fields: [baseUnitId], references: [id])
+  ledgerEntries            InventoryStockLedgerEntry[]
+  stockBalances            InventoryStockBalance[]
+  stockBatches             InventoryStockBatch[]
+  purchaseRequisitionLines InventoryPurchaseRequisitionLine[]
+  purchaseOrderLines       InventoryPurchaseOrderLine[]
+  stockRequests            InventoryStockRequest[]
+
+  @@unique([tenantId, sku])
+  @@index([tenantId])
+  @@index([categoryId])
+  @@map("inventory_products")
+}
+
+model InventoryWarehouse {
+  id                String  @id @default(uuid())
+  tenantId          String  @map("tenant_id")
+  organizationId    String  @map("organization_id")
+  managerEmployeeId String? @map("manager_employee_id")
+  name              String
+  code              String
+  address           String?
+  phone             String?
+  isActive          Boolean @default(true) @map("is_active")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  tenant               Tenant                         @relation(fields: [tenantId], references: [id])
+  organization         Organization                   @relation(fields: [organizationId], references: [id])
+  manager              Employee?                      @relation(fields: [managerEmployeeId], references: [id])
+  ledgerEntries        InventoryStockLedgerEntry[]
+  stockBalances        InventoryStockBalance[]
+  stockBatches         InventoryStockBatch[]
+  purchaseRequisitions InventoryPurchaseRequisition[]
+  purchaseOrders       InventoryPurchaseOrder[]
+  stockRequests        InventoryStockRequest[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([organizationId])
+  @@map("inventory_warehouses")
+}
+
+enum InventoryStockTransactionType {
+  GOODS_RECEIVED
+  GOODS_ISSUED
+  TRANSFER_OUT
+  TRANSFER_IN
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  REVERSAL
+}
+
+/// Append-only. Never updated or deleted once posted - a correction is a
+/// new row referencing the entry it reverses (reversalOfId), same
+/// reversal-only discipline as GlJournalEntry. See InventoryStockBalance
+/// for the derived running total this ledger is reconciled against.
+model InventoryStockLedgerEntry {
+  id                  String                        @id @default(uuid())
+  tenantId            String                        @map("tenant_id")
+  warehouseId         String                        @map("warehouse_id")
+  productId           String                        @map("product_id")
+  transactionType     InventoryStockTransactionType @map("transaction_type")
+  quantityIn          Decimal                       @default(0) @map("quantity_in")
+  quantityOut         Decimal                       @default(0) @map("quantity_out")
+  unitCost            Decimal?                      @map("unit_cost")
+  referenceType       String?                       @map("reference_type")
+  referenceId         String?                       @map("reference_id")
+  reversalOfId        String?                       @unique @map("reversal_of_id")
+  /// Which batch/lot this leg moved - set only for a tracksBatch product.
+  /// Nullable so the ledger schema stays shared between tracked and
+  /// untracked products rather than forking into two tables.
+  batchId             String?                       @map("batch_id")
+  /// Which purchase order line this receipt counted against, when goods
+  /// were received against a PO rather than received ad hoc - what lets
+  /// InventoryPurchaseOrderLine.quantityReceived (and the parent PO's
+  /// SENT/PARTIALLY_RECEIVED/RECEIVED status) stay in lockstep with the
+  /// ledger, same reasoning as batchId.
+  purchaseOrderLineId String?                       @map("purchase_order_line_id")
+  note                String?
+  actorUserId         String?                       @map("actor_user_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant                Tenant                      @relation(fields: [tenantId], references: [id])
+  warehouse             InventoryWarehouse          @relation(fields: [warehouseId], references: [id])
+  product               InventoryProduct            @relation(fields: [productId], references: [id])
+  batch                 InventoryStockBatch?        @relation(fields: [batchId], references: [id])
+  purchaseOrderLine     InventoryPurchaseOrderLine? @relation(fields: [purchaseOrderLineId], references: [id])
+  reversalOf            InventoryStockLedgerEntry?  @relation("StockLedgerReversal", fields: [reversalOfId], references: [id])
+  reversedBy            InventoryStockLedgerEntry?  @relation("StockLedgerReversal")
+  inventoryStockRequest InventoryStockRequest?
+
+  @@index([tenantId])
+  @@index([warehouseId, productId])
+  @@index([referenceType, referenceId])
+  @@index([batchId])
+  @@index([purchaseOrderLineId])
+  @@map("inventory_stock_ledger")
+}
+
+/// Materialized balance, always written in the same DB transaction as the
+/// InventoryStockLedgerEntry that changed it - the ledger remains the
+/// source of truth this is reconciled against, this table exists purely so
+/// a dashboard/listing read is an indexed lookup, not a SUM() over history.
+model InventoryStockBalance {
+  id          String  @id @default(uuid())
+  tenantId    String  @map("tenant_id")
+  warehouseId String  @map("warehouse_id")
+  productId   String  @map("product_id")
+  quantity    Decimal @default(0)
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant    Tenant             @relation(fields: [tenantId], references: [id])
+  warehouse InventoryWarehouse @relation(fields: [warehouseId], references: [id])
+  product   InventoryProduct   @relation(fields: [productId], references: [id])
+
+  @@unique([tenantId, warehouseId, productId])
+  @@index([tenantId])
+  @@map("inventory_stock_balances")
+}
+
+/// A received lot of a tracksBatch product, scoped to one warehouse - the
+/// same batch number arriving at two warehouses (e.g. via a transfer) gets
+/// its own row per warehouse, since FEFO allocation and expiry visibility
+/// are both warehouse-local. remainingQuantity is this batch's materialized
+/// balance (the batch-level analogue of InventoryStockBalance.quantity),
+/// kept in lockstep with the ledger via the same guarded-decrement pattern
+/// used for the aggregate warehouse+product balance. receivedQuantity is a
+/// running total of everything ever received into this lot, for display -
+/// unlike remainingQuantity it isn't reconstructed on every reversal, so a
+/// reversed receipt leaves it slightly overstated (acceptable for v1: the
+/// ledger itself remains the source of truth for exact history).
+model InventoryStockBatch {
+  id                String    @id @default(uuid())
+  tenantId          String    @map("tenant_id")
+  productId         String    @map("product_id")
+  warehouseId       String    @map("warehouse_id")
+  batchNumber       String    @map("batch_number")
+  expiryDate        DateTime  @map("expiry_date")
+  manufactureDate   DateTime? @map("manufacture_date")
+  receivedQuantity  Decimal   @default(0) @map("received_quantity")
+  remainingQuantity Decimal   @default(0) @map("remaining_quantity")
+  unitCost          Decimal?  @map("unit_cost")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+
+  tenant        Tenant                      @relation(fields: [tenantId], references: [id])
+  product       InventoryProduct            @relation(fields: [productId], references: [id])
+  warehouse     InventoryWarehouse          @relation(fields: [warehouseId], references: [id])
+  ledgerEntries InventoryStockLedgerEntry[]
+
+  @@unique([tenantId, productId, warehouseId, batchNumber])
+  @@index([tenantId])
+  @@index([tenantId, productId, warehouseId, expiryDate])
+  @@map("inventory_stock_batches")
+}
+
+enum InventoryRequisitionStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  CONVERTED
+  CANCELLED
+}
+
+/// An internal request to buy stock for a warehouse - the employee-facing
+/// front end of procurement. Deliberately single-step approval (SUBMITTED
+/// -> APPROVED/REJECTED), not a multi-level approval chain - same
+/// "foundation first" simplification as the rest of this module. Approval
+/// doesn't buy anything by itself; "convert to PO" (see
+/// InventoryPurchaseOrder.requisitionId) is the separate step that turns
+/// an approved requisition into an order against a chosen vendor.
+model InventoryPurchaseRequisition {
+  id                    String                     @id @default(uuid())
+  tenantId              String                     @map("tenant_id")
+  organizationId        String                     @map("organization_id")
+  warehouseId           String                     @map("warehouse_id")
+  requestedByEmployeeId String                     @map("requested_by_employee_id")
+  status                InventoryRequisitionStatus @default(DRAFT)
+  notes                 String?
+  reviewedByEmployeeId  String?                    @map("reviewed_by_employee_id")
+  reviewNote            String?                    @map("review_note")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  tenant         Tenant                             @relation(fields: [tenantId], references: [id])
+  organization   Organization                       @relation(fields: [organizationId], references: [id])
+  warehouse      InventoryWarehouse                 @relation(fields: [warehouseId], references: [id])
+  requestedBy    Employee                           @relation("RequisitionRequestedBy", fields: [requestedByEmployeeId], references: [id])
+  reviewedBy     Employee?                          @relation("RequisitionReviewedBy", fields: [reviewedByEmployeeId], references: [id])
+  lines          InventoryPurchaseRequisitionLine[]
+  purchaseOrders InventoryPurchaseOrder[]
+
+  @@index([tenantId])
+  @@index([warehouseId])
+  @@index([requestedByEmployeeId])
+  @@map("inventory_purchase_requisitions")
+}
+
+model InventoryPurchaseRequisitionLine {
+  id                String   @id @default(uuid())
+  tenantId          String   @map("tenant_id")
+  requisitionId     String   @map("requisition_id")
+  productId         String   @map("product_id")
+  quantity          Decimal
+  estimatedUnitCost Decimal? @map("estimated_unit_cost")
+
+  tenant      Tenant                       @relation(fields: [tenantId], references: [id])
+  requisition InventoryPurchaseRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  product     InventoryProduct             @relation(fields: [productId], references: [id])
+
+  @@index([tenantId])
+  @@index([requisitionId])
+  @@map("inventory_purchase_requisition_lines")
+}
+
+enum InventoryPurchaseOrderStatus {
+  DRAFT
+  SENT
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+/// An order placed with a vendor (the existing AP Vendor model - see
+/// Phase 1's decision not to duplicate it as a separate "supplier" table).
+/// Can be created directly (requisitionId null, ad hoc purchasing) or from
+/// an approved requisition. "Sending" is just a status flag in v1 - no
+/// outbound email/PDF to the vendor yet. Receiving happens through the
+/// existing stock-receiving engine (InventoryStockService.receiveGoods)
+/// with an optional purchaseOrderLineId, which is what advances
+/// quantityReceived on each line and this status.
+model InventoryPurchaseOrder {
+  id             String                       @id @default(uuid())
+  tenantId       String                       @map("tenant_id")
+  organizationId String                       @map("organization_id")
+  warehouseId    String                       @map("warehouse_id")
+  vendorId       String                       @map("vendor_id")
+  requisitionId  String?                      @map("requisition_id")
+  poNumber       String                       @map("po_number")
+  status         InventoryPurchaseOrderStatus @default(DRAFT)
+  orderDate      DateTime                     @default(now()) @map("order_date")
+  expectedDate   DateTime?                    @map("expected_date")
+  notes          String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+
+  tenant       Tenant                        @relation(fields: [tenantId], references: [id])
+  organization Organization                  @relation(fields: [organizationId], references: [id])
+  warehouse    InventoryWarehouse            @relation(fields: [warehouseId], references: [id])
+  vendor       Vendor                        @relation(fields: [vendorId], references: [id])
+  requisition  InventoryPurchaseRequisition? @relation(fields: [requisitionId], references: [id])
+  lines        InventoryPurchaseOrderLine[]
+
+  @@unique([tenantId, poNumber])
+  @@index([tenantId])
+  @@index([warehouseId])
+  @@index([vendorId])
+  @@index([requisitionId])
+  @@map("inventory_purchase_orders")
+}
+
+model InventoryPurchaseOrderLine {
+  id               String  @id @default(uuid())
+  tenantId         String  @map("tenant_id")
+  purchaseOrderId  String  @map("purchase_order_id")
+  productId        String  @map("product_id")
+  quantity         Decimal
+  unitCost         Decimal @map("unit_cost")
+  /// Running total received against this line via the stock-receiving
+  /// engine - kept in lockstep with the ledger inside the same transaction
+  /// (see InventoryStockRepository), same materialized-total pattern as
+  /// InventoryStockBalance.quantity.
+  quantityReceived Decimal @default(0) @map("quantity_received")
+
+  tenant        Tenant                      @relation(fields: [tenantId], references: [id])
+  purchaseOrder InventoryPurchaseOrder      @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product       InventoryProduct            @relation(fields: [productId], references: [id])
+  ledgerEntries InventoryStockLedgerEntry[]
+
+  @@index([tenantId])
+  @@index([purchaseOrderId])
+  @@map("inventory_purchase_order_lines")
+}
+
+enum InventoryStockRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FULFILLED
+  CANCELLED
+}
+
+/// Employee self-service: "I need N of this product from this warehouse."
+/// Approving a request fulfills it in the same step (posts a GOODS_ISSUED
+/// through the normal issueGoods/FEFO engine, referenceType
+/// 'StockRequest') rather than splitting approve and fulfill into two
+/// actions - there's no scenario here where an approved-but-unfulfilled
+/// request is useful to track separately for v1.
+model InventoryStockRequest {
+  id                     String                      @id @default(uuid())
+  tenantId               String                      @map("tenant_id")
+  warehouseId            String                      @map("warehouse_id")
+  productId              String                      @map("product_id")
+  quantity               Decimal
+  requestedByEmployeeId  String                      @map("requested_by_employee_id")
+  status                 InventoryStockRequestStatus @default(PENDING)
+  reason                 String?
+  reviewedByEmployeeId   String?                     @map("reviewed_by_employee_id")
+  reviewNote             String?                     @map("review_note")
+  fulfilledLedgerEntryId String?                     @unique @map("fulfilled_ledger_entry_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant               Tenant                     @relation(fields: [tenantId], references: [id])
+  warehouse            InventoryWarehouse         @relation(fields: [warehouseId], references: [id])
+  product              InventoryProduct           @relation(fields: [productId], references: [id])
+  requestedBy          Employee                   @relation("StockRequestRequestedBy", fields: [requestedByEmployeeId], references: [id])
+  reviewedBy           Employee?                  @relation("StockRequestReviewedBy", fields: [reviewedByEmployeeId], references: [id])
+  fulfilledLedgerEntry InventoryStockLedgerEntry? @relation(fields: [fulfilledLedgerEntryId], references: [id])
+
+  @@index([tenantId])
+  @@index([requestedByEmployeeId])
+  @@index([warehouseId])
+  @@map("inventory_stock_requests")
+}
+
+enum CompanyAssetStatus {
+  AVAILABLE
+  ASSIGNED
+  MAINTENANCE
+  RETIRED
+}
+
+/// A company-owned physical asset (laptop, phone, ...) tracked separately
+/// from inventory stock - it isn't sold or consumed, it's assigned to one
+/// employee at a time and returned. assignedEmployeeId is a denormalized
+/// "currently assigned to" pointer for cheap listing; CompanyAssetAssignment
+/// is the full assign/return history.
+model CompanyAsset {
+  id                 String             @id @default(uuid())
+  tenantId           String             @map("tenant_id")
+  organizationId     String             @map("organization_id")
+  assetTag           String             @map("asset_tag")
+  name               String
+  category           String?
+  serialNumber       String?            @map("serial_number")
+  purchaseDate       DateTime?          @map("purchase_date")
+  purchasePrice      Decimal?           @map("purchase_price")
+  status             CompanyAssetStatus @default(AVAILABLE)
+  assignedEmployeeId String?            @map("assigned_employee_id")
+  notes              String?
+  isActive           Boolean            @default(true) @map("is_active")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  tenant           Tenant                   @relation(fields: [tenantId], references: [id])
+  organization     Organization             @relation(fields: [organizationId], references: [id])
+  assignedEmployee Employee?                @relation(fields: [assignedEmployeeId], references: [id])
+  assignments      CompanyAssetAssignment[]
+
+  @@unique([tenantId, assetTag])
+  @@index([tenantId])
+  @@index([organizationId])
+  @@index([assignedEmployeeId])
+  @@map("company_assets")
+}
+
+/// Immutable-ish history row, one per assign/return cycle - returnedAt null
+/// means this is the asset's current open assignment. Never more than one
+/// open assignment per asset (enforced in CompanyAssetAssignmentRepository,
+/// not at the DB level - same judgment call as other single-open-row
+/// invariants in this codebase, e.g. LeaveBalance).
+model CompanyAssetAssignment {
+  id               String    @id @default(uuid())
+  tenantId         String    @map("tenant_id")
+  assetId          String    @map("asset_id")
+  employeeId       String    @map("employee_id")
+  assignedAt       DateTime  @default(now()) @map("assigned_at")
+  returnedAt       DateTime? @map("returned_at")
+  assignNote       String?   @map("assign_note")
+  returnNote       String?   @map("return_note")
+  assignedByUserId String?   @map("assigned_by_user_id")
+
+  tenant   Tenant       @relation(fields: [tenantId], references: [id])
+  asset    CompanyAsset @relation(fields: [assetId], references: [id])
+  employee Employee     @relation(fields: [employeeId], references: [id])
+
+  @@index([tenantId])
+  @@index([assetId])
+  @@index([employeeId])
+  @@map("company_asset_assignments")
 }

@@ -47,6 +47,7 @@ export default [
                         { sourceTag: "scope:how-it-works", onlyDependOnLibsWithTags: ["scope:how-it-works", "scope:platform"] },
                         { sourceTag: "scope:finance", onlyDependOnLibsWithTags: ["scope:finance", "scope:platform"] },
                         { sourceTag: "scope:ap", onlyDependOnLibsWithTags: ["scope:ap", "scope:platform"] },
+                        { sourceTag: "scope:inventory", onlyDependOnLibsWithTags: ["scope:inventory", "scope:platform"] },
 
                         { sourceTag: "type:app", onlyDependOnLibsWithTags: ["*"] },
                         { sourceTag: "type:e2e", onlyDependOnLibsWithTags: ["*"] },

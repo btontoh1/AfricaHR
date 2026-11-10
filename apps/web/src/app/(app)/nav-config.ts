@@ -59,6 +59,12 @@ import {
   Tags,
   LifeBuoy,
   Megaphone,
+  Ruler,
+  FolderTree,
+  Warehouse,
+  Boxes,
+  Laptop,
+  PackageSearch,
 } from 'lucide-react';
 import type { SessionUser } from '@/lib/session';
 
@@ -154,6 +160,17 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
   // see RequireAddOn on the *-feature controllers.
   const hasPerformanceAddOn = enabledAddOns.includes('PERFORMANCE');
   const hasRecruitmentAddOn = enabledAddOns.includes('RECRUITMENT');
+  // Inventory & Warehouse Management - gated the same way as Finance/AP
+  // above: TENANT_ADMIN only for now (see Permission.INVENTORY_MANAGE/READ
+  // in system-role.ts, restricted to PLATFORM_ADMIN/TENANT_ADMIN since there
+  // is no dedicated warehouse/procurement staff role yet), plus the tenant's
+  // paid INVENTORY add-on. The self-service stock-request/asset views below
+  // are different: any tenant member may request stock or see assets
+  // assigned to them (no @RequirePermissions on those controllers), so they
+  // gate on hasInventoryAddOn + isEmployeeSelfService instead, same pattern
+  // as Performance/Recruitment above.
+  const hasInventoryAddOn = enabledAddOns.includes('INVENTORY');
+  const hasInventoryAccess = isTenantMember && user.role === 'TENANT_ADMIN' && hasInventoryAddOn;
 
   const groups: NavGroup[] = [
     {
@@ -260,6 +277,40 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
         ...(hasApAccess ? [{ label: 'Bills', href: '/vendor-bills', icon: FileMinus2 }] : []),
         ...(hasApAccess ? [{ label: 'Payments', href: '/vendor-payments', icon: HandCoins }] : []),
       ],
+    },
+    {
+      label: 'Inventory',
+      items: !hasInventoryAddOn
+        ? []
+        : [
+            ...(hasInventoryAccess ? [{ label: 'Products', href: '/inventory/products', icon: Package }] : []),
+            ...(hasInventoryAccess ? [{ label: 'Categories', href: '/inventory/categories', icon: FolderTree }] : []),
+            ...(hasInventoryAccess ? [{ label: 'Units', href: '/inventory/units', icon: Ruler }] : []),
+            ...(hasInventoryAccess ? [{ label: 'Warehouses', href: '/inventory/warehouses', icon: Warehouse }] : []),
+            ...(hasInventoryAccess ? [{ label: 'Stock', href: '/inventory/stock', icon: Boxes }] : []),
+            ...(hasInventoryAccess
+              ? [{ label: 'Requisitions', href: '/inventory/procurement/requisitions', icon: ClipboardList }]
+              : []),
+            ...(hasInventoryAccess
+              ? [{ label: 'Purchase Orders', href: '/inventory/procurement/purchase-orders', icon: FileStack }]
+              : []),
+            ...(hasInventoryAccess
+              ? [{ label: 'Stock Requests', href: '/inventory/stock-requests', icon: PackageSearch }]
+              : []),
+            // Self-service: visible to every tenant member once the add-on
+            // is on, same rationale as "My Goals"/"My Requisitions" above -
+            // MyStockRequestController/MyCompanyAssetController hold no
+            // @RequirePermissions.
+            ...(isEmployeeSelfService
+              ? [{ label: 'My Stock Requests', href: '/inventory/stock-requests/mine', icon: PackageSearch }]
+              : []),
+            ...(hasInventoryAccess
+              ? [{ label: 'Company Assets', href: '/inventory/assets', icon: Laptop }]
+              : []),
+            ...(isEmployeeSelfService
+              ? [{ label: 'My Assets', href: '/inventory/assets/mine', icon: Laptop }]
+              : []),
+          ],
     },
     {
       label: 'Finance',
@@ -382,6 +433,23 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
           : []),
         ...(hasFinanceAccess
           ? [{ label: 'Budget vs Actual', href: '/reports/budget-vs-actual', icon: GitCompare }]
+          : []),
+        // Gated the same way as the Inventory module's own admin nav items
+        // above (hasInventoryAccess) rather than hasAdminAccess - these
+        // report controllers add RequireAddOn(INVENTORY) on top of
+        // REPORTING_READ, so a tenant without the paid add-on gets nothing
+        // useful from them even if their role holds REPORTING_READ broadly.
+        ...(hasInventoryAccess
+          ? [{ label: 'Inventory Valuation', href: '/reports/inventory-valuation', icon: Coins }]
+          : []),
+        ...(hasInventoryAccess
+          ? [{ label: 'Procurement Spend', href: '/reports/procurement-spend', icon: Receipt }]
+          : []),
+        ...(hasInventoryAccess
+          ? [{ label: 'Low Stock', href: '/reports/low-stock', icon: PackageSearch }]
+          : []),
+        ...(hasInventoryAccess
+          ? [{ label: 'Asset Register', href: '/reports/asset-register', icon: Laptop }]
           : []),
       ],
     },

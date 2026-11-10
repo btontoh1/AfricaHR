@@ -153,6 +153,14 @@ export const Permission = {
   // handed to ORG_ADMIN/HR_MANAGER too.
   AP_MANAGE: 'ap:manage',
   AP_READ: 'ap:read',
+  // Products/warehouses/stock ledger. PLATFORM_ADMIN/TENANT_ADMIN-only for
+  // now, same restriction as FINANCE_MANAGE/READ rather than AP's wider
+  // ORG_ADMIN/HR_MANAGER grant - Phase 1 has no dedicated warehouse/
+  // procurement staff role yet, so there's no narrower role to hand
+  // day-to-day receiving/issuing to without also handing them product and
+  // warehouse configuration. Widen this once that role exists.
+  INVENTORY_MANAGE: 'inventory:manage',
+  INVENTORY_READ: 'inventory:read',
   // Platform-admin only: the "How it works" tutorial catalog is the same
   // curated content shown to every tenant, so only the platform admin
   // curates it - no tenant-level counterpart, same reasoning as
@@ -200,6 +208,8 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.FINANCE_READ,
     Permission.AP_MANAGE,
     Permission.AP_READ,
+    Permission.INVENTORY_MANAGE,
+    Permission.INVENTORY_READ,
     Permission.PLATFORM_BILLING_MANAGE,
     Permission.PLATFORM_AUDIT_READ,
     Permission.PLATFORM_DISBURSEMENT_READ,
@@ -241,6 +251,8 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.FINANCE_READ,
     Permission.AP_MANAGE,
     Permission.AP_READ,
+    Permission.INVENTORY_MANAGE,
+    Permission.INVENTORY_READ,
   ],
   [SystemRole.HR_MANAGER]: [
     Permission.ORGANIZATION_READ,

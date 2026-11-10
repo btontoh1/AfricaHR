@@ -25,9 +25,13 @@ const ADD_ON_LABEL: Record<AddOnModule, { title: string; description: string }> 
     title: 'Finance',
     description: 'General ledger, journal entries, chart of accounts, and P&L/cash flow reports.',
   },
+  INVENTORY: {
+    title: 'Inventory',
+    description: 'Products, categories, warehouses, and stock receiving/issuing/transfers.',
+  },
 };
 
-const ALL_ADD_ONS: AddOnModule[] = ['INVOICING', 'RECRUITMENT', 'PERFORMANCE', 'FINANCE'];
+const ALL_ADD_ONS: AddOnModule[] = ['INVOICING', 'RECRUITMENT', 'PERFORMANCE', 'FINANCE', 'INVENTORY'];
 
 export function AddOnsCard({ tenant }: { tenant: Tenant }) {
   const updateAddOn = useUpdateTenantAddOn(tenant.id);

@@ -1,0 +1,19 @@
+{
+  "name": "inventory-feature",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/inventory/feature/src",
+  "projectType": "library",
+  "tags": ["scope:inventory", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/inventory/feature",
+        "main": "libs/inventory/feature/src/index.ts",
+        "tsConfig": "libs/inventory/feature/tsconfig.lib.json",
+        "assets": ["libs/inventory/feature/*.md"]
+      }
+    }
+  }
+}

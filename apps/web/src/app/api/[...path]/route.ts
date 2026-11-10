@@ -51,10 +51,17 @@ async function handler(
   }
 
   const refreshed = await refreshSession();
-  if (!refreshed) {
+  if (refreshed.status === 'invalid') {
     const res = await toNextResponse(firstAttempt);
     clearAuthCookies(res);
     return res;
+  }
+  if (refreshed.status === 'unavailable') {
+    // The refresh token was never actually confirmed invalid - don't touch
+    // the session over what's most likely a transient hiccup. Surface this
+    // one request's original failure; the next request gets a fresh shot
+    // at refreshing.
+    return toNextResponse(firstAttempt);
   }
 
   const retried = await forward(request.method, url, contentType, body, refreshed.accessToken);

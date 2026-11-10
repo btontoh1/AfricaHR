@@ -3,13 +3,27 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
 import type {
+  ApproveRequisitionInput,
+  AssignAssetInput,
+  ConvertRequisitionToPoInput,
+  CreateCompanyAssetInput,
   CreateInventoryCategoryInput,
   CreateInventoryProductInput,
   CreateInventoryUnitConversionInput,
   CreateInventoryUnitInput,
   CreateInventoryWarehouseInput,
+  CompanyAssetStatus,
+  CreatePurchaseOrderInput,
+  CreatePurchaseRequisitionInput,
+  CreateStockRequestInput,
   IssueGoodsInput,
+  PurchaseOrderStatus,
+  PurchaseRequisitionStatus,
   ReceiveGoodsInput,
+  RejectRequisitionInput,
+  RejectStockRequestInput,
+  ReturnAssetInput,
+  StockRequestStatus,
   TransferStockInput,
   UpdateInventoryCategoryInput,
   UpdateInventoryProductInput,
@@ -444,5 +458,437 @@ export function useReverseStockEntry(tenantId: string) {
       return data;
     },
     onSuccess: () => invalidateStock(queryClient, tenantId),
+  });
+}
+
+function vendorsListKey(tenantId: string) {
+  return ['inventory', 'vendors', tenantId] as const;
+}
+
+export function useInventoryVendors(tenantId: string, organizationId?: string) {
+  return useQuery({
+    queryKey: [...vendorsListKey(tenantId), organizationId ?? ''],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/inventory/vendors', {
+        params: { path: { tenantId }, query: organizationId ? { organizationId } : undefined },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+function requisitionsListKey(tenantId: string) {
+  return ['inventory', 'requisitions', tenantId] as const;
+}
+
+export function useRequisitions(
+  tenantId: string,
+  filters: { warehouseId?: string; status?: PurchaseRequisitionStatus } = {},
+) {
+  return useQuery({
+    queryKey: [...requisitionsListKey(tenantId), filters.warehouseId ?? '', filters.status ?? ''],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/inventory/procurement/requisitions', {
+        params: { path: { tenantId }, query: filters },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useRequisition(tenantId: string, id: string) {
+  return useQuery({
+    queryKey: [...requisitionsListKey(tenantId), id],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/inventory/procurement/requisitions/{id}', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: Boolean(id),
+  });
+}
+
+export function useCreateRequisition(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreatePurchaseRequisitionInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/inventory/procurement/requisitions', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: requisitionsListKey(tenantId) }),
+  });
+}
+
+export function useSubmitRequisition(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/inventory/procurement/requisitions/{id}/submit', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: requisitionsListKey(tenantId) }),
+  });
+}
+
+export function useApproveRequisition(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, input }: { id: string; input?: ApproveRequisitionInput }) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/inventory/procurement/requisitions/{id}/approve', {
+        params: { path: { tenantId, id } },
+        body: input ?? {},
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: requisitionsListKey(tenantId) }),
+  });
+}
+
+export function useRejectRequisition(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, input }: { id: string; input: RejectRequisitionInput }) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/inventory/procurement/requisitions/{id}/reject', {
+        params: { path: { tenantId, id } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: requisitionsListKey(tenantId) }),
+  });
+}
+
+export function useCancelRequisition(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/inventory/procurement/requisitions/{id}/cancel', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: requisitionsListKey(tenantId) }),
+  });
+}
+
+export function useConvertRequisitionToPo(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, input }: { id: string; input: ConvertRequisitionToPoInput }) => {
+      const { data, error } = await apiClient.POST(
+        '/api/tenants/{tenantId}/inventory/procurement/requisitions/{id}/convert-to-po',
+        { params: { path: { tenantId, id } }, body: input },
+      );
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: requisitionsListKey(tenantId) });
+      queryClient.invalidateQueries({ queryKey: purchaseOrdersListKey(tenantId) });
+    },
+  });
+}
+
+function purchaseOrdersListKey(tenantId: string) {
+  return ['inventory', 'purchase-orders', tenantId] as const;
+}
+
+export function usePurchaseOrders(
+  tenantId: string,
+  filters: { warehouseId?: string; vendorId?: string; status?: PurchaseOrderStatus } = {},
+) {
+  return useQuery({
+    queryKey: [...purchaseOrdersListKey(tenantId), filters.warehouseId ?? '', filters.vendorId ?? '', filters.status ?? ''],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/inventory/procurement/purchase-orders', {
+        params: { path: { tenantId }, query: filters },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function usePurchaseOrder(tenantId: string, id: string) {
+  return useQuery({
+    queryKey: [...purchaseOrdersListKey(tenantId), id],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/inventory/procurement/purchase-orders/{id}', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: Boolean(id),
+  });
+}
+
+export function useCreatePurchaseOrder(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreatePurchaseOrderInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/inventory/procurement/purchase-orders', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: purchaseOrdersListKey(tenantId) }),
+  });
+}
+
+export function useSendPurchaseOrder(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/inventory/procurement/purchase-orders/{id}/send', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: purchaseOrdersListKey(tenantId) }),
+  });
+}
+
+export function useCancelPurchaseOrder(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/inventory/procurement/purchase-orders/{id}/cancel', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: purchaseOrdersListKey(tenantId) }),
+  });
+}
+
+function stockRequestsListKey(tenantId: string) {
+  return ['inventory', 'stock-requests', tenantId] as const;
+}
+
+function myStockRequestsListKey(tenantId: string) {
+  return ['inventory', 'stock-requests', 'mine', tenantId] as const;
+}
+
+export function useStockRequests(
+  tenantId: string,
+  filters: { warehouseId?: string; status?: StockRequestStatus } = {},
+) {
+  return useQuery({
+    queryKey: [...stockRequestsListKey(tenantId), filters.warehouseId ?? '', filters.status ?? ''],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/inventory/stock-requests', {
+        params: { path: { tenantId }, query: filters },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useMyStockRequests(tenantId: string) {
+  return useQuery({
+    queryKey: myStockRequestsListKey(tenantId),
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/inventory/stock-requests/me', {
+        params: { path: { tenantId } },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useCreateMyStockRequest(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateStockRequestInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/inventory/stock-requests/me', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: myStockRequestsListKey(tenantId) }),
+  });
+}
+
+export function useCancelMyStockRequest(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/inventory/stock-requests/me/{id}/cancel', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: myStockRequestsListKey(tenantId) }),
+  });
+}
+
+export function useApproveStockRequest(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/inventory/stock-requests/{id}/approve', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: stockRequestsListKey(tenantId) });
+      invalidateStock(queryClient, tenantId);
+    },
+  });
+}
+
+export function useRejectStockRequest(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, input }: { id: string; input: RejectStockRequestInput }) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/inventory/stock-requests/{id}/reject', {
+        params: { path: { tenantId, id } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: stockRequestsListKey(tenantId) }),
+  });
+}
+
+function companyAssetsListKey(tenantId: string) {
+  return ['inventory', 'company-assets', tenantId] as const;
+}
+
+function myCompanyAssetsListKey(tenantId: string) {
+  return ['inventory', 'company-assets', 'mine', tenantId] as const;
+}
+
+export function useCompanyAssets(
+  tenantId: string,
+  filters: { organizationId?: string; status?: CompanyAssetStatus } = {},
+) {
+  return useQuery({
+    queryKey: [...companyAssetsListKey(tenantId), filters.organizationId ?? '', filters.status ?? ''],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/inventory/assets', {
+        params: { path: { tenantId }, query: filters },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useMyCompanyAssets(tenantId: string) {
+  return useQuery({
+    queryKey: myCompanyAssetsListKey(tenantId),
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/inventory/assets/me', {
+        params: { path: { tenantId } },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useCreateCompanyAsset(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateCompanyAssetInput) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/inventory/assets', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: companyAssetsListKey(tenantId) }),
+  });
+}
+
+function invalidateAssets(queryClient: ReturnType<typeof useQueryClient>, tenantId: string) {
+  queryClient.invalidateQueries({ queryKey: companyAssetsListKey(tenantId) });
+  queryClient.invalidateQueries({ queryKey: myCompanyAssetsListKey(tenantId) });
+}
+
+export function useAssignAsset(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, input }: { id: string; input: AssignAssetInput }) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/inventory/assets/{id}/assign', {
+        params: { path: { tenantId, id } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => invalidateAssets(queryClient, tenantId),
+  });
+}
+
+export function useReturnAsset(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, input }: { id: string; input?: ReturnAssetInput }) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/inventory/assets/{id}/return', {
+        params: { path: { tenantId, id } },
+        body: input ?? {},
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => invalidateAssets(queryClient, tenantId),
+  });
+}
+
+export function useRetireAsset(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/inventory/assets/{id}/retire', {
+        params: { path: { tenantId, id } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => invalidateAssets(queryClient, tenantId),
+  });
+}
+
+export function useAssetAssignmentHistory(tenantId: string, assetId: string) {
+  return useQuery({
+    queryKey: [...companyAssetsListKey(tenantId), assetId, 'assignments'],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/inventory/assets/{id}/assignments', {
+        params: { path: { tenantId, id: assetId } },
+      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: Boolean(assetId),
   });
 }

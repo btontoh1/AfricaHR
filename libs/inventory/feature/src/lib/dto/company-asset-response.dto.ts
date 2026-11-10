@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { CompanyAssetStatus } from '@prisma/client';
 
 export class CompanyAssetResponseDto {
   @ApiProperty()
@@ -25,8 +26,8 @@ export class CompanyAssetResponseDto {
   @ApiPropertyOptional()
   purchasePrice?: string | null;
 
-  @ApiProperty()
-  status!: string;
+  @ApiProperty({ enum: Object.values(CompanyAssetStatus) })
+  status!: CompanyAssetStatus;
 
   @ApiPropertyOptional()
   assignedEmployeeId?: string | null;

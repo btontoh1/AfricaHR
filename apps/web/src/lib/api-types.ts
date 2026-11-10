@@ -7243,7 +7243,8 @@ export interface components {
             organizationId: string;
             warehouseId: string;
             requestedByEmployeeId: string;
-            status: string;
+            /** @enum {string} */
+            status: "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED" | "CONVERTED" | "CANCELLED";
             notes?: string;
             reviewedByEmployeeId?: string;
             reviewNote?: string;
@@ -7279,7 +7280,8 @@ export interface components {
             vendorId: string;
             requisitionId?: string;
             poNumber: string;
-            status: string;
+            /** @enum {string} */
+            status: "DRAFT" | "SENT" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CANCELLED";
             /** Format: date-time */
             orderDate: string;
             /** Format: date-time */
@@ -7309,7 +7311,8 @@ export interface components {
             productId: string;
             quantity: string;
             requestedByEmployeeId: string;
-            status: string;
+            /** @enum {string} */
+            status: "PENDING" | "APPROVED" | "REJECTED" | "FULFILLED" | "CANCELLED";
             reason?: string;
             reviewedByEmployeeId?: string;
             reviewNote?: string;
@@ -7360,7 +7363,8 @@ export interface components {
             /** Format: date-time */
             purchaseDate?: string;
             purchasePrice?: string;
-            status: string;
+            /** @enum {string} */
+            status: "AVAILABLE" | "ASSIGNED" | "MAINTENANCE" | "RETIRED";
             assignedEmployeeId?: string;
             notes?: string;
             isActive: boolean;

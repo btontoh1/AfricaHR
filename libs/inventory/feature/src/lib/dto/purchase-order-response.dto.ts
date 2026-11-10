@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { InventoryPurchaseOrderStatus } from '@prisma/client';
 
 export class PurchaseOrderLineResponseDto {
   @ApiProperty()
@@ -36,8 +37,8 @@ export class PurchaseOrderResponseDto {
   @ApiProperty()
   poNumber!: string;
 
-  @ApiProperty()
-  status!: string;
+  @ApiProperty({ enum: Object.values(InventoryPurchaseOrderStatus) })
+  status!: InventoryPurchaseOrderStatus;
 
   @ApiProperty()
   orderDate!: Date;

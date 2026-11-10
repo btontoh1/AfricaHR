@@ -26,6 +26,8 @@ export interface PostStockEntryInput {
   batchId?: string;
   /** Set when this leg receives into a batch that may not exist yet (a GRN, or the inbound leg of a batch-tracked transfer) - the batch is found-or-created and batchId resolved from it. Mutually exclusive with batchId. */
   receiveBatch?: ReceiveBatchInput;
+  /** Set when this receipt counts against a purchase order line - bumps its quantityReceived and recomputes the parent PO's status, in the same transaction as the stock posting. Only meaningful on a GOODS_RECEIVED entry. */
+  purchaseOrderLineId?: string;
 }
 
 /** Thrown when posting a net-negative movement would take a warehouse/product's balance below zero - negative inventory is never allowed by default (see InventoryStockLedgerEntry's doc comment). Also reused for a batch-level shortfall (see applyBatchDelta) - same shape, so callers handle both the same way. */
@@ -119,6 +121,9 @@ export class InventoryStockRepository {
         if (batchId) {
           await this.applyBatchDelta(tx, tenantId, input.warehouseId, input.productId, batchId, net);
         }
+        if (input.purchaseOrderLineId) {
+          await this.applyPurchaseOrderReceipt(tx, tenantId, input.purchaseOrderLineId, quantityIn);
+        }
 
         entries.push(
           await tx.inventoryStockLedgerEntry.create({
@@ -133,6 +138,7 @@ export class InventoryStockRepository {
               referenceType: input.referenceType,
               referenceId: input.referenceId,
               batchId,
+              purchaseOrderLineId: input.purchaseOrderLineId,
               note: input.note,
               actorUserId: input.actorUserId,
             },
@@ -541,6 +547,41 @@ export class InventoryStockRepository {
       await tx.inventoryStockBatch.update({
         where: { id: batchId },
         data: { remainingQuantity: { increment: net } },
+      });
+    }
+  }
+
+  /**
+   * Bumps a purchase order line's quantityReceived and recomputes its
+   * parent PO's status - RECEIVED once every line's received quantity
+   * meets or exceeds what was ordered, PARTIALLY_RECEIVED as soon as any
+   * line has received something, otherwise left as-is (still SENT).
+   * Over-receiving (more than was ordered) is allowed, not blocked - it
+   * still just counts as that line being fully received.
+   */
+  private async applyPurchaseOrderReceipt(
+    tx: ScopedClient,
+    tenantId: string,
+    purchaseOrderLineId: string,
+    quantityReceived: number,
+  ): Promise<void> {
+    const line = await tx.inventoryPurchaseOrderLine.update({
+      where: { id: purchaseOrderLineId },
+      data: { quantityReceived: { increment: quantityReceived } },
+    });
+
+    const siblingLines = await tx.inventoryPurchaseOrderLine.findMany({
+      where: { purchaseOrderId: line.purchaseOrderId, tenantId },
+    });
+    const allReceived = siblingLines.every((sibling) => Number(sibling.quantityReceived) >= Number(sibling.quantity));
+    const anyReceived = siblingLines.some((sibling) => Number(sibling.quantityReceived) > 0);
+
+    if (allReceived) {
+      await tx.inventoryPurchaseOrder.update({ where: { id: line.purchaseOrderId }, data: { status: 'RECEIVED' } });
+    } else if (anyReceived) {
+      await tx.inventoryPurchaseOrder.update({
+        where: { id: line.purchaseOrderId },
+        data: { status: 'PARTIALLY_RECEIVED' },
       });
     }
   }

@@ -27,6 +27,8 @@ describe('InventoryStockRepository', () => {
       findUnique: jest.Mock;
       findMany: jest.Mock;
     };
+    inventoryPurchaseOrderLine: { update: jest.Mock; findMany: jest.Mock };
+    inventoryPurchaseOrder: { update: jest.Mock };
   };
   let prisma: { withTenantContext: jest.Mock };
 
@@ -41,6 +43,8 @@ describe('InventoryStockRepository', () => {
         findUnique: jest.fn(),
         findMany: jest.fn(),
       },
+      inventoryPurchaseOrderLine: { update: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
+      inventoryPurchaseOrder: { update: jest.fn() },
     };
     prisma = { withTenantContext: jest.fn((_tenantId, fn) => fn(tx)) };
     repository = new InventoryStockRepository(prisma as unknown as PrismaService);
@@ -440,6 +444,69 @@ describe('InventoryStockRepository', () => {
       });
       expect(tx.inventoryStockLedgerEntry.create).toHaveBeenCalledWith({
         data: expect.objectContaining({ batchId: 'batch-1' }),
+      });
+    });
+  });
+
+  describe('postEntry with purchaseOrderLineId', () => {
+    it('bumps the line quantityReceived and marks the PO PARTIALLY_RECEIVED when some lines are still short', async () => {
+      tx.inventoryPurchaseOrderLine.update.mockResolvedValue({
+        id: 'line-1',
+        purchaseOrderId: 'po-1',
+        quantity: 100,
+        quantityReceived: 40,
+      });
+      tx.inventoryPurchaseOrderLine.findMany.mockResolvedValue([
+        { id: 'line-1', quantity: 100, quantityReceived: 40 },
+        { id: 'line-2', quantity: 50, quantityReceived: 0 },
+      ]);
+      tx.inventoryStockLedgerEntry.create.mockResolvedValue({ id: 'entry-1' });
+
+      await repository.postEntry('tenant-1', {
+        warehouseId: 'wh-1',
+        productId: 'prod-1',
+        transactionType: InventoryStockTransactionType.GOODS_RECEIVED,
+        quantityIn: 40,
+        purchaseOrderLineId: 'line-1',
+      });
+
+      expect(tx.inventoryPurchaseOrderLine.update).toHaveBeenCalledWith({
+        where: { id: 'line-1' },
+        data: { quantityReceived: { increment: 40 } },
+      });
+      expect(tx.inventoryPurchaseOrder.update).toHaveBeenCalledWith({
+        where: { id: 'po-1' },
+        data: { status: 'PARTIALLY_RECEIVED' },
+      });
+      expect(tx.inventoryStockLedgerEntry.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ purchaseOrderLineId: 'line-1' }),
+      });
+    });
+
+    it('marks the PO RECEIVED once every line has met or exceeded its ordered quantity', async () => {
+      tx.inventoryPurchaseOrderLine.update.mockResolvedValue({
+        id: 'line-1',
+        purchaseOrderId: 'po-1',
+        quantity: 100,
+        quantityReceived: 100,
+      });
+      tx.inventoryPurchaseOrderLine.findMany.mockResolvedValue([
+        { id: 'line-1', quantity: 100, quantityReceived: 100 },
+        { id: 'line-2', quantity: 50, quantityReceived: 50 },
+      ]);
+      tx.inventoryStockLedgerEntry.create.mockResolvedValue({ id: 'entry-1' });
+
+      await repository.postEntry('tenant-1', {
+        warehouseId: 'wh-1',
+        productId: 'prod-1',
+        transactionType: InventoryStockTransactionType.GOODS_RECEIVED,
+        quantityIn: 60,
+        purchaseOrderLineId: 'line-1',
+      });
+
+      expect(tx.inventoryPurchaseOrder.update).toHaveBeenCalledWith({
+        where: { id: 'po-1' },
+        data: { status: 'RECEIVED' },
       });
     });
   });

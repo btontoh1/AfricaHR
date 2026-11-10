@@ -38,6 +38,7 @@ export class InventoryStockService {
         referenceId: dto.referenceId,
         note: dto.note,
         actorUserId: actorId,
+        purchaseOrderLineId: dto.purchaseOrderLineId,
         receiveBatch: {
           batchNumber: dto.batchNumber,
           expiryDate: new Date(dto.expiryDate),
@@ -55,6 +56,7 @@ export class InventoryStockService {
       referenceId: dto.referenceId,
       note: dto.note,
       actorUserId: actorId,
+      purchaseOrderLineId: dto.purchaseOrderLineId,
     });
   }
 
@@ -63,8 +65,16 @@ export class InventoryStockService {
    * the product tracks batches and FEFO allocation spans more than one lot
    * - always an array, so callers don't need to know in advance which case
    * applies (same reasoning as transferStock already returning an array).
+   * `reference` is for internal orchestration (e.g. InventoryStockRequestService
+   * tagging every resulting entry back to the request that triggered the
+   * issue) - not exposed on IssueGoodsDto, since end users never set it directly.
    */
-  async issueGoods(tenantId: string, dto: IssueGoodsDto, actorId?: string): Promise<InventoryStockLedgerEntry[]> {
+  async issueGoods(
+    tenantId: string,
+    dto: IssueGoodsDto,
+    actorId?: string,
+    reference?: { referenceType: string; referenceId: string },
+  ): Promise<InventoryStockLedgerEntry[]> {
     const product = await this.requireProduct(tenantId, dto.productId);
 
     if (product.tracksBatch) {
@@ -75,6 +85,8 @@ export class InventoryStockService {
         transactionType: InventoryStockTransactionType.GOODS_ISSUED,
         note: dto.reason,
         actorUserId: actorId,
+        referenceType: reference?.referenceType,
+        referenceId: reference?.referenceId,
       });
     }
 
@@ -85,6 +97,8 @@ export class InventoryStockService {
       quantityOut: dto.quantity,
       note: dto.reason,
       actorUserId: actorId,
+      referenceType: reference?.referenceType,
+      referenceId: reference?.referenceId,
     });
     return [entry];
   }

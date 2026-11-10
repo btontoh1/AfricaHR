@@ -5,3 +5,8 @@ export * from './lib/inventory-category.service';
 export * from './lib/inventory-product.service';
 export * from './lib/inventory-warehouse.service';
 export * from './lib/inventory-stock.service';
+export * from './lib/inventory-vendor.service';
+export * from './lib/inventory-requisition.service';
+export * from './lib/inventory-purchase-order.service';
+export * from './lib/inventory-stock-request.service';
+export * from './lib/company-asset.service';

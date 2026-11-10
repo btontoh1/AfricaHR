@@ -3997,6 +3997,440 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/inventory/vendors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Vendors available to order from - the same vendors used by Accounts Payable */
+        get: operations["InventoryVendorController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/procurement/requisitions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["InventoryRequisitionController_list"];
+        put?: never;
+        post: operations["InventoryRequisitionController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/procurement/requisitions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["InventoryRequisitionController_findById"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/procurement/requisitions/{id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["InventoryRequisitionController_submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/procurement/requisitions/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["InventoryRequisitionController_approve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/procurement/requisitions/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["InventoryRequisitionController_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/procurement/requisitions/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["InventoryRequisitionController_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/procurement/requisitions/{id}/convert-to-po": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Converts an approved requisition into a new draft purchase order against a chosen vendor */
+        post: operations["InventoryRequisitionController_convertToPurchaseOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/procurement/purchase-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["InventoryPurchaseOrderController_list"];
+        put?: never;
+        post: operations["InventoryPurchaseOrderController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/procurement/purchase-orders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["InventoryPurchaseOrderController_findById"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/procurement/purchase-orders/{id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["InventoryPurchaseOrderController_send"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/procurement/purchase-orders/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["InventoryPurchaseOrderController_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/stock-requests/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyStockRequestController_list"];
+        put?: never;
+        post: operations["MyStockRequestController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/stock-requests/me/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MyStockRequestController_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/stock-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["InventoryStockRequestController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/stock-requests/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["InventoryStockRequestController_findById"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/stock-requests/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["InventoryStockRequestController_approve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/stock-requests/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["InventoryStockRequestController_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/assets/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyCompanyAssetController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CompanyAssetController_list"];
+        put?: never;
+        post: operations["CompanyAssetController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/assets/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CompanyAssetController_findById"];
+        put?: never;
+        post?: never;
+        delete: operations["CompanyAssetController_delete"];
+        options?: never;
+        head?: never;
+        patch: operations["CompanyAssetController_update"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/assets/{id}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CompanyAssetController_assign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/assets/{id}/return": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CompanyAssetController_returnAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/assets/{id}/retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CompanyAssetController_retire"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/assets/{id}/maintenance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CompanyAssetController_setMaintenance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/assets/{id}/make-available": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CompanyAssetController_makeAvailable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/inventory/assets/{id}/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CompanyAssetController_assignmentHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -6717,6 +7151,8 @@ export interface components {
             /** @description Required when the product tracks batches */
             expiryDate?: string;
             manufactureDate?: string;
+            /** @description Counts this receipt against a purchase order line, advancing its quantityReceived and the PO status */
+            purchaseOrderLineId?: string;
         };
         StockLedgerEntryResponseDto: {
             id: string;
@@ -6776,6 +7212,174 @@ export interface components {
             status: "OK" | "EXPIRING_SOON" | "EXPIRED";
             /** Format: date-time */
             createdAt: string;
+        };
+        VendorSummaryResponseDto: {
+            id: string;
+            organizationId: string;
+            name: string;
+            email?: string;
+            phone?: string;
+        };
+        CreatePurchaseRequisitionLineDto: {
+            productId: string;
+            quantity: number;
+            estimatedUnitCost?: number;
+        };
+        CreatePurchaseRequisitionDto: {
+            warehouseId: string;
+            /** @description The employee this requisition is raised on behalf of */
+            requestedByEmployeeId: string;
+            notes?: string;
+            lines: components["schemas"]["CreatePurchaseRequisitionLineDto"][];
+        };
+        PurchaseRequisitionLineResponseDto: {
+            id: string;
+            productId: string;
+            quantity: string;
+            estimatedUnitCost?: string;
+        };
+        PurchaseRequisitionResponseDto: {
+            id: string;
+            organizationId: string;
+            warehouseId: string;
+            requestedByEmployeeId: string;
+            status: string;
+            notes?: string;
+            reviewedByEmployeeId?: string;
+            reviewNote?: string;
+            lines: components["schemas"]["PurchaseRequisitionLineResponseDto"][];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ApproveRequisitionDto: {
+            reviewNote?: string;
+        };
+        RejectRequisitionDto: {
+            /** @example Over budget for this quarter */
+            reviewNote: string;
+        };
+        ConvertRequisitionToPoDto: {
+            vendorId: string;
+            /** @example PO-0001 */
+            poNumber: string;
+            expectedDate?: string;
+            notes?: string;
+        };
+        PurchaseOrderLineResponseDto: {
+            id: string;
+            productId: string;
+            quantity: string;
+            unitCost: string;
+            quantityReceived: string;
+        };
+        PurchaseOrderResponseDto: {
+            id: string;
+            organizationId: string;
+            warehouseId: string;
+            vendorId: string;
+            requisitionId?: string;
+            poNumber: string;
+            status: string;
+            /** Format: date-time */
+            orderDate: string;
+            /** Format: date-time */
+            expectedDate?: string;
+            notes?: string;
+            lines: components["schemas"]["PurchaseOrderLineResponseDto"][];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CreatePurchaseOrderLineDto: {
+            productId: string;
+            quantity: number;
+            unitCost: number;
+        };
+        CreatePurchaseOrderDto: {
+            warehouseId: string;
+            vendorId: string;
+            /** @example PO-0001 */
+            poNumber: string;
+            expectedDate?: string;
+            notes?: string;
+            lines: components["schemas"]["CreatePurchaseOrderLineDto"][];
+        };
+        StockRequestResponseDto: {
+            id: string;
+            warehouseId: string;
+            productId: string;
+            quantity: string;
+            requestedByEmployeeId: string;
+            status: string;
+            reason?: string;
+            reviewedByEmployeeId?: string;
+            reviewNote?: string;
+            fulfilledLedgerEntryId?: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CreateStockRequestDto: {
+            warehouseId: string;
+            productId: string;
+            quantity: number;
+            reason?: string;
+        };
+        RejectStockRequestDto: {
+            /** @example Out of budget for this item */
+            reviewNote: string;
+        };
+        CompanyAssetAssignmentResponseDto: {
+            id: string;
+            assetId: string;
+            employeeId: string;
+            /** Format: date-time */
+            assignedAt: string;
+            /** Format: date-time */
+            returnedAt?: string;
+            assignNote?: string;
+            returnNote?: string;
+        };
+        CreateCompanyAssetDto: {
+            organizationId: string;
+            /** @example LAPTOP-001 */
+            assetTag: string;
+            /** @example MacBook Pro 14" */
+            name: string;
+            category?: string;
+            serialNumber?: string;
+            purchaseDate?: string;
+            purchasePrice?: number;
+            notes?: string;
+        };
+        CompanyAssetResponseDto: {
+            id: string;
+            organizationId: string;
+            assetTag: string;
+            name: string;
+            category?: string;
+            serialNumber?: string;
+            /** Format: date-time */
+            purchaseDate?: string;
+            purchasePrice?: string;
+            status: string;
+            assignedEmployeeId?: string;
+            notes?: string;
+            isActive: boolean;
+        };
+        UpdateCompanyAssetDto: {
+            name?: string;
+            category?: string;
+            serialNumber?: string;
+            purchaseDate?: string;
+            purchasePrice?: number;
+            notes?: string;
+            isActive?: boolean;
+        };
+        AssignAssetDto: {
+            employeeId: string;
+            assignNote?: string;
+        };
+        ReturnAssetDto: {
+            returnNote?: string;
         };
     };
     responses: never;
@@ -14722,6 +15326,780 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StockBatchResponseDto"][];
+                };
+            };
+        };
+    };
+    InventoryVendorController_list: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorSummaryResponseDto"][];
+                };
+            };
+        };
+    };
+    InventoryRequisitionController_list: {
+        parameters: {
+            query?: {
+                warehouseId?: string;
+                status?: "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED" | "CONVERTED" | "CANCELLED";
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseRequisitionResponseDto"][];
+                };
+            };
+        };
+    };
+    InventoryRequisitionController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePurchaseRequisitionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseRequisitionResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryRequisitionController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseRequisitionResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryRequisitionController_submit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseRequisitionResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryRequisitionController_approve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveRequisitionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseRequisitionResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryRequisitionController_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectRequisitionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseRequisitionResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryRequisitionController_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseRequisitionResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryRequisitionController_convertToPurchaseOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConvertRequisitionToPoDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrderResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryPurchaseOrderController_list: {
+        parameters: {
+            query?: {
+                warehouseId?: string;
+                vendorId?: string;
+                status?: "DRAFT" | "SENT" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CANCELLED";
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrderResponseDto"][];
+                };
+            };
+        };
+    };
+    InventoryPurchaseOrderController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePurchaseOrderDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrderResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryPurchaseOrderController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrderResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryPurchaseOrderController_send: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrderResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryPurchaseOrderController_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrderResponseDto"];
+                };
+            };
+        };
+    };
+    MyStockRequestController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockRequestResponseDto"][];
+                };
+            };
+        };
+    };
+    MyStockRequestController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateStockRequestDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockRequestResponseDto"];
+                };
+            };
+        };
+    };
+    MyStockRequestController_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockRequestResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryStockRequestController_list: {
+        parameters: {
+            query?: {
+                warehouseId?: string;
+                status?: "PENDING" | "APPROVED" | "REJECTED" | "FULFILLED" | "CANCELLED";
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockRequestResponseDto"][];
+                };
+            };
+        };
+    };
+    InventoryStockRequestController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockRequestResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryStockRequestController_approve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockRequestResponseDto"];
+                };
+            };
+        };
+    };
+    InventoryStockRequestController_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectStockRequestDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockRequestResponseDto"];
+                };
+            };
+        };
+    };
+    MyCompanyAssetController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyAssetAssignmentResponseDto"][];
+                };
+            };
+        };
+    };
+    CompanyAssetController_list: {
+        parameters: {
+            query?: {
+                organizationId?: string;
+                status?: "AVAILABLE" | "ASSIGNED" | "MAINTENANCE" | "RETIRED";
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyAssetResponseDto"][];
+                };
+            };
+        };
+    };
+    CompanyAssetController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCompanyAssetDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyAssetResponseDto"];
+                };
+            };
+        };
+    };
+    CompanyAssetController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyAssetResponseDto"];
+                };
+            };
+        };
+    };
+    CompanyAssetController_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyAssetResponseDto"];
+                };
+            };
+        };
+    };
+    CompanyAssetController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCompanyAssetDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyAssetResponseDto"];
+                };
+            };
+        };
+    };
+    CompanyAssetController_assign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignAssetDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyAssetAssignmentResponseDto"];
+                };
+            };
+        };
+    };
+    CompanyAssetController_returnAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReturnAssetDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyAssetAssignmentResponseDto"];
+                };
+            };
+        };
+    };
+    CompanyAssetController_retire: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyAssetResponseDto"];
+                };
+            };
+        };
+    };
+    CompanyAssetController_setMaintenance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyAssetResponseDto"];
+                };
+            };
+        };
+    };
+    CompanyAssetController_makeAvailable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyAssetResponseDto"];
+                };
+            };
+        };
+    };
+    CompanyAssetController_assignmentHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyAssetAssignmentResponseDto"][];
                 };
             };
         };

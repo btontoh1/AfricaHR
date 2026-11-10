@@ -10,6 +10,7 @@
     "@nestjs/common": "^11.0.0",
     "@nestjs/swagger": "^11.4.5",
     "class-validator": "^0.15.1",
+    "class-transformer": "^0.5.1",
     "@africahr/platform-auth": "0.0.1",
     "@africahr/inventory-data-access": "0.0.1",
     "@africahr/inventory-domain": "0.0.1",

@@ -50,4 +50,9 @@ export class ReceiveGoodsDto {
   @IsOptional()
   @IsDateString()
   manufactureDate?: string;
+
+  @ApiPropertyOptional({ description: 'Counts this receipt against a purchase order line, advancing its quantityReceived and the PO status' })
+  @IsOptional()
+  @IsUUID()
+  purchaseOrderLineId?: string;
 }

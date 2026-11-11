@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Menu, LogOut, ChevronDown } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -126,6 +126,18 @@ export function AppShell({
   const router = useRouter();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const desktopNavRef = useRef<HTMLDivElement>(null);
+
+  // Scrolls the current page's own nav link into view within the sidebar
+  // whenever the route changes - without this, a page far down a long nav
+  // group (e.g. Accounts Payable, Inventory) leaves no indication of where
+  // you are unless you scroll the sidebar yourself to find it. 'nearest'
+  // is a no-op when the link is already visible, so this never jumps the
+  // sidebar around on a navigation that didn't need it.
+  useEffect(() => {
+    const active = desktopNavRef.current?.querySelector('[aria-current="page"]');
+    active?.scrollIntoView({ block: 'nearest' });
+  }, [pathname]);
   const { data: tenant } = useMyTenant({ enabled: Boolean(user.tenantId) });
   // An org admin's "world" is their one organization, not the tenant - show
   // that name in the brand mark/header instead of the (possibly
@@ -159,7 +171,7 @@ export function AppShell({
         {/* Desktop sidebar */}
         <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card px-3 py-5 lg:flex print:hidden">
           <BrandMark logoUrl={tenant?.logoUrl} tenantName={brandName} />
-          <div className="themed-scrollbar mt-6 flex-1 overflow-y-auto">
+          <div ref={desktopNavRef} className="themed-scrollbar mt-6 flex-1 overflow-y-auto">
             <NavGroups groups={navGroups} pathname={pathname} />
           </div>
         </aside>

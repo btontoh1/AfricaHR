@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { EmploymentType } from '@prisma/client';
-import { IsDateString, IsEnum, IsOptional, IsString, Length, Matches } from 'class-validator';
+import { CompensationType, EmploymentType } from '@prisma/client';
+import { IsDateString, IsEnum, IsNumber, IsOptional, IsString, Length, Matches, Min } from 'class-validator';
 
 /**
  * Fallback values applied to any row that leaves the matching CSV column
@@ -33,4 +33,20 @@ export class BulkImportDefaultsDto {
   @IsOptional()
   @Matches(/^[A-Z]{2}$/, { message: 'countryCode must be a 2-letter ISO 3166-1 alpha-2 code' })
   countryCode?: string;
+
+  @ApiPropertyOptional({
+    enum: Object.values(CompensationType),
+    description: 'Lets a whole batch of hourly workers (e.g. a worksite with no per-employee rate on hand) be set in one place.',
+  })
+  @IsOptional()
+  @IsEnum(CompensationType, {
+    message: `compensationType must be one of: ${Object.values(CompensationType).join(', ')}`,
+  })
+  compensationType?: CompensationType;
+
+  @ApiPropertyOptional({ description: 'Applied to every row left blank in the hourlyRate column - only meaningful alongside compensationType HOURLY.' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  hourlyRate?: number;
 }

@@ -175,6 +175,26 @@ describe('EmployeeBulkImportService', () => {
     );
   });
 
+  it('fills in compensationType/hourlyRate from defaults for a names-only hourly worksite import', async () => {
+    employees.create.mockResolvedValue({ id: 'emp-1' } as never);
+    const csv = ['firstName,lastName', 'Ama,Owusu'].join('\n');
+
+    await service.import('tenant-1', 'org-1', csv, tenantAdmin, {
+      jobTitle: 'Factory Worker',
+      employmentType: EmploymentType.FULL_TIME,
+      hireDate: '2026-01-01',
+      countryCode: 'GH',
+      compensationType: 'HOURLY',
+      hourlyRate: 15,
+    });
+
+    expect(employees.create).toHaveBeenCalledWith(
+      'tenant-1',
+      expect.objectContaining({ compensationType: 'HOURLY', hourlyRate: 15 }),
+      tenantAdmin,
+    );
+  });
+
   it('rejects the whole batch up front when the actor is not authorized for the target organization', async () => {
     const csv = [
       'firstName,lastName,jobTitle,employmentType,hireDate,countryCode',

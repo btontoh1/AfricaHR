@@ -8,6 +8,7 @@ import { useSession } from '@/app/(app)/session-provider';
 import { useCreateEmployee } from './queries';
 import {
   employeeFormSchema,
+  COMPENSATION_TYPE_OPTIONS,
   EMPLOYMENT_TYPE_OPTIONS,
   GENDER_OPTIONS,
   PAY_FREQUENCY_OPTIONS,
@@ -64,6 +65,8 @@ export function CreateEmployeeForm() {
       jobTitle: '',
       employmentType: 'FULL_TIME',
       hireDate: '',
+      compensationType: 'SALARY',
+      hourlyRate: '',
       baseSalary: '',
       payFrequency: '',
       currency: '',
@@ -74,6 +77,7 @@ export function CreateEmployeeForm() {
 
   const parentFields = useFieldArray({ control: form.control, name: 'parents' });
   const childFields = useFieldArray({ control: form.control, name: 'children' });
+  const compensationType = form.watch('compensationType');
 
   async function onSubmit(values: EmployeeFormValues) {
     try {
@@ -104,7 +108,9 @@ export function CreateEmployeeForm() {
         jobTitle: values.jobTitle,
         employmentType: values.employmentType,
         hireDate: values.hireDate,
-        baseSalary: values.baseSalary ? Number(values.baseSalary) : undefined,
+        compensationType: values.compensationType,
+        hourlyRate: values.compensationType === 'HOURLY' && values.hourlyRate ? Number(values.hourlyRate) : undefined,
+        baseSalary: values.compensationType === 'SALARY' && values.baseSalary ? Number(values.baseSalary) : undefined,
         payFrequency: toOptional(values.payFrequency),
         currency: toOptional(values.currency),
         annualRentPaid: values.annualRentPaid ? Number(values.annualRentPaid) : undefined,
@@ -511,17 +517,57 @@ export function CreateEmployeeForm() {
           <CardContent className="grid gap-4 sm:grid-cols-3">
             <FormField
               control={form.control}
-              name="baseSalary"
+              name="compensationType"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Base salary</FormLabel>
-                  <FormControl>
-                    <Input type="number" min={0} step="0.01" {...field} />
-                  </FormControl>
+                  <FormLabel>Compensation type</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {COMPENSATION_TYPE_OPTIONS.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type === 'HOURLY' ? 'Hourly' : 'Salary'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            {compensationType === 'HOURLY' ? (
+              <FormField
+                control={form.control}
+                name="hourlyRate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Hourly rate</FormLabel>
+                    <FormControl>
+                      <Input type="number" min={0} step="0.01" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : (
+              <FormField
+                control={form.control}
+                name="baseSalary"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Base salary</FormLabel>
+                    <FormControl>
+                      <Input type="number" min={0} step="0.01" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <FormField
               control={form.control}
               name="payFrequency"

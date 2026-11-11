@@ -5216,6 +5216,13 @@ export interface components {
             /** @enum {string} */
             employmentType: "FULL_TIME" | "PART_TIME" | "CONTRACT" | "INTERN";
             hireDate: string;
+            /**
+             * @description Defaults to SALARY when omitted. HOURLY requires hourlyRate instead of baseSalary.
+             * @enum {string}
+             */
+            compensationType?: "SALARY" | "HOURLY";
+            /** @description Required (and only used) when compensationType is HOURLY - priced against attendance-derived hours worked each pay run instead of baseSalary. */
+            hourlyRate?: number;
             baseSalary?: number;
             /** @example MONTHLY */
             payFrequency?: string;
@@ -5261,6 +5268,9 @@ export interface components {
             employmentStatus: "PENDING_ONBOARDING" | "ACTIVE" | "ON_LEAVE" | "SUSPENDED" | "TERMINATED";
             hireDate: string;
             terminationDate?: string;
+            /** @enum {string} */
+            compensationType: "SALARY" | "HOURLY";
+            hourlyRate?: string;
             baseSalary?: string;
             payFrequency?: string;
             currency?: string;
@@ -5275,6 +5285,13 @@ export interface components {
             employmentType?: "FULL_TIME" | "PART_TIME" | "CONTRACT" | "INTERN";
             hireDate?: string;
             countryCode?: string;
+            /**
+             * @description Lets a whole batch of hourly workers (e.g. a worksite with no per-employee rate on hand) be set in one place.
+             * @enum {string}
+             */
+            compensationType?: "SALARY" | "HOURLY";
+            /** @description Applied to every row left blank in the hourlyRate column - only meaningful alongside compensationType HOURLY. */
+            hourlyRate?: number;
         };
         BulkImportEmployeesDto: {
             /** @description Every row in the CSV is created under this organization */
@@ -5316,6 +5333,13 @@ export interface components {
             /** @description Link or unlink (set null) portal access for this employee */
             userId?: string | null;
             jobTitle?: string;
+            /**
+             * @description HOURLY requires hourlyRate instead of baseSalary.
+             * @enum {string}
+             */
+            compensationType?: "SALARY" | "HOURLY";
+            /** @description Required (and only used) when compensationType is HOURLY. */
+            hourlyRate?: number | null;
             baseSalary?: number | null;
             /** @example MONTHLY */
             payFrequency?: string | null;
@@ -5483,6 +5507,10 @@ export interface components {
             unpaidLeaveDeduction: string;
             /** @description Pay for overtime hours worked within the pay period, else "0" - already added into grossPay above, not included in totalDeductions */
             overtimePay: string;
+            /** @description HOURLY employees only - regular (non-overtime) hours worked within the pay period, already priced into basicSalary above */
+            regularHoursWorked?: string | null;
+            /** @description HOURLY employees only - the hourlyRate this payslip was computed with */
+            hourlyRateApplied?: string | null;
             totalDeductions: string;
             netPay: string;
             currency: string;

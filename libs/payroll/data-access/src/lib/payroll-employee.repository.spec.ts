@@ -18,6 +18,8 @@ describe('PayrollEmployeeRepository', () => {
     currency: true,
     annualRentPaid: true,
     countryCode: true,
+    compensationType: true,
+    hourlyRate: true,
   };
 
   beforeEach(() => {

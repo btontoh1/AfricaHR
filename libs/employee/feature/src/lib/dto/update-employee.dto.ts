@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { EmploymentType } from '@prisma/client';
+import { CompensationType, EmploymentType } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsArray,
@@ -104,6 +104,23 @@ export class UpdateEmployeeDto {
   @IsString()
   @Length(1, 200)
   jobTitle?: string;
+
+  @ApiPropertyOptional({
+    enum: Object.values(CompensationType),
+    description: 'HOURLY requires hourlyRate instead of baseSalary.',
+  })
+  @IsOptional()
+  @IsEnum(CompensationType)
+  compensationType?: CompensationType;
+
+  @ApiPropertyOptional({
+    description: 'Required (and only used) when compensationType is HOURLY.',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  hourlyRate?: number | null;
 
   @ApiPropertyOptional({ nullable: true })
   @IsOptional()

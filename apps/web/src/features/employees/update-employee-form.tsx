@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { useUpdateEmployee } from './queries';
 import {
+  UPDATE_COMPENSATION_TYPE_OPTIONS,
   UPDATE_EMPLOYMENT_TYPE_OPTIONS,
   UPDATE_GENDER_OPTIONS,
   updateEmployeeFormSchema,
@@ -56,6 +57,8 @@ export function UpdateEmployeeForm({ tenantId, employee }: { tenantId: string; e
       jobTitle: employee.jobTitle,
       employmentType: employee.employmentType,
       hireDate: employee.hireDate?.slice(0, 10) ?? '',
+      compensationType: employee.compensationType,
+      hourlyRate: employee.hourlyRate ?? '',
       baseSalary: employee.baseSalary ?? '',
       payFrequency: employee.payFrequency ?? '',
       annualRentPaid: employee.annualRentPaid ?? '',
@@ -65,6 +68,7 @@ export function UpdateEmployeeForm({ tenantId, employee }: { tenantId: string; e
 
   const parentFields = useFieldArray({ control: form.control, name: 'parents' });
   const childFields = useFieldArray({ control: form.control, name: 'children' });
+  const compensationType = form.watch('compensationType');
 
   async function onSubmit(values: UpdateEmployeeFormValues) {
     try {
@@ -94,7 +98,9 @@ export function UpdateEmployeeForm({ tenantId, employee }: { tenantId: string; e
         jobTitle: values.jobTitle,
         employmentType: values.employmentType,
         hireDate: values.hireDate,
-        baseSalary: values.baseSalary ? Number(values.baseSalary) : null,
+        compensationType: values.compensationType,
+        hourlyRate: values.compensationType === 'HOURLY' && values.hourlyRate ? Number(values.hourlyRate) : null,
+        baseSalary: values.compensationType === 'SALARY' && values.baseSalary ? Number(values.baseSalary) : null,
         payFrequency: toOptional(values.payFrequency) ?? null,
         annualRentPaid: values.annualRentPaid ? Number(values.annualRentPaid) : null,
         countryCode: values.countryCode,
@@ -412,17 +418,57 @@ export function UpdateEmployeeForm({ tenantId, employee }: { tenantId: string; e
         />
         <FormField
           control={form.control}
-          name="baseSalary"
+          name="compensationType"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Base salary</FormLabel>
-              <FormControl>
-                <Input type="number" min={0} step="0.01" {...field} />
-              </FormControl>
+              <FormLabel>Compensation type</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {UPDATE_COMPENSATION_TYPE_OPTIONS.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type === 'HOURLY' ? 'Hourly' : 'Salary'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
         />
+        {compensationType === 'HOURLY' ? (
+          <FormField
+            control={form.control}
+            name="hourlyRate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Hourly rate</FormLabel>
+                <FormControl>
+                  <Input type="number" min={0} step="0.01" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ) : (
+          <FormField
+            control={form.control}
+            name="baseSalary"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Base salary</FormLabel>
+                <FormControl>
+                  <Input type="number" min={0} step="0.01" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
         <FormField
           control={form.control}
           name="payFrequency"

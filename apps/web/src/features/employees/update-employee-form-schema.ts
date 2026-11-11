@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 const EMPLOYMENT_TYPES = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERN'] as const;
 const GENDERS = ['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY'] as const;
+const COMPENSATION_TYPES = ['SALARY', 'HOURLY'] as const;
 
 // Mirrors FamilyMemberDto (libs/employee/feature/src/lib/dto/family-member.dto.ts).
 const familyMemberFormSchema = z.object({
@@ -26,13 +27,20 @@ export const updateEmployeeFormSchema = z.object({
   jobTitle: z.string().min(1, 'Job title is required').max(200),
   employmentType: z.enum(EMPLOYMENT_TYPES),
   hireDate: z.string().min(1, 'Hire date is required'),
+  compensationType: z.enum(COMPENSATION_TYPES),
+  hourlyRate: z.string().optional().or(z.literal('')),
   baseSalary: z.string().optional().or(z.literal('')),
   payFrequency: z.string().optional().or(z.literal('')),
   annualRentPaid: z.string().optional().or(z.literal('')),
   countryCode: z.string().regex(/^[A-Z]{2}$/, '2-letter code, e.g. GH'),
-});
+})
+  .refine(
+    (values) => values.compensationType !== 'HOURLY' || Boolean(values.hourlyRate && Number(values.hourlyRate) > 0),
+    { message: 'Enter an hourly rate greater than 0', path: ['hourlyRate'] },
+  );
 
 export type UpdateEmployeeFormValues = z.infer<typeof updateEmployeeFormSchema>;
 
 export const UPDATE_EMPLOYMENT_TYPE_OPTIONS = EMPLOYMENT_TYPES;
 export const UPDATE_GENDER_OPTIONS = GENDERS;
+export const UPDATE_COMPENSATION_TYPE_OPTIONS = COMPENSATION_TYPES;

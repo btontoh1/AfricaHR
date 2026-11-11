@@ -60,6 +60,50 @@ describe('PayrollAttendanceRecordRepository', () => {
     });
   });
 
+  describe('sumHoursWorked', () => {
+    it('queries only non-deleted records within the period', async () => {
+      const periodStart = new Date('2026-02-01');
+      const periodEnd = new Date('2026-02-28');
+
+      await repository.sumHoursWorked('tenant-1', 'emp-1', periodStart, periodEnd);
+
+      expect(tx.attendanceRecord.findMany).toHaveBeenCalledWith({
+        where: {
+          tenantId: 'tenant-1',
+          employeeId: 'emp-1',
+          deletedAt: null,
+          date: { gte: periodStart, lte: periodEnd },
+        },
+        select: { hoursWorked: true },
+      });
+    });
+
+    it('sums hoursWorked across every matching record', async () => {
+      tx.attendanceRecord.findMany.mockResolvedValue([
+        { hoursWorked: new Prisma.Decimal(8) },
+        { hoursWorked: new Prisma.Decimal(7.5) },
+      ]);
+
+      const result = await repository.sumHoursWorked('tenant-1', 'emp-1', new Date(), new Date());
+
+      expect(result).toBe(15.5);
+    });
+
+    it('treats a null hoursWorked (not yet clocked out) as 0', async () => {
+      tx.attendanceRecord.findMany.mockResolvedValue([{ hoursWorked: null }]);
+
+      const result = await repository.sumHoursWorked('tenant-1', 'emp-1', new Date(), new Date());
+
+      expect(result).toBe(0);
+    });
+
+    it('returns 0 when there are no matching records', async () => {
+      const result = await repository.sumHoursWorked('tenant-1', 'emp-1', new Date(), new Date());
+
+      expect(result).toBe(0);
+    });
+  });
+
   describe('findStandardDailyHours', () => {
     it('returns the tenant policy standardDailyHours as a number', async () => {
       tx.attendancePolicy.findUnique.mockResolvedValue({ standardDailyHours: new Prisma.Decimal(8) });

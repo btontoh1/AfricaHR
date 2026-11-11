@@ -39,6 +39,34 @@ export class PayrollAttendanceRecordRepository {
     return records.reduce((sum, record) => sum + Number(record.overtimeHours ?? 0), 0);
   }
 
+  /**
+   * Sum of hoursWorked across every AttendanceRecord falling within
+   * [periodStart, periodEnd] - used for HOURLY employees' regular+overtime
+   * pay (see computePayslip's HOURLY branch, payroll-domain). This total
+   * already INCLUDES overtime hours, same denormalized value sumOvertimeHours
+   * reads; callers must not add the two together. A record with a null
+   * hoursWorked (still clocked in, no clock-out yet) contributes 0.
+   */
+  async sumHoursWorked(
+    tenantId: string,
+    employeeId: string,
+    periodStart: Date,
+    periodEnd: Date,
+  ): Promise<number> {
+    const records = await this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.attendanceRecord.findMany({
+        where: {
+          tenantId,
+          employeeId,
+          deletedAt: null,
+          date: { gte: periodStart, lte: periodEnd },
+        },
+        select: { hoursWorked: true },
+      }),
+    );
+    return records.reduce((sum, record) => sum + Number(record.hoursWorked ?? 0), 0);
+  }
+
   /** The tenant's single AttendancePolicy.standardDailyHours, or null when the tenant hasn't configured one - see overtime-pay.ts (payroll-domain) for how the caller handles that case. */
   async findStandardDailyHours(tenantId: string): Promise<number | null> {
     const policy = await this.prisma.withTenantContext(tenantId, (tx) =>

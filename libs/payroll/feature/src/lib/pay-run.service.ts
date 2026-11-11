@@ -250,6 +250,15 @@ export class PayRunService {
         payRun.periodStart,
         payRun.periodEnd,
       );
+      const totalHoursWorked =
+        employee.compensationType === 'HOURLY'
+          ? await this.attendanceRecords.sumHoursWorked(
+              tenantId,
+              employee.id,
+              payRun.periodStart,
+              payRun.periodEnd,
+            )
+          : undefined;
 
       const existingPayslip = await this.payslips.findByPayRunAndEmployee(tenantId, id, employee.id);
       const lineItemInputs = (existingPayslip?.lineItems ?? []).map((item) => ({
@@ -259,7 +268,10 @@ export class PayRunService {
 
       const computed = computePayslip({
         countryCode: employee.countryCode,
+        compensationType: employee.compensationType,
         basicSalary,
+        hourlyRate: employee.hourlyRate ? Number(employee.hourlyRate) : undefined,
+        totalHoursWorked,
         annualRentPaid: employee.annualRentPaid ? Number(employee.annualRentPaid) : undefined,
         organizationEmployeeCount: eligibleEmployees.length,
         ...extraRates,

@@ -86,6 +86,9 @@ export class EmployeeService {
     if (!isValidEmployeeNumber(employeeNumber)) {
       throw new BadRequestException(`"${employeeNumber}" is not a valid employee number`);
     }
+    if (dto.compensationType === 'HOURLY' && !(dto.hourlyRate && dto.hourlyRate > 0)) {
+      throw new BadRequestException('hourlyRate must be greater than 0 when compensationType is HOURLY');
+    }
 
     let employee: Employee;
     try {
@@ -108,6 +111,8 @@ export class EmployeeService {
         baseSalary: dto.baseSalary,
         payFrequency: dto.payFrequency,
         currency: dto.currency,
+        compensationType: dto.compensationType,
+        hourlyRate: dto.hourlyRate,
         annualRentPaid: dto.annualRentPaid,
         countryCode: dto.countryCode,
         metadata: dto.metadata as Prisma.InputJsonValue | undefined,
@@ -182,6 +187,12 @@ export class EmployeeService {
     const actorId = actor.sub;
     const existing = await this.findEmployeeOrThrow(tenantId, id, actor);
 
+    const effectiveCompensationType = dto.compensationType ?? existing.compensationType;
+    const effectiveHourlyRate = dto.hourlyRate !== undefined ? dto.hourlyRate : existing.hourlyRate;
+    if (effectiveCompensationType === 'HOURLY' && !(effectiveHourlyRate && Number(effectiveHourlyRate) > 0)) {
+      throw new BadRequestException('hourlyRate must be greater than 0 when compensationType is HOURLY');
+    }
+
     if (dto.managerId !== undefined && dto.managerId !== null) {
       if (dto.managerId === id) {
         throw new BadRequestException('An employee cannot be their own manager');
@@ -211,6 +222,8 @@ export class EmployeeService {
         hireDate: dto.hireDate ? new Date(dto.hireDate) : undefined,
         baseSalary: dto.baseSalary,
         payFrequency: dto.payFrequency,
+        compensationType: dto.compensationType,
+        hourlyRate: dto.hourlyRate,
         annualRentPaid: dto.annualRentPaid,
         countryCode: dto.countryCode,
         updatedBy: actorId,

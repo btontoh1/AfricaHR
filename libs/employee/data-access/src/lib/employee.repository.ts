@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Employee, EmploymentStatus, EmploymentType, Prisma } from '@prisma/client';
+import { CompensationType, Employee, EmploymentStatus, EmploymentType, Prisma } from '@prisma/client';
 import { PrismaService } from '@africahr/platform-database';
 
 export interface CreateEmployeeInput {
@@ -21,6 +21,8 @@ export interface CreateEmployeeInput {
   baseSalary?: Prisma.Decimal | number;
   payFrequency?: string;
   currency?: string;
+  compensationType?: CompensationType;
+  hourlyRate?: Prisma.Decimal | number;
   annualRentPaid?: Prisma.Decimal | number;
   countryCode: string;
   metadata?: Prisma.InputJsonValue;
@@ -50,6 +52,8 @@ export interface UpdateEmployeeInput {
   hireDate?: Date;
   baseSalary?: Prisma.Decimal | number | null;
   payFrequency?: string | null;
+  compensationType?: CompensationType;
+  hourlyRate?: Prisma.Decimal | number | null;
   annualRentPaid?: Prisma.Decimal | number | null;
   countryCode?: string;
   updatedBy?: string;
@@ -82,6 +86,8 @@ export class EmployeeRepository {
           baseSalary: input.baseSalary,
           payFrequency: input.payFrequency,
           currency: input.currency,
+          compensationType: input.compensationType,
+          hourlyRate: input.hourlyRate,
           annualRentPaid: input.annualRentPaid,
           countryCode: input.countryCode,
           metadata: input.metadata,
@@ -152,6 +158,8 @@ export class EmployeeRepository {
           hireDate: input.hireDate,
           baseSalary: input.baseSalary,
           payFrequency: input.payFrequency,
+          compensationType: input.compensationType,
+          hourlyRate: input.hourlyRate,
           annualRentPaid: input.annualRentPaid,
           countryCode: input.countryCode,
           updatedBy: input.updatedBy,

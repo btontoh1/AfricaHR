@@ -686,6 +686,14 @@ enum EmploymentType {
   INTERN
 }
 
+/// Which compensation model drives this employee's payslip calculation.
+/// HOURLY uses hourlyRate against attendance-derived hours worked instead
+/// of baseSalary - see payslip-calculator.ts (payroll-domain).
+enum CompensationType {
+  SALARY
+  HOURLY
+}
+
 /// The employee's HR record. userId is nullable and independent of
 /// employmentStatus — HR can onboard someone into the system (or employ
 /// someone who never needs portal access) without a User account existing
@@ -719,6 +727,14 @@ model Employee {
   baseSalary   Decimal? @map("base_salary")
   payFrequency String?  @map("pay_frequency")
   currency     String?
+
+  /// Pay basis for payroll calculation. Defaults to SALARY (the existing
+  /// behavior) so every pre-existing employee is unaffected.
+  compensationType CompensationType @default(SALARY) @map("compensation_type")
+  /// Required (and only meaningful) when compensationType is HOURLY -
+  /// multiplied against attendance-derived hours worked each pay run
+  /// instead of baseSalary. Null for SALARY employees.
+  hourlyRate       Decimal?         @map("hourly_rate")
 
   /// Annual rent paid, used only for Nigeria's Rent Relief Allowance
   /// (Nigeria Tax Act 2025 s.30(2)(a)(vi) - 20% of rent, capped at
@@ -1061,6 +1077,11 @@ model Payslip {
 
   /// Pay for overtime hours worked within the pay period (attendance records' overtimeHours), at the employee's implied hourly rate times the country's OVERTIME_MULTIPLIER statutory rate, else 0. Already added into grossPay/taxableIncome above - not part of totalDeductions (it's extra pay, not a withholding). See overtime-pay.ts (payroll-domain).
   overtimePay Decimal @default(0) @map("overtime_pay")
+
+  /// HOURLY employees only, else null - regular (non-overtime) hours worked within the pay period, already priced into basicSalary above at hourlyRateApplied. Informational. See payslip-calculator.ts (payroll-domain).
+  regularHoursWorked Decimal? @map("regular_hours_worked")
+  /// HOURLY employees only, else null - the employee's hourlyRate at the time this payslip was computed (kept even if the employee's rate later changes). See payslip-calculator.ts (payroll-domain).
+  hourlyRateApplied  Decimal? @map("hourly_rate_applied")
 
   totalDeductions Decimal @map("total_deductions")
   netPay          Decimal @map("net_pay")

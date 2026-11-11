@@ -7,8 +7,15 @@ import { EmployeeService } from './employee.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { BulkImportRowDto } from './dto/bulk-import-row.dto';
 import { BulkImportResultDto } from './dto/bulk-import-result.dto';
+import { BulkImportDefaultsDto } from './dto/bulk-import-defaults.dto';
 
-const REQUIRED_COLUMNS = ['firstName', 'lastName', 'jobTitle', 'employmentType', 'hireDate', 'countryCode'];
+// Only firstName/lastName must actually be columns in the CSV itself -
+// jobTitle/employmentType/hireDate/countryCode can instead come from
+// `defaults` (merged into each row below, before validation), for an
+// organization that only has a plain name list and no per-employee value
+// for those four fields.
+const REQUIRED_COLUMNS = ['firstName', 'lastName'];
+const DEFAULTABLE_COLUMNS = ['jobTitle', 'employmentType', 'hireDate', 'countryCode'] as const;
 
 /**
  * Turns each CSV cell's "" (blank cell) into undefined - class-validator's
@@ -33,6 +40,7 @@ export class EmployeeBulkImportService {
     organizationId: string,
     csv: string,
     actor: RequestUser,
+    defaults?: BulkImportDefaultsDto,
   ): Promise<BulkImportResultDto> {
     // Fail once, up front, instead of every one of N rows independently
     // hitting (and reporting) the same "not authorized for this org" error.
@@ -61,6 +69,9 @@ export class EmployeeBulkImportService {
       // number a person would see counting lines in a spreadsheet.
       const row = index + 2;
       const record = blankToUndefined(rawRecord);
+      for (const column of DEFAULTABLE_COLUMNS) {
+        record[column] ??= defaults?.[column];
+      }
 
       const dto = plainToInstance(BulkImportRowDto, record);
       const validationErrors = await validate(dto, { whitelist: true });

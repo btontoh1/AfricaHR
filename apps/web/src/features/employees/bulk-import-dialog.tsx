@@ -4,7 +4,9 @@ import { useState } from 'react';
 import { Download, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBulkImportEmployees } from './queries';
+import { EMPLOYMENT_TYPE_OPTIONS } from './employee-form-schema';
 import { OrganizationPicker } from '@/features/organizations/organization-picker';
+import { AFRICAN_COUNTRIES } from '@/lib/african-countries';
 import { getApiErrorMessage } from '@/lib/api-error';
 import type { BulkImportResult } from './types';
 import { Button } from '@/components/ui/button';
@@ -18,6 +20,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 // Mirrors BulkImportRowDto (libs/employee/feature/src/lib/dto/bulk-import-row.dto.ts) -
@@ -59,15 +62,30 @@ const TEMPLATE_EXAMPLE_ROW = [
   'GH',
 ];
 
-function downloadTemplate() {
-  const csv = [TEMPLATE_HEADER.join(','), TEMPLATE_EXAMPLE_ROW.join(',')].join('\n');
+// A minimal template for an organization that only has a plain name list -
+// jobTitle/employmentType/hireDate/countryCode are left out of the file
+// entirely and instead come from the "default values" fields below, set
+// once for the whole batch rather than filled in per row.
+const NAMES_ONLY_TEMPLATE_HEADER = ['firstName', 'lastName'];
+const NAMES_ONLY_TEMPLATE_EXAMPLE_ROW = ['John', 'Doe'];
+
+function downloadCsv(filename: string, header: string[], exampleRow: string[]) {
+  const csv = [header.join(','), exampleRow.join(',')].join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = 'parothr-employee-import-template.csv';
+  link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+function downloadTemplate() {
+  downloadCsv('parothr-employee-import-template.csv', TEMPLATE_HEADER, TEMPLATE_EXAMPLE_ROW);
+}
+
+function downloadNamesOnlyTemplate() {
+  downloadCsv('parothr-employee-import-names-only-template.csv', NAMES_ONLY_TEMPLATE_HEADER, NAMES_ONLY_TEMPLATE_EXAMPLE_ROW);
 }
 
 export function BulkImportEmployeesDialog({ tenantId }: { tenantId: string }) {
@@ -75,6 +93,12 @@ export function BulkImportEmployeesDialog({ tenantId }: { tenantId: string }) {
   const [organizationId, setOrganizationId] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<BulkImportResult | null>(null);
+  const [defaultJobTitle, setDefaultJobTitle] = useState('');
+  const [defaultEmploymentType, setDefaultEmploymentType] = useState<
+    (typeof EMPLOYMENT_TYPE_OPTIONS)[number] | ''
+  >('');
+  const [defaultHireDate, setDefaultHireDate] = useState('');
+  const [defaultCountryCode, setDefaultCountryCode] = useState('');
   const bulkImport = useBulkImportEmployees(tenantId);
 
   function handleOpenChange(next: boolean) {
@@ -82,6 +106,10 @@ export function BulkImportEmployeesDialog({ tenantId }: { tenantId: string }) {
       setOrganizationId('');
       setFile(null);
       setResult(null);
+      setDefaultJobTitle('');
+      setDefaultEmploymentType('');
+      setDefaultHireDate('');
+      setDefaultCountryCode('');
     }
     setOpen(next);
   }
@@ -92,7 +120,18 @@ export function BulkImportEmployeesDialog({ tenantId }: { tenantId: string }) {
     }
     try {
       const csv = await file.text();
-      const imported = await bulkImport.mutateAsync({ organizationId, csv });
+      const defaults = {
+        jobTitle: defaultJobTitle || undefined,
+        employmentType: defaultEmploymentType || undefined,
+        hireDate: defaultHireDate || undefined,
+        countryCode: defaultCountryCode || undefined,
+      };
+      const hasAnyDefault = Object.values(defaults).some((value) => value !== undefined);
+      const imported = await bulkImport.mutateAsync({
+        organizationId,
+        csv,
+        ...(hasAnyDefault ? { defaults } : {}),
+      });
       setResult(imported);
       if (imported.errors.length === 0) {
         toast.success(`${imported.created} employee${imported.created === 1 ? '' : 's'} imported`);
@@ -116,17 +155,29 @@ export function BulkImportEmployeesDialog({ tenantId }: { tenantId: string }) {
         <DialogHeader>
           <DialogTitle>Bulk import employees</DialogTitle>
           <DialogDescription>
-            Upload a CSV to create multiple employees at once - useful when onboarding a company&apos;s
-            existing roster from another system.
+            Upload a CSV to create multiple employees at once. Have a full roster exported from another
+            system? Use the full template. Only have a plain list of names? Use the names-only template and
+            set the default values below once for the whole batch.
           </DialogDescription>
         </DialogHeader>
 
         {!result && (
           <div className="space-y-4">
-            <Button type="button" variant="link" className="h-auto p-0" onClick={downloadTemplate}>
-              <Download className="size-4" />
-              Download CSV template
-            </Button>
+            <div className="flex flex-col gap-1">
+              <Button type="button" variant="link" className="h-auto justify-start p-0" onClick={downloadTemplate}>
+                <Download className="size-4" />
+                Download full CSV template
+              </Button>
+              <Button
+                type="button"
+                variant="link"
+                className="h-auto justify-start p-0"
+                onClick={downloadNamesOnlyTemplate}
+              >
+                <Download className="size-4" />
+                Download names-only CSV template
+              </Button>
+            </div>
 
             <div className="space-y-2">
               <Label>Organization</Label>
@@ -143,6 +194,71 @@ export function BulkImportEmployeesDialog({ tenantId }: { tenantId: string }) {
                 onChange={(event) => setFile(event.target.files?.[0] ?? null)}
                 className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:border-input file:bg-background file:px-3 file:py-1.5 file:text-sm file:font-medium"
               />
+            </div>
+
+            <div className="space-y-3 rounded-md border p-3">
+              <div>
+                <p className="text-sm font-medium">Default values (optional)</p>
+                <p className="text-xs text-muted-foreground">
+                  Applied to any row that leaves the matching column blank - a row with its own value always
+                  wins. Fill these in if your file only has names.
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="bulk-import-job-title">Job title</Label>
+                  <input
+                    id="bulk-import-job-title"
+                    value={defaultJobTitle}
+                    onChange={(event) => setDefaultJobTitle(event.target.value)}
+                    placeholder="e.g. Staff"
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Employment type</Label>
+                  <Select
+                    value={defaultEmploymentType || undefined}
+                    onValueChange={(value) => setDefaultEmploymentType(value as typeof defaultEmploymentType)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EMPLOYMENT_TYPE_OPTIONS.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type.replace('_', ' ')}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="bulk-import-hire-date">Hire date</Label>
+                  <input
+                    id="bulk-import-hire-date"
+                    type="date"
+                    value={defaultHireDate}
+                    onChange={(event) => setDefaultHireDate(event.target.value)}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Country</Label>
+                  <Select value={defaultCountryCode || undefined} onValueChange={setDefaultCountryCode}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AFRICAN_COUNTRIES.map((country) => (
+                        <SelectItem key={country.code} value={country.code}>
+                          {country.name} ({country.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
           </div>
         )}

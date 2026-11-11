@@ -106,6 +106,17 @@ describe('EmployeeBulkImportService', () => {
   });
 
   it('reports one error for a missing required column instead of one per row', async () => {
+    const csv = ['lastName', 'Owusu'].join('\n');
+
+    const result = await service.import('tenant-1', 'org-1', csv, tenantAdmin);
+
+    expect(result.created).toBe(0);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].message).toContain('firstName');
+    expect(employees.create).not.toHaveBeenCalled();
+  });
+
+  it('reports a per-row validation error for jobTitle/employmentType/hireDate/countryCode when no defaults are given', async () => {
     const csv = ['firstName,lastName', 'Ama,Owusu'].join('\n');
 
     const result = await service.import('tenant-1', 'org-1', csv, tenantAdmin);
@@ -114,6 +125,54 @@ describe('EmployeeBulkImportService', () => {
     expect(result.errors).toHaveLength(1);
     expect(result.errors[0].message).toContain('jobTitle');
     expect(employees.create).not.toHaveBeenCalled();
+  });
+
+  it('fills in jobTitle/employmentType/hireDate/countryCode from defaults when a names-only CSV omits those columns', async () => {
+    employees.create.mockResolvedValue({ id: 'emp-1' } as never);
+    const csv = ['firstName,lastName', 'Ama,Owusu', 'Kwame,Mensah'].join('\n');
+
+    const result = await service.import('tenant-1', 'org-1', csv, tenantAdmin, {
+      jobTitle: 'Staff',
+      employmentType: EmploymentType.FULL_TIME,
+      hireDate: '2026-01-01',
+      countryCode: 'GH',
+    });
+
+    expect(result).toEqual({ created: 2, errors: [] });
+    expect(employees.create).toHaveBeenNthCalledWith(
+      1,
+      'tenant-1',
+      expect.objectContaining({
+        firstName: 'Ama',
+        lastName: 'Owusu',
+        jobTitle: 'Staff',
+        employmentType: EmploymentType.FULL_TIME,
+        hireDate: '2026-01-01',
+        countryCode: 'GH',
+      }),
+      tenantAdmin,
+    );
+  });
+
+  it("prefers a row's own value over the batch default when both are present", async () => {
+    employees.create.mockResolvedValue({ id: 'emp-1' } as never);
+    const csv = [
+      'firstName,lastName,jobTitle',
+      'Ama,Owusu,Engineer',
+    ].join('\n');
+
+    await service.import('tenant-1', 'org-1', csv, tenantAdmin, {
+      jobTitle: 'Staff',
+      employmentType: EmploymentType.FULL_TIME,
+      hireDate: '2026-01-01',
+      countryCode: 'GH',
+    });
+
+    expect(employees.create).toHaveBeenCalledWith(
+      'tenant-1',
+      expect.objectContaining({ jobTitle: 'Engineer' }),
+      tenantAdmin,
+    );
   });
 
   it('rejects the whole batch up front when the actor is not authorized for the target organization', async () => {

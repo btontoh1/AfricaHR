@@ -5221,11 +5221,20 @@ export interface components {
             createdAt: string;
             updatedAt: string;
         };
+        BulkImportDefaultsDto: {
+            jobTitle?: string;
+            /** @enum {string} */
+            employmentType?: "FULL_TIME" | "PART_TIME" | "CONTRACT" | "INTERN";
+            hireDate?: string;
+            countryCode?: string;
+        };
         BulkImportEmployeesDto: {
             /** @description Every row in the CSV is created under this organization */
             organizationId: string;
             /** @description Raw CSV content, including the header row */
             csv: string;
+            /** @description Fallback values for any row that leaves its jobTitle/employmentType/hireDate/countryCode column blank - see BulkImportDefaultsDto. Lets a names-only CSV (just firstName,lastName) import successfully. */
+            defaults?: components["schemas"]["BulkImportDefaultsDto"];
         };
         BulkImportRowErrorDto: {
             /** @description 1-indexed row number as it would appear in a spreadsheet (header is row 1) */

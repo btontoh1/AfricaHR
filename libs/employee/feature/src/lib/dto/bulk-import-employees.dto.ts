@@ -1,5 +1,7 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsUUID, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import { IsObject, IsOptional, IsString, IsUUID, MinLength, ValidateNested } from 'class-validator';
+import { BulkImportDefaultsDto } from './bulk-import-defaults.dto';
 
 // The CSV covers only the core employee-record fields (see
 // BulkImportRowDto) - organizationUnitId, managerId, and familyMembers are
@@ -15,4 +17,14 @@ export class BulkImportEmployeesDto {
   @IsString()
   @MinLength(1)
   csv!: string;
+
+  @ApiPropertyOptional({
+    description:
+      "Fallback values for any row that leaves its jobTitle/employmentType/hireDate/countryCode column blank - see BulkImportDefaultsDto. Lets a names-only CSV (just firstName,lastName) import successfully.",
+  })
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => BulkImportDefaultsDto)
+  defaults?: BulkImportDefaultsDto;
 }

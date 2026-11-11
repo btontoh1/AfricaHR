@@ -150,7 +150,7 @@ export function AppShell({
   const isPlatformAdmin = user.role === 'PLATFORM_ADMIN';
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex h-screen flex-col overflow-hidden bg-background">
       <ImpersonationBanner user={user} />
       <div className="flex min-h-0 flex-1">
         {user.tenantId && <NewNotificationWatcher tenantId={user.tenantId} />}

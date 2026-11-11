@@ -15,7 +15,14 @@ import { BulkImportDefaultsDto } from './dto/bulk-import-defaults.dto';
 // organization that only has a plain name list and no per-employee value
 // for those four fields.
 const REQUIRED_COLUMNS = ['firstName', 'lastName'];
-const DEFAULTABLE_COLUMNS = ['jobTitle', 'employmentType', 'hireDate', 'countryCode'] as const;
+const DEFAULTABLE_COLUMNS = [
+  'jobTitle',
+  'employmentType',
+  'hireDate',
+  'countryCode',
+  'compensationType',
+  'hourlyRate',
+] as const;
 
 /**
  * Turns each CSV cell's "" (blank cell) into undefined - class-validator's
@@ -30,6 +37,12 @@ function blankToUndefined(record: Record<string, string>): Record<string, string
   }
   return result;
 }
+
+// defaults' values aren't all strings (hourlyRate is a number) - record's
+// cells always start as strings (or undefined) straight from the CSV, but
+// merging a numeric default in is fine: plainToInstance/class-transformer's
+// Type(() => Number) below coerces either representation the same way.
+type MergedRecord = Record<string, string | number | undefined>;
 
 @Injectable()
 export class EmployeeBulkImportService {
@@ -68,7 +81,7 @@ export class EmployeeBulkImportService {
       // +2: 1-indexed, plus the header row itself, so this matches the row
       // number a person would see counting lines in a spreadsheet.
       const row = index + 2;
-      const record = blankToUndefined(rawRecord);
+      const record: MergedRecord = blankToUndefined(rawRecord);
       for (const column of DEFAULTABLE_COLUMNS) {
         record[column] ??= defaults?.[column];
       }
@@ -99,6 +112,8 @@ export class EmployeeBulkImportService {
         baseSalary: dto.baseSalary,
         payFrequency: dto.payFrequency,
         currency: dto.currency,
+        compensationType: dto.compensationType,
+        hourlyRate: dto.hourlyRate,
         countryCode: dto.countryCode,
       };
 

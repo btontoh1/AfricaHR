@@ -66,6 +66,8 @@ describe('EmployeeService', () => {
       baseSalary: null,
       payFrequency: null,
       currency: null,
+      compensationType: 'SALARY',
+      hourlyRate: null,
       annualRentPaid: null,
       countryCode: 'GH',
       metadata: null,
@@ -140,6 +142,28 @@ describe('EmployeeService', () => {
         service.create('tenant-1', makeDto({ employeeNumber: 'not-valid' }), hrManager),
       ).rejects.toThrow(BadRequestException);
       expect(employees.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects HOURLY compensationType without a positive hourlyRate', async () => {
+      await expect(
+        service.create('tenant-1', makeDto({ compensationType: 'HOURLY' }), hrManager),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.create('tenant-1', makeDto({ compensationType: 'HOURLY', hourlyRate: 0 }), hrManager),
+      ).rejects.toThrow(BadRequestException);
+      expect(employees.create).not.toHaveBeenCalled();
+    });
+
+    it('accepts HOURLY compensationType with a positive hourlyRate', async () => {
+      employees.count.mockResolvedValue(0);
+      employees.create.mockResolvedValue(makeEmployee({ compensationType: 'HOURLY', hourlyRate: new Prisma.Decimal(20) }));
+
+      await service.create('tenant-1', makeDto({ compensationType: 'HOURLY', hourlyRate: 20 }), hrManager);
+
+      expect(employees.create).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ compensationType: 'HOURLY', hourlyRate: 20 }),
+      );
     });
 
     it('translates a foreign-key violation on organizationId into NotFoundException', async () => {
@@ -237,6 +261,43 @@ describe('EmployeeService', () => {
   });
 
   describe('update', () => {
+    it('rejects switching compensationType to HOURLY without a positive hourlyRate', async () => {
+      employees.findById.mockResolvedValue(makeEmployee({ compensationType: 'SALARY', hourlyRate: null }));
+
+      await expect(
+        service.update('tenant-1', 'emp-1', { compensationType: 'HOURLY' }, hrManager),
+      ).rejects.toThrow(BadRequestException);
+      expect(employees.update).not.toHaveBeenCalled();
+    });
+
+    it('allows switching to HOURLY when hourlyRate is provided in the same update', async () => {
+      employees.findById.mockResolvedValue(makeEmployee({ compensationType: 'SALARY', hourlyRate: null }));
+      employees.update.mockResolvedValue(
+        makeEmployee({ compensationType: 'HOURLY', hourlyRate: new Prisma.Decimal(15) }),
+      );
+
+      await service.update('tenant-1', 'emp-1', { compensationType: 'HOURLY', hourlyRate: 15 }, hrManager);
+
+      expect(employees.update).toHaveBeenCalledWith(
+        'tenant-1',
+        'emp-1',
+        expect.objectContaining({ compensationType: 'HOURLY', hourlyRate: 15 }),
+      );
+    });
+
+    it('allows an unrelated field update on an already-HOURLY employee without resupplying hourlyRate', async () => {
+      employees.findById.mockResolvedValue(
+        makeEmployee({ compensationType: 'HOURLY', hourlyRate: new Prisma.Decimal(15) }),
+      );
+      employees.update.mockResolvedValue(
+        makeEmployee({ compensationType: 'HOURLY', hourlyRate: new Prisma.Decimal(15), jobTitle: 'Senior Engineer' }),
+      );
+
+      await service.update('tenant-1', 'emp-1', { jobTitle: 'Senior Engineer' }, hrManager);
+
+      expect(employees.update).toHaveBeenCalled();
+    });
+
     it('rejects an employee being set as their own manager', async () => {
       employees.findById.mockResolvedValue(makeEmployee());
 

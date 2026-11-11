@@ -1,4 +1,4 @@
-import { EmploymentType } from '@prisma/client';
+import { CompensationType, EmploymentType } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsDateString,
@@ -79,6 +79,18 @@ export class BulkImportRowDto {
   @IsOptional()
   @Matches(/^[A-Z]{3}$/, { message: 'currency must be a 3-letter ISO 4217 code' })
   currency?: string;
+
+  @IsOptional()
+  @IsEnum(CompensationType, {
+    message: `compensationType must be one of: ${Object.values(CompensationType).join(', ')}`,
+  })
+  compensationType?: CompensationType;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'hourlyRate must be a number' })
+  @Min(0)
+  hourlyRate?: number;
 
   @Matches(/^[A-Z]{2}$/, { message: 'countryCode is required and must be a 2-letter ISO 3166-1 alpha-2 code' })
   countryCode!: string;

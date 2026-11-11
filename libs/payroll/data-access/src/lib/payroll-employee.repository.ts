@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PaymentMethodType, Prisma } from '@prisma/client';
+import { CompensationType, PaymentMethodType, Prisma } from '@prisma/client';
 import { PrismaService } from '@africahr/platform-database';
 
 export interface PayrollEligibleEmployee {
@@ -11,6 +11,8 @@ export interface PayrollEligibleEmployee {
   currency: string | null;
   annualRentPaid: Prisma.Decimal | null;
   countryCode: string;
+  compensationType: CompensationType;
+  hourlyRate: Prisma.Decimal | null;
 }
 
 export interface PayrollEmployeeIdentity {
@@ -37,6 +39,8 @@ const EMPLOYEE_SELECT = {
   currency: true,
   annualRentPaid: true,
   countryCode: true,
+  compensationType: true,
+  hourlyRate: true,
 } as const;
 
 /**

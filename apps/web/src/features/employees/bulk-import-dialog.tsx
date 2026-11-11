@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Download, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBulkImportEmployees } from './queries';
-import { EMPLOYMENT_TYPE_OPTIONS } from './employee-form-schema';
+import { COMPENSATION_TYPE_OPTIONS, EMPLOYMENT_TYPE_OPTIONS } from './employee-form-schema';
 import { OrganizationPicker } from '@/features/organizations/organization-picker';
 import { AFRICAN_COUNTRIES } from '@/lib/african-countries';
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -39,6 +39,8 @@ const TEMPLATE_HEADER = [
   'jobTitle',
   'employmentType',
   'hireDate',
+  'compensationType',
+  'hourlyRate',
   'baseSalary',
   'payFrequency',
   'currency',
@@ -56,6 +58,8 @@ const TEMPLATE_EXAMPLE_ROW = [
   'Software Engineer',
   'FULL_TIME',
   '2024-01-01',
+  'SALARY',
+  '',
   '5000',
   'MONTHLY',
   'GHS',
@@ -99,6 +103,10 @@ export function BulkImportEmployeesDialog({ tenantId }: { tenantId: string }) {
   >('');
   const [defaultHireDate, setDefaultHireDate] = useState('');
   const [defaultCountryCode, setDefaultCountryCode] = useState('');
+  const [defaultCompensationType, setDefaultCompensationType] = useState<
+    (typeof COMPENSATION_TYPE_OPTIONS)[number] | ''
+  >('');
+  const [defaultHourlyRate, setDefaultHourlyRate] = useState('');
   const bulkImport = useBulkImportEmployees(tenantId);
 
   function handleOpenChange(next: boolean) {
@@ -110,6 +118,8 @@ export function BulkImportEmployeesDialog({ tenantId }: { tenantId: string }) {
       setDefaultEmploymentType('');
       setDefaultHireDate('');
       setDefaultCountryCode('');
+      setDefaultCompensationType('');
+      setDefaultHourlyRate('');
     }
     setOpen(next);
   }
@@ -125,6 +135,8 @@ export function BulkImportEmployeesDialog({ tenantId }: { tenantId: string }) {
         employmentType: defaultEmploymentType || undefined,
         hireDate: defaultHireDate || undefined,
         countryCode: defaultCountryCode || undefined,
+        compensationType: defaultCompensationType || undefined,
+        hourlyRate: defaultHourlyRate ? Number(defaultHourlyRate) : undefined,
       };
       const hasAnyDefault = Object.values(defaults).some((value) => value !== undefined);
       const imported = await bulkImport.mutateAsync({
@@ -258,6 +270,39 @@ export function BulkImportEmployeesDialog({ tenantId }: { tenantId: string }) {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-1.5">
+                  <Label>Compensation type</Label>
+                  <Select
+                    value={defaultCompensationType || undefined}
+                    onValueChange={(value) => setDefaultCompensationType(value as typeof defaultCompensationType)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COMPENSATION_TYPE_OPTIONS.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type === 'HOURLY' ? 'Hourly' : 'Salary'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {defaultCompensationType === 'HOURLY' && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="bulk-import-hourly-rate">Hourly rate</Label>
+                    <input
+                      id="bulk-import-hourly-rate"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={defaultHourlyRate}
+                      onChange={(event) => setDefaultHourlyRate(event.target.value)}
+                      placeholder="e.g. 15"
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>

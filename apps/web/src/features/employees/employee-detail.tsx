@@ -92,7 +92,14 @@ export function EmployeeDetail({ tenantId, employeeId }: { tenantId: string; emp
           <Field label="Employment type" value={employee.employmentType} />
           <Field label="Hire date" value={employee.hireDate?.slice(0, 10)} />
           <Field label="Country" value={employee.countryCode} />
-          <Field label="Base salary" value={formatCurrency(employee.baseSalary, employee.currency)} />
+          {employee.compensationType === 'HOURLY' ? (
+            <Field
+              label="Hourly rate"
+              value={employee.hourlyRate ? `${formatCurrency(employee.hourlyRate, employee.currency)}/hr` : undefined}
+            />
+          ) : (
+            <Field label="Base salary" value={formatCurrency(employee.baseSalary, employee.currency)} />
+          )}
           <Field label="Pay frequency" value={employee.payFrequency} />
           <Field label="Currency" value={employee.currency} />
           <Field

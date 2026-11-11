@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { EmploymentStatus, EmploymentType, FamilyMemberRelationship } from '@prisma/client';
+import { CompensationType, EmploymentStatus, EmploymentType, FamilyMemberRelationship } from '@prisma/client';
 
 export class FamilyMemberResponseDto {
   @ApiProperty()
@@ -77,6 +77,12 @@ export class EmployeeResponseDto {
 
   @ApiPropertyOptional()
   terminationDate?: string | null;
+
+  @ApiProperty({ enum: Object.values(CompensationType) })
+  compensationType!: CompensationType;
+
+  @ApiPropertyOptional()
+  hourlyRate?: string | null;
 
   @ApiPropertyOptional()
   baseSalary?: string | null;

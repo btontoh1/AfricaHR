@@ -90,6 +90,12 @@ export class PayslipResponseDto {
   @ApiProperty({ description: 'Pay for overtime hours worked within the pay period, else "0" - already added into grossPay above, not included in totalDeductions' })
   overtimePay!: string;
 
+  @ApiPropertyOptional({ description: 'HOURLY employees only - regular (non-overtime) hours worked within the pay period, already priced into basicSalary above', nullable: true })
+  regularHoursWorked?: string | null;
+
+  @ApiPropertyOptional({ description: 'HOURLY employees only - the hourlyRate this payslip was computed with', nullable: true })
+  hourlyRateApplied?: string | null;
+
   @ApiProperty()
   totalDeductions!: string;
 

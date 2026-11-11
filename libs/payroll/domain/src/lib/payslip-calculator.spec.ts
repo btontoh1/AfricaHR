@@ -622,4 +622,114 @@ describe('computePayslip', () => {
     expect(result.overtimePay).toBe(0);
     expect(result.grossPay).toBe(1000);
   });
+
+  describe('HOURLY compensationType', () => {
+    it('computes regular and overtime pay from hours worked instead of a contracted salary', () => {
+      const result = computePayslip({
+        countryCode: 'GH',
+        compensationType: 'HOURLY',
+        basicSalary: 0,
+        hourlyRate: 20,
+        totalHoursWorked: 84,
+        overtimeHours: 4,
+        overtimeMultiplier: 1.5,
+        periodStart: new Date('2026-02-01'),
+        periodEnd: new Date('2026-02-28'),
+        lineItems: [],
+        taxBands: bands,
+        ssnitRates,
+      });
+
+      // regularHoursWorked = 84 - 4 = 80; basicSalary = 80 * 20 = 1600
+      expect(result.regularHoursWorked).toBe(80);
+      expect(result.hourlyRateApplied).toBe(20);
+      expect(result.basicSalary).toBe(1600);
+      // overtimePay = 4 * 20 * 1.5 = 120
+      expect(result.overtimePay).toBe(120);
+      expect(result.unpaidLeaveDeduction).toBe(0);
+      expect(result.grossPay).toBe(1720);
+      // SSNIT employee = 1600 * 0.055 = 88
+      expect(result.ssnitEmployee).toBe(88);
+    });
+
+    it('produces zero pay with no error when no hours were worked', () => {
+      const result = computePayslip({
+        countryCode: 'GH',
+        compensationType: 'HOURLY',
+        basicSalary: 0,
+        hourlyRate: 20,
+        totalHoursWorked: 0,
+        lineItems: [],
+        taxBands: bands,
+        ssnitRates,
+      });
+
+      expect(result.regularHoursWorked).toBe(0);
+      expect(result.basicSalary).toBe(0);
+      expect(result.overtimePay).toBe(0);
+      expect(result.grossPay).toBe(0);
+      expect(result.netPay).toBe(0);
+    });
+
+    it('ignores unpaidLeaveDays - hours not worked are already absent from totalHoursWorked', () => {
+      const result = computePayslip({
+        countryCode: 'GH',
+        compensationType: 'HOURLY',
+        basicSalary: 0,
+        hourlyRate: 20,
+        totalHoursWorked: 80,
+        unpaidLeaveDays: 2,
+        periodStart: new Date('2026-02-01'),
+        periodEnd: new Date('2026-02-28'),
+        lineItems: [],
+        taxBands: bands,
+        ssnitRates,
+      });
+
+      expect(result.unpaidLeaveDeduction).toBe(0);
+      expect(result.basicSalary).toBe(1600);
+    });
+
+    it('caps overtimeHours at totalHoursWorked so regularHoursWorked never goes negative', () => {
+      const result = computePayslip({
+        countryCode: 'GH',
+        compensationType: 'HOURLY',
+        basicSalary: 0,
+        hourlyRate: 20,
+        totalHoursWorked: 10,
+        overtimeHours: 15,
+        overtimeMultiplier: 1.5,
+        lineItems: [],
+        taxBands: bands,
+        ssnitRates,
+      });
+
+      expect(result.regularHoursWorked).toBe(0);
+      expect(result.basicSalary).toBe(0);
+      expect(result.overtimePay).toBe(300);
+    });
+  });
+
+  it('SALARY compensationType (the default) is unaffected by the HOURLY branch - regression', () => {
+    const result = computePayslip({
+      countryCode: 'GH',
+      basicSalary: 4000,
+      unpaidLeaveDays: 2,
+      overtimeHours: 4,
+      standardDailyHours: 8,
+      overtimeMultiplier: 1.5,
+      periodStart: new Date('2026-02-01'),
+      periodEnd: new Date('2026-02-28'),
+      lineItems: [],
+      taxBands: bands,
+      ssnitRates,
+    });
+
+    expect(result.unpaidLeaveDeduction).toBe(400);
+    expect(result.overtimePay).toBe(150);
+    expect(result.basicSalary).toBe(3600);
+    expect(result.grossPay).toBe(3750);
+    expect(result.regularHoursWorked).toBeUndefined();
+    expect(result.hourlyRateApplied).toBeUndefined();
+  });
 });

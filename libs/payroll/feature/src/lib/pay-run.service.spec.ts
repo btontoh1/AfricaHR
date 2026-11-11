@@ -161,6 +161,7 @@ describe('PayRunService', () => {
 
     attendanceRecords = {
       sumOvertimeHours: jest.fn().mockResolvedValue(0),
+      sumHoursWorked: jest.fn().mockResolvedValue(0),
       findStandardDailyHours: jest.fn().mockResolvedValue(8),
     } as unknown as jest.Mocked<PayrollAttendanceRecordRepository>;
 
@@ -311,6 +312,8 @@ describe('PayRunService', () => {
           baseSalary: new Prisma.Decimal(1000),
           currency: 'GHS',
           annualRentPaid: null,
+          compensationType: 'SALARY' as const,
+          hourlyRate: null,
           countryCode: 'GH',
         },
       ]);
@@ -363,6 +366,8 @@ describe('PayRunService', () => {
           baseSalary: new Prisma.Decimal(1000),
           currency: null,
           annualRentPaid: null,
+          compensationType: 'SALARY' as const,
+          hourlyRate: null,
           countryCode: 'NG',
         },
       ]);
@@ -387,6 +392,8 @@ describe('PayRunService', () => {
           baseSalary: new Prisma.Decimal(100_000),
           currency: 'NGN',
           annualRentPaid: new Prisma.Decimal(1_200_000),
+          compensationType: 'SALARY' as const,
+          hourlyRate: null,
           countryCode: 'NG',
         },
       ]);
@@ -420,6 +427,8 @@ describe('PayRunService', () => {
           baseSalary: new Prisma.Decimal(1000),
           currency: 'GHS',
           annualRentPaid: null,
+          compensationType: 'SALARY' as const,
+          hourlyRate: null,
           countryCode: 'GH',
         },
       ]);
@@ -459,6 +468,8 @@ describe('PayRunService', () => {
           baseSalary: new Prisma.Decimal(2000),
           currency: 'GHS',
           annualRentPaid: null,
+          compensationType: 'SALARY' as const,
+          hourlyRate: null,
           countryCode: 'GH',
         },
       ]);
@@ -493,6 +504,8 @@ describe('PayRunService', () => {
           baseSalary: new Prisma.Decimal(4000),
           currency: 'GHS',
           annualRentPaid: null,
+          compensationType: 'SALARY' as const,
+          hourlyRate: null,
           countryCode: 'GH',
         },
       ]);
@@ -517,6 +530,75 @@ describe('PayRunService', () => {
       );
     });
 
+    it('pays an HOURLY employee from attendance-derived hours worked instead of baseSalary', async () => {
+      payRuns.findById.mockResolvedValue(
+        makePayRun({ status: 'DRAFT', periodStart: new Date('2026-02-01'), periodEnd: new Date('2026-02-28') }),
+      );
+      employees.listActiveByOrganization.mockResolvedValue([
+        {
+          id: 'emp-1',
+          organizationId: 'org-1',
+          firstName: 'Ama',
+          lastName: 'Boateng',
+          baseSalary: null,
+          currency: 'GHS',
+          annualRentPaid: null,
+          compensationType: 'HOURLY' as const,
+          hourlyRate: new Prisma.Decimal(20),
+          countryCode: 'GH',
+        },
+      ]);
+      attendanceRecords.sumOvertimeHours.mockResolvedValue(4);
+      attendanceRecords.sumHoursWorked.mockResolvedValue(84);
+      rates.findEffective.mockImplementation((_countryCode, code) =>
+        Promise.resolve(code === 'OVERTIME_MULTIPLIER' ? ({ rate: 1.5 } as never) : ({ rate: 0.055 } as never)),
+      );
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PROCESSING' }));
+
+      await service.process('tenant-1', 'run-1');
+
+      expect(attendanceRecords.sumHoursWorked).toHaveBeenCalledWith(
+        'tenant-1',
+        'emp-1',
+        new Date('2026-02-01'),
+        new Date('2026-02-28'),
+      );
+      // regularHoursWorked = 84 - 4 = 80; basicSalary = 80 * 20 = 1600; overtimePay = 4 * 20 * 1.5 = 120.
+      expect(payslips.upsert).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({
+          basicSalary: 1600,
+          overtimePay: 120,
+          regularHoursWorked: 80,
+          hourlyRateApplied: 20,
+          grossPay: 1720,
+          unpaidLeaveDeduction: 0,
+        }),
+      );
+    });
+
+    it('does not fetch totalHoursWorked for a SALARY employee', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'DRAFT' }));
+      employees.listActiveByOrganization.mockResolvedValue([
+        {
+          id: 'emp-1',
+          organizationId: 'org-1',
+          firstName: 'Kwame',
+          lastName: 'Asante',
+          baseSalary: new Prisma.Decimal(1000),
+          currency: 'GHS',
+          annualRentPaid: null,
+          compensationType: 'SALARY' as const,
+          hourlyRate: null,
+          countryCode: 'GH',
+        },
+      ]);
+
+      await service.process('tenant-1', 'run-1');
+
+      expect(attendanceRecords.sumHoursWorked).not.toHaveBeenCalled();
+    });
+
     it('throws ConflictException when the OVERTIME_MULTIPLIER rate is missing', async () => {
       payRuns.findById.mockResolvedValue(makePayRun({ status: 'DRAFT' }));
       employees.listActiveByOrganization.mockResolvedValue([
@@ -528,6 +610,8 @@ describe('PayRunService', () => {
           baseSalary: new Prisma.Decimal(1000),
           currency: 'GHS',
           annualRentPaid: null,
+          compensationType: 'SALARY' as const,
+          hourlyRate: null,
           countryCode: 'GH',
         },
       ]);
@@ -558,6 +642,8 @@ describe('PayRunService', () => {
           baseSalary: new Prisma.Decimal(1000),
           currency: 'GHS',
           annualRentPaid: null,
+          compensationType: 'SALARY' as const,
+          hourlyRate: null,
           countryCode: 'NG',
         },
       ]);
@@ -577,6 +663,8 @@ describe('PayRunService', () => {
           baseSalary: new Prisma.Decimal(1000),
           currency: 'GHS',
           annualRentPaid: null,
+          compensationType: 'SALARY' as const,
+          hourlyRate: null,
           countryCode: 'GH',
         },
       ]);
@@ -606,6 +694,8 @@ describe('PayRunService', () => {
           baseSalary: new Prisma.Decimal(1000),
           currency: 'GHS',
           annualRentPaid: null,
+          compensationType: 'SALARY' as const,
+          hourlyRate: null,
           countryCode: 'GH',
         },
       ]);
@@ -627,6 +717,8 @@ describe('PayRunService', () => {
           baseSalary: new Prisma.Decimal(50_000),
           currency: 'KES',
           annualRentPaid: null,
+          compensationType: 'SALARY' as const,
+          hourlyRate: null,
           countryCode: 'KE',
         },
       ]);
@@ -665,6 +757,8 @@ describe('PayRunService', () => {
             baseSalary: new Prisma.Decimal(50_000),
             currency: 'KES',
             annualRentPaid: null,
+            compensationType: 'SALARY' as const,
+            hourlyRate: null,
             countryCode: 'KE',
           },
         ]);
@@ -687,6 +781,8 @@ describe('PayRunService', () => {
           baseSalary: new Prisma.Decimal(100_000),
           currency: 'NGN',
           annualRentPaid: null,
+          compensationType: 'SALARY' as const,
+          hourlyRate: null,
           countryCode: 'NG',
         },
       ]);
@@ -706,6 +802,8 @@ describe('PayRunService', () => {
         baseSalary: new Prisma.Decimal(100_000),
         currency: 'NGN',
         annualRentPaid: null,
+        compensationType: 'SALARY' as const,
+        hourlyRate: null,
         countryCode: 'NG',
       }));
     }
@@ -842,6 +940,8 @@ describe('PayRunService', () => {
         baseSalary: new Prisma.Decimal(1000),
         currency: 'GHS',
         annualRentPaid: null,
+        compensationType: 'SALARY' as const,
+        hourlyRate: null,
         countryCode: 'GH',
       });
       paystack.createRecipient.mockResolvedValue({ recipientCode: 'RCP_abc' });
@@ -931,6 +1031,8 @@ describe('PayRunService', () => {
         baseSalary: new Prisma.Decimal(1000),
         currency: 'GHS',
         annualRentPaid: null,
+        compensationType: 'SALARY' as const,
+        hourlyRate: null,
         countryCode: 'GH',
       });
       paystack.createRecipient
@@ -965,6 +1067,8 @@ describe('PayRunService', () => {
         baseSalary: new Prisma.Decimal(1000),
         currency: 'GHS',
         annualRentPaid: null,
+        compensationType: 'SALARY' as const,
+        hourlyRate: null,
         countryCode: 'GH',
       });
       paystack.createRecipient.mockRejectedValue(new Error('Invalid bank code'));
@@ -1000,6 +1104,8 @@ describe('PayRunService', () => {
         baseSalary: new Prisma.Decimal(1000),
         currency: 'GHS',
         annualRentPaid: null,
+        compensationType: 'SALARY' as const,
+        hourlyRate: null,
         countryCode: 'GH',
       });
       paystack.createRecipient.mockResolvedValue({ recipientCode: 'RCP_abc' });
@@ -1049,6 +1155,8 @@ describe('PayRunService', () => {
         baseSalary: new Prisma.Decimal(1000),
         currency: 'GHS',
         annualRentPaid: null,
+        compensationType: 'SALARY' as const,
+        hourlyRate: null,
         countryCode: 'GH',
       });
       paystack.createRecipient.mockResolvedValue({ recipientCode: 'RCP_abc' });

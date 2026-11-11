@@ -22,7 +22,14 @@ export interface PayslipLineItemInput {
 
 export interface ComputePayslipInput {
   countryCode: string;
+  /** Defaults to 'SALARY' (every call site predating this field). 'HOURLY' takes a wholly different path to basicSalary/overtimePay below - see this function's doc comment. */
+  compensationType?: 'SALARY' | 'HOURLY';
+  /** Ignored for 'HOURLY' (basicSalary is computed from hourlyRate * hours worked instead - see hourlyRate/totalHoursWorked below). Required for 'SALARY'. */
   basicSalary: number;
+  /** HOURLY only - the employee's Employee.hourlyRate. Required whenever compensationType is 'HOURLY'. */
+  hourlyRate?: number;
+  /** HOURLY only - sum of hoursWorked across every AttendanceRecord falling within the pay period (periodStart/periodEnd below); this already INCLUDES overtimeHours, not on top of it - see PayrollAttendanceRecordRepository.sumHoursWorked. Required whenever compensationType is 'HOURLY'. */
+  totalHoursWorked?: number;
   /** Nigeria only - annual rent paid, for Rent Relief Allowance eligibility. */
   annualRentPaid?: number;
   /** Ghana only - Tier 2 mandatory occupational pension employer contribution rate (e.g. 0.05). Employer-only; never deducted from the employee's pay. */
@@ -87,8 +94,12 @@ export interface ComputedPayslip {
   benefitsEmployerCost: number;
   /** Value of unpaidLeaveDays at the pay period's daily rate, else 0. Informational only - unlike benefitsEmployeeDeduction, this is NOT part of totalDeductions; it already reduced basicSalary/grossPay (and therefore taxableIncome) upstream, since it's pay never owed rather than a withholding. See unpaid-leave-deduction.ts. */
   unpaidLeaveDeduction: number;
-  /** Value of overtimeHours at the employee's implied hourly rate times the country's overtime multiplier, else 0. Informational only - unlike benefitsEmployeeDeduction, this is NOT part of totalDeductions; it's extra pay already added into grossPay (and therefore taxableIncome) upstream, not a withholding. See overtime-pay.ts. */
+  /** Value of overtimeHours at the employee's implied (SALARY) or actual (HOURLY) hourly rate times the country's overtime multiplier, else 0. Informational only - unlike benefitsEmployeeDeduction, this is NOT part of totalDeductions; it's extra pay already added into grossPay (and therefore taxableIncome) upstream, not a withholding. See overtime-pay.ts. */
   overtimePay: number;
+  /** HOURLY only, else undefined - non-overtime hours worked within the pay period, already priced into basicSalary at hourlyRateApplied. */
+  regularHoursWorked?: number;
+  /** HOURLY only, else undefined - the hourlyRate this payslip was computed with. */
+  hourlyRateApplied?: number;
   totalDeductions: number;
   netPay: number;
 }
@@ -172,28 +183,61 @@ export function sumLineItems(
  * to taxableIncome/PAYE/every statutory contribution computed off grossPay,
  * same as an EARNING line item would. overtimePay is returned purely for
  * display, same reporting-only role as unpaidLeaveDeduction.
+ *
+ * HOURLY employees (compensationType: 'HOURLY') skip the basicSalary/
+ * overtimePay derivation above entirely: there is no contracted salary to
+ * prorate or imply an hourly rate from, since hourlyRate is itself the
+ * employee's stored rate. totalHoursWorked (already inclusive of overtime
+ * hours - see PayrollAttendanceRecordRepository.sumHoursWorked, NOT on top
+ * of it) is split into regularHoursWorked (= totalHoursWorked minus
+ * overtimeHours) priced at hourlyRate, and overtimeHours priced at
+ * hourlyRate * overtimeMultiplier; basicSalary is just regularHoursWorked's
+ * pay. unpaidLeaveDeduction is always 0 for this branch - hours not worked
+ * are simply absent from totalHoursWorked already, so applying the SALARY
+ * branch's pro-rated deduction on top would double-count the missed time.
+ * Everything from grossPay onward (statutory contributions, PAYE, benefits,
+ * net pay) is the same pipeline for both branches.
  */
 export function computePayslip(input: ComputePayslipInput): ComputedPayslip {
   const earnings = sumLineItems(input.lineItems, PayslipLineItemType.EARNING);
   const otherDeductions = sumLineItems(input.lineItems, PayslipLineItemType.DEDUCTION);
 
-  const contractedBasicSalary = roundCurrency(input.basicSalary);
-  const unpaidLeaveDeduction =
-    input.unpaidLeaveDays && input.periodStart && input.periodEnd
-      ? computeUnpaidLeaveDeduction(contractedBasicSalary, input.unpaidLeaveDays, input.periodStart, input.periodEnd)
-      : 0;
-  const basicSalary = roundCurrency(Math.max(0, contractedBasicSalary - unpaidLeaveDeduction));
-  const overtimePay =
-    input.overtimeHours && input.periodStart && input.periodEnd && input.standardDailyHours
-      ? computeOvertimePay(
-          contractedBasicSalary,
-          input.overtimeHours,
-          input.periodStart,
-          input.periodEnd,
-          input.standardDailyHours,
-          input.overtimeMultiplier ?? 0,
-        )
-      : 0;
+  const isHourly = input.compensationType === 'HOURLY';
+
+  let basicSalary: number;
+  let unpaidLeaveDeduction: number;
+  let overtimePay: number;
+  let regularHoursWorked: number | undefined;
+  let hourlyRateApplied: number | undefined;
+
+  if (isHourly) {
+    const hourlyRate = input.hourlyRate ?? 0;
+    const totalHoursWorked = Math.max(0, input.totalHoursWorked ?? 0);
+    const overtimeHours = Math.max(0, Math.min(input.overtimeHours ?? 0, totalHoursWorked));
+    regularHoursWorked = roundCurrency(totalHoursWorked - overtimeHours);
+    hourlyRateApplied = hourlyRate;
+    unpaidLeaveDeduction = 0;
+    basicSalary = roundCurrency(regularHoursWorked * hourlyRate);
+    overtimePay = roundCurrency(overtimeHours * hourlyRate * (input.overtimeMultiplier ?? 0));
+  } else {
+    const contractedBasicSalary = roundCurrency(input.basicSalary);
+    unpaidLeaveDeduction =
+      input.unpaidLeaveDays && input.periodStart && input.periodEnd
+        ? computeUnpaidLeaveDeduction(contractedBasicSalary, input.unpaidLeaveDays, input.periodStart, input.periodEnd)
+        : 0;
+    basicSalary = roundCurrency(Math.max(0, contractedBasicSalary - unpaidLeaveDeduction));
+    overtimePay =
+      input.overtimeHours && input.periodStart && input.periodEnd && input.standardDailyHours
+        ? computeOvertimePay(
+            contractedBasicSalary,
+            input.overtimeHours,
+            input.periodStart,
+            input.periodEnd,
+            input.standardDailyHours,
+            input.overtimeMultiplier ?? 0,
+          )
+        : 0;
+  }
   const grossPay = roundCurrency(basicSalary + earnings + overtimePay);
 
   const insurableSalary =
@@ -268,6 +312,8 @@ export function computePayslip(input: ComputePayslipInput): ComputedPayslip {
     benefitsEmployerCost,
     unpaidLeaveDeduction,
     overtimePay,
+    regularHoursWorked,
+    hourlyRateApplied,
     totalDeductions,
     netPay,
   };

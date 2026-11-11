@@ -142,6 +142,12 @@ export function MyPayslipDetail({ tenantId, payslipId }: { tenantId: string; pay
               value={formatCurrency(payslip.unpaidLeaveDeduction, payslip.currency)}
             />
           )}
+          {payslip.regularHoursWorked != null && (
+            <Field
+              label="Regular hours"
+              value={`${Number(payslip.regularHoursWorked)} hrs @ ${formatCurrency(payslip.hourlyRateApplied, payslip.currency)}/hr`}
+            />
+          )}
           {Number(payslip.overtimePay) > 0 && (
             <Field
               label="Overtime pay"

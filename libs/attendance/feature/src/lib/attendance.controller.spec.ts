@@ -2,10 +2,12 @@ import { ForbiddenException } from '@nestjs/common';
 import { RequestUser, SystemRole } from '@africahr/platform-auth';
 import { AttendanceController } from './attendance.controller';
 import { AttendanceRecordService } from './attendance-record.service';
+import { AttendanceKioskService } from './attendance-kiosk.service';
 
 describe('AttendanceController', () => {
   let controller: AttendanceController;
   let service: jest.Mocked<AttendanceRecordService>;
+  let kiosk: jest.Mocked<AttendanceKioskService>;
 
   const hrManager: RequestUser = {
     sub: 'hr-1',
@@ -25,7 +27,11 @@ describe('AttendanceController', () => {
       update: jest.fn(),
     } as unknown as jest.Mocked<AttendanceRecordService>;
 
-    controller = new AttendanceController(service);
+    kiosk = {
+      setPin: jest.fn(),
+    } as unknown as jest.Mocked<AttendanceKioskService>;
+
+    controller = new AttendanceController(service, kiosk);
   });
 
   it('lists with employeeId/date-range filters within the route tenant', () => {
@@ -56,5 +62,11 @@ describe('AttendanceController', () => {
     controller.update('tenant-1', 'rec-1', dto, hrManager);
 
     expect(service.update).toHaveBeenCalledWith('tenant-1', 'rec-1', dto, 'hr-1');
+  });
+
+  it('delegates clock-in-pin set with tenant, employeeId, and pin', () => {
+    controller.setClockInPin('tenant-1', 'emp-1', { pin: '4821' }, hrManager);
+
+    expect(kiosk.setPin).toHaveBeenCalledWith('tenant-1', 'emp-1', '4821');
   });
 });

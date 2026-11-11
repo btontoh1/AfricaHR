@@ -69,6 +69,7 @@ describe('EmployeeService', () => {
       annualRentPaid: null,
       countryCode: 'GH',
       metadata: null,
+      clockInPinHash: null,
       createdAt: new Date(),
       updatedAt: new Date(),
       deletedAt: null,

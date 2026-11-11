@@ -9,19 +9,23 @@ import { MyAttendanceController } from './my-attendance.controller';
 import { AttendanceController } from './attendance.controller';
 import { AttendanceLocationService } from './attendance-location.service';
 import { AttendanceLocationController } from './attendance-location.controller';
+import { AttendanceKioskService } from './attendance-kiosk.service';
+import { AttendanceKioskController } from './attendance-kiosk.controller';
 
 @Module({
   imports: [AttendanceDataAccessModule, PlatformAuthModule, AuditModule],
-  // MyAttendanceController (literal "/me" path) must be registered before
-  // AttendanceController (dynamic "/:id" path) so Nest's router matches
-  // "/me" as the literal segment, not as :id="me".
+  // MyAttendanceController (literal "/me" path) and AttendanceKioskController
+  // (literal "/kiosk" path) must both be registered before AttendanceController
+  // (dynamic "/:id" path) so Nest's router matches those literal segments
+  // before falling through to :id="me" or :id="kiosk".
   controllers: [
     AttendancePolicyController,
     AttendanceLocationController,
     MyAttendanceController,
+    AttendanceKioskController,
     AttendanceController,
   ],
-  providers: [AttendancePolicyService, AttendanceRecordService, AttendanceLocationService],
-  exports: [AttendancePolicyService, AttendanceRecordService, AttendanceLocationService],
+  providers: [AttendancePolicyService, AttendanceRecordService, AttendanceLocationService, AttendanceKioskService],
+  exports: [AttendancePolicyService, AttendanceRecordService, AttendanceLocationService, AttendanceKioskService],
 })
 export class AttendanceFeatureModule {}

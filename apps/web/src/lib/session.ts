@@ -22,7 +22,8 @@ export interface SessionUser {
     | 'PAYROLL_OFFICER'
     | 'ORG_ADMIN'
     | 'EMPLOYEE'
-    | 'ACCOUNTANT';
+    | 'ACCOUNTANT'
+    | 'KIOSK';
   tenantId: string | null;
   organizationId: string | null;
   iat: number;

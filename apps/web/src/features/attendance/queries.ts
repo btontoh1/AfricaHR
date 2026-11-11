@@ -5,6 +5,7 @@ import { apiClient } from '@/lib/api-client';
 import type {
   CreateAttendanceLocationInput,
   CreateAttendanceRecordInput,
+  SetClockInPinInput,
   UpdateAttendanceLocationInput,
   UpdateAttendanceRecordInput,
   UpsertAttendancePolicyInput,
@@ -246,5 +247,50 @@ export function useDeleteAttendanceLocation(tenantId: string) {
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: attendanceLocationsKey(tenantId) }),
+  });
+}
+
+// --- Admin: kiosk PIN ---
+
+/** Sets (or replaces) the employee's kiosk clock-in PIN - admin/HR side of the kiosk feature, not shown to the shared device. */
+export function useSetClockInPin(tenantId: string, employeeId: string) {
+  return useMutation({
+    mutationFn: async (input: SetClockInPinInput) => {
+      const { error } = await apiClient.POST('/api/tenants/{tenantId}/attendance/{employeeId}/clock-in-pin', {
+        params: { path: { tenantId, employeeId } },
+        body: input,
+      });
+      if (error) throw error;
+    },
+  });
+}
+
+// --- Kiosk device ---
+
+export function useKioskEmployees(tenantId: string) {
+  return useQuery({
+    queryKey: ['attendance-kiosk', 'employees', tenantId] as const,
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/tenants/{tenantId}/attendance/kiosk', {
+        params: { path: { tenantId } },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useKioskClock(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { employeeId: string; pin: string }) => {
+      const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/attendance/kiosk/clock', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: attendanceRecordsKey(tenantId) }),
   });
 }

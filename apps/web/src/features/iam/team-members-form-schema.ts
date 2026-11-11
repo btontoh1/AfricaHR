@@ -20,6 +20,10 @@ const ASSIGNABLE_ROLES = [
   // organizationId needed (tenant-wide, like TENANT_ADMIN's own finance
   // access), so it belongs here rather than alongside ORG_ADMIN below.
   'ACCOUNTANT',
+  // A shared physical clock-in device account, not a person - holds only
+  // ATTENDANCE_KIOSK_CLOCK. No organizationId needed (tenant-wide, like
+  // ACCOUNTANT above), so it belongs here too.
+  'KIOSK',
 ] as const;
 
 // CreateUserForm's role picker, unlike the inline one above, also offers

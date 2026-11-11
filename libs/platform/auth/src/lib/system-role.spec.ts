@@ -313,4 +313,14 @@ describe('hasPermission', () => {
     expect(hasPermission(SystemRole.EMPLOYEE, Permission.INVENTORY_READ)).toBe(false);
     expect(hasPermission(SystemRole.ACCOUNTANT, Permission.INVENTORY_READ)).toBe(false);
   });
+
+  it('grants a kiosk device only the ability to clock employees in/out, nothing else', () => {
+    expect(hasPermission(SystemRole.KIOSK, Permission.ATTENDANCE_KIOSK_CLOCK)).toBe(true);
+    expect(hasPermission(SystemRole.KIOSK, Permission.ATTENDANCE_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.KIOSK, Permission.ATTENDANCE_READ)).toBe(false);
+    expect(hasPermission(SystemRole.KIOSK, Permission.EMPLOYEE_READ)).toBe(false);
+    expect(hasPermission(SystemRole.KIOSK, Permission.EMPLOYEE_MANAGE)).toBe(false);
+    expect(hasPermission(SystemRole.KIOSK, Permission.ORGANIZATION_READ)).toBe(false);
+    expect(hasPermission(SystemRole.KIOSK, Permission.REPORTING_READ)).toBe(false);
+  });
 });

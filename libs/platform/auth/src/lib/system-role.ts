@@ -20,6 +20,12 @@ export const SystemRole = {
   // User never needs one). Tenant-wide like TENANT_ADMIN's own finance
   // access (assertOrganizationScope only restricts ORG_ADMIN).
   ACCOUNTANT: 'ACCOUNTANT',
+  // A shared physical clock-in device (one tablet/PC at a work site), not
+  // a person - holds only Permission.ATTENDANCE_KIOSK_CLOCK, nothing else,
+  // so a compromised or physically exposed shared device has minimal
+  // blast radius. Tenant-wide like ACCOUNTANT; no Employee record expected
+  // or required either.
+  KIOSK: 'KIOSK',
 } as const;
 
 export type SystemRole = (typeof SystemRole)[keyof typeof SystemRole];
@@ -167,6 +173,12 @@ export const Permission = {
   // PLATFORM_PAYROLL_CONFIG_MANAGE. Read side needs no permission at all
   // (every authenticated user can view - see HowItWorksVideoController).
   HOW_IT_WORKS_MANAGE: 'platform:how-it-works:manage',
+  // Deliberately separate from ATTENDANCE_MANAGE (which is far broader -
+  // read/edit policies, every record, locations, etc.) - this is the only
+  // permission SystemRole.KIOSK ever holds, so a shared physical device's
+  // credentials being exposed only ever risks someone clocking an employee
+  // in/out by PIN, never reading or editing anything else.
+  ATTENDANCE_KIOSK_CLOCK: 'attendance:kiosk:clock',
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
@@ -327,6 +339,9 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
   // Read-only Finance access and nothing else - see the role's own comment
   // above for why (no Employee record, external bookkeeper).
   [SystemRole.ACCOUNTANT]: [Permission.FINANCE_READ],
+  // The only permission this role ever holds - see SystemRole.KIOSK and
+  // Permission.ATTENDANCE_KIOSK_CLOCK's own comments for why.
+  [SystemRole.KIOSK]: [Permission.ATTENDANCE_KIOSK_CLOCK],
 };
 
 export function hasPermission(role: SystemRole, permission: Permission): boolean {

@@ -511,6 +511,13 @@ enum SystemRole {
   /// Employee record expected or required. See SystemRole.ts (platform-auth)
   /// for the full reasoning.
   ACCOUNTANT
+  /// A shared physical clock-in device (one tablet/PC at a work site), not
+  /// a person - holds only the ability to clock an employee in/out by PIN
+  /// (Permission.ATTENDANCE_KIOSK_CLOCK), nothing else, so a compromised or
+  /// physically exposed shared device has minimal blast radius. Tenant-wide
+  /// like ACCOUNTANT; no Employee record expected or required either. See
+  /// SystemRole.ts (platform-auth) for the full reasoning.
+  KIOSK
 }
 
 enum MfaMethod {
@@ -724,6 +731,14 @@ model Employee {
   /// Country-specific fields without a dedicated column (e.g. Ghana Card
   /// number), same pattern as Organization.metadata.
   metadata    Json?
+
+  /// Argon2 hash (same algorithm as User.passwordHash) of a short numeric
+  /// PIN this employee uses to identify themselves at a shared kiosk
+  /// device (SystemRole.KIOSK) - lets a worker with no phone/login of
+  /// their own still clock in/out by tapping their name and entering this
+  /// PIN. Set by an admin via AttendanceKioskService.setPin; null until
+  /// set, in which case kiosk clock-in for that employee is refused.
+  clockInPinHash String? @map("clock_in_pin_hash")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")

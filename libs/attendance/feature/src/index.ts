@@ -6,3 +6,5 @@ export * from './lib/my-attendance.controller';
 export * from './lib/attendance.controller';
 export * from './lib/attendance-location.service';
 export * from './lib/attendance-location.controller';
+export * from './lib/attendance-kiosk.service';
+export * from './lib/attendance-kiosk.controller';

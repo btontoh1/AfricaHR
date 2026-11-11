@@ -159,7 +159,7 @@ export function AppShell({
         {/* Desktop sidebar */}
         <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card px-3 py-5 lg:flex print:hidden">
           <BrandMark logoUrl={tenant?.logoUrl} tenantName={brandName} />
-          <div className="mt-6 flex-1 overflow-y-auto">
+          <div className="themed-scrollbar mt-6 flex-1 overflow-y-auto">
             <NavGroups groups={navGroups} pathname={pathname} />
           </div>
         </aside>
@@ -194,7 +194,7 @@ export function AppShell({
                       logoUrl={tenant?.logoUrl}
                       tenantName={brandName}
                     />
-                    <div className="mt-6 min-h-0 flex-1 overflow-y-auto">
+                    <div className="themed-scrollbar mt-6 min-h-0 flex-1 overflow-y-auto">
                       <NavGroups
                         groups={navGroups}
                         pathname={pathname}

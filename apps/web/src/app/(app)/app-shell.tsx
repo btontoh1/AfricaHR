@@ -127,6 +127,7 @@ export function AppShell({
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const desktopNavRef = useRef<HTMLDivElement>(null);
+  const { data: tenant } = useMyTenant({ enabled: Boolean(user.tenantId) });
 
   // Scrolls the current page's own nav link into view within the sidebar
   // whenever the route changes - without this, a page far down a long nav
@@ -134,11 +135,18 @@ export function AppShell({
   // you are unless you scroll the sidebar yourself to find it. 'nearest'
   // is a no-op when the link is already visible, so this never jumps the
   // sidebar around on a navigation that didn't need it.
+  //
+  // Depends on tenant?.enabledAddOns, not just pathname: which nav groups
+  // even exist (Accounts Payable, Inventory, Finance, ...) depends on that
+  // tenant data, which loads asynchronously after the first paint. On a
+  // fresh page load the effect would otherwise fire before the real active
+  // link exists in the DOM - finding nothing there yet - and never get a
+  // second chance once the full nav renders, since pathname alone hadn't
+  // changed.
   useEffect(() => {
     const active = desktopNavRef.current?.querySelector('[aria-current="page"]');
     active?.scrollIntoView({ block: 'nearest' });
-  }, [pathname]);
-  const { data: tenant } = useMyTenant({ enabled: Boolean(user.tenantId) });
+  }, [pathname, tenant?.enabledAddOns]);
   // An org admin's "world" is their one organization, not the tenant - show
   // that name in the brand mark/header instead of the (possibly
   // multi-organization) tenant name, e.g. NALAG's own admins would

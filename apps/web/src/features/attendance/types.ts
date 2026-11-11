@@ -8,3 +8,6 @@ export type UpsertAttendancePolicyInput = components['schemas']['UpsertAttendanc
 export type AttendanceLocation = components['schemas']['AttendanceLocationResponseDto'];
 export type CreateAttendanceLocationInput = components['schemas']['CreateAttendanceLocationDto'];
 export type UpdateAttendanceLocationInput = components['schemas']['UpdateAttendanceLocationDto'];
+export type KioskEmployee = components['schemas']['KioskEmployeeResponseDto'];
+export type KioskClockResult = components['schemas']['KioskClockResponseDto'];
+export type SetClockInPinInput = components['schemas']['SetClockInPinDto'];

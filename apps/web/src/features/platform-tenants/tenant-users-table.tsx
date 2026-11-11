@@ -45,6 +45,7 @@ const ROLE_LABEL: Record<Exclude<SystemRole, 'PLATFORM_ADMIN'>, string> = {
   ORG_ADMIN: 'Org Admin',
   EMPLOYEE: 'Employee',
   ACCOUNTANT: 'Accountant',
+  KIOSK: 'Kiosk device',
 };
 
 // ORG_ADMIN is excluded from the selectable set - this inline dropdown has

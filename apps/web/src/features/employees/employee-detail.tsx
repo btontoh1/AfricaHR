@@ -8,6 +8,7 @@ import { EmploymentStatusBadge } from './employment-status-badge';
 import { StatusChangeControl } from './status-change-control';
 import { UpdateEmployeeForm } from './update-employee-form';
 import { AdjustLeaveBalanceControl } from '@/features/leave/adjust-leave-balance-control';
+import { SetKioskPinControl } from '@/features/attendance/set-kiosk-pin-control';
 import { useSession } from '@/app/(app)/session-provider';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { formatCurrency } from '@/lib/format-currency';
@@ -32,6 +33,10 @@ export function EmployeeDetail({ tenantId, employeeId }: { tenantId: string; emp
   // reach this page (hasAdminAccess) but doesn't hold LEAVE_MANAGE, so it
   // shouldn't see an action that would just 403 at the API.
   const hasLeaveAdminAccess = session.role === 'TENANT_ADMIN' || session.role === 'HR_MANAGER';
+  // Mirrors ATTENDANCE_MANAGE in system-role.ts - same role set as
+  // hasLeaveAdminAccess today, kept separate since the two permissions
+  // could diverge later.
+  const hasAttendanceManageAccess = session.role === 'TENANT_ADMIN' || session.role === 'HR_MANAGER';
   // Mirrors EMPLOYEE_MANAGE in system-role.ts (PLATFORM_ADMIN doesn't reach
   // this tenant-scoped page through normal navigation). ORG_ADMIN also
   // holds EMPLOYEE_MANAGE - the backend additionally scopes it to their own
@@ -118,6 +123,17 @@ export function EmployeeDetail({ tenantId, employeeId }: { tenantId: string; emp
           </CardHeader>
           <CardContent>
             <AdjustLeaveBalanceControl tenantId={tenantId} employeeId={employee.id} />
+          </CardContent>
+        </Card>
+      )}
+
+      {hasAttendanceManageAccess && (
+        <Card className="print:hidden">
+          <CardHeader>
+            <CardTitle>Kiosk clock-in PIN</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SetKioskPinControl tenantId={tenantId} employeeId={employee.id} />
           </CardContent>
         </Card>
       )}

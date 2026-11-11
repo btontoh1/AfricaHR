@@ -10,16 +10,21 @@ import {
   RequirePermissions,
 } from '@africahr/platform-auth';
 import { AttendanceRecordService } from './attendance-record.service';
+import { AttendanceKioskService } from './attendance-kiosk.service';
 import { AttendanceRecordResponseDto } from './dto/attendance-record-response.dto';
 import { CreateAttendanceRecordDto } from './dto/create-attendance-record.dto';
 import { UpdateAttendanceRecordDto } from './dto/update-attendance-record.dto';
+import { SetClockInPinDto } from './dto/set-clock-in-pin.dto';
 
 @ApiTags('attendance')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('tenants/:tenantId/attendance')
 export class AttendanceController {
-  constructor(private readonly attendance: AttendanceRecordService) {}
+  constructor(
+    private readonly attendance: AttendanceRecordService,
+    private readonly kiosk: AttendanceKioskService,
+  ) {}
 
   @Get()
   @RequirePermissions(Permission.ATTENDANCE_READ)
@@ -73,5 +78,17 @@ export class AttendanceController {
   ) {
     assertTenantScope(actor, tenantId);
     return this.attendance.update(tenantId, id, dto, actor.sub);
+  }
+
+  @Post(':employeeId/clock-in-pin')
+  @RequirePermissions(Permission.ATTENDANCE_MANAGE)
+  setClockInPin(
+    @Param('tenantId') tenantId: string,
+    @Param('employeeId') employeeId: string,
+    @Body() dto: SetClockInPinDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    return this.kiosk.setPin(tenantId, employeeId, dto.pin);
   }
 }

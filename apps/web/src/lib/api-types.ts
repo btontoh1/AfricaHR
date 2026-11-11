@@ -1884,6 +1884,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/attendance/kiosk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AttendanceKioskController_listEmployees"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/attendance/kiosk/clock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AttendanceKioskController_clock"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/attendance": {
         parameters: {
             query?: never;
@@ -1914,6 +1946,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["AttendanceController_update"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/attendance/{employeeId}/clock-in-pin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AttendanceController_setClockInPin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/tenants/{tenantId}/benefit-plans": {
@@ -4974,7 +5022,7 @@ export interface components {
             firstName: string;
             lastName: string;
             /** @enum {string} */
-            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "PAYROLL_OFFICER" | "ORG_ADMIN" | "EMPLOYEE" | "ACCOUNTANT";
+            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "PAYROLL_OFFICER" | "ORG_ADMIN" | "EMPLOYEE" | "ACCOUNTANT" | "KIOSK";
             /** @description Required when role is ORG_ADMIN (which Organization they administer); rejected otherwise. */
             organizationId?: string;
         };
@@ -4986,7 +5034,7 @@ export interface components {
             firstName: string;
             lastName: string;
             /** @enum {string} */
-            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "PAYROLL_OFFICER" | "ORG_ADMIN" | "EMPLOYEE" | "ACCOUNTANT";
+            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "PAYROLL_OFFICER" | "ORG_ADMIN" | "EMPLOYEE" | "ACCOUNTANT" | "KIOSK";
             isActive: boolean;
             lastLoginAt?: string | null;
             createdAt: string;
@@ -5004,7 +5052,7 @@ export interface components {
         };
         UpdateUserRoleDto: {
             /** @enum {string} */
-            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "PAYROLL_OFFICER" | "ORG_ADMIN" | "EMPLOYEE" | "ACCOUNTANT";
+            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "PAYROLL_OFFICER" | "ORG_ADMIN" | "EMPLOYEE" | "ACCOUNTANT" | "KIOSK";
             /** @description Required when role is ORG_ADMIN (which Organization they administer); rejected otherwise. */
             organizationId?: string;
         };
@@ -5659,6 +5707,24 @@ export interface components {
             latitude?: number;
             longitude?: number;
         };
+        KioskEmployeeResponseDto: {
+            id: string;
+            employeeNumber: string;
+            firstName: string;
+            lastName: string;
+        };
+        KioskClockDto: {
+            employeeId: string;
+            /** @example 4821 */
+            pin: string;
+        };
+        KioskClockResponseDto: {
+            /** @enum {string} */
+            action: "CLOCKED_IN" | "CLOCKED_OUT";
+            employeeName: string;
+            /** Format: date-time */
+            at: string;
+        };
         CreateAttendanceRecordDto: {
             employeeId: string;
             /** @description Calendar day this record is for */
@@ -5671,6 +5737,13 @@ export interface components {
             clockIn?: string;
             clockOut?: string;
             notes?: string;
+        };
+        SetClockInPinDto: {
+            /**
+             * @description 4-6 digit numeric PIN the employee will enter at the kiosk
+             * @example 4821
+             */
+            pin: string;
         };
         CreateBenefitPlanDto: {
             /** @example Private Health Insurance */
@@ -11031,6 +11104,52 @@ export interface operations {
             };
         };
     };
+    AttendanceKioskController_listEmployees: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KioskEmployeeResponseDto"][];
+                };
+            };
+        };
+    };
+    AttendanceKioskController_clock: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KioskClockDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KioskClockResponseDto"];
+                };
+            };
+        };
+    };
     AttendanceController_list: {
         parameters: {
             query?: {
@@ -11126,6 +11245,30 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AttendanceRecordResponseDto"];
                 };
+            };
+        };
+    };
+    AttendanceController_setClockInPin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                employeeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetClockInPinDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -27,7 +27,7 @@ export const updateEmployeeFormSchema = z.object({
   jobTitle: z.string().min(1, 'Job title is required').max(200),
   employmentType: z.enum(EMPLOYMENT_TYPES),
   hireDate: z.string().min(1, 'Hire date is required'),
-  compensationType: z.enum(COMPENSATION_TYPES),
+  compensationType: z.enum(COMPENSATION_TYPES).default('SALARY'),
   hourlyRate: z.string().optional().or(z.literal('')),
   baseSalary: z.string().optional().or(z.literal('')),
   payFrequency: z.string().optional().or(z.literal('')),

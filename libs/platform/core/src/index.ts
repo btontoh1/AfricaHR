@@ -5,6 +5,7 @@ export * from './lib/config/env.schema';
 export * from './lib/logging/logging.module';
 export * from './lib/exceptions/global-exception.filter';
 export * from './lib/validation/create-validation-pipe';
+export * from './lib/validation/phone';
 export * from './lib/hierarchy/would-create-cycle';
 export * from './lib/crypto/aes-gcm-cipher';
 export * from './lib/http/parse-json-response';

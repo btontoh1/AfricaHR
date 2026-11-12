@@ -72,6 +72,8 @@ describe('EmployeeService', () => {
       countryCode: 'GH',
       metadata: null,
       clockInPinHash: null,
+      payslipSmsEnabled: false,
+      payslipWhatsappEnabled: false,
       createdAt: new Date(),
       updatedAt: new Date(),
       deletedAt: null,
@@ -179,6 +181,35 @@ describe('EmployeeService', () => {
       await expect(service.create('tenant-1', makeDto(), hrManager)).rejects.toThrow(NotFoundException);
     });
 
+    it('rejects payslipSmsEnabled/payslipWhatsappEnabled without a phone number', async () => {
+      await expect(
+        service.create('tenant-1', makeDto({ payslipSmsEnabled: true }), hrManager),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.create('tenant-1', makeDto({ payslipWhatsappEnabled: true }), hrManager),
+      ).rejects.toThrow(BadRequestException);
+      expect(employees.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects payslipSmsEnabled with a non-E.164 phone number', async () => {
+      await expect(
+        service.create('tenant-1', makeDto({ payslipSmsEnabled: true, phone: '0241234567' }), hrManager),
+      ).rejects.toThrow(BadRequestException);
+      expect(employees.create).not.toHaveBeenCalled();
+    });
+
+    it('accepts payslipSmsEnabled with a valid E.164 phone number', async () => {
+      employees.count.mockResolvedValue(0);
+      employees.create.mockResolvedValue(makeEmployee({ payslipSmsEnabled: true, phone: '+233241234567' }));
+
+      await service.create('tenant-1', makeDto({ payslipSmsEnabled: true, phone: '+233241234567' }), hrManager);
+
+      expect(employees.create).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ payslipSmsEnabled: true, phone: '+233241234567' }),
+      );
+    });
+
     it('records an audit entry on success', async () => {
       employees.count.mockResolvedValue(0);
       const created = makeEmployee();
@@ -282,6 +313,33 @@ describe('EmployeeService', () => {
         'tenant-1',
         'emp-1',
         expect.objectContaining({ compensationType: 'HOURLY', hourlyRate: 15 }),
+      );
+    });
+
+    it('rejects enabling payslipSmsEnabled when the existing employee has no phone on file', async () => {
+      employees.findById.mockResolvedValue(makeEmployee({ phone: null }));
+
+      await expect(
+        service.update('tenant-1', 'emp-1', { payslipSmsEnabled: true }, hrManager),
+      ).rejects.toThrow(BadRequestException);
+      expect(employees.update).not.toHaveBeenCalled();
+    });
+
+    it('allows enabling payslipWhatsappEnabled when a valid phone is provided in the same update', async () => {
+      employees.findById.mockResolvedValue(makeEmployee({ phone: null }));
+      employees.update.mockResolvedValue(makeEmployee({ phone: '+233241234567', payslipWhatsappEnabled: true }));
+
+      await service.update(
+        'tenant-1',
+        'emp-1',
+        { payslipWhatsappEnabled: true, phone: '+233241234567' },
+        hrManager,
+      );
+
+      expect(employees.update).toHaveBeenCalledWith(
+        'tenant-1',
+        'emp-1',
+        expect.objectContaining({ payslipWhatsappEnabled: true, phone: '+233241234567' }),
       );
     });
 

@@ -2,12 +2,15 @@ import { Module } from '@nestjs/common';
 import { AppConfigModule, AppConfigService } from '@africahr/platform-core';
 import { PlatformAuthModule } from '@africahr/platform-auth';
 import { AuditModule } from '@africahr/platform-audit';
+import { PlatformMessagingModule } from '@africahr/platform-messaging';
 import { PayrollDataAccessModule } from '@africahr/payroll-data-access';
 import { StatutoryDataService } from './statutory-data.service';
 import { StatutoryController } from './statutory.controller';
 import { PayRunService } from './pay-run.service';
 import { PayRunController } from './pay-run.controller';
 import { PayslipService } from './payslip.service';
+import { PayslipMessagingService } from './payslip-messaging.service';
+import { PayRunMessagingListener } from './pay-run-messaging.listener';
 import { PayslipController } from './payslip.controller';
 import { MyPayslipController } from './my-payslip.controller';
 import {
@@ -21,7 +24,7 @@ import { PlatformDisbursementService } from './platform-disbursement.service';
 import { PlatformDisbursementController } from './platform-disbursement.controller';
 
 @Module({
-  imports: [PayrollDataAccessModule, PlatformAuthModule, AuditModule, AppConfigModule],
+  imports: [PayrollDataAccessModule, PlatformAuthModule, AuditModule, AppConfigModule, PlatformMessagingModule],
   // MyPayslipController must be registered before PayslipController - see
   // that controller's own doc comment for why route order matters here.
   // PlatformDisbursementController (platform-admin/disbursements) has a
@@ -37,6 +40,8 @@ import { PlatformDisbursementController } from './platform-disbursement.controll
     StatutoryDataService,
     PayRunService,
     PayslipService,
+    PayslipMessagingService,
+    PayRunMessagingListener,
     PayrollTransferWebhookListener,
     PlatformDisbursementService,
     {

@@ -20,6 +20,9 @@ describe('PayrollEmployeeRepository', () => {
     countryCode: true,
     compensationType: true,
     hourlyRate: true,
+    phone: true,
+    payslipSmsEnabled: true,
+    payslipWhatsappEnabled: true,
   };
 
   beforeEach(() => {

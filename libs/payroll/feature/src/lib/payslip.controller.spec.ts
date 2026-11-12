@@ -2,12 +2,14 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { RequestUser, SystemRole } from '@africahr/platform-auth';
 import { PayslipController } from './payslip.controller';
 import { PayslipService } from './payslip.service';
+import { PayslipMessagingService } from './payslip-messaging.service';
 import { PayRunService } from './pay-run.service';
 
 describe('PayslipController', () => {
   let controller: PayslipController;
   let service: jest.Mocked<PayslipService>;
   let payRuns: jest.Mocked<PayRunService>;
+  let messaging: jest.Mocked<PayslipMessagingService>;
 
   const payrollManager: RequestUser = {
     sub: 'mgr-1',
@@ -33,7 +35,17 @@ describe('PayslipController', () => {
       retryDisbursement: jest.fn(),
     } as unknown as jest.Mocked<PayRunService>;
 
-    controller = new PayslipController(service, payRuns);
+    messaging = {
+      sendForPayslip: jest.fn(),
+    } as unknown as jest.Mocked<PayslipMessagingService>;
+
+    controller = new PayslipController(service, payRuns, messaging);
+  });
+
+  it('delegates a manual resend to PayslipMessagingService', async () => {
+    await controller.sendMessage('tenant-1', 'payslip-1', payrollManager);
+
+    expect(messaging.sendForPayslip).toHaveBeenCalledWith('tenant-1', 'payslip-1');
   });
 
   it('lists by payRunId when provided', () => {

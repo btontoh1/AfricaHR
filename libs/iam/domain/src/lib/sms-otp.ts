@@ -1,4 +1,5 @@
 import { randomInt, createHash } from 'node:crypto';
+import { isValidE164PhoneNumber } from '@africahr/platform-core';
 
 const OTP_LENGTH = 6;
 
@@ -12,15 +13,11 @@ export function hashSmsOtp(code: string): string {
   return createHash('sha256').update(code).digest('hex');
 }
 
-// Permissive E.164 check (a leading "+" then 8-15 digits, no formatting
-// punctuation) rather than a full libphonenumber-style validator - good
-// enough to reject obvious garbage before an SMS provider is ever charged
-// for a send attempt, without adding a new dependency for it.
-const E164_PATTERN = /^\+[1-9]\d{7,14}$/;
-
-export function isValidPhoneNumber(phoneNumber: string): boolean {
-  return E164_PATTERN.test(phoneNumber);
-}
+// Moved to platform-core so payroll's payslip-delivery feature can share
+// the same E.164 check without scope:employee/scope:payroll reaching into
+// scope:iam (Nx module boundary) - re-exported here under its original
+// name so every existing MFA call site keeps working unchanged.
+export const isValidPhoneNumber = isValidE164PhoneNumber;
 
 /** Last 4 digits, for login-time messaging ("code sent to phone ending in 1234") without echoing the full number back. */
 export function phoneNumberLast4(phoneNumber: string): string {

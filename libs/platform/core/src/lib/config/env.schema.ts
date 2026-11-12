@@ -82,6 +82,29 @@ export const envSchema = z.object({
   PAYSTACK_SECRET_KEY_NGN: z.string().optional(),
   PAYSTACK_SECRET_KEY_KES: z.string().optional(),
 
+  // Real SMS/WhatsApp delivery for payslip notifications (see
+  // PlatformMessagingModule). Optional - when accountSid/authToken/smsFrom
+  // aren't all set, the app falls back to LogMessagingDispatcher (logs
+  // instead of sending) rather than failing to boot, same posture as
+  // SENDGRID_API_KEY/PAYSTACK_SECRET_KEY above.
+  TWILIO_ACCOUNT_SID: z.string().optional(),
+  TWILIO_AUTH_TOKEN: z.string().optional(),
+  // E.164 sender number for SMS, e.g. +18005551234.
+  TWILIO_SMS_FROM: z.string().optional(),
+  // E.164 sender number for WhatsApp (a number onboarded to Twilio's
+  // WhatsApp sender, separate from the plain SMS number above). Optional
+  // even when the other three Twilio vars are set - an SMS-only account is
+  // valid, WhatsApp sends just fail per-attempt without this.
+  TWILIO_WHATSAPP_FROM: z.string().optional(),
+  // Twilio Content API template SID for the payslip-ready WhatsApp
+  // message, pre-approved through Meta - WhatsApp cannot send free-form
+  // outbound text outside a 24-hour window after the recipient last
+  // messaged the business, so this is required for WhatsApp specifically
+  // even when the other Twilio vars are set. Until the business has a
+  // template approved and sets this, WhatsApp payslip sends are skipped
+  // with a log line rather than attempting (and failing) a free-form send.
+  TWILIO_WHATSAPP_PAYSLIP_TEMPLATE_SID: z.string().optional(),
+
   // Encrypts EmployeePaymentMethod's bank/mobile-money fields at rest
   // (see aes-gcm-cipher.ts and PaymentMethodService). Optional at the
   // schema level, but PaymentMethodService/PayRunService both derive it

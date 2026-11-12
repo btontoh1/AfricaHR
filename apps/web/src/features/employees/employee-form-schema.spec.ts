@@ -24,6 +24,8 @@ describe('employeeFormSchema', () => {
     payFrequency: '',
     currency: '',
     countryCode: 'GH',
+    payslipSmsEnabled: false,
+    payslipWhatsappEnabled: false,
   };
 
   it('accepts a minimal valid submission', () => {
@@ -90,6 +92,8 @@ describe('updateEmployeeFormSchema', () => {
     payFrequency: '',
     annualRentPaid: '',
     countryCode: 'GH',
+    payslipSmsEnabled: false,
+    payslipWhatsappEnabled: false,
   };
 
   it('accepts a minimal valid submission', () => {

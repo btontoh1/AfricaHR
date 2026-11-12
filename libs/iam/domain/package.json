@@ -7,6 +7,7 @@
   "types": "./src/index.d.ts",
   "dependencies": {
     "tslib": "^2.3.0",
-    "otpauth": "^9.5.1"
+    "otpauth": "^9.5.1",
+    "@africahr/platform-core": "0.0.1"
   }
 }

@@ -1563,6 +1563,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/payslips/{id}/send-message": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PayslipController_sendMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/platform-admin/disbursements": {
         parameters: {
             query?: never;
@@ -5238,6 +5254,10 @@ export interface components {
              *     }
              */
             metadata?: Record<string, never>;
+            /** @description Send a payslip summary by SMS after each pay run is paid. Requires a valid E.164 phone number. */
+            payslipSmsEnabled?: boolean;
+            /** @description Send a payslip summary by WhatsApp after each pay run is paid. Requires a valid E.164 phone number, and the tenant's Twilio account to have a pre-approved message template configured - until then, sends are skipped rather than attempted. */
+            payslipWhatsappEnabled?: boolean;
         };
         FamilyMemberResponseDto: {
             id: string;
@@ -5276,6 +5296,8 @@ export interface components {
             currency?: string;
             annualRentPaid?: string;
             countryCode: string;
+            payslipSmsEnabled: boolean;
+            payslipWhatsappEnabled: boolean;
             createdAt: string;
             updatedAt: string;
         };
@@ -5357,6 +5379,10 @@ export interface components {
             payFrequency?: string | null;
             /** @description Annual rent paid - used only for Nigeria Rent Relief Allowance eligibility */
             annualRentPaid?: number | null;
+            /** @description Send a payslip summary by SMS after each pay run is paid. Requires a valid E.164 phone number. */
+            payslipSmsEnabled?: boolean;
+            /** @description Send a payslip summary by WhatsApp after each pay run is paid. Requires a valid E.164 phone number, and the tenant's Twilio account to have a pre-approved message template configured. */
+            payslipWhatsappEnabled?: boolean;
         };
         UpdateEmploymentStatusDto: {
             /** @enum {string} */
@@ -10517,6 +10543,26 @@ export interface operations {
         };
     };
     PayslipController_retryDisbursement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PayslipController_sendMessage: {
         parameters: {
             query?: never;
             header?: never;

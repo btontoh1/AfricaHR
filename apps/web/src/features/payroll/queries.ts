@@ -186,3 +186,15 @@ export function useRemovePayslipLineItem(tenantId: string, payslipId: string) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: payslipKey(tenantId, payslipId) }),
   });
 }
+
+/** Re-sends a payslip's SMS/WhatsApp summary on demand - 400s if the employee has no channel enabled or no valid phone (see PayslipMessagingService.sendForPayslip). */
+export function useSendPayslipMessage(tenantId: string, payslipId: string) {
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await apiClient.POST('/api/tenants/{tenantId}/payslips/{id}/send-message', {
+        params: { path: { tenantId, id: payslipId } },
+      });
+      if (error) throw error;
+    },
+  });
+}

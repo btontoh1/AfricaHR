@@ -1,8 +1,8 @@
 'use client';
 
-import { ListPlus, Printer } from 'lucide-react';
+import { ListPlus, MessageSquare, Printer } from 'lucide-react';
 import { toast } from 'sonner';
-import { usePayslip, useRemovePayslipLineItem } from './queries';
+import { usePayslip, useRemovePayslipLineItem, useSendPayslipMessage } from './queries';
 import { AddLineItemForm } from './add-line-item-form';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { formatCurrency } from '@/lib/format-currency';
@@ -34,6 +34,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 export function PayslipDetail({ tenantId, payslipId }: { tenantId: string; payslipId: string }) {
   const { data: payslip, isLoading, isError, error } = usePayslip(tenantId, payslipId);
   const removeLineItem = useRemovePayslipLineItem(tenantId, payslipId);
+  const sendMessage = useSendPayslipMessage(tenantId, payslipId);
 
   async function handleRemove(lineItemId: string) {
     try {
@@ -41,6 +42,15 @@ export function PayslipDetail({ tenantId, payslipId }: { tenantId: string; paysl
       toast.success('Line item removed');
     } catch (removeError) {
       toast.error(getApiErrorMessage(removeError, 'Failed to remove line item'));
+    }
+  }
+
+  async function handleSendMessage() {
+    try {
+      await sendMessage.mutateAsync();
+      toast.success('Payslip sent via SMS/WhatsApp');
+    } catch (sendError) {
+      toast.error(getApiErrorMessage(sendError, 'Failed to send payslip message'));
     }
   }
 
@@ -62,13 +72,23 @@ export function PayslipDetail({ tenantId, payslipId }: { tenantId: string; paysl
         description={employeeName}
         backHref={`/payroll/${payslip.payRunId}`}
         action={
-          // The browser's own print dialog offers "Save as PDF", so this one
-          // button covers both printing and downloading a PDF copy - no
-          // server-side PDF rendering needed.
-          <Button variant="outline" onClick={() => window.print()} className="print:hidden">
-            <Printer className="size-4" />
-            Print / Save as PDF
-          </Button>
+          <div className="flex items-center gap-3 print:hidden">
+            <Button
+              variant="outline"
+              onClick={handleSendMessage}
+              disabled={sendMessage.isPending}
+            >
+              <MessageSquare className="size-4" />
+              {sendMessage.isPending ? 'Sending…' : 'Resend via SMS/WhatsApp'}
+            </Button>
+            {/* The browser's own print dialog offers "Save as PDF", so this one
+                button covers both printing and downloading a PDF copy - no
+                server-side PDF rendering needed. */}
+            <Button variant="outline" onClick={() => window.print()}>
+              <Printer className="size-4" />
+              Print / Save as PDF
+            </Button>
+          </div>
         }
       />
 

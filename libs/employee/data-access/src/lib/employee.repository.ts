@@ -206,12 +206,32 @@ export class EmployeeRepository {
    * scope:employee owns it, so bulk-import (the only other writer of this
    * column today) just writes it here instead of crossing into attendance.
    */
-  async setClockInPinHash(tenantId: string, id: string, clockInPinHash: string): Promise<void> {
+  async setClockInPinHash(
+    tenantId: string,
+    id: string,
+    clockInPinHash: string,
+    clockInPinLookupHash: string,
+  ): Promise<void> {
     await this.prisma.withTenantContext(tenantId, (tx) =>
       tx.employee.update({
         where: { id },
-        data: { clockInPinHash },
+        data: { clockInPinHash, clockInPinLookupHash },
       }),
     );
+  }
+
+  /** Mirrors AttendanceEmployeeRepository.isPinLookupHashTaken - see that one for why. */
+  async isPinLookupHashTaken(
+    tenantId: string,
+    clockInPinLookupHash: string,
+    excludeEmployeeId: string,
+  ): Promise<boolean> {
+    const match = await this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.employee.findFirst({
+        where: { tenantId, clockInPinLookupHash, deletedAt: null, id: { not: excludeEmployeeId } },
+        select: { id: true },
+      }),
+    );
+    return match !== null;
   }
 }

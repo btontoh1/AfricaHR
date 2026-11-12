@@ -72,6 +72,7 @@ describe('EmployeeService', () => {
       countryCode: 'GH',
       metadata: null,
       clockInPinHash: null,
+      clockInPinLookupHash: null,
       payslipSmsEnabled: false,
       payslipWhatsappEnabled: false,
       createdAt: new Date(),

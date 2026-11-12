@@ -104,6 +104,10 @@ export class AppConfigService {
     return this.configService.get('PAYMENT_METHOD_ENCRYPTION_KEY', { infer: true });
   }
 
+  get kioskPinLookupSecret(): string | undefined {
+    return this.configService.get('KIOSK_PIN_LOOKUP_SECRET', { infer: true });
+  }
+
   get twilio(): {
     accountSid?: string;
     authToken?: string;

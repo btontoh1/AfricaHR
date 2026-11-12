@@ -1,7 +1,9 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { randomBytes } from 'node:crypto';
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { AttendanceRecord } from '@prisma/client';
 import { AttendanceEmployeeRepository, AttendanceRecordRepository } from '@africahr/attendance-data-access';
+import { AppConfigService } from '@africahr/platform-core';
 import { AttendanceKioskService } from './attendance-kiosk.service';
 import { AttendanceRecordService } from './attendance-record.service';
 
@@ -10,6 +12,7 @@ describe('AttendanceKioskService', () => {
   let employees: jest.Mocked<AttendanceEmployeeRepository>;
   let records: jest.Mocked<AttendanceRecordRepository>;
   let attendance: jest.Mocked<AttendanceRecordService>;
+  let config: jest.Mocked<AppConfigService>;
 
   function makeRecord(overrides: Partial<AttendanceRecord> = {}): AttendanceRecord {
     return {
@@ -45,6 +48,7 @@ describe('AttendanceKioskService', () => {
     employees = {
       listActiveForKiosk: jest.fn(),
       setClockInPinHash: jest.fn(),
+      isPinLookupHashTaken: jest.fn().mockResolvedValue(false),
       findByIdWithPin: jest.fn(),
     } as unknown as jest.Mocked<AttendanceEmployeeRepository>;
     records = {
@@ -54,7 +58,10 @@ describe('AttendanceKioskService', () => {
       clockIn: jest.fn(),
       clockOut: jest.fn(),
     } as unknown as jest.Mocked<AttendanceRecordService>;
-    service = new AttendanceKioskService(employees, records, attendance);
+    config = {
+      kioskPinLookupSecret: randomBytes(32).toString('hex'),
+    } as unknown as jest.Mocked<AppConfigService>;
+    service = new AttendanceKioskService(employees, records, attendance, config);
   });
 
   describe('setPin', () => {
@@ -64,6 +71,28 @@ describe('AttendanceKioskService', () => {
       const [, , storedHash] = employees.setClockInPinHash.mock.calls[0];
       expect(storedHash).not.toBe('4821');
       await expect(argon2.verify(storedHash, '4821')).resolves.toBe(true);
+    });
+
+    it('also stores a deterministic lookup hash alongside the argon2 hash', async () => {
+      await service.setPin('tenant-1', 'emp-1', '4821');
+
+      const [, , , lookupHash] = employees.setClockInPinHash.mock.calls[0];
+      expect(typeof lookupHash).toBe('string');
+      expect(lookupHash.length).toBeGreaterThan(0);
+    });
+
+    it('checks uniqueness excluding the employee being set, before writing', async () => {
+      await service.setPin('tenant-1', 'emp-1', '4821');
+
+      expect(employees.isPinLookupHashTaken).toHaveBeenCalledWith('tenant-1', expect.any(String), 'emp-1');
+      expect(employees.setClockInPinHash).toHaveBeenCalled();
+    });
+
+    it('rejects a PIN already used by another employee, without writing anything', async () => {
+      employees.isPinLookupHashTaken.mockResolvedValue(true);
+
+      await expect(service.setPin('tenant-1', 'emp-1', '4821')).rejects.toThrow(BadRequestException);
+      expect(employees.setClockInPinHash).not.toHaveBeenCalled();
     });
   });
 

@@ -1,6 +1,7 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { AttendanceEmployeeRepository, AttendanceRecordRepository } from '@africahr/attendance-data-access';
+import { AppConfigService, deriveEncryptionKey, hashPinForLookup } from '@africahr/platform-core';
 import { AttendanceRecordService } from './attendance-record.service';
 import { KioskEmployeeResponseDto } from './dto/kiosk-employee-response.dto';
 import { KioskClockResponseDto } from './dto/kiosk-clock-response.dto';
@@ -16,19 +17,32 @@ import { KioskClockResponseDto } from './dto/kiosk-clock-response.dto';
  */
 @Injectable()
 export class AttendanceKioskService {
+  private readonly pinLookupKey: Buffer;
+
   constructor(
     private readonly employees: AttendanceEmployeeRepository,
     private readonly records: AttendanceRecordRepository,
     private readonly attendance: AttendanceRecordService,
-  ) {}
+    config: AppConfigService,
+  ) {
+    // Derived once at construction (Nest instantiates providers eagerly),
+    // same posture as MFA_ENCRYPTION_KEY/PAYMENT_METHOD_ENCRYPTION_KEY.
+    this.pinLookupKey = deriveEncryptionKey(config.kioskPinLookupSecret, 'KIOSK_PIN_LOOKUP_SECRET');
+  }
 
   listEmployees(tenantId: string): Promise<KioskEmployeeResponseDto[]> {
     return this.employees.listActiveForKiosk(tenantId);
   }
 
   async setPin(tenantId: string, employeeId: string, pin: string): Promise<void> {
+    const clockInPinLookupHash = hashPinForLookup(pin, this.pinLookupKey);
+    const taken = await this.employees.isPinLookupHashTaken(tenantId, clockInPinLookupHash, employeeId);
+    if (taken) {
+      throw new BadRequestException('This PIN is already used by another employee - choose a different one.');
+    }
+
     const clockInPinHash = await argon2.hash(pin);
-    await this.employees.setClockInPinHash(tenantId, employeeId, clockInPinHash);
+    await this.employees.setClockInPinHash(tenantId, employeeId, clockInPinHash, clockInPinLookupHash);
   }
 
   /**

@@ -5,6 +5,7 @@ import { parse } from 'csv-parse/sync';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { assertOrganizationScope, RequestUser } from '@africahr/platform-auth';
+import { AppConfigService, deriveEncryptionKey, hashPinForLookup } from '@africahr/platform-core';
 import { EmployeeRepository } from '@africahr/employee-data-access';
 import { EmployeeService } from './employee.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
@@ -12,10 +13,18 @@ import { BulkImportRowDto } from './dto/bulk-import-row.dto';
 import { BulkImportResultDto, BulkImportKioskPinDto } from './dto/bulk-import-result.dto';
 import { BulkImportDefaultsDto } from './dto/bulk-import-defaults.dto';
 
-/** 4 digits, zero-padded - doesn't need to be unique across employees: the kiosk flow scopes verification to whichever employee was tapped first. */
+// 6 digits (1,000,000 possible values), not 4 (10,000) - this is the
+// batch-generation path, so it has to stay collision-free at the scale of
+// a whole worksite's roster (hundreds to low thousands) without the retry
+// loop below needing more than one or two attempts per employee. A
+// manually-typed PIN (SetKioskPinControl) stays 4-6 digits - one admin
+// picking one PIN at a time doesn't have this problem.
+const GENERATED_PIN_DIGITS = 6;
 function generateKioskPin(): string {
-  return String(randomInt(0, 10000)).padStart(4, '0');
+  return String(randomInt(0, 10 ** GENERATED_PIN_DIGITS)).padStart(GENERATED_PIN_DIGITS, '0');
 }
+
+const MAX_PIN_GENERATION_ATTEMPTS = 20;
 
 // Only firstName/lastName must actually be columns in the CSV itself -
 // jobTitle/employmentType/hireDate/countryCode can instead come from
@@ -54,10 +63,17 @@ type MergedRecord = Record<string, string | number | undefined>;
 
 @Injectable()
 export class EmployeeBulkImportService {
+  private readonly pinLookupKey: Buffer;
+
   constructor(
     private readonly employees: EmployeeService,
     private readonly employeeRepository: EmployeeRepository,
-  ) {}
+    config: AppConfigService,
+  ) {
+    // Derived once at construction (Nest instantiates providers eagerly),
+    // same posture as MFA_ENCRYPTION_KEY/PAYMENT_METHOD_ENCRYPTION_KEY.
+    this.pinLookupKey = deriveEncryptionKey(config.kioskPinLookupSecret, 'KIOSK_PIN_LOOKUP_SECRET');
+  }
 
   async import(
     tenantId: string,
@@ -135,9 +151,10 @@ export class EmployeeBulkImportService {
         result.created += 1;
 
         if (assignKioskPins) {
-          const pin = generateKioskPin();
+          const pin = await this.generateUniquePin(tenantId, employee.id);
           const clockInPinHash = await argon2.hash(pin);
-          await this.employeeRepository.setClockInPinHash(tenantId, employee.id, clockInPinHash);
+          const clockInPinLookupHash = hashPinForLookup(pin, this.pinLookupKey);
+          await this.employeeRepository.setClockInPinHash(tenantId, employee.id, clockInPinHash, clockInPinLookupHash);
           kioskPins.push({
             employeeId: employee.id,
             employeeNumber: employee.employeeNumber,
@@ -157,5 +174,23 @@ export class EmployeeBulkImportService {
     }
 
     return result;
+  }
+
+  /**
+   * Retries on a collision rather than ever handing out a duplicate PIN -
+   * at 6 generated digits (1,000,000 possible values) this essentially
+   * never retries more than once even for a multi-thousand-employee batch,
+   * but it's a hard guarantee either way, not just a low-probability hope.
+   */
+  private async generateUniquePin(tenantId: string, employeeId: string): Promise<string> {
+    for (let attempt = 0; attempt < MAX_PIN_GENERATION_ATTEMPTS; attempt++) {
+      const pin = generateKioskPin();
+      const lookupHash = hashPinForLookup(pin, this.pinLookupKey);
+      const taken = await this.employeeRepository.isPinLookupHashTaken(tenantId, lookupHash, employeeId);
+      if (!taken) {
+        return pin;
+      }
+    }
+    throw new Error('Could not generate a unique kiosk PIN after several attempts');
   }
 }

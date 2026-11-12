@@ -3,6 +3,7 @@ import { CompensationType, EmploymentType } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
   IsDateString,
   IsEmail,
   IsEnum,
@@ -155,4 +156,19 @@ export class CreateEmployeeDto {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, unknown>;
+
+  @ApiPropertyOptional({
+    description: 'Send a payslip summary by SMS after each pay run is paid. Requires a valid E.164 phone number.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  payslipSmsEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      "Send a payslip summary by WhatsApp after each pay run is paid. Requires a valid E.164 phone number, and the tenant's Twilio account to have a pre-approved message template configured - until then, sends are skipped rather than attempted.",
+  })
+  @IsOptional()
+  @IsBoolean()
+  payslipWhatsappEnabled?: boolean;
 }

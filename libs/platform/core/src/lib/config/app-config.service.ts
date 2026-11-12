@@ -104,6 +104,22 @@ export class AppConfigService {
     return this.configService.get('PAYMENT_METHOD_ENCRYPTION_KEY', { infer: true });
   }
 
+  get twilio(): {
+    accountSid?: string;
+    authToken?: string;
+    smsFrom?: string;
+    whatsappFrom?: string;
+    whatsappPayslipTemplateSid?: string;
+  } {
+    return {
+      accountSid: this.configService.get('TWILIO_ACCOUNT_SID', { infer: true }),
+      authToken: this.configService.get('TWILIO_AUTH_TOKEN', { infer: true }),
+      smsFrom: this.configService.get('TWILIO_SMS_FROM', { infer: true }),
+      whatsappFrom: this.configService.get('TWILIO_WHATSAPP_FROM', { infer: true }),
+      whatsappPayslipTemplateSid: this.configService.get('TWILIO_WHATSAPP_PAYSLIP_TEMPLATE_SID', { infer: true }),
+    };
+  }
+
   get swaggerBasicAuth(): { user?: string; password?: string } {
     return {
       user: this.configService.get('SWAGGER_BASIC_AUTH_USER', { infer: true }),

@@ -16,6 +16,7 @@
     "@africahr/platform-auth": "0.0.1",
     "@africahr/platform-core": "0.0.1",
     "@africahr/platform-audit": "0.0.1",
+    "@africahr/platform-messaging": "0.0.1",
     "@africahr/payroll-data-access": "0.0.1",
     "@africahr/payroll-domain": "0.0.1"
   }

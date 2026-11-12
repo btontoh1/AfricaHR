@@ -26,6 +26,8 @@ export interface CreateEmployeeInput {
   annualRentPaid?: Prisma.Decimal | number;
   countryCode: string;
   metadata?: Prisma.InputJsonValue;
+  payslipSmsEnabled?: boolean;
+  payslipWhatsappEnabled?: boolean;
   createdBy?: string;
 }
 
@@ -56,6 +58,8 @@ export interface UpdateEmployeeInput {
   hourlyRate?: Prisma.Decimal | number | null;
   annualRentPaid?: Prisma.Decimal | number | null;
   countryCode?: string;
+  payslipSmsEnabled?: boolean;
+  payslipWhatsappEnabled?: boolean;
   updatedBy?: string;
 }
 
@@ -91,6 +95,8 @@ export class EmployeeRepository {
           annualRentPaid: input.annualRentPaid,
           countryCode: input.countryCode,
           metadata: input.metadata,
+          payslipSmsEnabled: input.payslipSmsEnabled,
+          payslipWhatsappEnabled: input.payslipWhatsappEnabled,
           createdBy: input.createdBy,
           updatedBy: input.createdBy,
         },
@@ -162,6 +168,8 @@ export class EmployeeRepository {
           hourlyRate: input.hourlyRate,
           annualRentPaid: input.annualRentPaid,
           countryCode: input.countryCode,
+          payslipSmsEnabled: input.payslipSmsEnabled,
+          payslipWhatsappEnabled: input.payslipWhatsappEnabled,
           updatedBy: input.updatedBy,
         },
       }),

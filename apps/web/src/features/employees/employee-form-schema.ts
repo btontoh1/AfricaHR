@@ -46,10 +46,19 @@ export const employeeFormSchema = z.object({
   countryCode: z
     .string()
     .regex(/^[A-Z]{2}$/, '2-letter code, e.g. GH'),
+  payslipSmsEnabled: z.boolean(),
+  payslipWhatsappEnabled: z.boolean(),
 })
   .refine(
     (values) => values.compensationType !== 'HOURLY' || Boolean(values.hourlyRate && Number(values.hourlyRate) > 0),
     { message: 'Enter an hourly rate greater than 0', path: ['hourlyRate'] },
+  )
+  .refine(
+    (values) => !(values.payslipSmsEnabled || values.payslipWhatsappEnabled) || /^\+[1-9]\d{7,14}$/.test(values.phone ?? ''),
+    {
+      message: 'Enter a valid phone number in E.164 format (e.g. +233241234567) to enable SMS/WhatsApp payslip delivery',
+      path: ['phone'],
+    },
   );
 
 export type EmployeeFormValues = z.infer<typeof employeeFormSchema>;

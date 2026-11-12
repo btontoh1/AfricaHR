@@ -22,6 +22,7 @@ import {
   RequirePermissions,
 } from '@africahr/platform-auth';
 import { PayslipService } from './payslip.service';
+import { PayslipMessagingService } from './payslip-messaging.service';
 import { PayRunService } from './pay-run.service';
 import { CreatePayslipLineItemDto } from './dto/create-payslip-line-item.dto';
 import { PayslipResponseDto } from './dto/payslip-response.dto';
@@ -35,6 +36,7 @@ export class PayslipController {
   constructor(
     private readonly payslips: PayslipService,
     private readonly payRuns: PayRunService,
+    private readonly messaging: PayslipMessagingService,
   ) {}
 
   @Get()
@@ -107,5 +109,18 @@ export class PayslipController {
   ): Promise<void> {
     assertTenantScope(actor, tenantId);
     await this.payRuns.retryDisbursement(tenantId, id, actor.sub);
+  }
+
+  /** Re-sends this payslip's SMS/WhatsApp summary on demand - e.g. after enabling delivery for an employee post-pay-run, or retrying a failed send. 400s if the employee has neither channel enabled or no valid phone. */
+  @Post(':id/send-message')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermissions(Permission.PAYROLL_MANAGE)
+  async sendMessage(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: RequestUser,
+  ): Promise<void> {
+    assertTenantScope(actor, tenantId);
+    await this.messaging.sendForPayslip(tenantId, id);
   }
 }

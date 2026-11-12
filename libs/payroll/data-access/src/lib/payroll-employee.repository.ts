@@ -13,6 +13,13 @@ export interface PayrollEligibleEmployee {
   countryCode: string;
   compensationType: CompensationType;
   hourlyRate: Prisma.Decimal | null;
+  // Optional on this interface (though never actually undefined from a real
+  // query - see EMPLOYEE_SELECT) purely so the many pre-existing
+  // PayrollEligibleEmployee literals across this module's specs don't all
+  // need updating for fields only PayslipMessagingService reads.
+  phone?: string | null;
+  payslipSmsEnabled?: boolean;
+  payslipWhatsappEnabled?: boolean;
 }
 
 export interface PayrollEmployeeIdentity {
@@ -41,6 +48,9 @@ const EMPLOYEE_SELECT = {
   countryCode: true,
   compensationType: true,
   hourlyRate: true,
+  phone: true,
+  payslipSmsEnabled: true,
+  payslipWhatsappEnabled: true,
 } as const;
 
 /**

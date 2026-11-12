@@ -100,6 +100,12 @@ export class EmployeeResponseDto {
   countryCode!: string;
 
   @ApiProperty()
+  payslipSmsEnabled!: boolean;
+
+  @ApiProperty()
+  payslipWhatsappEnabled!: boolean;
+
+  @ApiProperty()
   createdAt!: string;
 
   @ApiProperty()

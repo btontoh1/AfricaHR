@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Employee, EmployeeFamilyMember, Prisma } from '@prisma/client';
-import { wouldCreateCycle } from '@africahr/platform-core';
+import { isValidE164PhoneNumber, wouldCreateCycle } from '@africahr/platform-core';
 import { assertOrganizationScope, RequestUser, SystemRole } from '@africahr/platform-auth';
 import { AuditService } from '@africahr/platform-audit';
 import {
@@ -21,6 +21,18 @@ import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { FamilyMemberDto } from './dto/family-member.dto';
 
 export type EmployeeWithFamilyMembers = Employee & { familyMembers: EmployeeFamilyMember[] };
+
+/** payslipSmsEnabled/payslipWhatsappEnabled both require a usable phone number to send to - checked against the *effective* post-write state, same pattern as the hourlyRate-required-when-HOURLY rule below. */
+function assertPhoneForPayslipDelivery(smsEnabled: boolean, whatsappEnabled: boolean, phone: string | null | undefined): void {
+  if (!smsEnabled && !whatsappEnabled) {
+    return;
+  }
+  if (!phone || !isValidE164PhoneNumber(phone)) {
+    throw new BadRequestException(
+      'phone must be a valid E.164 number (e.g. +233241234567) when payslipSmsEnabled or payslipWhatsappEnabled is set',
+    );
+  }
+}
 
 function toFamilyMemberInput(dto: FamilyMemberDto): FamilyMemberInput {
   return {
@@ -89,6 +101,7 @@ export class EmployeeService {
     if (dto.compensationType === 'HOURLY' && !(dto.hourlyRate && dto.hourlyRate > 0)) {
       throw new BadRequestException('hourlyRate must be greater than 0 when compensationType is HOURLY');
     }
+    assertPhoneForPayslipDelivery(Boolean(dto.payslipSmsEnabled), Boolean(dto.payslipWhatsappEnabled), dto.phone);
 
     let employee: Employee;
     try {
@@ -116,6 +129,8 @@ export class EmployeeService {
         annualRentPaid: dto.annualRentPaid,
         countryCode: dto.countryCode,
         metadata: dto.metadata as Prisma.InputJsonValue | undefined,
+        payslipSmsEnabled: dto.payslipSmsEnabled,
+        payslipWhatsappEnabled: dto.payslipWhatsappEnabled,
         createdBy: actorId,
       });
     } catch (error) {
@@ -192,6 +207,10 @@ export class EmployeeService {
     if (effectiveCompensationType === 'HOURLY' && !(effectiveHourlyRate && Number(effectiveHourlyRate) > 0)) {
       throw new BadRequestException('hourlyRate must be greater than 0 when compensationType is HOURLY');
     }
+    const effectiveSmsEnabled = dto.payslipSmsEnabled ?? existing.payslipSmsEnabled;
+    const effectiveWhatsappEnabled = dto.payslipWhatsappEnabled ?? existing.payslipWhatsappEnabled;
+    const effectivePhone = dto.phone !== undefined ? dto.phone : existing.phone;
+    assertPhoneForPayslipDelivery(effectiveSmsEnabled, effectiveWhatsappEnabled, effectivePhone);
 
     if (dto.managerId !== undefined && dto.managerId !== null) {
       if (dto.managerId === id) {
@@ -226,6 +245,8 @@ export class EmployeeService {
         hourlyRate: dto.hourlyRate,
         annualRentPaid: dto.annualRentPaid,
         countryCode: dto.countryCode,
+        payslipSmsEnabled: dto.payslipSmsEnabled,
+        payslipWhatsappEnabled: dto.payslipWhatsappEnabled,
         updatedBy: actorId,
       });
     } catch (error) {

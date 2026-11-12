@@ -107,6 +107,14 @@ export function EmployeeDetail({ tenantId, employeeId }: { tenantId: string; emp
             value={formatCurrency(employee.annualRentPaid, employee.currency)}
           />
           <Field label="Phone" value={employee.phone} />
+          <Field
+            label="Payslip delivery"
+            value={
+              [employee.payslipSmsEnabled && 'SMS', employee.payslipWhatsappEnabled && 'WhatsApp']
+                .filter(Boolean)
+                .join(', ') || undefined
+            }
+          />
           <Field label="Personal email" value={employee.personalEmail} />
           <Field label="Nationality" value={employee.nationality} />
           <Field label="Date of birth" value={employee.dateOfBirth?.slice(0, 10)} />

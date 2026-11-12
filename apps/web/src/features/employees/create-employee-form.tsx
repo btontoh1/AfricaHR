@@ -21,6 +21,7 @@ import { OrganizationUnitPicker } from '@/features/organizations/organization-un
 import { EmployeePicker } from './employee-picker';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import {
@@ -72,6 +73,8 @@ export function CreateEmployeeForm() {
       currency: '',
       annualRentPaid: '',
       countryCode: '',
+      payslipSmsEnabled: false,
+      payslipWhatsappEnabled: false,
     },
   });
 
@@ -115,6 +118,8 @@ export function CreateEmployeeForm() {
         currency: toOptional(values.currency),
         annualRentPaid: values.annualRentPaid ? Number(values.annualRentPaid) : undefined,
         countryCode: values.countryCode,
+        payslipSmsEnabled: values.payslipSmsEnabled,
+        payslipWhatsappEnabled: values.payslipWhatsappEnabled,
       });
       toast.success('Employee created');
       router.push(`/employees/${employee.id}`);
@@ -303,12 +308,41 @@ export function CreateEmployeeForm() {
                 <FormItem>
                   <FormLabel>Phone (optional)</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input placeholder="e.g. +233241234567" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            <div className="space-y-2">
+              <FormField
+                control={form.control}
+                name="payslipSmsEnabled"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center gap-2 pb-2">
+                    <FormControl>
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                    <FormLabel className="!mt-0">Send payslip via SMS</FormLabel>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="payslipWhatsappEnabled"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center gap-2 pb-2">
+                    <FormControl>
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                    <FormLabel className="!mt-0">Send payslip via WhatsApp</FormLabel>
+                  </FormItem>
+                )}
+              />
+              <p className="text-xs text-muted-foreground">
+                Requires a phone number in international format (e.g. +233241234567).
+              </p>
+            </div>
             <FormField
               control={form.control}
               name="personalEmail"

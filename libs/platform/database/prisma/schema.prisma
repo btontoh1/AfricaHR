@@ -756,6 +756,17 @@ model Employee {
   /// set, in which case kiosk clock-in for that employee is refused.
   clockInPinHash String? @map("clock_in_pin_hash")
 
+  /// Opt-in, per-employee: send a plain-text payslip summary by SMS/WhatsApp
+  /// after each pay run is paid (see PayslipMessagingService). Both default
+  /// false - existing employees are unaffected until an admin turns either
+  /// on, and each requires `phone` to be a valid E.164 number (enforced in
+  /// EmployeeService, not at the DB level). WhatsApp additionally requires
+  /// the tenant's Twilio account to have a pre-approved message template
+  /// configured (TWILIO_WHATSAPP_PAYSLIP_TEMPLATE_SID) - until then,
+  /// payslipWhatsappEnabled sends are skipped rather than attempted.
+  payslipSmsEnabled      Boolean @default(false) @map("payslip_sms_enabled")
+  payslipWhatsappEnabled Boolean @default(false) @map("payslip_whatsapp_enabled")
+
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")

@@ -277,6 +277,12 @@ export function useKioskEmployees(tenantId: string) {
       if (error) throw error;
       return data;
     },
+    // This device sits logged into the same page for weeks at a time with
+    // no navigation to trigger react-query's normal refocus/reconnect
+    // refetches - a periodic poll is what actually notices the kiosk's
+    // session going bad (see KioskApp's redirect-on-401 effect) instead of
+    // only finding out the next time someone happens to tap a name.
+    refetchInterval: 5 * 60_000,
   });
 }
 

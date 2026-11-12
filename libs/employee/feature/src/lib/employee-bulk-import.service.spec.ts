@@ -1,12 +1,14 @@
 import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { EmploymentType } from '@prisma/client';
 import { RequestUser, SystemRole } from '@africahr/platform-auth';
+import { EmployeeRepository } from '@africahr/employee-data-access';
 import { EmployeeBulkImportService } from './employee-bulk-import.service';
 import { EmployeeService } from './employee.service';
 
 describe('EmployeeBulkImportService', () => {
   let service: EmployeeBulkImportService;
   let employees: jest.Mocked<EmployeeService>;
+  let employeeRepository: jest.Mocked<EmployeeRepository>;
 
   const tenantAdmin: RequestUser = {
     sub: 'admin-1',
@@ -30,7 +32,8 @@ describe('EmployeeBulkImportService', () => {
 
   beforeEach(() => {
     employees = { create: jest.fn() } as unknown as jest.Mocked<EmployeeService>;
-    service = new EmployeeBulkImportService(employees);
+    employeeRepository = { setClockInPinHash: jest.fn() } as unknown as jest.Mocked<EmployeeRepository>;
+    service = new EmployeeBulkImportService(employees, employeeRepository);
   });
 
   it('creates every valid row and reports nothing failed', async () => {
@@ -193,6 +196,41 @@ describe('EmployeeBulkImportService', () => {
       expect.objectContaining({ compensationType: 'HOURLY', hourlyRate: 15 }),
       tenantAdmin,
     );
+  });
+
+  it('generates and hashes a kiosk PIN per employee when assignKioskPins is set, returned in plaintext once', async () => {
+    employees.create
+      .mockResolvedValueOnce({ id: 'emp-1', employeeNumber: 'EMP-0001', firstName: 'Ama', lastName: 'Owusu' } as never)
+      .mockResolvedValueOnce({ id: 'emp-2', employeeNumber: 'EMP-0002', firstName: 'Kwame', lastName: 'Mensah' } as never);
+    const csv = [
+      'firstName,lastName,jobTitle,employmentType,hireDate,countryCode',
+      'Ama,Owusu,Engineer,FULL_TIME,2026-01-01,GH',
+      'Kwame,Mensah,Designer,FULL_TIME,2026-01-02,GH',
+    ].join('\n');
+
+    const result = await service.import('tenant-1', 'org-1', csv, tenantAdmin, undefined, true);
+
+    expect(result.created).toBe(2);
+    expect(result.kioskPins).toHaveLength(2);
+    expect(result.kioskPins?.[0]).toMatchObject({ employeeId: 'emp-1', employeeNumber: 'EMP-0001', firstName: 'Ama', lastName: 'Owusu' });
+    expect(result.kioskPins?.[0].pin).toMatch(/^\d{4}$/);
+    expect(employeeRepository.setClockInPinHash).toHaveBeenCalledTimes(2);
+    const [, storedEmployeeId, storedHash] = employeeRepository.setClockInPinHash.mock.calls[0];
+    expect(storedEmployeeId).toBe('emp-1');
+    expect(storedHash).not.toBe(result.kioskPins?.[0].pin);
+  });
+
+  it('omits kioskPins entirely when assignKioskPins is not set', async () => {
+    employees.create.mockResolvedValue({ id: 'emp-1', employeeNumber: 'EMP-0001', firstName: 'Ama', lastName: 'Owusu' } as never);
+    const csv = [
+      'firstName,lastName,jobTitle,employmentType,hireDate,countryCode',
+      'Ama,Owusu,Engineer,FULL_TIME,2026-01-01,GH',
+    ].join('\n');
+
+    const result = await service.import('tenant-1', 'org-1', csv, tenantAdmin);
+
+    expect(result.kioskPins).toBeUndefined();
+    expect(employeeRepository.setClockInPinHash).not.toHaveBeenCalled();
   });
 
   it('rejects the whole batch up front when the actor is not authorized for the target organization', async () => {

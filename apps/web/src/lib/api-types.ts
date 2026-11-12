@@ -5300,16 +5300,28 @@ export interface components {
             csv: string;
             /** @description Fallback values for any row that leaves its jobTitle/employmentType/hireDate/countryCode column blank - see BulkImportDefaultsDto. Lets a names-only CSV (just firstName,lastName) import successfully. */
             defaults?: components["schemas"]["BulkImportDefaultsDto"];
+            /** @description Generates a random 4-digit kiosk clock-in PIN for every employee created in this batch. The plaintext PINs are returned once, in this response only (BulkImportResultDto.kioskPins) - only the hash is ever stored, so they cannot be retrieved again afterward. */
+            assignKioskPins?: boolean;
         };
         BulkImportRowErrorDto: {
             /** @description 1-indexed row number as it would appear in a spreadsheet (header is row 1) */
             row: number;
             message: string;
         };
+        BulkImportKioskPinDto: {
+            employeeId: string;
+            employeeNumber: string;
+            firstName: string;
+            lastName: string;
+            /** @description Plaintext PIN - only ever surfaced here, this one time; only its hash is stored. */
+            pin: string;
+        };
         BulkImportResultDto: {
             /** @description Number of employees successfully created */
             created: number;
             errors: components["schemas"]["BulkImportRowErrorDto"][];
+            /** @description Present only when the request set assignKioskPins. One entry per employee created in this batch, with that employee's freshly generated plaintext PIN - the only time it is ever returned. Print or hand these out now; they cannot be recovered later, only reset via a new PIN. */
+            kioskPins?: components["schemas"]["BulkImportKioskPinDto"][];
         };
         UpdateEmployeeDto: {
             /** @description Set to null to unassign the department */

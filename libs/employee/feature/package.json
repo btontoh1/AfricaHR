@@ -17,6 +17,7 @@
     "@africahr/platform-auth": "0.0.1",
     "@africahr/platform-audit": "0.0.1",
     "@africahr/employee-data-access": "0.0.1",
-    "@africahr/platform-core": "0.0.1"
+    "@africahr/platform-core": "0.0.1",
+    "argon2": "^0.44.0"
   }
 }

@@ -191,4 +191,19 @@ export class EmployeeRepository {
       }),
     );
   }
+
+  /**
+   * Mirrors AttendanceEmployeeRepository.setClockInPinHash - that one exists
+   * because scope:attendance can't reach this table directly, but
+   * scope:employee owns it, so bulk-import (the only other writer of this
+   * column today) just writes it here instead of crossing into attendance.
+   */
+  async setClockInPinHash(tenantId: string, id: string, clockInPinHash: string): Promise<void> {
+    await this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.employee.update({
+        where: { id },
+        data: { clockInPinHash },
+      }),
+    );
+  }
 }

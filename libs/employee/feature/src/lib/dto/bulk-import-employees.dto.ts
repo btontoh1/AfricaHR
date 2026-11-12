@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsObject, IsOptional, IsString, IsUUID, MinLength, ValidateNested } from 'class-validator';
+import { IsBoolean, IsObject, IsOptional, IsString, IsUUID, MinLength, ValidateNested } from 'class-validator';
 import { BulkImportDefaultsDto } from './bulk-import-defaults.dto';
 
 // The CSV covers only the core employee-record fields (see
@@ -27,4 +27,12 @@ export class BulkImportEmployeesDto {
   @ValidateNested()
   @Type(() => BulkImportDefaultsDto)
   defaults?: BulkImportDefaultsDto;
+
+  @ApiPropertyOptional({
+    description:
+      'Generates a random 4-digit kiosk clock-in PIN for every employee created in this batch. The plaintext PINs are returned once, in this response only (BulkImportResultDto.kioskPins) - only the hash is ever stored, so they cannot be retrieved again afterward.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  assignKioskPins?: boolean;
 }

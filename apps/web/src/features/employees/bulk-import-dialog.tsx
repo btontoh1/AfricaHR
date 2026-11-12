@@ -10,6 +10,7 @@ import { AFRICAN_COUNTRIES } from '@/lib/african-countries';
 import { getApiErrorMessage } from '@/lib/api-error';
 import type { BulkImportResult } from './types';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import {
   Dialog,
@@ -92,6 +93,69 @@ function downloadNamesOnlyTemplate() {
   downloadCsv('parothr-employee-import-names-only-template.csv', NAMES_ONLY_TEMPLATE_HEADER, NAMES_ONLY_TEMPLATE_EXAMPLE_ROW);
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Opens a separate, isolated print document instead of printing the dialog
+// itself - the dialog's own overlay/backdrop isn't marked print:hidden, so
+// printing it directly would risk a solid-color page rather than a clean
+// handout. Each PIN is shown here exactly once; neither this app nor its
+// database can display it again afterward (only the hash is stored).
+function printKioskPinSheet(pins: NonNullable<BulkImportResult['kioskPins']>) {
+  const rows = pins
+    .map(
+      (entry) => `
+        <tr>
+          <td>${escapeHtml(`${entry.firstName} ${entry.lastName}`)}</td>
+          <td>${escapeHtml(entry.employeeNumber)}</td>
+          <td class="pin">${escapeHtml(entry.pin)}</td>
+        </tr>`,
+    )
+    .join('');
+  const html = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Kiosk Clock-In PINs</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 2rem; color: #111; }
+      h1 { font-size: 1.25rem; margin-bottom: 0.25rem; }
+      p { color: #555; font-size: 0.875rem; margin-top: 0; }
+      table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; }
+      th, td { border: 1px solid #ccc; padding: 0.5rem 0.75rem; text-align: left; font-size: 0.95rem; }
+      th { background: #f3f3f3; }
+      td.pin { font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 0.1em; }
+    </style>
+  </head>
+  <body>
+    <h1>Kiosk Clock-In PINs</h1>
+    <p>
+      Each employee enters this PIN at the kiosk after tapping their name. Hand these out and destroy this
+      sheet afterward - once this window is closed, no PIN here can be viewed again (only reset with a new one).
+    </p>
+    <table>
+      <thead><tr><th>Name</th><th>Employee #</th><th>PIN</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </body>
+</html>`;
+
+  const printWindow = window.open('', '_blank', 'width=800,height=600');
+  if (!printWindow) {
+    return;
+  }
+  printWindow.document.write(html);
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+}
+
 export function BulkImportEmployeesDialog({ tenantId }: { tenantId: string }) {
   const [open, setOpen] = useState(false);
   const [organizationId, setOrganizationId] = useState('');
@@ -107,6 +171,7 @@ export function BulkImportEmployeesDialog({ tenantId }: { tenantId: string }) {
     (typeof COMPENSATION_TYPE_OPTIONS)[number] | ''
   >('');
   const [defaultHourlyRate, setDefaultHourlyRate] = useState('');
+  const [assignKioskPins, setAssignKioskPins] = useState(false);
   const bulkImport = useBulkImportEmployees(tenantId);
 
   function handleOpenChange(next: boolean) {
@@ -120,6 +185,7 @@ export function BulkImportEmployeesDialog({ tenantId }: { tenantId: string }) {
       setDefaultCountryCode('');
       setDefaultCompensationType('');
       setDefaultHourlyRate('');
+      setAssignKioskPins(false);
     }
     setOpen(next);
   }
@@ -143,6 +209,7 @@ export function BulkImportEmployeesDialog({ tenantId }: { tenantId: string }) {
         organizationId,
         csv,
         ...(hasAnyDefault ? { defaults } : {}),
+        ...(assignKioskPins ? { assignKioskPins: true } : {}),
       });
       setResult(imported);
       if (imported.errors.length === 0) {
@@ -305,6 +372,24 @@ export function BulkImportEmployeesDialog({ tenantId }: { tenantId: string }) {
                 )}
               </div>
             </div>
+
+            <div className="flex items-start gap-2 rounded-md border p-3">
+              <Checkbox
+                id="bulk-import-assign-kiosk-pins"
+                checked={assignKioskPins}
+                onCheckedChange={(checked) => setAssignKioskPins(checked === true)}
+              />
+              <div className="space-y-1">
+                <Label htmlFor="bulk-import-assign-kiosk-pins" className="font-medium">
+                  Assign kiosk clock-in PINs
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Generates a random PIN for every employee in this batch and gives you a printable sheet to
+                  hand out at the worksite. PINs are shown once, right after import - they can&apos;t be viewed
+                  again afterward, only reset.
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
@@ -338,6 +423,26 @@ export function BulkImportEmployeesDialog({ tenantId }: { tenantId: string }) {
               <p className="text-xs text-muted-foreground">
                 Fix these rows in your file and re-upload - only the corrected rows need to be included.
               </p>
+            )}
+            {result.kioskPins && result.kioskPins.length > 0 && (
+              <div className="space-y-2 rounded-md border p-3">
+                <p className="text-sm font-medium">Kiosk PINs generated</p>
+                <p className="text-xs text-muted-foreground">
+                  Shown once - print this sheet now and hand it out. It can&apos;t be reopened after you leave
+                  this screen.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    if (result.kioskPins) {
+                      printKioskPinSheet(result.kioskPins);
+                    }
+                  }}
+                >
+                  Print kiosk PIN sheet
+                </Button>
+              </div>
             )}
           </div>
         )}

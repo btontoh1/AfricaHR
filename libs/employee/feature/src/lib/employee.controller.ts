@@ -50,7 +50,7 @@ export class EmployeeController {
     @CurrentUser() actor: RequestUser,
   ) {
     assertTenantScope(actor, tenantId);
-    return this.bulkImport.import(tenantId, dto.organizationId, dto.csv, actor, dto.defaults);
+    return this.bulkImport.import(tenantId, dto.organizationId, dto.csv, actor, dto.defaults, dto.assignKioskPins);
   }
 
   @Get()

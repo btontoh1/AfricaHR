@@ -1,13 +1,21 @@
+import { randomInt } from 'node:crypto';
 import { HttpException, Injectable } from '@nestjs/common';
+import * as argon2 from 'argon2';
 import { parse } from 'csv-parse/sync';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { assertOrganizationScope, RequestUser } from '@africahr/platform-auth';
+import { EmployeeRepository } from '@africahr/employee-data-access';
 import { EmployeeService } from './employee.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { BulkImportRowDto } from './dto/bulk-import-row.dto';
-import { BulkImportResultDto } from './dto/bulk-import-result.dto';
+import { BulkImportResultDto, BulkImportKioskPinDto } from './dto/bulk-import-result.dto';
 import { BulkImportDefaultsDto } from './dto/bulk-import-defaults.dto';
+
+/** 4 digits, zero-padded - doesn't need to be unique across employees: the kiosk flow scopes verification to whichever employee was tapped first. */
+function generateKioskPin(): string {
+  return String(randomInt(0, 10000)).padStart(4, '0');
+}
 
 // Only firstName/lastName must actually be columns in the CSV itself -
 // jobTitle/employmentType/hireDate/countryCode can instead come from
@@ -46,7 +54,10 @@ type MergedRecord = Record<string, string | number | undefined>;
 
 @Injectable()
 export class EmployeeBulkImportService {
-  constructor(private readonly employees: EmployeeService) {}
+  constructor(
+    private readonly employees: EmployeeService,
+    private readonly employeeRepository: EmployeeRepository,
+  ) {}
 
   async import(
     tenantId: string,
@@ -54,6 +65,7 @@ export class EmployeeBulkImportService {
     csv: string,
     actor: RequestUser,
     defaults?: BulkImportDefaultsDto,
+    assignKioskPins?: boolean,
   ): Promise<BulkImportResultDto> {
     // Fail once, up front, instead of every one of N rows independently
     // hitting (and reporting) the same "not authorized for this org" error.
@@ -76,6 +88,7 @@ export class EmployeeBulkImportService {
     }
 
     const result: BulkImportResultDto = { created: 0, errors: [] };
+    const kioskPins: BulkImportKioskPinDto[] = [];
 
     for (const [index, rawRecord] of records.entries()) {
       // +2: 1-indexed, plus the header row itself, so this matches the row
@@ -118,12 +131,29 @@ export class EmployeeBulkImportService {
       };
 
       try {
-        await this.employees.create(tenantId, createDto, actor);
+        const employee = await this.employees.create(tenantId, createDto, actor);
         result.created += 1;
+
+        if (assignKioskPins) {
+          const pin = generateKioskPin();
+          const clockInPinHash = await argon2.hash(pin);
+          await this.employeeRepository.setClockInPinHash(tenantId, employee.id, clockInPinHash);
+          kioskPins.push({
+            employeeId: employee.id,
+            employeeNumber: employee.employeeNumber,
+            firstName: employee.firstName,
+            lastName: employee.lastName,
+            pin,
+          });
+        }
       } catch (error) {
         const message = error instanceof HttpException ? error.message : 'Failed to create this row';
         result.errors.push({ row, message });
       }
+    }
+
+    if (kioskPins.length > 0) {
+      result.kioskPins = kioskPins;
     }
 
     return result;

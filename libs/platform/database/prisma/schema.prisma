@@ -756,6 +756,15 @@ model Employee {
   /// set, in which case kiosk clock-in for that employee is refused.
   clockInPinHash String? @map("clock_in_pin_hash")
 
+  /// Deterministic HMAC fingerprint of the same PIN (see hashPinForLookup),
+  /// kept only so the app can check "does another employee in this tenant
+  /// already have this PIN" - clockInPinHash above is salted on purpose
+  /// (same PIN hashes differently every time), so it can't answer that
+  /// question itself. Null for any PIN set before this column existed;
+  /// those simply aren't checked for collisions until reset. Not used for
+  /// verification - clock-in still checks clockInPinHash only.
+  clockInPinLookupHash String? @map("clock_in_pin_lookup_hash")
+
   /// Opt-in, per-employee: send a plain-text payslip summary by SMS/WhatsApp
   /// after each pay run is paid (see PayslipMessagingService). Both default
   /// false - existing employees are unaffected until an admin turns either
@@ -803,6 +812,7 @@ model Employee {
   @@index([organizationId])
   @@index([organizationUnitId])
   @@index([managerId])
+  @@index([tenantId, clockInPinLookupHash])
   @@map("employees")
 }
 

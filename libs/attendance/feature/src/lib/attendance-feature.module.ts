@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PlatformAuthModule } from '@africahr/platform-auth';
 import { AuditModule } from '@africahr/platform-audit';
+import { AppConfigModule } from '@africahr/platform-core';
 import { AttendanceDataAccessModule } from '@africahr/attendance-data-access';
 import { AttendancePolicyService } from './attendance-policy.service';
 import { AttendancePolicyController } from './attendance-policy.controller';
@@ -13,7 +14,7 @@ import { AttendanceKioskService } from './attendance-kiosk.service';
 import { AttendanceKioskController } from './attendance-kiosk.controller';
 
 @Module({
-  imports: [AttendanceDataAccessModule, PlatformAuthModule, AuditModule],
+  imports: [AttendanceDataAccessModule, PlatformAuthModule, AuditModule, AppConfigModule],
   // MyAttendanceController (literal "/me" path) and AttendanceKioskController
   // (literal "/kiosk" path) must both be registered before AttendanceController
   // (dynamic "/:id" path) so Nest's router matches those literal segments

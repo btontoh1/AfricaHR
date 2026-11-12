@@ -1,7 +1,9 @@
+import { randomBytes } from 'node:crypto';
 import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { EmploymentType } from '@prisma/client';
 import { RequestUser, SystemRole } from '@africahr/platform-auth';
 import { EmployeeRepository } from '@africahr/employee-data-access';
+import { AppConfigService } from '@africahr/platform-core';
 import { EmployeeBulkImportService } from './employee-bulk-import.service';
 import { EmployeeService } from './employee.service';
 
@@ -9,6 +11,7 @@ describe('EmployeeBulkImportService', () => {
   let service: EmployeeBulkImportService;
   let employees: jest.Mocked<EmployeeService>;
   let employeeRepository: jest.Mocked<EmployeeRepository>;
+  let config: jest.Mocked<AppConfigService>;
 
   const tenantAdmin: RequestUser = {
     sub: 'admin-1',
@@ -32,8 +35,14 @@ describe('EmployeeBulkImportService', () => {
 
   beforeEach(() => {
     employees = { create: jest.fn() } as unknown as jest.Mocked<EmployeeService>;
-    employeeRepository = { setClockInPinHash: jest.fn() } as unknown as jest.Mocked<EmployeeRepository>;
-    service = new EmployeeBulkImportService(employees, employeeRepository);
+    employeeRepository = {
+      setClockInPinHash: jest.fn(),
+      isPinLookupHashTaken: jest.fn().mockResolvedValue(false),
+    } as unknown as jest.Mocked<EmployeeRepository>;
+    config = {
+      kioskPinLookupSecret: randomBytes(32).toString('hex'),
+    } as unknown as jest.Mocked<AppConfigService>;
+    service = new EmployeeBulkImportService(employees, employeeRepository, config);
   });
 
   it('creates every valid row and reports nothing failed', async () => {
@@ -213,11 +222,51 @@ describe('EmployeeBulkImportService', () => {
     expect(result.created).toBe(2);
     expect(result.kioskPins).toHaveLength(2);
     expect(result.kioskPins?.[0]).toMatchObject({ employeeId: 'emp-1', employeeNumber: 'EMP-0001', firstName: 'Ama', lastName: 'Owusu' });
-    expect(result.kioskPins?.[0].pin).toMatch(/^\d{4}$/);
+    expect(result.kioskPins?.[0].pin).toMatch(/^\d{6}$/);
     expect(employeeRepository.setClockInPinHash).toHaveBeenCalledTimes(2);
-    const [, storedEmployeeId, storedHash] = employeeRepository.setClockInPinHash.mock.calls[0];
+    const [, storedEmployeeId, storedHash, storedLookupHash] = employeeRepository.setClockInPinHash.mock.calls[0];
     expect(storedEmployeeId).toBe('emp-1');
     expect(storedHash).not.toBe(result.kioskPins?.[0].pin);
+    expect(typeof storedLookupHash).toBe('string');
+  });
+
+  it('regenerates the PIN when the first random pick collides with an existing employee', async () => {
+    employees.create.mockResolvedValueOnce({
+      id: 'emp-1',
+      employeeNumber: 'EMP-0001',
+      firstName: 'Ama',
+      lastName: 'Owusu',
+    } as never);
+    employeeRepository.isPinLookupHashTaken.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    const csv = [
+      'firstName,lastName,jobTitle,employmentType,hireDate,countryCode',
+      'Ama,Owusu,Engineer,FULL_TIME,2026-01-01,GH',
+    ].join('\n');
+
+    const result = await service.import('tenant-1', 'org-1', csv, tenantAdmin, undefined, true);
+
+    expect(employeeRepository.isPinLookupHashTaken).toHaveBeenCalledTimes(2);
+    expect(result.kioskPins).toHaveLength(1);
+    expect(employeeRepository.setClockInPinHash).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports a row error rather than crashing the batch if no unique PIN can be found', async () => {
+    employees.create.mockResolvedValueOnce({
+      id: 'emp-1',
+      employeeNumber: 'EMP-0001',
+      firstName: 'Ama',
+      lastName: 'Owusu',
+    } as never);
+    employeeRepository.isPinLookupHashTaken.mockResolvedValue(true);
+    const csv = [
+      'firstName,lastName,jobTitle,employmentType,hireDate,countryCode',
+      'Ama,Owusu,Engineer,FULL_TIME,2026-01-01,GH',
+    ].join('\n');
+
+    const result = await service.import('tenant-1', 'org-1', csv, tenantAdmin, undefined, true);
+
+    expect(result.errors).toHaveLength(1);
+    expect(employeeRepository.setClockInPinHash).not.toHaveBeenCalled();
   });
 
   it('omits kioskPins entirely when assignKioskPins is not set', async () => {

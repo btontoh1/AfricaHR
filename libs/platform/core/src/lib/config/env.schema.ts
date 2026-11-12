@@ -114,6 +114,16 @@ export const envSchema = z.object({
   // there is for SendGrid/Paystack's log-only fallbacks.
   PAYMENT_METHOD_ENCRYPTION_KEY: z.string().optional(),
 
+  // AES-256 key (64-char hex = 32 bytes) used as the HMAC key for
+  // Employee.clockInPinLookupHash - a deterministic fingerprint of a
+  // kiosk PIN that lets the app check "is this PIN already used by
+  // another employee" without ever storing or recovering the PIN itself
+  // (see hashPinForLookup). Optional at the schema level, but
+  // AttendanceKioskService/EmployeeBulkImportService both derive it
+  // eagerly at construction time, so the app fails to boot without it -
+  // same posture as MFA_ENCRYPTION_KEY/PAYMENT_METHOD_ENCRYPTION_KEY.
+  KIOSK_PIN_LOOKUP_SECRET: z.string().optional(),
+
   CORS_ORIGINS: z
     .string()
     .default('')

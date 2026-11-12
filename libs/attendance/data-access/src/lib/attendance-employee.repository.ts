@@ -76,12 +76,38 @@ export class AttendanceEmployeeRepository {
     );
   }
 
-  async setClockInPinHash(tenantId: string, id: string, clockInPinHash: string): Promise<void> {
+  async setClockInPinHash(
+    tenantId: string,
+    id: string,
+    clockInPinHash: string,
+    clockInPinLookupHash: string,
+  ): Promise<void> {
     await this.prisma.withTenantContext(tenantId, (tx) =>
       tx.employee.update({
         where: { id },
-        data: { clockInPinHash },
+        data: { clockInPinHash, clockInPinLookupHash },
       }),
     );
+  }
+
+  /**
+   * Checks whether some *other* active employee in this tenant already has
+   * this PIN (via its deterministic lookup fingerprint, not the salted
+   * verification hash - see hashPinForLookup). excludeEmployeeId lets
+   * re-saving an employee's own unchanged PIN not flag itself as a
+   * duplicate.
+   */
+  async isPinLookupHashTaken(
+    tenantId: string,
+    clockInPinLookupHash: string,
+    excludeEmployeeId: string,
+  ): Promise<boolean> {
+    const match = await this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.employee.findFirst({
+        where: { tenantId, clockInPinLookupHash, deletedAt: null, id: { not: excludeEmployeeId } },
+        select: { id: true },
+      }),
+    );
+    return match !== null;
   }
 }

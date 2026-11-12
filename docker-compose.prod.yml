@@ -85,6 +85,7 @@ services:
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY}
       PAYMENT_METHOD_ENCRYPTION_KEY: ${PAYMENT_METHOD_ENCRYPTION_KEY}
+      KIOSK_PIN_LOOKUP_SECRET: ${KIOSK_PIN_LOOKUP_SECRET}
       PAYSTACK_SECRET_KEY: ${PAYSTACK_SECRET_KEY}
       # Both optional — the app falls back to logging instead of sending
       # (see NotificationsFeatureModule) when either is unset. Leave both

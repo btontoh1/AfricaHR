@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Delete, Clock, Search, LogIn, LogOut } from 'lucide-react';
 import { useKioskClock, useKioskEmployees } from './queries';
@@ -11,6 +11,22 @@ import type { KioskClockResult, KioskEmployee } from './types';
 
 const MAX_PIN_LENGTH = 6;
 const KEYPAD_DIGITS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'back'];
+// The one message the kiosk's own clock endpoint deliberately returns as a
+// 401 for an everyday, expected reason (a mistyped PIN) - see
+// AttendanceKioskService.clock's doc comment. Any *other* 401 on this
+// device (an expired/revoked session, most likely) isn't something a toast
+// can fix, so it gets the same hard-reload treatment as a dead employees
+// list below - safe either way: if the session is actually still fine,
+// /login just bounces straight back to this same screen.
+const INCORRECT_PIN_MESSAGE = 'Incorrect PIN';
+
+function getStatusCode(error: unknown): number | undefined {
+  return (error as { statusCode?: number } | null)?.statusCode;
+}
+
+function isDeadSessionError(error: unknown): boolean {
+  return getStatusCode(error) === 401 && getApiErrorMessage(error) !== INCORRECT_PIN_MESSAGE;
+}
 
 /**
  * Full-screen, standalone kiosk UI for a shared physical clock-in device -
@@ -28,6 +44,17 @@ export function KioskApp({ tenantId }: { tenantId: string }) {
   const [selected, setSelected] = useState<KioskEmployee | null>(null);
   const [pin, setPin] = useState('');
   const [result, setResult] = useState<KioskClockResult | null>(null);
+
+  // A hard navigation, not a client-side route change - this device's
+  // session may genuinely be gone, and /login re-establishes everything
+  // (cookies, the actual login form if needed) from a clean slate. If the
+  // session turns out to still be fine, /login's own redirect bounces
+  // straight back to this exact screen.
+  useEffect(() => {
+    if (isDeadSessionError(error)) {
+      window.location.href = '/login';
+    }
+  }, [error]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -70,6 +97,10 @@ export function KioskApp({ tenantId }: { tenantId: string }) {
         }, 3000);
       }
     } catch (submitError) {
+      if (isDeadSessionError(submitError)) {
+        window.location.href = '/login';
+        return;
+      }
       toast.error(getApiErrorMessage(submitError, 'Incorrect PIN'));
       setPin('');
     }

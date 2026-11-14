@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { CreditCard } from 'lucide-react';
 import { useCancelSubscription, useSubscription } from './queries';
 import { AssignSubscriptionDialog } from './assign-subscription-dialog';
+import { SetDisbursementFeeDialog } from './set-disbursement-fee-dialog';
 import { SubscriptionStatusBadge } from './subscription-status-badge';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { formatCurrency } from '@/lib/format-currency';
@@ -26,6 +27,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 
 export function SubscriptionCard({ tenantId, tenantCurrency }: { tenantId: string; tenantCurrency: string }) {
   const [assignOpen, setAssignOpen] = useState(false);
+  const [feeOpen, setFeeOpen] = useState(false);
   const { data: summary, isLoading, isError, error } = useSubscription(tenantId);
   const cancelSubscription = useCancelSubscription(tenantId);
 
@@ -99,6 +101,14 @@ export function SubscriptionCard({ tenantId, tenantCurrency }: { tenantId: strin
           />
           <Field label="Current period start" value={subscription.currentPeriodStart.slice(0, 10)} />
           <Field label="Current period end" value={subscription.currentPeriodEnd.slice(0, 10)} />
+          <Field
+            label="Disbursement margin"
+            value={
+              <button type="button" className="underline-offset-2 hover:underline" onClick={() => setFeeOpen(true)}>
+                {formatCurrency(subscription.disbursementFeeAmount, subscription.currency)} / transfer
+              </button>
+            }
+          />
         </div>
         {canCancel && (
           <Button
@@ -110,6 +120,13 @@ export function SubscriptionCard({ tenantId, tenantCurrency }: { tenantId: strin
             Cancel subscription
           </Button>
         )}
+        <SetDisbursementFeeDialog
+          tenantId={tenantId}
+          currency={subscription.currency}
+          currentFeeAmount={subscription.disbursementFeeAmount}
+          open={feeOpen}
+          onOpenChange={setFeeOpen}
+        />
       </CardContent>
     </Card>
   );

@@ -8,6 +8,7 @@ import {
   InsufficientWalletBalanceError,
   PayrollAttendanceRecordRepository,
   PayrollBenefitEnrollmentRepository,
+  PayrollPaystackFeeRepository,
   PayRunRepository,
   PayrollEmployeeRepository,
   PayrollLeaveRequestRepository,
@@ -44,6 +45,7 @@ describe('PayRunService', () => {
   let paystackRegistry: jest.Mocked<PaystackTransferClientRegistry>;
   let wallet: jest.Mocked<PayrollWalletRepository>;
   let subscriptionFees: jest.Mocked<PayrollSubscriptionRepository>;
+  let paystackFees: jest.Mocked<PayrollPaystackFeeRepository>;
   let config: AppConfigService;
 
   function makePayslip(overrides: Partial<PayslipWithLineItems> = {}): PayslipWithLineItems {
@@ -79,6 +81,7 @@ describe('PayRunService', () => {
       paystackTransferReference: null,
       disbursedAt: null,
       disbursementFeeAmount: null,
+      paystackFeeAmount: null,
       createdAt: new Date(),
       updatedAt: new Date(),
       deletedAt: null,
@@ -188,6 +191,12 @@ describe('PayRunService', () => {
     subscriptionFees = {
       findDisbursementFee: jest.fn().mockResolvedValue(null),
     } as unknown as jest.Mocked<PayrollSubscriptionRepository>;
+    // Defaults to "no Paystack fee schedule configured" - same reasoning as
+    // subscriptionFees above; tests exercising the real-cost portion of the
+    // fee override this per-case.
+    paystackFees = {
+      findRatesByKey: jest.fn().mockResolvedValue(new Map()),
+    } as unknown as jest.Mocked<PayrollPaystackFeeRepository>;
     config = { paymentMethodEncryptionKey: validEncryptionKey } as unknown as AppConfigService;
 
     service = new PayRunService(
@@ -204,6 +213,7 @@ describe('PayRunService', () => {
       paystackRegistry,
       wallet,
       subscriptionFees,
+      paystackFees,
       config,
     );
   });
@@ -227,6 +237,7 @@ describe('PayRunService', () => {
           paystackRegistry,
           wallet,
           subscriptionFees,
+          paystackFees,
           badConfig,
         ),
     ).toThrow(/PAYMENT_METHOD_ENCRYPTION_KEY must be set/);
@@ -1240,6 +1251,54 @@ describe('PayRunService', () => {
       ]);
     });
 
+    it("adds Paystack's real transfer cost for the employee's payment channel on top of the margin", async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PAID' }));
+      payslips.listByPayRun.mockResolvedValue([
+        makePayslip({ id: 'payslip-1', currency: 'GHS', netPay: new Prisma.Decimal(500) }),
+      ]);
+      subscriptionFees.findDisbursementFee.mockResolvedValue({ currency: 'GHS', disbursementFeeAmount: 1 });
+      paystackFees.findRatesByKey.mockResolvedValue(new Map([['GHS:MOBILE_MONEY', 1]]));
+      employees.findPaymentMethodByEmployeeId.mockResolvedValue({
+        type: 'MOBILE_MONEY',
+        bankCode: encrypt('MTN'),
+        accountNumber: null,
+        accountName: encrypt('Kwame Asante'),
+        mobileMoneyNumber: encrypt('0244000000'),
+        paystackRecipientCode: null,
+      });
+
+      await service.markPaid('tenant-1', 'run-1', 'mgr-1');
+
+      // 500 net pay, plus 1 margin + 1 Paystack real cost (mobile money) = 502.
+      expect(wallet.reserveForDisbursement).toHaveBeenCalledWith('tenant-1', [
+        { currency: 'GHS', amount: 502 },
+      ]);
+    });
+
+    it('charges nothing extra for the Paystack-real-cost portion when no rate is configured for the channel', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PAID' }));
+      payslips.listByPayRun.mockResolvedValue([
+        makePayslip({ id: 'payslip-1', currency: 'GHS', netPay: new Prisma.Decimal(500) }),
+      ]);
+      paystackFees.findRatesByKey.mockResolvedValue(new Map([['GHS:BANK_ACCOUNT', 8]]));
+      employees.findPaymentMethodByEmployeeId.mockResolvedValue({
+        type: 'MOBILE_MONEY',
+        bankCode: encrypt('MTN'),
+        accountNumber: null,
+        accountName: encrypt('Kwame Asante'),
+        mobileMoneyNumber: encrypt('0244000000'),
+        paystackRecipientCode: null,
+      });
+
+      await service.markPaid('tenant-1', 'run-1', 'mgr-1');
+
+      expect(wallet.reserveForDisbursement).toHaveBeenCalledWith('tenant-1', [
+        { currency: 'GHS', amount: 500 },
+      ]);
+    });
+
     it('does not charge a fee for a payslip in a different currency than the subscription', async () => {
       payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
       payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PAID' }));
@@ -1293,6 +1352,46 @@ describe('PayRunService', () => {
       );
     });
 
+    it('persists the margin and the Paystack-real-cost portion separately on the payslip', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PAID' }));
+      payslips.listByPayRun.mockResolvedValue([
+        makePayslip({ currency: 'GHS', netPay: new Prisma.Decimal(856) }),
+      ]);
+      subscriptionFees.findDisbursementFee.mockResolvedValue({ currency: 'GHS', disbursementFeeAmount: 1 });
+      paystackFees.findRatesByKey.mockResolvedValue(new Map([['GHS:BANK_ACCOUNT', 8]]));
+      employees.findPaymentMethodByEmployeeId.mockResolvedValue({
+        type: 'BANK_ACCOUNT',
+        bankCode: encrypt('040'),
+        accountNumber: encrypt('1234567890'),
+        accountName: encrypt('Kwame Asante'),
+        mobileMoneyNumber: null,
+        paystackRecipientCode: null,
+      });
+      employees.findById.mockResolvedValue({
+        id: 'emp-1',
+        organizationId: 'org-1',
+        firstName: 'Kwame',
+        lastName: 'Asante',
+        baseSalary: new Prisma.Decimal(1000),
+        currency: 'GHS',
+        annualRentPaid: null,
+        compensationType: 'SALARY' as const,
+        hourlyRate: null,
+        countryCode: 'GH',
+      });
+      paystack.createRecipient.mockResolvedValue({ recipientCode: 'RCP_abc' });
+
+      await service.markPaid('tenant-1', 'run-1', 'mgr-1');
+
+      // Margin (1) + Paystack's real bank-transfer cost (8) = 9 total.
+      expect(payslips.recordDisbursementInitiated).toHaveBeenCalledWith(
+        'tenant-1',
+        'payslip-1',
+        expect.objectContaining({ disbursementFeeAmount: 9, paystackFeeAmount: 8 }),
+      );
+    });
+
     it('refunds netPay plus the fee when an employee has no usable payment method', async () => {
       payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
       payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PAID' }));
@@ -1333,6 +1432,30 @@ describe('PayRunService', () => {
 
       expect(wallet.reserveForDisbursement).toHaveBeenCalledWith('tenant-1', [
         { currency: 'GHS', amount: 857 },
+      ]);
+    });
+
+    it("re-reserves netPay plus the margin and Paystack's real cost for the employee's channel", async () => {
+      payslips.findById.mockResolvedValue(
+        makePayslip({ disbursementStatus: 'FAILED', currency: 'GHS', netPay: new Prisma.Decimal(856) }),
+      );
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'PAID' }));
+      subscriptionFees.findDisbursementFee.mockResolvedValue({ currency: 'GHS', disbursementFeeAmount: 1 });
+      paystackFees.findRatesByKey.mockResolvedValue(new Map([['GHS:MOBILE_MONEY', 1]]));
+      employees.findPaymentMethodByEmployeeId.mockResolvedValue({
+        type: 'MOBILE_MONEY',
+        bankCode: encrypt('MTN'),
+        accountNumber: null,
+        accountName: encrypt('Kwame Asante'),
+        mobileMoneyNumber: encrypt('0244000000'),
+        paystackRecipientCode: null,
+      });
+
+      await service.retryDisbursement('tenant-1', 'payslip-1', 'mgr-1');
+
+      // 856 net pay, plus 1 margin + 1 Paystack real cost (mobile money) = 858.
+      expect(wallet.reserveForDisbursement).toHaveBeenCalledWith('tenant-1', [
+        { currency: 'GHS', amount: 858 },
       ]);
     });
 

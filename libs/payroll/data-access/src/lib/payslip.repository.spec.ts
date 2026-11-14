@@ -85,7 +85,8 @@ describe('PayslipRepository', () => {
       const result = await repository.recordDisbursementInitiated('tenant-1', 'payslip-1', {
         paystackRecipientCode: 'RCP_abc',
         paystackTransferReference: 'ref-123',
-        disbursementFeeAmount: 1,
+        disbursementFeeAmount: 9,
+        paystackFeeAmount: 8,
       });
 
       expect(tx.payslip.updateMany).toHaveBeenCalledWith({
@@ -98,7 +99,8 @@ describe('PayslipRepository', () => {
           disbursementStatus: 'PENDING',
           paystackRecipientCode: 'RCP_abc',
           paystackTransferReference: 'ref-123',
-          disbursementFeeAmount: 1,
+          disbursementFeeAmount: 9,
+          paystackFeeAmount: 8,
         },
       });
       expect(result).toEqual({ id: 'payslip-1', disbursementStatus: 'PENDING' });
@@ -111,6 +113,7 @@ describe('PayslipRepository', () => {
         paystackRecipientCode: 'RCP_abc',
         paystackTransferReference: 'ref-123',
         disbursementFeeAmount: 1,
+        paystackFeeAmount: 0,
       });
 
       expect(result).toBeNull();

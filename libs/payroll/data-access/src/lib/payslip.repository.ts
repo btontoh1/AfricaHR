@@ -192,8 +192,10 @@ export class PayslipRepository {
     input: {
       paystackRecipientCode: string;
       paystackTransferReference: string;
-      /** ParotHR's platform fee actually charged for this transfer (see Payslip.disbursementFeeAmount's schema comment) - 0 when no fee is configured. */
+      /** Total platform fee actually charged for this transfer - Paystack's own real cost plus ParotHR's margin (see Payslip.disbursementFeeAmount's schema comment) - 0 when neither is configured. */
       disbursementFeeAmount: number;
+      /** The Paystack-real-cost portion of disbursementFeeAmount above (see Payslip.paystackFeeAmount's schema comment) - 0 when no fee schedule rate matches. */
+      paystackFeeAmount: number;
     },
   ): Promise<Payslip | null> {
     return this.prisma.withTenantContext(tenantId, async (tx) => {
@@ -210,6 +212,7 @@ export class PayslipRepository {
           paystackRecipientCode: input.paystackRecipientCode,
           paystackTransferReference: input.paystackTransferReference,
           disbursementFeeAmount: input.disbursementFeeAmount,
+          paystackFeeAmount: input.paystackFeeAmount,
         },
       });
       if (count === 0) {

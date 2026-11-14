@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   CurrentUser,
@@ -10,7 +10,8 @@ import {
 } from '@africahr/platform-auth';
 import { SubscriptionService } from './subscription.service';
 import { AssignSubscriptionDto } from './dto/assign-subscription.dto';
-import { SubscriptionSummaryResponseDto } from './dto/subscription-response.dto';
+import { SetDisbursementFeeDto } from './dto/set-disbursement-fee.dto';
+import { SubscriptionResponseDto, SubscriptionSummaryResponseDto } from './dto/subscription-response.dto';
 
 /**
  * Platform-admin-only: subscriptions are assigned and managed by the
@@ -40,6 +41,20 @@ export class SubscriptionController {
     @CurrentUser() actor: RequestUser,
   ) {
     return this.subscriptions.assign(tenantId, dto, actor.sub);
+  }
+
+  @Patch('disbursement-fee')
+  @ApiOperation({
+    summary:
+      "Set ParotHR's own flat margin charged per payroll disbursement transaction for this tenant",
+  })
+  @ApiOkResponse({ type: SubscriptionResponseDto })
+  setDisbursementFee(
+    @Param('tenantId') tenantId: string,
+    @Body() dto: SetDisbursementFeeDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    return this.subscriptions.setDisbursementFee(tenantId, dto, actor.sub);
   }
 
   @Post('cancel')

@@ -2914,6 +2914,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/subscription/disbursement-fee": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Set ParotHR's own flat margin charged per payroll disbursement transaction for this tenant */
+        patch: operations["SubscriptionController_setDisbursementFee"];
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/subscription/cancel": {
         parameters: {
             query?: never;
@@ -3097,6 +3114,24 @@ export interface paths {
         put?: never;
         /** Starts a Paystack checkout to fund the tenant payroll wallet for one currency */
         post: operations["TenantPayrollWalletController_requestTopUp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform-admin/paystack-fees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Paystack's real transfer cost by currency and channel */
+        get: operations["PaystackFeeScheduleController_list"];
+        /** Set (or replace) the real transfer cost for one currency/channel pair */
+        put: operations["PaystackFeeScheduleController_upsert"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5556,6 +5591,10 @@ export interface components {
             disbursementStatus: "NOT_INITIATED" | "PENDING" | "SUCCESS" | "FAILED";
             /** @description When the Paystack transfer settled (success or failure) */
             disbursedAt?: string;
+            /** @description Total platform fee charged for this payslip's disbursement - Paystack's own real transfer cost (paystackFeeAmount below) plus ParotHR's own margin on top. Null until a transfer is actually attempted. */
+            disbursementFeeAmount?: string | null;
+            /** @description The Paystack-real-cost portion of disbursementFeeAmount above - subtract this from it to get ParotHR's own margin. Null until a transfer is actually attempted. */
+            paystackFeeAmount?: string | null;
             lineItems: components["schemas"]["PayslipLineItemResponseDto"][];
             createdAt: string;
             updatedAt: string;
@@ -6293,6 +6332,8 @@ export interface components {
             /** Format: date-time */
             currentPeriodEnd: string;
             cancelAtPeriodEnd: boolean;
+            /** @description ParotHR's own flat margin charged per payroll disbursement transaction, on top of Paystack's real transfer cost - 0 means none is charged */
+            disbursementFeeAmount: number;
         };
         SubscriptionSummaryResponseDto: {
             subscription: components["schemas"]["SubscriptionResponseDto"];
@@ -6312,6 +6353,13 @@ export interface components {
              * @example GHS
              */
             currency: string;
+        };
+        SetDisbursementFeeDto: {
+            /**
+             * @description ParotHR's own flat margin to charge per payroll disbursement transaction for this tenant, on top of Paystack's real transfer cost. 0 charges no margin.
+             * @example 1
+             */
+            disbursementFeeAmount: number;
         };
         InvoiceResponseDto: {
             id: string;
@@ -6568,6 +6616,31 @@ export interface components {
              * @example 5000
              */
             amount: number;
+        };
+        PaystackFeeRateResponseDto: {
+            id: string;
+            currency: string;
+            /** @enum {string} */
+            channel: "BANK_ACCOUNT" | "MOBILE_MONEY";
+            feeAmount: number;
+            updatedAt: string;
+        };
+        UpsertPaystackFeeRateDto: {
+            /**
+             * @description ISO 4217 currency code
+             * @example GHS
+             */
+            currency: string;
+            /**
+             * @description The Paystack transfer channel this real cost applies to
+             * @enum {string}
+             */
+            channel: "BANK_ACCOUNT" | "MOBILE_MONEY";
+            /**
+             * @description Paystack's real flat fee for this currency/channel transfer
+             * @example 1
+             */
+            feeAmount: number;
         };
         CreateCustomerDto: {
             organizationId: string;
@@ -13113,6 +13186,31 @@ export interface operations {
             };
         };
     };
+    SubscriptionController_setDisbursementFee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetDisbursementFeeDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionResponseDto"];
+                };
+            };
+        };
+    };
     SubscriptionController_cancel: {
         parameters: {
             query?: never;
@@ -13445,6 +13543,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WalletTopUpResponseDto"];
+                };
+            };
+        };
+    };
+    PaystackFeeScheduleController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaystackFeeRateResponseDto"][];
+                };
+            };
+        };
+    };
+    PaystackFeeScheduleController_upsert: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertPaystackFeeRateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaystackFeeRateResponseDto"];
                 };
             };
         };

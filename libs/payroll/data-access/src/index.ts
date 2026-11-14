@@ -12,3 +12,4 @@ export * from './lib/payroll-leave-request.repository';
 export * from './lib/payroll-attendance-record.repository';
 export * from './lib/payroll-wallet.repository';
 export * from './lib/payroll-subscription.repository';
+export * from './lib/payroll-paystack-fee.repository';

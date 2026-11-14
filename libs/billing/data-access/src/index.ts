@@ -6,4 +6,5 @@ export * from './lib/platform-billing.repository';
 export * from './lib/platform-operating-cost.repository';
 export * from './lib/platform-financial-input.repository';
 export * from './lib/tenant-payroll-wallet.repository';
+export * from './lib/paystack-fee-schedule.repository';
 export * from './lib/billing-data-access.module';

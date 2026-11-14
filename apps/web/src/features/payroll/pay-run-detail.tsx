@@ -68,6 +68,26 @@ function DisbursementSummary({ payslips }: { payslips: Payslip[] }) {
   );
 }
 
+/** disbursementFeeAmount is only ever set the moment a transfer is actually attempted (see Payslip.disbursementFeeAmount's schema comment) - null means nothing has been charged for this payslip yet. */
+function formatDisbursementFeeBreakdown(payslip: Payslip): React.ReactNode {
+  if (payslip.disbursementFeeAmount === null || payslip.disbursementFeeAmount === undefined) {
+    return null;
+  }
+  const total = Number(payslip.disbursementFeeAmount);
+  if (total === 0) {
+    return null;
+  }
+  const paystackPortion = Number(payslip.paystackFeeAmount ?? 0);
+  const margin = total - paystackPortion;
+
+  return (
+    <p className="text-xs text-muted-foreground">
+      Paystack fee: {formatCurrency(paystackPortion, payslip.currency)} + ParotHR fee:{' '}
+      {formatCurrency(margin, payslip.currency)} = {formatCurrency(total, payslip.currency)}
+    </p>
+  );
+}
+
 function RetryDisbursementButton({ tenantId, payRunId, payslipId }: { tenantId: string; payRunId: string; payslipId: string }) {
   const retry = useRetryDisbursement(tenantId, payRunId);
   return (
@@ -176,6 +196,7 @@ export function PayRunDetail({ tenantId, payRunId }: { tenantId: string; payRunI
                               <RetryDisbursementButton tenantId={tenantId} payRunId={payRunId} payslipId={payslip.id} />
                             )}
                           </div>
+                          {formatDisbursementFeeBreakdown(payslip)}
                         </TableCell>
                       )}
                       <TableCell>

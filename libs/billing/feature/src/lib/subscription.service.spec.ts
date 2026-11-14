@@ -20,6 +20,7 @@ describe('SubscriptionService', () => {
     currentPeriodEnd: new Date('2026-09-01'),
     cancelAtPeriodEnd: false,
     paystackCustomerCode: null,
+    disbursementFeeAmount: new Prisma.Decimal(0),
     createdAt: new Date(),
     updatedAt: new Date(),
     createdBy: null,
@@ -86,6 +87,43 @@ describe('SubscriptionService', () => {
       subscriptions.findByTenant.mockResolvedValue(null);
 
       await expect(service.getForTenant('tenant-1')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('setDisbursementFee', () => {
+    it("updates the tenant's margin and records an audit entry", async () => {
+      subscriptions.findByTenant.mockResolvedValue(baseSubscription);
+      subscriptions.update.mockResolvedValue({
+        ...baseSubscription,
+        disbursementFeeAmount: new Prisma.Decimal(1),
+      });
+
+      const result = await service.setDisbursementFee(
+        'tenant-1',
+        { disbursementFeeAmount: 1 },
+        'admin-1',
+      );
+
+      expect(Number(result.disbursementFeeAmount)).toBe(1);
+      expect(subscriptions.update).toHaveBeenCalledWith('tenant-1', 'sub-1', {
+        disbursementFeeAmount: 1,
+        updatedBy: 'admin-1',
+      });
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'billing.subscription.disbursement_fee_set',
+          metadata: { disbursementFeeAmount: 1 },
+        }),
+      );
+    });
+
+    it('throws when the tenant has no subscription', async () => {
+      subscriptions.findByTenant.mockResolvedValue(null);
+
+      await expect(
+        service.setDisbursementFee('tenant-1', { disbursementFeeAmount: 1 }, 'admin-1'),
+      ).rejects.toThrow(NotFoundException);
+      expect(subscriptions.update).not.toHaveBeenCalled();
     });
   });
 

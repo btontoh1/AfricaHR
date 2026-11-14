@@ -111,6 +111,20 @@ export class PayslipResponseDto {
   @ApiPropertyOptional({ description: 'When the Paystack transfer settled (success or failure)' })
   disbursedAt?: string | null;
 
+  @ApiPropertyOptional({
+    description:
+      "Total platform fee charged for this payslip's disbursement - Paystack's own real transfer cost (paystackFeeAmount below) plus ParotHR's own margin on top. Null until a transfer is actually attempted.",
+    nullable: true,
+  })
+  disbursementFeeAmount?: string | null;
+
+  @ApiPropertyOptional({
+    description:
+      "The Paystack-real-cost portion of disbursementFeeAmount above - subtract this from it to get ParotHR's own margin. Null until a transfer is actually attempted.",
+    nullable: true,
+  })
+  paystackFeeAmount?: string | null;
+
   @ApiProperty({ type: PayslipLineItemResponseDto, isArray: true })
   lineItems!: PayslipLineItemResponseDto[];
 

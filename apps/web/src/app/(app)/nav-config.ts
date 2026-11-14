@@ -65,6 +65,7 @@ import {
   Boxes,
   Laptop,
   PackageSearch,
+  Percent,
 } from 'lucide-react';
 import type { SessionUser } from '@/lib/session';
 
@@ -203,6 +204,9 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
           : []),
         ...(isPlatformAdmin
           ? [{ label: 'Broadcast', href: '/platform-admin/broadcast', icon: Megaphone }]
+          : []),
+        ...(isPlatformAdmin
+          ? [{ label: 'Paystack Fees', href: '/platform-admin/paystack-fees', icon: Percent }]
           : []),
       ],
     },

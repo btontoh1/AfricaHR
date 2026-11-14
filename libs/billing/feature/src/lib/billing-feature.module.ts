@@ -17,6 +17,8 @@ import { LogPaystackClient, PaystackClient, RealPaystackClient } from './paystac
 import { PaystackClientRegistry } from './paystack-client-registry';
 import { TenantPayrollWalletService } from './tenant-payroll-wallet.service';
 import { TenantPayrollWalletController } from './tenant-payroll-wallet.controller';
+import { PaystackFeeScheduleService } from './paystack-fee-schedule.service';
+import { PaystackFeeScheduleController } from './paystack-fee-schedule.controller';
 
 @Module({
   imports: [BillingDataAccessModule, PlatformAuthModule, AuditModule, AppConfigModule],
@@ -26,6 +28,7 @@ import { TenantPayrollWalletController } from './tenant-payroll-wallet.controlle
     PaystackWebhookController,
     PlatformBillingController,
     TenantPayrollWalletController,
+    PaystackFeeScheduleController,
   ],
   providers: [
     SubscriptionService,
@@ -35,6 +38,7 @@ import { TenantPayrollWalletController } from './tenant-payroll-wallet.controlle
     PlatformOperatingCostService,
     PlatformInvestorMetricsService,
     TenantPayrollWalletService,
+    PaystackFeeScheduleService,
     {
       provide: PaystackClientRegistry,
       inject: [AppConfigService],
@@ -65,6 +69,7 @@ import { TenantPayrollWalletController } from './tenant-payroll-wallet.controlle
     PlatformOperatingCostService,
     PlatformInvestorMetricsService,
     TenantPayrollWalletService,
+    PaystackFeeScheduleService,
   ],
 })
 export class BillingFeatureModule {}

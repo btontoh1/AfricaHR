@@ -176,6 +176,14 @@ model Subscription {
   /// known until then, since assigning a plan doesn't itself talk to Paystack.
   paystackCustomerCode String?            @map("paystack_customer_code")
 
+  /// Flat platform fee (in this subscription's own currency) ParotHR charges
+  /// on top of each individual payroll disbursement transaction, reserved
+  /// from the tenant's payroll wallet alongside the employee's net pay - see
+  /// Payslip.disbursementFeeAmount. Null/0 (the default) means no fee is
+  /// charged - this must be explicitly set per tenant by a platform admin,
+  /// since it wasn't part of every existing tenant's original pricing.
+  disbursementFeeAmount Decimal? @default(0) @map("disbursement_fee_amount")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   createdBy String?  @map("created_by")
@@ -1119,6 +1127,14 @@ model Payslip {
   paystackRecipientCode     String?                   @map("paystack_recipient_code")
   paystackTransferReference String?                   @unique @map("paystack_transfer_reference")
   disbursedAt               DateTime?                 @map("disbursed_at")
+  /// ParotHR's own flat per-transaction platform fee (Subscription.disbursementFeeAmount
+  /// at the time this transfer was attempted), reserved from the tenant's
+  /// payroll wallet alongside netPay but never itself sent to the employee -
+  /// the difference between what leaves the wallet and what Paystack actually
+  /// transfers is the platform's margin. Null until a transfer is actually
+  /// attempted (see PayRunService.disburse) - a payslip skipped before that
+  /// point (no payment method on file) was never charged one.
+  disbursementFeeAmount Decimal? @map("disbursement_fee_amount")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")

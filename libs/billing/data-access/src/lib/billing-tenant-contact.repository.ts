@@ -37,4 +37,20 @@ export class BillingTenantContactRepository {
     });
     return tenant?.currency ?? null;
   }
+
+  /**
+   * Passed through to Paystack as the checkout customer's name (see
+   * TenantPayrollWalletService.requestTopUp/InvoiceService's checkout
+   * calls) so a payment shows up on the Paystack dashboard identified by
+   * the paying organization, not just whichever admin's email happened to
+   * initiate it - the two aren't always obviously connected at a glance,
+   * especially across many tenants.
+   */
+  async findName(tenantId: string): Promise<string | null> {
+    const tenant = await this.prisma.tenant.findFirst({
+      where: { id: tenantId, deletedAt: null },
+      select: { name: true },
+    });
+    return tenant?.name ?? null;
+  }
 }

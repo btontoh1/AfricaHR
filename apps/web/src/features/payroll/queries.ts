@@ -129,6 +129,20 @@ export function usePayslip(tenantId: string, id: string) {
   });
 }
 
+/** Retries a single payslip's Paystack transfer after it failed (e.g. the employee's bank details were fixed) - see PayRunService.retryDisbursement. Only valid while the disbursement is FAILED or NOT_INITIATED. */
+export function useRetryDisbursement(tenantId: string, payRunId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payslipId: string) => {
+      const { error } = await apiClient.POST('/api/tenants/{tenantId}/payslips/{id}/retry-disbursement', {
+        params: { path: { tenantId, id: payslipId } },
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: payslipsKey(tenantId, payRunId) }),
+  });
+}
+
 export function useAddPayslipLineItem(tenantId: string, payslipId: string) {
   const queryClient = useQueryClient();
   return useMutation({

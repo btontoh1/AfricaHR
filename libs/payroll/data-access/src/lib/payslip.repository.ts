@@ -189,7 +189,12 @@ export class PayslipRepository {
   async recordDisbursementInitiated(
     tenantId: string,
     id: string,
-    input: { paystackRecipientCode: string; paystackTransferReference: string },
+    input: {
+      paystackRecipientCode: string;
+      paystackTransferReference: string;
+      /** ParotHR's platform fee actually charged for this transfer (see Payslip.disbursementFeeAmount's schema comment) - 0 when no fee is configured. */
+      disbursementFeeAmount: number;
+    },
   ): Promise<Payslip | null> {
     return this.prisma.withTenantContext(tenantId, async (tx) => {
       const { count } = await tx.payslip.updateMany({
@@ -204,6 +209,7 @@ export class PayslipRepository {
           disbursementStatus: PayslipDisbursementStatus.PENDING,
           paystackRecipientCode: input.paystackRecipientCode,
           paystackTransferReference: input.paystackTransferReference,
+          disbursementFeeAmount: input.disbursementFeeAmount,
         },
       });
       if (count === 0) {

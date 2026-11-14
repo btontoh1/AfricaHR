@@ -29,6 +29,7 @@ describe('TenantPayrollWalletService', () => {
     tenantContacts = {
       findAdminEmail: jest.fn(),
       findCurrency: jest.fn().mockResolvedValue('GHS'),
+      findName: jest.fn().mockResolvedValue('Acme Co'),
     } as unknown as jest.Mocked<BillingTenantContactRepository>;
     platformBilling = {
       findWalletTopUpByPaystackReference: jest.fn(),
@@ -57,7 +58,13 @@ describe('TenantPayrollWalletService', () => {
       const result = await service.requestTopUp('tenant-1', 'GHS', 500, 'hr-1');
 
       expect(paystack.initializeTransaction).toHaveBeenCalledWith(
-        expect.objectContaining({ email: 'admin@acme.com', amount: 500, currency: 'GHS' }),
+        expect.objectContaining({
+          email: 'admin@acme.com',
+          amount: 500,
+          currency: 'GHS',
+          firstName: 'Acme Co',
+          metadata: expect.objectContaining({ tenantName: 'Acme Co' }),
+        }),
       );
       expect(wallets.createTopUp).toHaveBeenCalledWith({
         tenantId: 'tenant-1',

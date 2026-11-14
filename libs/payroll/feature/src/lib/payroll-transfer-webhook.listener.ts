@@ -223,10 +223,12 @@ export class PayrollTransferWebhookListener {
 
     if (status === PayslipDisbursementStatus.FAILED) {
       // The transfer reference that reached this point was committed with
-      // a reservation already taken against the wallet (see
-      // PayRunService.disburse) - now that Paystack has definitively said
-      // it failed, that reservation is returned.
-      await this.wallet.refund(updated.tenantId, updated.currency, Number(updated.netPay));
+      // a reservation already taken against the wallet - netPay plus any
+      // platform fee, both persisted on this row at the same PENDING
+      // transition (see PayRunService.disburse) - now that Paystack has
+      // definitively said it failed, that whole reservation is returned.
+      const feeAmount = Number(updated.disbursementFeeAmount ?? 0);
+      await this.wallet.refund(updated.tenantId, updated.currency, Number(updated.netPay) + feeAmount);
       await this.notifyOfFailedDisbursement(updated);
     }
   }

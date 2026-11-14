@@ -19,6 +19,8 @@ import {
   PayRunRepository,
   PayrollEmployeeRepository,
   PayrollLeaveRequestRepository,
+  PayrollSubscriptionFee,
+  PayrollSubscriptionRepository,
   PayrollWalletRepository,
   PayslipRepository,
   PayslipWithLineItems,
@@ -143,6 +145,7 @@ export class PayRunService {
     private readonly eventEmitter: EventEmitter2,
     private readonly paystack: PaystackTransferClientRegistry,
     private readonly wallet: PayrollWalletRepository,
+    private readonly subscriptionFees: PayrollSubscriptionRepository,
     config: AppConfigService,
   ) {
     // Derived once at construction (Nest instantiates providers eagerly).
@@ -456,6 +459,16 @@ export class PayRunService {
 
     const payslips = await this.payslips.listByPayRun(tenantId, id);
     const totalsByCurrency = new Map<string, PayRunCurrencyTotals>();
+    // ParotHR's own flat per-transaction fee (see Subscription.disbursementFeeAmount) -
+    // resolved once per markPaid() call, not part of the payroll totals
+    // below (it's a platform charge, not a payroll expense of the tenant's
+    // own GL event), but reserved from the wallet alongside netPay so the
+    // tenant can't be marked PAID without covering it. Only applies to
+    // payslips in the subscription's own currency - a tenant only ever
+    // disburses in the one currency its subscription is billed in today,
+    // so this is a safety fallback, not an expected mismatch.
+    const subscriptionFee = await this.subscriptionFees.findDisbursementFee(tenantId);
+    const feeReserveByCurrency = new Map<string, number>();
     for (const payslip of payslips) {
       const running = totalsByCurrency.get(payslip.currency) ?? {
         currency: payslip.currency,
@@ -473,6 +486,13 @@ export class PayRunService {
         Number(payslip.benefitsEmployerCost);
       running.totalNetPay += Number(payslip.netPay);
       totalsByCurrency.set(payslip.currency, running);
+
+      if (Number(payslip.netPay) > 0 && subscriptionFee && payslip.currency === subscriptionFee.currency) {
+        feeReserveByCurrency.set(
+          payslip.currency,
+          (feeReserveByCurrency.get(payslip.currency) ?? 0) + subscriptionFee.disbursementFeeAmount,
+        );
+      }
     }
 
     // Reserves the full disbursement total, in every currency this run
@@ -480,13 +500,15 @@ export class PayRunService {
     // one currency gets a clear error and the pay run stays APPROVED,
     // rather than being marked PAID with transfers that then fail against
     // Paystack's real balance. See PayrollWalletRepository.reserveForDisbursement
-    // for why this is all-or-nothing across currencies.
+    // for why this is all-or-nothing across currencies. Includes the
+    // platform fee reserve computed above, alongside netPay, for the same
+    // all-or-nothing reasoning.
     try {
       await this.wallet.reserveForDisbursement(
         tenantId,
         [...totalsByCurrency.values()].map((totals) => ({
           currency: totals.currency,
-          amount: totals.totalNetPay,
+          amount: totals.totalNetPay + (feeReserveByCurrency.get(totals.currency) ?? 0),
         })),
       );
     } catch (error) {
@@ -526,7 +548,7 @@ export class PayRunService {
     };
     this.eventEmitter.emit(PAY_RUN_DISBURSED_EVENT, disbursedEvent);
 
-    await this.initiateDisbursements(tenantId, id);
+    await this.initiateDisbursements(tenantId, id, subscriptionFee);
 
     return updated;
   }
@@ -545,7 +567,11 @@ export class PayRunService {
    * webhook (or the reconciliation sweep) moves it to SUCCESS/FAILED later
    * (see PayrollTransferWebhookListener).
    */
-  private async initiateDisbursements(tenantId: string, payRunId: string): Promise<void> {
+  private async initiateDisbursements(
+    tenantId: string,
+    payRunId: string,
+    subscriptionFee: PayrollSubscriptionFee | null,
+  ): Promise<void> {
     const payslips = await this.payslips.listByPayRun(tenantId, payRunId);
 
     for (const payslip of payslips) {
@@ -553,8 +579,13 @@ export class PayRunService {
         continue;
       }
 
+      const feeAmount =
+        subscriptionFee && payslip.currency === subscriptionFee.currency
+          ? subscriptionFee.disbursementFeeAmount
+          : 0;
+
       try {
-        await this.disburse(tenantId, payslip);
+        await this.disburse(tenantId, payslip, feeAmount);
       } catch (error) {
         this.logger.error(
           `Failed to initiate Paystack transfer for payslip "${payslip.id}" (employee "${payslip.employeeId}")`,
@@ -564,7 +595,7 @@ export class PayRunService {
     }
   }
 
-  private async disburse(tenantId: string, payslip: PayslipWithLineItems): Promise<void> {
+  private async disburse(tenantId: string, payslip: PayslipWithLineItems, feeAmount: number): Promise<void> {
     const encryptedPaymentMethod = await this.employees.findPaymentMethodByEmployeeId(
       tenantId,
       payslip.employeeId,
@@ -572,10 +603,10 @@ export class PayRunService {
     const paymentMethod = this.decryptPaymentMethod(encryptedPaymentMethod);
     const accountNumber = resolveAccountNumber(paymentMethod);
     if (!paymentMethod || !paymentMethod.bankCode || !accountNumber) {
-      // markPaid() reserved this payslip's netPay against the wallet before
-      // ever reaching here - since this employee will never actually be
-      // sent a transfer, that reservation is returned.
-      await this.wallet.refund(tenantId, payslip.currency, Number(payslip.netPay));
+      // markPaid() reserved this payslip's netPay (plus any platform fee)
+      // against the wallet before ever reaching here - since this employee
+      // will never actually be sent a transfer, that reservation is returned.
+      await this.wallet.refund(tenantId, payslip.currency, Number(payslip.netPay) + feeAmount);
       return;
     }
 
@@ -584,13 +615,13 @@ export class PayRunService {
       this.logger.warn(
         `No Paystack transfer recipient type for country "${payslip.countryCode}" / method "${paymentMethod.type}" - skipping payslip "${payslip.id}"`,
       );
-      await this.wallet.refund(tenantId, payslip.currency, Number(payslip.netPay));
+      await this.wallet.refund(tenantId, payslip.currency, Number(payslip.netPay) + feeAmount);
       return;
     }
 
     const employee = await this.employees.findById(tenantId, payslip.employeeId);
     if (!employee) {
-      await this.wallet.refund(tenantId, payslip.currency, Number(payslip.netPay));
+      await this.wallet.refund(tenantId, payslip.currency, Number(payslip.netPay) + feeAmount);
       return;
     }
 
@@ -617,7 +648,7 @@ export class PayRunService {
           `Failed to create Paystack transfer recipient for payslip "${payslip.id}" (employee "${payslip.employeeId}")`,
           error as Error,
         );
-        await this.markDisbursementInitiationFailed(tenantId, payslip, employee);
+        await this.markDisbursementInitiationFailed(tenantId, payslip, employee, feeAmount);
         return;
       }
     }
@@ -643,6 +674,7 @@ export class PayRunService {
     const claimed = await this.payslips.recordDisbursementInitiated(tenantId, payslip.id, {
       paystackRecipientCode: recipientCode,
       paystackTransferReference: reference,
+      disbursementFeeAmount: feeAmount,
     });
     if (!claimed) {
       this.logger.warn(
@@ -689,13 +721,15 @@ export class PayRunService {
     tenantId: string,
     payslip: PayslipWithLineItems,
     employee: PayrollEligibleEmployee,
+    feeAmount: number,
   ): Promise<void> {
     await this.payslips.recordDisbursementResult(tenantId, payslip.id, PayslipDisbursementStatus.FAILED);
     // Reached before any transfer reference was ever committed, so the
-    // reservation markPaid()/retryDisbursement() made for this payslip is
-    // definitely never spent - return it now rather than waiting on a
-    // webhook that will never arrive for a transfer that was never sent.
-    await this.wallet.refund(tenantId, payslip.currency, Number(payslip.netPay));
+    // reservation markPaid()/retryDisbursement() made for this payslip
+    // (netPay plus any platform fee) is definitely never spent - return it
+    // now rather than waiting on a webhook that will never arrive for a
+    // transfer that was never sent.
+    await this.wallet.refund(tenantId, payslip.currency, Number(payslip.netPay) + feeAmount);
 
     const payRun = await this.payRuns.findById(tenantId, payslip.payRunId);
     if (!payRun) {
@@ -734,14 +768,23 @@ export class PayRunService {
       throw new ConflictException(`Cannot retry a disbursement for a pay run in status ${payRun.status}`);
     }
 
-    // Whatever took this payslip to FAILED/NOT_INITIATED already refunded
-    // its reservation (see disburse()'s skip branches,
+    // Re-resolved at the current rate, not whatever may have applied on the
+    // original attempt - a FAILED/NOT_INITIATED payslip was already
+    // refunded its fee (see disburse()'s skip branches,
     // markDisbursementInitiationFailed, and PayrollTransferWebhookListener's
-    // FAILED resolution) - re-reserve it here, same as markPaid(), before
+    // FAILED resolution), so nothing was ever actually charged for it yet.
+    const subscriptionFee = await this.subscriptionFees.findDisbursementFee(tenantId);
+    const feeAmount =
+      subscriptionFee && payslip.currency === subscriptionFee.currency
+        ? subscriptionFee.disbursementFeeAmount
+        : 0;
+
+    // Whatever took this payslip to FAILED/NOT_INITIATED already refunded
+    // its reservation - re-reserve it here, same as markPaid(), before
     // attempting the transfer again.
     try {
       await this.wallet.reserveForDisbursement(tenantId, [
-        { currency: payslip.currency, amount: Number(payslip.netPay) },
+        { currency: payslip.currency, amount: Number(payslip.netPay) + feeAmount },
       ]);
     } catch (error) {
       if (error instanceof InsufficientWalletBalanceError) {
@@ -753,7 +796,7 @@ export class PayRunService {
       throw error;
     }
 
-    await this.disburse(tenantId, payslip);
+    await this.disburse(tenantId, payslip, feeAmount);
 
     await this.audit.record({
       tenantId,

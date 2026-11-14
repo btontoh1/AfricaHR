@@ -63,6 +63,7 @@ export class BenefitEnrollmentCancelledNotificationListener {
           channel: 'IN_APP',
           subject,
           body,
+          linkPath: '/benefits/enrollments',
         });
       } catch (error) {
         this.logger.error(`Failed to notify user "${userId}" of enrollment cancellation`, error as Error);

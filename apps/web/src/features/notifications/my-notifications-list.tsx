@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Bell } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDeleteNotification, useMarkNotificationRead, useMyNotifications } from './queries';
@@ -70,7 +71,13 @@ export function MyNotificationsList({ tenantId }: { tenantId: string }) {
           {notifications.map((notification) => (
             <TableRow key={notification.id}>
               <TableCell>
-                <div className="font-medium">{notification.subject}</div>
+                {notification.linkPath ? (
+                  <Link href={notification.linkPath} className="font-medium text-primary hover:underline">
+                    {notification.subject}
+                  </Link>
+                ) : (
+                  <div className="font-medium">{notification.subject}</div>
+                )}
                 <div className="text-xs text-muted-foreground">{notification.body}</div>
               </TableCell>
               <TableCell className="text-muted-foreground">{notification.channel}</TableCell>

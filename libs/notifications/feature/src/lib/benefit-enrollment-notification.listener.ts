@@ -68,6 +68,7 @@ export class BenefitEnrollmentNotificationListener {
           channel: 'IN_APP',
           subject,
           body,
+          linkPath: '/benefits/enrollments',
         });
       } catch (error) {
         this.logger.error(`Failed to notify user "${userId}" of new benefit enrollment`, error as Error);

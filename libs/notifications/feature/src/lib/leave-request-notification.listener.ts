@@ -53,6 +53,11 @@ export class LeaveRequestNotificationListener {
 
     const subject = `New leave request from ${payload.employeeName}`;
     const body = `${payload.leaveTypeName}, ${payload.startDate} to ${payload.endDate}. Awaiting approval.`;
+    // No per-request detail page exists (only the team list), so this is
+    // the closest "place where the notification is about" - the approver
+    // finds this exact request near the top of that list, sorted newest
+    // first.
+    const linkPath = '/leave/requests/team';
 
     // Each recipient is notified independently - one failed dispatch
     // shouldn't stop the others from being notified, and none of this
@@ -66,6 +71,7 @@ export class LeaveRequestNotificationListener {
           channel: 'IN_APP',
           subject,
           body,
+          linkPath,
         });
       } catch (error) {
         this.logger.error(`Failed to notify user "${userId}" of new leave request`, error as Error);

@@ -50,6 +50,7 @@ export class LeaveRequestDecidedNotificationListener {
         channel: 'IN_APP',
         subject,
         body,
+        linkPath: '/leave/requests',
       });
     } catch (error) {
       this.logger.error(

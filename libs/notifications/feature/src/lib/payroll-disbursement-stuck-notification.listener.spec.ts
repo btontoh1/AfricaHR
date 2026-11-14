@@ -10,6 +10,7 @@ describe('PayrollDisbursementStuckNotificationListener', () => {
 
   const basePayload = {
     tenantId: 'tenant-1',
+    payRunId: 'run-1',
     employeeName: 'Kwame Asante',
     periodStart: '2026-01-01',
     periodEnd: '2026-01-31',
@@ -36,6 +37,7 @@ describe('PayrollDisbursementStuckNotificationListener', () => {
       channel: 'IN_APP',
       subject: 'Payment still pending for Kwame Asante',
       body: 'The Paystack transfer for the 2026-01-01 to 2026-01-31 pay run has been pending for over 24 hours and needs manual attention.',
+      linkPath: '/payroll/run-1',
     });
     expect(notifications.send).toHaveBeenCalledWith('tenant-1', expect.objectContaining({ userId: 'mgr-1' }));
   });

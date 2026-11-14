@@ -30,6 +30,7 @@ describe('LeaveRequestNotificationListener', () => {
       channel: 'IN_APP',
       subject: 'New leave request from Kwame Asante',
       body: 'Annual Leave, 2026-02-02 to 2026-02-06. Awaiting approval.',
+      linkPath: '/leave/requests/team',
     });
   });
 

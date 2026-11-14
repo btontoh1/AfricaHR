@@ -36,6 +36,7 @@ describe('BenefitEnrollmentCancelledNotificationListener', () => {
       channel: 'IN_APP',
       subject: 'Kwame Asante cancelled Private Health Insurance',
       body: 'Enrollment cancelled.',
+      linkPath: '/benefits/enrollments',
     });
   });
 

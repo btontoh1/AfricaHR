@@ -13,6 +13,11 @@ export class NotificationResponseDto {
   @ApiPropertyOptional({ nullable: true }) readAt?: string | null;
   @ApiPropertyOptional({ nullable: true }) sentAt?: string | null;
   @ApiPropertyOptional({ nullable: true }) failureReason?: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Relative in-app route to navigate to when this notification is clicked, e.g. "/leave/requests/team". Null when there is no sensible destination.',
+  })
+  linkPath?: string | null;
   @ApiProperty() createdAt!: string;
   @ApiProperty() updatedAt!: string;
 }

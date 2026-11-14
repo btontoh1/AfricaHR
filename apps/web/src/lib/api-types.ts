@@ -5188,6 +5188,8 @@ export interface components {
             readAt?: string | null;
             sentAt?: string | null;
             failureReason?: string | null;
+            /** @description Relative in-app route to navigate to when this notification is clicked, e.g. "/leave/requests/team". Null when there is no sensible destination. */
+            linkPath?: string | null;
             createdAt: string;
             updatedAt: string;
         };
@@ -5198,6 +5200,11 @@ export interface components {
             channel: "IN_APP" | "EMAIL";
             subject: string;
             body: string;
+            /**
+             * @description Relative in-app route the recipient lands on when they click this notification, e.g. "/leave/requests/team"
+             * @example /leave/requests/team
+             */
+            linkPath?: string;
         };
         SendFromTemplateDto: {
             /** @description The User (not Employee) who will receive this notification */

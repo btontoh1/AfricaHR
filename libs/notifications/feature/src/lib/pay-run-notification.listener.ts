@@ -70,6 +70,7 @@ export class PayRunNotificationListener {
           channel: 'IN_APP',
           subject,
           body,
+          linkPath: `/payroll/${payload.payRunId}`,
         });
       } catch (error) {
         this.logger.error(`Failed to notify user "${userId}" of processed pay run`, error as Error);

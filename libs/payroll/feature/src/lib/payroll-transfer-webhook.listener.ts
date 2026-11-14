@@ -54,6 +54,7 @@ export const PAYROLL_DISBURSEMENT_STUCK_EVENT = 'payroll.payslip.disbursement_st
 
 export interface PayrollDisbursementFailedEvent {
   tenantId: string;
+  payRunId: string;
   employeeName: string;
   periodStart: string;
   periodEnd: string;
@@ -63,10 +64,11 @@ export interface PayrollDisbursementFailedEvent {
 export function buildDisbursementFailedEvent(
   tenantId: string,
   employee: { firstName: string; lastName: string },
-  payRun: { periodStart: Date; periodEnd: Date },
+  payRun: { id: string; periodStart: Date; periodEnd: Date },
 ): PayrollDisbursementFailedEvent {
   return {
     tenantId,
+    payRunId: payRun.id,
     employeeName: `${employee.firstName} ${employee.lastName}`,
     periodStart: payRun.periodStart.toISOString().slice(0, 10),
     periodEnd: payRun.periodEnd.toISOString().slice(0, 10),

@@ -45,6 +45,7 @@ export class AttendanceRecordAdjustedNotificationListener {
         channel: 'IN_APP',
         subject,
         body,
+        linkPath: '/attendance/records',
       });
     } catch (error) {
       this.logger.error(

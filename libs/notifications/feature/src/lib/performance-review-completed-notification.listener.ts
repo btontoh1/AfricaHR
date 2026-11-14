@@ -36,6 +36,7 @@ export class PerformanceReviewCompletedNotificationListener {
         channel: 'IN_APP',
         subject: 'Your performance review is complete',
         body: `${payload.cycleName}. Your manager has submitted their assessment.`,
+        linkPath: '/performance/reviews',
       });
     } catch (error) {
       this.logger.error(

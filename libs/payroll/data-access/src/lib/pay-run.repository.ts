@@ -18,6 +18,7 @@ export interface UpdatePayRunStatusInput {
   /** The status this pay run must currently be in for the write to apply - see updateStatus's docstring. */
   fromStatus: PayRunStatus;
   status: PayRunStatus;
+  processedBy?: string;
   approvedAt?: Date;
   approvedBy?: string;
   paidAt?: Date;
@@ -81,6 +82,7 @@ export class PayRunRepository {
         where: { id, tenantId, status: input.fromStatus },
         data: {
           status: input.status,
+          processedBy: input.processedBy,
           approvedAt: input.approvedAt,
           approvedBy: input.approvedBy,
           paidAt: input.paidAt,

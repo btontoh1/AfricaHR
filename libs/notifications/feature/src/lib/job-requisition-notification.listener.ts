@@ -16,6 +16,7 @@ import { NotificationService } from './notification.service';
  */
 export interface RecruitmentRequisitionCreatedEventPayload {
   tenantId: string;
+  requisitionId: string;
   hiringManagerUserId: string | null;
   jobTitle: string;
   actorUserId: string | null;
@@ -57,6 +58,7 @@ export class JobRequisitionNotificationListener {
 
     const subject = `New job requisition: ${payload.jobTitle}`;
     const body = 'Ready for review.';
+    const linkPath = `/recruitment/requisitions/${payload.requisitionId}`;
 
     // Each recipient is notified independently - one failed dispatch
     // shouldn't stop the others from being notified, and none of this
@@ -70,6 +72,7 @@ export class JobRequisitionNotificationListener {
           channel: 'IN_APP',
           subject,
           body,
+          linkPath,
         });
       } catch (error) {
         this.logger.error(`Failed to notify user "${userId}" of new job requisition`, error as Error);

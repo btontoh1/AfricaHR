@@ -10,6 +10,7 @@ describe('JobRequisitionNotificationListener', () => {
 
   const basePayload = {
     tenantId: 'tenant-1',
+    requisitionId: 'req-1',
     hiringManagerUserId: 'mgr-user-1',
     jobTitle: 'Software Engineer',
     actorUserId: 'hr-1',
@@ -37,12 +38,14 @@ describe('JobRequisitionNotificationListener', () => {
       channel: 'IN_APP',
       subject: 'New job requisition: Software Engineer',
       body: 'Ready for review.',
+      linkPath: '/recruitment/requisitions/req-1',
     });
     expect(notifications.send).toHaveBeenCalledWith('tenant-1', {
       userId: 'admin-1',
       channel: 'IN_APP',
       subject: 'New job requisition: Software Engineer',
       body: 'Ready for review.',
+      linkPath: '/recruitment/requisitions/req-1',
     });
   });
 

@@ -10,6 +10,7 @@ describe('PayrollDisbursementFailedNotificationListener', () => {
 
   const basePayload = {
     tenantId: 'tenant-1',
+    payRunId: 'run-1',
     employeeName: 'Kwame Asante',
     periodStart: '2026-01-01',
     periodEnd: '2026-01-31',
@@ -36,6 +37,7 @@ describe('PayrollDisbursementFailedNotificationListener', () => {
       channel: 'IN_APP',
       subject: 'Payment failed for Kwame Asante',
       body: "Could not disburse pay for the 2026-01-01 to 2026-01-31 pay run via Paystack - check the employee's payment details and retry.",
+      linkPath: '/payroll/run-1',
     });
     expect(notifications.send).toHaveBeenCalledWith('tenant-1', expect.objectContaining({ userId: 'mgr-1' }));
   });

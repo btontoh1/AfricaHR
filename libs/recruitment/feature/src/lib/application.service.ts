@@ -43,6 +43,7 @@ export const RECRUITMENT_APPLICATION_CREATED_EVENT = 'recruitment.application.cr
 
 export interface RecruitmentApplicationCreatedEvent {
   tenantId: string;
+  applicationId: string;
   hiringManagerUserId: string | null;
   candidateName: string;
   jobTitle: string;
@@ -65,6 +66,7 @@ export const RECRUITMENT_APPLICATION_STAGE_CHANGED_EVENT = 'recruitment.applicat
 
 export interface RecruitmentApplicationStageChangedEvent {
   tenantId: string;
+  applicationId: string;
   hiringManagerUserId: string | null;
   candidateName: string;
   jobTitle: string;
@@ -86,6 +88,7 @@ export const RECRUITMENT_APPLICATION_OFFER_SENT_EVENT = 'recruitment.application
 
 export interface RecruitmentApplicationOfferSentEvent {
   tenantId: string;
+  applicationId: string;
   hiringManagerUserId: string | null;
   candidateName: string;
   jobTitle: string;
@@ -177,6 +180,7 @@ export class ApplicationService {
     const hiringManagerUserId = await this.resolveHiringManagerUserId(tenantId, application);
     const event: RecruitmentApplicationCreatedEvent = {
       tenantId,
+      applicationId: application.id,
       hiringManagerUserId,
       candidateName: `${application.candidate.firstName} ${application.candidate.lastName}`,
       jobTitle: application.requisition.title,
@@ -210,6 +214,7 @@ export class ApplicationService {
     const hiringManagerUserId = await this.resolveHiringManagerUserId(tenantId, application);
     const event: RecruitmentApplicationStageChangedEvent = {
       tenantId,
+      applicationId: application.id,
       hiringManagerUserId,
       candidateName: `${application.candidate.firstName} ${application.candidate.lastName}`,
       jobTitle: application.requisition.title,
@@ -228,6 +233,7 @@ export class ApplicationService {
     const hiringManagerUserId = await this.resolveHiringManagerUserId(tenantId, application);
     const event: RecruitmentApplicationOfferSentEvent = {
       tenantId,
+      applicationId: application.id,
       hiringManagerUserId,
       candidateName: `${application.candidate.firstName} ${application.candidate.lastName}`,
       jobTitle: application.requisition.title,

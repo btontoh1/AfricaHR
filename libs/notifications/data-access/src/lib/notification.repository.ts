@@ -8,6 +8,7 @@ export interface CreateNotificationInput {
   subject: string;
   body: string;
   status: NotificationStatus;
+  linkPath?: string | null;
   sentAt?: Date;
   createdBy?: string;
 }
@@ -40,6 +41,7 @@ export class NotificationRepository {
           subject: input.subject,
           body: input.body,
           status: input.status,
+          linkPath: input.linkPath,
           sentAt: input.sentAt,
           createdBy: input.createdBy,
           updatedBy: input.createdBy,

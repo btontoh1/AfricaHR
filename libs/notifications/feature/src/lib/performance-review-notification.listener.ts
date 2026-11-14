@@ -66,6 +66,7 @@ export class PerformanceReviewNotificationListener {
           channel: 'IN_APP',
           subject,
           body,
+          linkPath: '/performance/reviews/team',
         });
       } catch (error) {
         this.logger.error(`Failed to notify user "${userId}" of new self-assessment`, error as Error);

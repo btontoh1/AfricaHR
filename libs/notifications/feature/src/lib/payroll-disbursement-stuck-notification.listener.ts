@@ -17,6 +17,7 @@ import { NotificationService } from './notification.service';
  */
 export interface PayrollDisbursementStuckEventPayload {
   tenantId: string;
+  payRunId: string;
   employeeName: string;
   periodStart: string;
   periodEnd: string;
@@ -53,6 +54,7 @@ export class PayrollDisbursementStuckNotificationListener {
           channel: 'IN_APP',
           subject,
           body,
+          linkPath: `/payroll/${payload.payRunId}`,
         });
       } catch (error) {
         this.logger.error(`Failed to notify user "${userId}" of a stuck disbursement`, error as Error);

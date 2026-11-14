@@ -38,6 +38,7 @@ describe('BenefitEnrollmentNotificationListener', () => {
       channel: 'IN_APP',
       subject: 'Kwame Asante enrolled in Private Health Insurance',
       body: 'Effective 2026-03-01.',
+      linkPath: '/benefits/enrollments',
     });
   });
 

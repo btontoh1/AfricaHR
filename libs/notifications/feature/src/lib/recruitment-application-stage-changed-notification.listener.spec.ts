@@ -10,6 +10,7 @@ describe('RecruitmentApplicationStageChangedNotificationListener', () => {
 
   const basePayload = {
     tenantId: 'tenant-1',
+    applicationId: 'app-1',
     candidateName: 'Kwame Asante',
     jobTitle: 'Software Engineer',
     stage: 'HIRED',
@@ -30,6 +31,7 @@ describe('RecruitmentApplicationStageChangedNotificationListener', () => {
       channel: 'IN_APP',
       subject: "Kwame Asante's application moved to HIRED",
       body: 'Software Engineer.',
+      linkPath: '/recruitment/applications/app-1',
     });
   });
 

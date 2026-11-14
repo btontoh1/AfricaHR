@@ -39,6 +39,7 @@ describe('PayRunNotificationListener', () => {
       channel: 'IN_APP',
       subject: 'Pay run for 2026-01-01 to 2026-01-31 is ready for approval',
       body: '12 payslip(s) computed.',
+      linkPath: '/payroll/run-1',
     });
   });
 

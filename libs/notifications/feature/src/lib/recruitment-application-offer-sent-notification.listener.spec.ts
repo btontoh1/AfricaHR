@@ -10,6 +10,7 @@ describe('RecruitmentApplicationOfferSentNotificationListener', () => {
 
   const basePayload = {
     tenantId: 'tenant-1',
+    applicationId: 'app-1',
     candidateName: 'Kwame Asante',
     jobTitle: 'Software Engineer',
     offeredSalary: 3500,
@@ -31,6 +32,7 @@ describe('RecruitmentApplicationOfferSentNotificationListener', () => {
       channel: 'IN_APP',
       subject: 'An offer was sent to Kwame Asante',
       body: 'Software Engineer - starting 2026-08-01.',
+      linkPath: '/recruitment/applications/app-1',
     });
   });
 

@@ -24,6 +24,7 @@ describe('PerformanceReviewCompletedNotificationListener', () => {
       channel: 'IN_APP',
       subject: 'Your performance review is complete',
       body: 'Q1 2026 Review. Your manager has submitted their assessment.',
+      linkPath: '/performance/reviews',
     });
   });
 

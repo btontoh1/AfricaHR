@@ -10,6 +10,7 @@ describe('RecruitmentApplicationNotificationListener', () => {
 
   const basePayload = {
     tenantId: 'tenant-1',
+    applicationId: 'app-1',
     candidateName: 'Kwame Asante',
     jobTitle: 'Software Engineer',
     actorUserId: 'hr-1',
@@ -29,6 +30,7 @@ describe('RecruitmentApplicationNotificationListener', () => {
       channel: 'IN_APP',
       subject: 'New application from Kwame Asante',
       body: 'Applied for Software Engineer.',
+      linkPath: '/recruitment/applications/app-1',
     });
   });
 

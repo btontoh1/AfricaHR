@@ -29,6 +29,7 @@ describe('LeaveRequestDecidedNotificationListener', () => {
       channel: 'IN_APP',
       subject: 'Your Annual Leave request was approved',
       body: '2026-02-02 to 2026-02-06.',
+      linkPath: '/leave/requests',
     });
   });
 
@@ -44,6 +45,7 @@ describe('LeaveRequestDecidedNotificationListener', () => {
       channel: 'IN_APP',
       subject: 'Your Annual Leave request was rejected',
       body: '2026-02-02 to 2026-02-06. Insufficient coverage',
+      linkPath: '/leave/requests',
     });
   });
 

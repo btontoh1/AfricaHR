@@ -16,6 +16,7 @@ import { NotificationService } from './notification.service';
  */
 export interface RecruitmentApplicationOfferSentEventPayload {
   tenantId: string;
+  applicationId: string;
   hiringManagerUserId: string | null;
   candidateName: string;
   jobTitle: string;
@@ -58,6 +59,7 @@ export class RecruitmentApplicationOfferSentNotificationListener {
 
     const subject = `An offer was sent to ${payload.candidateName}`;
     const body = `${payload.jobTitle} - starting ${payload.offeredStartDate}.`;
+    const linkPath = `/recruitment/applications/${payload.applicationId}`;
 
     // Each recipient is notified independently - one failed dispatch
     // shouldn't stop the others from being notified, and none of this
@@ -71,6 +73,7 @@ export class RecruitmentApplicationOfferSentNotificationListener {
           channel: 'IN_APP',
           subject,
           body,
+          linkPath,
         });
       } catch (error) {
         this.logger.error(`Failed to notify user "${userId}" of offer sent`, error as Error);

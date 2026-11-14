@@ -1847,6 +1847,12 @@ model Notification {
   readAt        DateTime?           @map("read_at")
   sentAt        DateTime?           @map("sent_at")
   failureReason String?             @map("failure_reason")
+  /// Relative in-app route (e.g. "/leave/requests/team") the recipient
+  /// lands on when they click this notification - computed once at send
+  /// time by whichever listener built the notification, same
+  /// denormalization posture as subject/body. Null for a notification
+  /// with no sensible destination (e.g. a security heads-up).
+  linkPath      String?             @map("link_path")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")

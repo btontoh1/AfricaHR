@@ -26,7 +26,7 @@ export class NotificationService {
     dto: SendNotificationDto,
     actorId?: string,
   ): Promise<Notification> {
-    return this.dispatch(tenantId, dto.userId, dto.channel, dto.subject, dto.body, actorId);
+    return this.dispatch(tenantId, dto.userId, dto.channel, dto.subject, dto.body, dto.linkPath, actorId);
   }
 
   async sendFromTemplate(
@@ -46,7 +46,7 @@ export class NotificationService {
     const subject = renderTemplate(template.subjectTemplate, variables);
     const body = renderTemplate(template.bodyTemplate, variables);
 
-    return this.dispatch(tenantId, dto.userId, template.channel, subject, body, actorId);
+    return this.dispatch(tenantId, dto.userId, template.channel, subject, body, undefined, actorId);
   }
 
   async findById(tenantId: string, id: string): Promise<Notification> {
@@ -113,6 +113,7 @@ export class NotificationService {
     channel: NotificationChannel,
     subject: string,
     body: string,
+    linkPath: string | undefined,
     actorId?: string,
   ): Promise<Notification> {
     if (channel === 'IN_APP') {
@@ -122,6 +123,7 @@ export class NotificationService {
         subject,
         body,
         status: 'SENT',
+        linkPath,
         sentAt: new Date(),
         createdBy: actorId,
       });
@@ -149,6 +151,7 @@ export class NotificationService {
       subject,
       body,
       status: 'PENDING',
+      linkPath,
       createdBy: actorId,
     });
 

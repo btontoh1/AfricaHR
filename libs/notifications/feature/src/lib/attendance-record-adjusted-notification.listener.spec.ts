@@ -27,6 +27,7 @@ describe('AttendanceRecordAdjustedNotificationListener', () => {
       channel: 'IN_APP',
       subject: 'An attendance record was added for 2026-02-02',
       body: 'Clock in 2026-02-02T08:00:00.000Z · Clock out 2026-02-02T17:00:00.000Z',
+      linkPath: '/attendance/records',
     });
   });
 

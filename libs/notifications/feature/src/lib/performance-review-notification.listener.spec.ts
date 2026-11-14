@@ -28,6 +28,7 @@ describe('PerformanceReviewNotificationListener', () => {
       channel: 'IN_APP',
       subject: 'Kwame Asante submitted a self-assessment',
       body: 'Q1 2026 Review. Awaiting your review.',
+      linkPath: '/performance/reviews/team',
     });
   });
 

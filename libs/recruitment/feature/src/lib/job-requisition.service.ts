@@ -28,6 +28,7 @@ export const RECRUITMENT_REQUISITION_CREATED_EVENT = 'recruitment.requisition.cr
 
 export interface RecruitmentRequisitionCreatedEvent {
   tenantId: string;
+  requisitionId: string;
   hiringManagerUserId: string | null;
   jobTitle: string;
   actorUserId: string | null;
@@ -108,6 +109,7 @@ export class JobRequisitionService {
 
     const event: RecruitmentRequisitionCreatedEvent = {
       tenantId,
+      requisitionId: requisition.id,
       hiringManagerUserId,
       jobTitle: requisition.title,
       actorUserId: actorId ?? null,

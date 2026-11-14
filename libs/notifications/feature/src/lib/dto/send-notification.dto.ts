@@ -1,6 +1,6 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { NotificationChannel } from '@prisma/client';
-import { IsEnum, IsString, IsUUID, Length } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsUUID, Length } from 'class-validator';
 
 export class SendNotificationDto {
   @ApiProperty({ description: 'The User (not Employee) who will receive this notification' })
@@ -20,4 +20,13 @@ export class SendNotificationDto {
   @IsString()
   @Length(1, 5000)
   body!: string;
+
+  @ApiPropertyOptional({
+    description: 'Relative in-app route the recipient lands on when they click this notification, e.g. "/leave/requests/team"',
+    example: '/leave/requests/team',
+  })
+  @IsOptional()
+  @IsString()
+  @Length(1, 300)
+  linkPath?: string;
 }

@@ -6624,6 +6624,8 @@ export interface components {
             channel: "BANK_ACCOUNT" | "MOBILE_MONEY";
             feeAmount: number;
             updatedAt: string;
+            /** @description Active employees, across every tenant, currently paid through this currency and channel - 0 if none. */
+            employeeCount: number;
         };
         UpsertPaystackFeeRateDto: {
             /**

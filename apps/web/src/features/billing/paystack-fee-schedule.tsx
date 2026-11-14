@@ -59,7 +59,18 @@ export function PaystackFeeSchedule() {
                     <TableRow key={rate.id}>
                       <TableCell>{rate.currency}</TableCell>
                       <TableCell>{CHANNEL_LABELS[rate.channel] ?? rate.channel}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(rate.feeAmount, rate.currency)}</TableCell>
+                      <TableCell className="text-right">
+                        <div>
+                          {formatCurrency(rate.feeAmount, rate.currency)}
+                          <span className="text-muted-foreground"> / transfer</span>
+                        </div>
+                        {rate.employeeCount > 0 && (
+                          <div className="text-xs text-muted-foreground">
+                            × {rate.employeeCount} employee{rate.employeeCount === 1 ? '' : 's'} platform-wide ={' '}
+                            {formatCurrency(rate.feeAmount * rate.employeeCount, rate.currency)}
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">
                         {new Date(rate.updatedAt).toLocaleDateString()}
                       </TableCell>

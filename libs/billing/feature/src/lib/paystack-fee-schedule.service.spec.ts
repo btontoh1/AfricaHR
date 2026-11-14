@@ -10,7 +10,11 @@ describe('PaystackFeeScheduleService', () => {
   const actor = { sub: 'admin-1' } as RequestUser;
 
   beforeEach(() => {
-    rates = { list: jest.fn(), upsert: jest.fn() } as unknown as jest.Mocked<PaystackFeeScheduleRepository>;
+    rates = {
+      list: jest.fn(),
+      upsert: jest.fn(),
+      countEmployeesByCurrencyAndChannel: jest.fn().mockResolvedValue(new Map()),
+    } as unknown as jest.Mocked<PaystackFeeScheduleRepository>;
     audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<AuditService>;
     service = new PaystackFeeScheduleService(rates, audit);
   });
@@ -50,5 +54,34 @@ describe('PaystackFeeScheduleService', () => {
     await service.list();
 
     expect(rates.list).toHaveBeenCalled();
+  });
+
+  it("annotates each rate with its platform-wide employee count", async () => {
+    rates.list.mockResolvedValue([
+      {
+        id: 'rate-1',
+        currency: 'GHS',
+        channel: 'MOBILE_MONEY',
+        feeAmount: 1,
+        updatedAt: new Date(),
+        updatedBy: 'admin-1',
+      } as never,
+      {
+        id: 'rate-2',
+        currency: 'GHS',
+        channel: 'BANK_ACCOUNT',
+        feeAmount: 8,
+        updatedAt: new Date(),
+        updatedBy: 'admin-1',
+      } as never,
+    ]);
+    rates.countEmployeesByCurrencyAndChannel.mockResolvedValue(new Map([['GHS:MOBILE_MONEY', 312]]));
+
+    const result = await service.list();
+
+    expect(result).toEqual([
+      expect.objectContaining({ id: 'rate-1', employeeCount: 312 }),
+      expect.objectContaining({ id: 'rate-2', employeeCount: 0 }),
+    ]);
   });
 });

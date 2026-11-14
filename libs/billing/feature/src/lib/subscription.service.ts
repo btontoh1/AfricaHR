@@ -4,6 +4,7 @@ import { AuditService } from '@africahr/platform-audit';
 import { BillingEmployeeCountRepository, SubscriptionRepository } from '@africahr/billing-data-access';
 import { calculateInvoiceAmount, isExpiringSoon } from '@africahr/billing-domain';
 import { AssignSubscriptionDto } from './dto/assign-subscription.dto';
+import { SetDisbursementFeeDto } from './dto/set-disbursement-fee.dto';
 
 export interface SubscriptionWithUsage {
   subscription: Subscription;
@@ -73,6 +74,36 @@ export class SubscriptionService {
       ),
       isExpiringSoon: isExpiringSoon(subscription.currentPeriodEnd, new Date()),
     };
+  }
+
+  /**
+   * The one field on an already-assigned subscription a platform admin can
+   * change today - see UpdateSubscriptionInput's own comment for why this
+   * doesn't reuse assign() (that call is create-only, rejecting a tenant
+   * that already has a subscription).
+   */
+  async setDisbursementFee(
+    tenantId: string,
+    dto: SetDisbursementFeeDto,
+    actorId?: string,
+  ): Promise<Subscription> {
+    const subscription = await this.findOrThrow(tenantId);
+
+    const updated = await this.subscriptions.update(tenantId, subscription.id, {
+      disbursementFeeAmount: dto.disbursementFeeAmount,
+      updatedBy: actorId,
+    });
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'billing.subscription.disbursement_fee_set',
+      resourceType: 'Subscription',
+      resourceId: subscription.id,
+      metadata: { disbursementFeeAmount: dto.disbursementFeeAmount },
+    });
+
+    return updated;
   }
 
   async cancel(tenantId: string, actorId?: string): Promise<Subscription> {

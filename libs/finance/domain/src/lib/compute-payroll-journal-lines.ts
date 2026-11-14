@@ -19,6 +19,14 @@ export interface PayRunPayrollTotals {
   totalEmployerOnlyCost: number;
   /** Sum of netPay across every payslip - the actual cash paid out. */
   totalNetPay: number;
+  /** Sum of every payslip's disbursement fee (ParotHR's own margin plus
+   * Paystack's real transfer cost, see PayRunService.DisbursementFee) -
+   * also real cash leaving the same payroll wallet netPay is paid from, so
+   * it has to be booked too or this entry's credit to CASH_AND_BANK would
+   * understate the actual cash outflow. Defaults to 0 for a pay run with
+   * no disbursement fee configured, which reduces to the previous
+   * (pre-fee-feature) entry exactly. */
+  totalDisbursementFee?: number;
 }
 
 /**
@@ -26,7 +34,8 @@ export interface PayRunPayrollTotals {
  * entry:
  *
  *   Dr Payroll Expense       = totalGrossPay + totalEmployerOnlyCost
- *   Cr Cash and Bank         = totalNetPay
+ *   Dr Platform Fees Expense = totalDisbursementFee
+ *   Cr Cash and Bank         = totalNetPay + totalDisbursementFee
  *   Cr Payroll Liabilities   = everything else (PAYE, SSNIT, benefits,
  *                              ad-hoc deductions, employer-only statutory
  *                              costs) owed to a third party rather than
@@ -35,21 +44,29 @@ export interface PayRunPayrollTotals {
  * This balances for every country/combination payslip-calculator.ts
  * supports, by construction: netPay = grossPay - totalDeductions (every
  * employee-side withholding), and the liabilities line is defined as
- * exactly the remainder (totalExpense - totalNetPay), which algebraically
- * always equals totalDeductions + totalEmployerOnlyCost - see this
- * function's spec for the worked proof. There is no scenario where this
- * entry's debits and credits can drift apart.
+ * exactly the remainder (totalPayrollExpense - totalNetPay), which
+ * algebraically always equals totalDeductions + totalEmployerOnlyCost -
+ * see this function's spec for the worked proof. The fee line is a second,
+ * independently-balanced pair (Dr Platform Fees Expense = Cr Cash, both
+ * totalDisbursementFee) bolted onto that same entry, so it can never
+ * unbalance it. There is no scenario where this entry's debits and
+ * credits can drift apart.
  */
 export function computePayrollJournalLines(totals: PayRunPayrollTotals): JournalLineAmount[] {
-  const totalExpense = roundCurrency(totals.totalGrossPay + totals.totalEmployerOnlyCost);
+  const totalPayrollExpense = roundCurrency(totals.totalGrossPay + totals.totalEmployerOnlyCost);
   const totalNetPay = roundCurrency(totals.totalNetPay);
-  const totalLiabilities = roundCurrency(totalExpense - totalNetPay);
+  const totalLiabilities = roundCurrency(totalPayrollExpense - totalNetPay);
+  const totalDisbursementFee = roundCurrency(totals.totalDisbursementFee ?? 0);
+  const totalCash = roundCurrency(totalNetPay + totalDisbursementFee);
 
   const lines: JournalLineAmount[] = [
-    { accountCode: GlAccountCode.PAYROLL_EXPENSE, debit: totalExpense, credit: 0 },
+    { accountCode: GlAccountCode.PAYROLL_EXPENSE, debit: totalPayrollExpense, credit: 0 },
   ];
-  if (totalNetPay > 0) {
-    lines.push({ accountCode: GlAccountCode.CASH_AND_BANK, debit: 0, credit: totalNetPay });
+  if (totalDisbursementFee > 0) {
+    lines.push({ accountCode: GlAccountCode.PLATFORM_FEES_EXPENSE, debit: totalDisbursementFee, credit: 0 });
+  }
+  if (totalCash > 0) {
+    lines.push({ accountCode: GlAccountCode.CASH_AND_BANK, debit: 0, credit: totalCash });
   }
   if (totalLiabilities > 0) {
     lines.push({

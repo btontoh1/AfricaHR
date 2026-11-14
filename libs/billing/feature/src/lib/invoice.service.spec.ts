@@ -37,6 +37,7 @@ describe('InvoiceService', () => {
     currentPeriodEnd: new Date('2026-09-01'),
     cancelAtPeriodEnd: false,
     paystackCustomerCode: null,
+    disbursementFeeAmount: new Prisma.Decimal(0),
     createdAt: new Date(),
     updatedAt: new Date(),
     createdBy: null,
@@ -78,7 +79,10 @@ describe('InvoiceService', () => {
     } as unknown as jest.Mocked<SubscriptionRepository>;
 
     employeeCounts = { countActive: jest.fn() } as unknown as jest.Mocked<BillingEmployeeCountRepository>;
-    tenantContacts = { findAdminEmail: jest.fn() } as unknown as jest.Mocked<BillingTenantContactRepository>;
+    tenantContacts = {
+      findAdminEmail: jest.fn(),
+      findName: jest.fn().mockResolvedValue('Acme Co'),
+    } as unknown as jest.Mocked<BillingTenantContactRepository>;
     platformBilling = {
       findInvoiceByPaystackReference: jest.fn(),
     } as unknown as jest.Mocked<PlatformBillingRepository>;
@@ -125,7 +129,7 @@ describe('InvoiceService', () => {
 
       expect(result).toBe(baseInvoice);
       expect(paystack.initializeTransaction).toHaveBeenCalledWith(
-        expect.objectContaining({ email: 'admin@acme.com', amount: 200, currency: 'GHS' }),
+        expect.objectContaining({ email: 'admin@acme.com', amount: 200, currency: 'GHS', firstName: 'Acme Co' }),
       );
       expect(invoices.create).toHaveBeenCalledWith(
         expect.objectContaining({ tenantId: 'tenant-1', amount: 200, employeeCountAtIssue: 20 }),

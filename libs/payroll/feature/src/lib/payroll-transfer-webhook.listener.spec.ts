@@ -117,6 +117,21 @@ describe('PayrollTransferWebhookListener', () => {
     );
   });
 
+  it('refunds netPay plus the platform fee that was locked in on the payslip', async () => {
+    disbursements.findPayslipByPaystackTransferReference.mockResolvedValue({
+      id: 'payslip-1',
+      tenantId: 'tenant-1',
+      disbursementStatus: 'PENDING',
+    });
+    payslips.recordDisbursementResult.mockResolvedValue(
+      makeUpdatedPayslip({ disbursementFeeAmount: new Prisma.Decimal(1) }),
+    );
+
+    await listener.handleTransferUpdated({ reference: 'ref-123', status: 'failed' });
+
+    expect(wallet.refund).toHaveBeenCalledWith('tenant-1', 'GHS', 857);
+  });
+
   it('does not notify when the pay run or employee can no longer be found', async () => {
     disbursements.findPayslipByPaystackTransferReference.mockResolvedValue({
       id: 'payslip-1',

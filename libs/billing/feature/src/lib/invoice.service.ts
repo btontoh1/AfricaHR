@@ -92,6 +92,7 @@ export class InvoiceService {
     if (!adminEmail) {
       throw new BadRequestException(`Tenant "${tenantId}" has no active tenant admin to bill`);
     }
+    const tenantName = await this.tenantContacts.findName(tenantId);
 
     const reference = randomUUID();
     const checkout = await this.paystack.forCurrency(subscription.currency).initializeTransaction({
@@ -99,7 +100,9 @@ export class InvoiceService {
       amount,
       currency: subscription.currency,
       reference,
-      metadata: { tenantId, subscriptionId: subscription.id },
+      metadata: { tenantId, tenantName, subscriptionId: subscription.id },
+      firstName: tenantName ?? undefined,
+      lastName: 'Subscription Invoice',
     });
 
     const invoice = await this.invoices.create({

@@ -74,4 +74,40 @@ describe('computePayrollJournalLines', () => {
       expect(sumDebits(lines)).toBeCloseTo(sumCredits(lines), 2);
     }
   });
+
+  it('books the disbursement fee as its own expense and adds it to the cash credit, so cash matches what the wallet was actually debited', () => {
+    const totals: PayRunPayrollTotals = {
+      totalGrossPay: 1000,
+      totalEmployerOnlyCost: 130,
+      totalNetPay: 856,
+      totalDisbursementFee: 9,
+    };
+    const lines = computePayrollJournalLines(totals);
+    expect(sumDebits(lines)).toBeCloseTo(sumCredits(lines), 2);
+    expect(lines).toEqual(
+      expect.arrayContaining([
+        { accountCode: GlAccountCode.PLATFORM_FEES_EXPENSE, debit: 9, credit: 0 },
+        { accountCode: GlAccountCode.CASH_AND_BANK, debit: 0, credit: 865 },
+      ]),
+    );
+  });
+
+  it('omits the platform fee expense line entirely when no fee was charged', () => {
+    const totals: PayRunPayrollTotals = {
+      totalGrossPay: 1000,
+      totalEmployerOnlyCost: 130,
+      totalNetPay: 856,
+      totalDisbursementFee: 0,
+    };
+    const lines = computePayrollJournalLines(totals);
+    expect(lines.find((l) => l.accountCode === GlAccountCode.PLATFORM_FEES_EXPENSE)).toBeUndefined();
+    expect(lines.find((l) => l.accountCode === GlAccountCode.CASH_AND_BANK)?.credit).toBe(856);
+  });
+
+  it('treats a missing totalDisbursementFee the same as zero, for callers that predate the fee feature', () => {
+    const totals: PayRunPayrollTotals = { totalGrossPay: 1000, totalEmployerOnlyCost: 130, totalNetPay: 856 };
+    const lines = computePayrollJournalLines(totals);
+    expect(lines.find((l) => l.accountCode === GlAccountCode.PLATFORM_FEES_EXPENSE)).toBeUndefined();
+    expect(lines.find((l) => l.accountCode === GlAccountCode.CASH_AND_BANK)?.credit).toBe(856);
+  });
 });

@@ -71,6 +71,7 @@ export class TenantPayrollWalletService {
 
     const adminEmail = await this.tenantContacts.findAdminEmail(tenantId);
     const email = adminEmail ?? `tenant-${tenantId}@parothr.local`;
+    const tenantName = await this.tenantContacts.findName(tenantId);
 
     const reference = randomUUID();
     const checkout = await this.paystack.forCurrency(currency).initializeTransaction({
@@ -78,7 +79,9 @@ export class TenantPayrollWalletService {
       amount,
       currency,
       reference,
-      metadata: { tenantId, purpose: 'payroll_wallet_topup' },
+      metadata: { tenantId, tenantName, purpose: 'payroll_wallet_topup' },
+      firstName: tenantName ?? undefined,
+      lastName: 'Payroll Wallet Top-Up',
     });
 
     const topUp = await this.wallets.createTopUp({

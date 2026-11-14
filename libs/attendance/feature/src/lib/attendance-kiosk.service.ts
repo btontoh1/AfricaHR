@@ -1,10 +1,13 @@
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import * as argon2 from 'argon2';
+import { Prisma } from '@prisma/client';
 import { AttendanceEmployeeRepository, AttendanceRecordRepository } from '@africahr/attendance-data-access';
 import { AppConfigService, deriveEncryptionKey, hashPinForLookup } from '@africahr/platform-core';
 import { AttendanceRecordService } from './attendance-record.service';
 import { KioskEmployeeResponseDto } from './dto/kiosk-employee-response.dto';
 import { KioskClockResponseDto } from './dto/kiosk-clock-response.dto';
+
+const DUPLICATE_PIN_MESSAGE = 'This PIN is already used by another employee - choose a different one.';
 
 /**
  * Drives the shared physical kiosk device: listing employees for the
@@ -38,11 +41,24 @@ export class AttendanceKioskService {
     const clockInPinLookupHash = hashPinForLookup(pin, this.pinLookupKey);
     const taken = await this.employees.isPinLookupHashTaken(tenantId, clockInPinLookupHash, employeeId);
     if (taken) {
-      throw new BadRequestException('This PIN is already used by another employee - choose a different one.');
+      throw new BadRequestException(DUPLICATE_PIN_MESSAGE);
     }
 
     const clockInPinHash = await argon2.hash(pin);
-    await this.employees.setClockInPinHash(tenantId, employeeId, clockInPinHash, clockInPinLookupHash);
+    try {
+      await this.employees.setClockInPinHash(tenantId, employeeId, clockInPinHash, clockInPinLookupHash);
+    } catch (error) {
+      // The check above is a fast, friendly pre-check, not the real guard -
+      // two concurrent setPin calls for different employees can both pass
+      // it before either write commits. The database's partial unique
+      // index (see migration 20261114100000_unique_active_kiosk_pin_per_tenant)
+      // is what actually prevents the race; a P2002 here means this write
+      // lost it.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new BadRequestException(DUPLICATE_PIN_MESSAGE);
+      }
+      throw error;
+    }
   }
 
   /**

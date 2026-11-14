@@ -19,6 +19,7 @@ export interface UpdateSubscriptionInput {
   currentPeriodEnd?: Date;
   cancelAtPeriodEnd?: boolean;
   paystackCustomerCode?: string;
+  disbursementFeeAmount?: number;
   updatedBy?: string;
 }
 

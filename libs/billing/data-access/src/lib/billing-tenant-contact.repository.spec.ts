@@ -53,4 +53,24 @@ describe('BillingTenantContactRepository', () => {
       await expect(repository.findCurrency('tenant-1')).resolves.toBeNull();
     });
   });
+
+  describe('findName', () => {
+    it("returns the tenant's name", async () => {
+      prisma.tenant.findFirst.mockResolvedValue({ name: 'Acme Co' });
+
+      const result = await repository.findName('tenant-1');
+
+      expect(result).toBe('Acme Co');
+      expect(prisma.tenant.findFirst).toHaveBeenCalledWith({
+        where: { id: 'tenant-1', deletedAt: null },
+        select: { name: true },
+      });
+    });
+
+    it('returns null when the tenant does not exist', async () => {
+      prisma.tenant.findFirst.mockResolvedValue(null);
+
+      await expect(repository.findName('tenant-1')).resolves.toBeNull();
+    });
+  });
 });

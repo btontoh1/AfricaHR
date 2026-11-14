@@ -9,6 +9,16 @@ export interface InitializeTransactionInput {
   currency: string;
   reference: string;
   metadata?: Record<string, unknown>;
+  /**
+   * Shown as the transaction's "Customer" name on the Paystack dashboard
+   * (Paystack attaches these to the customer record it creates/matches by
+   * email) - without this, the dashboard falls back to showing the raw
+   * email, or for mobile money, whatever name the telco returns for that
+   * phone number, neither of which identifies which tenant/organization
+   * the payment actually came from.
+   */
+  firstName?: string;
+  lastName?: string;
 }
 
 export interface InitializeTransactionResult {
@@ -49,7 +59,7 @@ export class LogPaystackClient extends PaystackClient {
     input: InitializeTransactionInput,
   ): Promise<InitializeTransactionResult> {
     this.logger.log(
-      `[PLACEHOLDER PAYSTACK CHECKOUT — no real provider configured] email=${input.email} amount=${input.amount} ${input.currency} reference=${input.reference}`,
+      `[PLACEHOLDER PAYSTACK CHECKOUT — no real provider configured] email=${input.email} name=${[input.firstName, input.lastName].filter(Boolean).join(' ') || '(none)'} amount=${input.amount} ${input.currency} reference=${input.reference}`,
     );
     return {
       authorizationUrl: `https://paystack.com/placeholder-checkout/${input.reference}`,
@@ -107,6 +117,8 @@ export class RealPaystackClient extends PaystackClient {
         currency: input.currency,
         reference: input.reference,
         metadata: input.metadata,
+        first_name: input.firstName,
+        last_name: input.lastName,
       }),
     });
 

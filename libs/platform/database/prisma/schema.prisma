@@ -176,6 +176,17 @@ model Subscription {
   /// known until then, since assigning a plan doesn't itself talk to Paystack.
   paystackCustomerCode String?            @map("paystack_customer_code")
 
+  /// ParotHR's own flat margin (in this subscription's own currency) charged
+  /// on top of each individual payroll disbursement transaction, in
+  /// addition to passing through Paystack's real per-channel transfer cost
+  /// (see PaystackTransferFeeRate) - together these make up
+  /// Payslip.disbursementFeeAmount, reserved from the tenant's payroll
+  /// wallet alongside the employee's net pay. Null/0 (the default) means no
+  /// margin is charged - this must be explicitly set per tenant by a
+  /// platform admin, since it wasn't part of every existing tenant's
+  /// original pricing.
+  disbursementFeeAmount Decimal? @default(0) @map("disbursement_fee_amount")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   createdBy String?  @map("created_by")
@@ -185,6 +196,31 @@ model Subscription {
   invoices Invoice[]
 
   @@map("subscriptions")
+}
+
+/// Paystack's own real transfer fee by currency + payout channel (e.g. GHS
+/// mobile money vs. GHS bank transfer each cost a different flat amount) -
+/// platform-wide, not per-tenant: it's simply what Paystack actually
+/// charges, the same for every tenant disbursing in that currency/channel.
+/// Platform-admin editable (see PlatformPaystackFeeController) so it can be
+/// kept in sync with Paystack's own pricing without a deploy. Read by
+/// PayRunService.disburse via payroll-data-access's own direct read of
+/// this table (scope:payroll cannot import billing-data-access - Nx module
+/// boundary), the same cross-bounded-context pattern as
+/// PayrollWalletRepository reading "tenant_payroll_wallets". A currency/
+/// channel combination with no row here simply means no real cost is
+/// passed through (treated as 0), not an error.
+model PaystackTransferFeeRate {
+  id        String            @id @default(uuid())
+  currency  String
+  channel   PaymentMethodType
+  feeAmount Decimal           @map("fee_amount")
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedBy String?  @map("updated_by")
+
+  @@unique([currency, channel])
+  @@map("paystack_transfer_fee_rates")
 }
 
 enum InvoiceStatus {
@@ -812,7 +848,11 @@ model Employee {
   @@index([organizationId])
   @@index([organizationUnitId])
   @@index([managerId])
-  @@index([tenantId, clockInPinLookupHash])
+  // No @@index/@@unique here for clockInPinLookupHash - the real
+  // constraint is a partial UNIQUE index scoped to active employees only
+  // (deletedAt IS NULL AND employmentStatus != TERMINATED), which Prisma's
+  // schema language can't express; see migration
+  // 20261114100000_unique_active_kiosk_pin_per_tenant.
   @@map("employees")
 }
 
@@ -1119,6 +1159,20 @@ model Payslip {
   paystackRecipientCode     String?                   @map("paystack_recipient_code")
   paystackTransferReference String?                   @unique @map("paystack_transfer_reference")
   disbursedAt               DateTime?                 @map("disbursed_at")
+  /// Total platform fee actually charged for this transfer (Paystack's real
+  /// per-channel cost plus ParotHR's own margin, at the rates in effect
+  /// when this transfer was attempted), reserved from the tenant's payroll
+  /// wallet alongside netPay but never itself sent to the employee. Null
+  /// until a transfer is actually attempted (see PayRunService.disburse) -
+  /// a payslip skipped before that point (no payment method on file) was
+  /// never charged one.
+  disbursementFeeAmount Decimal? @map("disbursement_fee_amount")
+  /// The Paystack-real-cost portion of disbursementFeeAmount above, broken
+  /// out so the UI can show "Paystack fee + ParotHR fee = total" rather
+  /// than one opaque number. ParotHR's own margin is the remainder
+  /// (disbursementFeeAmount - paystackFeeAmount). Null under the same
+  /// condition as disbursementFeeAmount.
+  paystackFeeAmount Decimal? @map("paystack_fee_amount")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")

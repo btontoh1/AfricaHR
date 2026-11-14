@@ -11,14 +11,18 @@ import {
 import { AppConfigService, decryptAesGcm, deriveEncryptionKey } from '@africahr/platform-core';
 import { AuditService } from '@africahr/platform-audit';
 import {
+  buildPaystackFeeRateKey,
   InsufficientWalletBalanceError,
   PayrollAttendanceRecordRepository,
   PayrollBenefitEnrollmentRepository,
   PayrollEligibleEmployee,
   PayrollEmployeePaymentMethod,
+  PayrollPaystackFeeRepository,
   PayRunRepository,
   PayrollEmployeeRepository,
   PayrollLeaveRequestRepository,
+  PayrollSubscriptionFee,
+  PayrollSubscriptionRepository,
   PayrollWalletRepository,
   PayslipRepository,
   PayslipWithLineItems,
@@ -107,6 +111,32 @@ export interface PayRunCurrencyTotals {
    * comments for why each of these is never deducted from the employee. */
   totalEmployerOnlyCost: number;
   totalNetPay: number;
+  /** Sum of every payslip's disbursement fee (margin + Paystack real cost,
+   * see DisbursementFee below) in this currency group - the wallet is
+   * debited totalNetPay + totalDisbursementFee, so finance-feature's GL
+   * posting listener needs this to book the fee against cash too, not just
+   * netPay (see PayrollGlPostingListener). */
+  totalDisbursementFee: number;
+}
+
+/**
+ * What a single payslip is actually charged to disburse: Paystack's own
+ * real transfer cost (paystackPortion, looked up from PaystackTransferFeeRate
+ * by currency+channel) plus ParotHR's own margin on top (total - paystackPortion
+ * - see Subscription.disbursementFeeAmount's schema comment). Both halves are
+ * persisted on the payslip (disbursementFeeAmount/paystackFeeAmount) so the
+ * UI can show the breakdown; only `total` is ever reserved/refunded against
+ * the wallet.
+ */
+export interface DisbursementFee {
+  total: number;
+  paystackPortion: number;
+}
+
+/** What disburse() needs for one payslip: the fee already resolved for it, and the SAME payment-method row that fee was costed against, read once in markPaid()'s/retryDisbursement()'s loop and threaded straight through - never re-read later, so the channel disburse() sends over can never silently diverge from the channel the fee was priced for. */
+export interface DisbursementInput {
+  fee: DisbursementFee;
+  paymentMethod: PayrollEmployeePaymentMethod | null;
 }
 
 export interface PayRunDisbursedEvent {
@@ -143,6 +173,8 @@ export class PayRunService {
     private readonly eventEmitter: EventEmitter2,
     private readonly paystack: PaystackTransferClientRegistry,
     private readonly wallet: PayrollWalletRepository,
+    private readonly subscriptionFees: PayrollSubscriptionRepository,
+    private readonly paystackFees: PayrollPaystackFeeRepository,
     config: AppConfigService,
   ) {
     // Derived once at construction (Nest instantiates providers eagerly).
@@ -456,12 +488,24 @@ export class PayRunService {
 
     const payslips = await this.payslips.listByPayRun(tenantId, id);
     const totalsByCurrency = new Map<string, PayRunCurrencyTotals>();
+    // The platform fee this pay run owes: Paystack's own real transfer cost
+    // (by currency+channel, see PaystackTransferFeeRate) plus ParotHR's own
+    // margin on top (see Subscription.disbursementFeeAmount) - resolved
+    // once per markPaid() call, reserved from the wallet alongside netPay
+    // so the tenant can't be marked PAID without covering it, and rolled
+    // into totalDisbursementFee per currency so the GL posting this run
+    // triggers books the same total the wallet is actually debited (see
+    // PayRunCurrencyTotals's own doc comment).
+    const subscriptionFee = await this.subscriptionFees.findDisbursementFee(tenantId);
+    const paystackRates = await this.paystackFees.findRatesByKey();
+    const disbursementInputByPayslipId = new Map<string, DisbursementInput>();
     for (const payslip of payslips) {
       const running = totalsByCurrency.get(payslip.currency) ?? {
         currency: payslip.currency,
         totalGrossPay: 0,
         totalEmployerOnlyCost: 0,
         totalNetPay: 0,
+        totalDisbursementFee: 0,
       };
       running.totalGrossPay += Number(payslip.grossPay);
       running.totalEmployerOnlyCost +=
@@ -472,6 +516,19 @@ export class PayRunService {
         Number(payslip.nigeriaNhisEmployer) +
         Number(payslip.benefitsEmployerCost);
       running.totalNetPay += Number(payslip.netPay);
+
+      if (Number(payslip.netPay) > 0) {
+        // Read once, here, and nowhere else for this payslip - the same
+        // row is threaded straight through to disburse() below instead of
+        // being re-fetched, so the channel the fee was costed against can
+        // never silently diverge from the channel the transfer actually
+        // goes out on (see DisbursementInput's own doc comment).
+        const paymentMethod = await this.employees.findPaymentMethodByEmployeeId(tenantId, payslip.employeeId);
+        const margin = this.marginFor(payslip, subscriptionFee);
+        const fee = this.computeDisbursementFee(payslip, margin, paymentMethod, paystackRates);
+        disbursementInputByPayslipId.set(payslip.id, { fee, paymentMethod });
+        running.totalDisbursementFee += fee.total;
+      }
       totalsByCurrency.set(payslip.currency, running);
     }
 
@@ -480,13 +537,15 @@ export class PayRunService {
     // one currency gets a clear error and the pay run stays APPROVED,
     // rather than being marked PAID with transfers that then fail against
     // Paystack's real balance. See PayrollWalletRepository.reserveForDisbursement
-    // for why this is all-or-nothing across currencies.
+    // for why this is all-or-nothing across currencies. Includes
+    // totalDisbursementFee, alongside netPay, for the same all-or-nothing
+    // reasoning.
     try {
       await this.wallet.reserveForDisbursement(
         tenantId,
         [...totalsByCurrency.values()].map((totals) => ({
           currency: totals.currency,
-          amount: totals.totalNetPay,
+          amount: totals.totalNetPay + totals.totalDisbursementFee,
         })),
       );
     } catch (error) {
@@ -526,7 +585,7 @@ export class PayRunService {
     };
     this.eventEmitter.emit(PAY_RUN_DISBURSED_EVENT, disbursedEvent);
 
-    await this.initiateDisbursements(tenantId, id);
+    await this.initiateDisbursements(tenantId, payslips, disbursementInputByPayslipId);
 
     return updated;
   }
@@ -545,16 +604,20 @@ export class PayRunService {
    * webhook (or the reconciliation sweep) moves it to SUCCESS/FAILED later
    * (see PayrollTransferWebhookListener).
    */
-  private async initiateDisbursements(tenantId: string, payRunId: string): Promise<void> {
-    const payslips = await this.payslips.listByPayRun(tenantId, payRunId);
-
+  private async initiateDisbursements(
+    tenantId: string,
+    payslips: PayslipWithLineItems[],
+    disbursementInputByPayslipId: Map<string, DisbursementInput>,
+  ): Promise<void> {
     for (const payslip of payslips) {
       if (Number(payslip.netPay) <= 0) {
         continue;
       }
 
+      const input = disbursementInputByPayslipId.get(payslip.id) ?? { fee: { total: 0, paystackPortion: 0 }, paymentMethod: null };
+
       try {
-        await this.disburse(tenantId, payslip);
+        await this.disburse(tenantId, payslip, input.fee, input.paymentMethod);
       } catch (error) {
         this.logger.error(
           `Failed to initiate Paystack transfer for payslip "${payslip.id}" (employee "${payslip.employeeId}")`,
@@ -564,18 +627,46 @@ export class PayRunService {
     }
   }
 
-  private async disburse(tenantId: string, payslip: PayslipWithLineItems): Promise<void> {
-    const encryptedPaymentMethod = await this.employees.findPaymentMethodByEmployeeId(
-      tenantId,
-      payslip.employeeId,
-    );
+  /** The per-tenant margin for a payslip's currency (see Subscription.disbursementFeeAmount's schema comment) - 0 when the subscription is billed in a different currency than this payslip, or when there's no subscription fee configured at all. */
+  private marginFor(payslip: { currency: string }, subscriptionFee: PayrollSubscriptionFee | null): number {
+    return subscriptionFee?.currency === payslip.currency ? subscriptionFee.disbursementFeeAmount : 0;
+  }
+
+  /**
+   * Combines the margin with Paystack's own real transfer cost, which is
+   * channel-dependent (bank transfer vs mobile money - see
+   * PaystackTransferFeeRate) and read from `paymentMethod.type` - the
+   * SAME row the caller already fetched and will pass on to disburse(),
+   * never re-read here. No payment method on file means disburse() will
+   * refund and skip this payslip anyway, so the real-cost portion is
+   * simply 0 - margin is still charged so the reservation/refund amounts
+   * always agree with what disburse() refunds for the same payslip.
+   */
+  private computeDisbursementFee(
+    payslip: PayslipWithLineItems,
+    margin: number,
+    paymentMethod: PayrollEmployeePaymentMethod | null,
+    paystackRates: Map<string, number>,
+  ): DisbursementFee {
+    const paystackPortion = paymentMethod
+      ? paystackRates.get(buildPaystackFeeRateKey(payslip.currency, paymentMethod.type)) ?? 0
+      : 0;
+    return { total: margin + paystackPortion, paystackPortion };
+  }
+
+  private async disburse(
+    tenantId: string,
+    payslip: PayslipWithLineItems,
+    fee: DisbursementFee,
+    encryptedPaymentMethod: PayrollEmployeePaymentMethod | null,
+  ): Promise<void> {
     const paymentMethod = this.decryptPaymentMethod(encryptedPaymentMethod);
     const accountNumber = resolveAccountNumber(paymentMethod);
     if (!paymentMethod || !paymentMethod.bankCode || !accountNumber) {
-      // markPaid() reserved this payslip's netPay against the wallet before
-      // ever reaching here - since this employee will never actually be
-      // sent a transfer, that reservation is returned.
-      await this.wallet.refund(tenantId, payslip.currency, Number(payslip.netPay));
+      // markPaid() reserved this payslip's netPay (plus any platform fee)
+      // against the wallet before ever reaching here - since this employee
+      // will never actually be sent a transfer, that reservation is returned.
+      await this.wallet.refund(tenantId, payslip.currency, Number(payslip.netPay) + fee.total);
       return;
     }
 
@@ -584,13 +675,13 @@ export class PayRunService {
       this.logger.warn(
         `No Paystack transfer recipient type for country "${payslip.countryCode}" / method "${paymentMethod.type}" - skipping payslip "${payslip.id}"`,
       );
-      await this.wallet.refund(tenantId, payslip.currency, Number(payslip.netPay));
+      await this.wallet.refund(tenantId, payslip.currency, Number(payslip.netPay) + fee.total);
       return;
     }
 
     const employee = await this.employees.findById(tenantId, payslip.employeeId);
     if (!employee) {
-      await this.wallet.refund(tenantId, payslip.currency, Number(payslip.netPay));
+      await this.wallet.refund(tenantId, payslip.currency, Number(payslip.netPay) + fee.total);
       return;
     }
 
@@ -617,7 +708,7 @@ export class PayRunService {
           `Failed to create Paystack transfer recipient for payslip "${payslip.id}" (employee "${payslip.employeeId}")`,
           error as Error,
         );
-        await this.markDisbursementInitiationFailed(tenantId, payslip, employee);
+        await this.markDisbursementInitiationFailed(tenantId, payslip, employee, fee);
         return;
       }
     }
@@ -643,11 +734,19 @@ export class PayRunService {
     const claimed = await this.payslips.recordDisbursementInitiated(tenantId, payslip.id, {
       paystackRecipientCode: recipientCode,
       paystackTransferReference: reference,
+      disbursementFeeAmount: fee.total,
+      paystackFeeAmount: fee.paystackPortion,
     });
     if (!claimed) {
       this.logger.warn(
         `Payslip "${payslip.id}" (employee "${payslip.employeeId}") disbursement was already claimed by a concurrent request - skipping to avoid a duplicate transfer`,
       );
+      // This call's own markPaid()/retryDisbursement() already reserved
+      // netPay + fee.total before ever reaching here - the winning call's
+      // reservation is what actually pays for the transfer, so this one
+      // (the loser) must be returned now rather than left stuck in the
+      // tenant's wallet with nothing to spend it on.
+      await this.wallet.refund(tenantId, payslip.currency, Number(payslip.netPay) + fee.total);
       return;
     }
 
@@ -689,13 +788,15 @@ export class PayRunService {
     tenantId: string,
     payslip: PayslipWithLineItems,
     employee: PayrollEligibleEmployee,
+    fee: DisbursementFee,
   ): Promise<void> {
     await this.payslips.recordDisbursementResult(tenantId, payslip.id, PayslipDisbursementStatus.FAILED);
     // Reached before any transfer reference was ever committed, so the
-    // reservation markPaid()/retryDisbursement() made for this payslip is
-    // definitely never spent - return it now rather than waiting on a
-    // webhook that will never arrive for a transfer that was never sent.
-    await this.wallet.refund(tenantId, payslip.currency, Number(payslip.netPay));
+    // reservation markPaid()/retryDisbursement() made for this payslip
+    // (netPay plus any platform fee) is definitely never spent - return it
+    // now rather than waiting on a webhook that will never arrive for a
+    // transfer that was never sent.
+    await this.wallet.refund(tenantId, payslip.currency, Number(payslip.netPay) + fee.total);
 
     const payRun = await this.payRuns.findById(tenantId, payslip.payRunId);
     if (!payRun) {
@@ -728,20 +829,40 @@ export class PayRunService {
         `Cannot retry a disbursement in status ${payslip.disbursementStatus} - it must be FAILED or NOT_INITIATED`,
       );
     }
+    if (Number(payslip.netPay) <= 0) {
+      // Mirrors initiateDisbursements' own skip for netPay <= 0 - markPaid()
+      // never charges a fee or attempts a transfer for one of these, so a
+      // payslip like this sits at NOT_INITIATED forever and must stay that
+      // way rather than being charged a fee here that was never reserved.
+      throw new ConflictException(`Cannot retry a disbursement for payslip "${payslipId}" - it has no net pay`);
+    }
 
     const payRun = await this.findById(tenantId, payslip.payRunId);
     if (payRun.status !== PrismaPayRunStatus.PAID) {
       throw new ConflictException(`Cannot retry a disbursement for a pay run in status ${payRun.status}`);
     }
 
+    // Re-resolved at the current rates and the employee's current payment
+    // method, not whatever may have applied on the original attempt - a
+    // FAILED/NOT_INITIATED payslip was already refunded its fee (see
+    // disburse()'s skip branches, markDisbursementInitiationFailed, and
+    // PayrollTransferWebhookListener's FAILED resolution), so nothing was
+    // ever actually charged for it yet. Fetched once, here, and threaded
+    // straight through to disburse() below - same single-read discipline
+    // as markPaid(), so the fee can never be costed against a different
+    // channel than the one the transfer actually uses.
+    const subscriptionFee = await this.subscriptionFees.findDisbursementFee(tenantId);
+    const paystackRates = await this.paystackFees.findRatesByKey();
+    const paymentMethod = await this.employees.findPaymentMethodByEmployeeId(tenantId, payslip.employeeId);
+    const margin = this.marginFor(payslip, subscriptionFee);
+    const fee = this.computeDisbursementFee(payslip, margin, paymentMethod, paystackRates);
+
     // Whatever took this payslip to FAILED/NOT_INITIATED already refunded
-    // its reservation (see disburse()'s skip branches,
-    // markDisbursementInitiationFailed, and PayrollTransferWebhookListener's
-    // FAILED resolution) - re-reserve it here, same as markPaid(), before
+    // its reservation - re-reserve it here, same as markPaid(), before
     // attempting the transfer again.
     try {
       await this.wallet.reserveForDisbursement(tenantId, [
-        { currency: payslip.currency, amount: Number(payslip.netPay) },
+        { currency: payslip.currency, amount: Number(payslip.netPay) + fee.total },
       ]);
     } catch (error) {
       if (error instanceof InsufficientWalletBalanceError) {
@@ -753,7 +874,7 @@ export class PayRunService {
       throw error;
     }
 
-    await this.disburse(tenantId, payslip);
+    await this.disburse(tenantId, payslip, fee, paymentMethod);
 
     await this.audit.record({
       tenantId,

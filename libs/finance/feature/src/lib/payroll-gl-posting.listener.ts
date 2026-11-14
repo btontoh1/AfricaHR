@@ -18,6 +18,7 @@ export interface PayRunCurrencyTotalsPayload {
   totalGrossPay: number;
   totalEmployerOnlyCost: number;
   totalNetPay: number;
+  totalDisbursementFee: number;
 }
 
 export interface PayRunDisbursedEventPayload {
@@ -57,6 +58,7 @@ export class PayrollGlPostingListener {
             totalGrossPay: group.totalGrossPay,
             totalEmployerOnlyCost: group.totalEmployerOnlyCost,
             totalNetPay: group.totalNetPay,
+            totalDisbursementFee: group.totalDisbursementFee,
           },
         });
       } catch (error) {

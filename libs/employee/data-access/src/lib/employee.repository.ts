@@ -220,7 +220,7 @@ export class EmployeeRepository {
     );
   }
 
-  /** Mirrors AttendanceEmployeeRepository.isPinLookupHashTaken - see that one for why. */
+  /** Mirrors AttendanceEmployeeRepository.isPinLookupHashTaken - see that one for why, including the "active" definition matching the partial unique index backing this check. */
   async isPinLookupHashTaken(
     tenantId: string,
     clockInPinLookupHash: string,
@@ -228,7 +228,13 @@ export class EmployeeRepository {
   ): Promise<boolean> {
     const match = await this.prisma.withTenantContext(tenantId, (tx) =>
       tx.employee.findFirst({
-        where: { tenantId, clockInPinLookupHash, deletedAt: null, id: { not: excludeEmployeeId } },
+        where: {
+          tenantId,
+          clockInPinLookupHash,
+          deletedAt: null,
+          employmentStatus: { not: 'TERMINATED' },
+          id: { not: excludeEmployeeId },
+        },
         select: { id: true },
       }),
     );

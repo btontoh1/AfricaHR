@@ -8,6 +8,7 @@ import { PlatformBillingRepository } from './platform-billing.repository';
 import { PlatformOperatingCostRepository } from './platform-operating-cost.repository';
 import { PlatformFinancialInputRepository } from './platform-financial-input.repository';
 import { TenantPayrollWalletRepository } from './tenant-payroll-wallet.repository';
+import { PaystackFeeScheduleRepository } from './paystack-fee-schedule.repository';
 
 @Module({
   imports: [PrismaModule],
@@ -20,6 +21,7 @@ import { TenantPayrollWalletRepository } from './tenant-payroll-wallet.repositor
     PlatformOperatingCostRepository,
     PlatformFinancialInputRepository,
     TenantPayrollWalletRepository,
+    PaystackFeeScheduleRepository,
   ],
   exports: [
     SubscriptionRepository,
@@ -30,6 +32,7 @@ import { TenantPayrollWalletRepository } from './tenant-payroll-wallet.repositor
     PlatformOperatingCostRepository,
     PlatformFinancialInputRepository,
     TenantPayrollWalletRepository,
+    PaystackFeeScheduleRepository,
   ],
 })
 export class BillingDataAccessModule {}

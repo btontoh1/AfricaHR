@@ -2,7 +2,13 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
-import type { AssignSubscriptionInput, SetFinancialInputInput, SetOperatingCostInput } from './types';
+import type {
+  AssignSubscriptionInput,
+  SetDisbursementFeeInput,
+  SetFinancialInputInput,
+  SetOperatingCostInput,
+  UpsertPaystackFeeRateInput,
+} from './types';
 
 function subscriptionKey(tenantId: string) {
   return ['billing', tenantId, 'subscription'] as const;
@@ -41,6 +47,23 @@ export function useAssignSubscription(tenantId: string) {
   return useMutation({
     mutationFn: async (input: AssignSubscriptionInput) => {
       const { data, error } = await apiClient.POST('/api/tenants/{tenantId}/subscription', {
+        params: { path: { tenantId } },
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: subscriptionKey(tenantId) });
+    },
+  });
+}
+
+export function useSetDisbursementFee(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: SetDisbursementFeeInput) => {
+      const { data, error } = await apiClient.PATCH('/api/tenants/{tenantId}/subscription/disbursement-fee', {
         params: { path: { tenantId } },
         body: input,
       });
@@ -252,6 +275,38 @@ export function useSetCashBalance() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cashBalancesKey() });
       queryClient.invalidateQueries({ queryKey: platformSaasMetricsKey() });
+    },
+  });
+}
+
+function paystackFeeRatesKey() {
+  return ['platform-paystack-fee-rates'] as const;
+}
+
+/** Platform-wide schedule of Paystack's own real transfer cost by currency+channel - see PaystackTransferFeeRate's schema comment. */
+export function usePaystackFeeRates() {
+  return useQuery({
+    queryKey: paystackFeeRatesKey(),
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/platform-admin/paystack-fees');
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useUpsertPaystackFeeRate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UpsertPaystackFeeRateInput) => {
+      const { data, error } = await apiClient.PUT('/api/platform-admin/paystack-fees', {
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: paystackFeeRatesKey() });
     },
   });
 }

@@ -10,6 +10,11 @@ export class SubscriptionResponseDto {
   @ApiProperty() currentPeriodStart!: Date;
   @ApiProperty() currentPeriodEnd!: Date;
   @ApiProperty() cancelAtPeriodEnd!: boolean;
+  @ApiProperty({
+    description:
+      "ParotHR's own flat margin charged per payroll disbursement transaction, on top of Paystack's real transfer cost - 0 means none is charged",
+  })
+  disbursementFeeAmount!: number;
 }
 
 export class SubscriptionSummaryResponseDto {

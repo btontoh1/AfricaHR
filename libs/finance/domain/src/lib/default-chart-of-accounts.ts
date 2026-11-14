@@ -44,6 +44,14 @@ export const GlAccountCode = {
   // account already gets).
   ACCUMULATED_DEPRECIATION: '1550',
   DEPRECIATION_EXPENSE: '5200',
+  // What ParotHR itself charges per payroll disbursement (Paystack's own
+  // real transfer cost plus ParotHR's own margin - see
+  // Subscription.disbursementFeeAmount's schema comment) - a real cash
+  // outflow from the same payroll wallet netPay is paid from, so it's
+  // booked as its own expense rather than folded into PAYROLL_EXPENSE
+  // (which is specifically the cost of employing people, not a platform
+  // service fee). See computePayrollJournalLines.
+  PLATFORM_FEES_EXPENSE: '5300',
   // Only ever credited for an EMPLOYEE-paid Expense, at creation - the
   // company owes that employee the amount until markExpenseReimbursed
   // debits it back down. Not used for anything vendor-related; VendorBill
@@ -86,6 +94,7 @@ export const DEFAULT_CHART_OF_ACCOUNTS: readonly DefaultGlAccount[] = [
   { code: GlAccountCode.FIXED_ASSETS, name: 'Fixed Assets', type: 'ASSET' },
   { code: GlAccountCode.ACCUMULATED_DEPRECIATION, name: 'Accumulated Depreciation', type: 'ASSET' },
   { code: GlAccountCode.DEPRECIATION_EXPENSE, name: 'Depreciation Expense', type: 'EXPENSE' },
+  { code: GlAccountCode.PLATFORM_FEES_EXPENSE, name: 'Platform Fees Expense', type: 'EXPENSE' },
   { code: GlAccountCode.EXPENSE_REIMBURSEMENTS_PAYABLE, name: 'Expense Reimbursements Payable', type: 'LIABILITY' },
 ];
 

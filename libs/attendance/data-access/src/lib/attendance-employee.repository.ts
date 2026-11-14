@@ -95,7 +95,13 @@ export class AttendanceEmployeeRepository {
    * this PIN (via its deterministic lookup fingerprint, not the salted
    * verification hash - see hashPinForLookup). excludeEmployeeId lets
    * re-saving an employee's own unchanged PIN not flag itself as a
-   * duplicate.
+   * duplicate. "Active" here (deletedAt null AND employmentStatus not
+   * TERMINATED) matches the partial unique index backing this check at the
+   * database level (see migration 20261114100000_unique_active_kiosk_pin_per_tenant)
+   * - a terminated employee's old PIN must not block it from ever being
+   * reassigned. This pre-check gives a fast, friendly error in the common
+   * case; the unique index is what actually prevents the race if two
+   * writes for different employees land at the same time.
    */
   async isPinLookupHashTaken(
     tenantId: string,
@@ -104,7 +110,13 @@ export class AttendanceEmployeeRepository {
   ): Promise<boolean> {
     const match = await this.prisma.withTenantContext(tenantId, (tx) =>
       tx.employee.findFirst({
-        where: { tenantId, clockInPinLookupHash, deletedAt: null, id: { not: excludeEmployeeId } },
+        where: {
+          tenantId,
+          clockInPinLookupHash,
+          deletedAt: null,
+          employmentStatus: { not: 'TERMINATED' },
+          id: { not: excludeEmployeeId },
+        },
         select: { id: true },
       }),
     );

@@ -19,8 +19,8 @@ describe('PayrollGlPostingListener', () => {
       periodStart: '2026-01-01',
       periodEnd: '2026-01-31',
       byCurrency: [
-        { currency: 'GHS', totalGrossPay: 1000, totalEmployerOnlyCost: 130, totalNetPay: 850 },
-        { currency: 'NGN', totalGrossPay: 40000, totalEmployerOnlyCost: 5000, totalNetPay: 33000 },
+        { currency: 'GHS', totalGrossPay: 1000, totalEmployerOnlyCost: 130, totalNetPay: 850, totalDisbursementFee: 9 },
+        { currency: 'NGN', totalGrossPay: 40000, totalEmployerOnlyCost: 5000, totalNetPay: 33000, totalDisbursementFee: 0 },
       ],
     });
 
@@ -32,7 +32,7 @@ describe('PayrollGlPostingListener', () => {
       periodStart: new Date('2026-01-01'),
       periodEnd: new Date('2026-01-31'),
       currency: 'GHS',
-      totals: { totalGrossPay: 1000, totalEmployerOnlyCost: 130, totalNetPay: 850 },
+      totals: { totalGrossPay: 1000, totalEmployerOnlyCost: 130, totalNetPay: 850, totalDisbursementFee: 9 },
     });
     expect(finance.postPayrollDisbursement).toHaveBeenCalledWith('tenant-1', {
       organizationId: 'org-1',
@@ -41,7 +41,7 @@ describe('PayrollGlPostingListener', () => {
       periodStart: new Date('2026-01-01'),
       periodEnd: new Date('2026-01-31'),
       currency: 'NGN',
-      totals: { totalGrossPay: 40000, totalEmployerOnlyCost: 5000, totalNetPay: 33000 },
+      totals: { totalGrossPay: 40000, totalEmployerOnlyCost: 5000, totalNetPay: 33000, totalDisbursementFee: 0 },
     });
   });
 
@@ -56,8 +56,8 @@ describe('PayrollGlPostingListener', () => {
       periodStart: '2026-01-01',
       periodEnd: '2026-01-31',
       byCurrency: [
-        { currency: 'GHS', totalGrossPay: 1000, totalEmployerOnlyCost: 130, totalNetPay: 850 },
-        { currency: 'NGN', totalGrossPay: 40000, totalEmployerOnlyCost: 5000, totalNetPay: 33000 },
+        { currency: 'GHS', totalGrossPay: 1000, totalEmployerOnlyCost: 130, totalNetPay: 850, totalDisbursementFee: 0 },
+        { currency: 'NGN', totalGrossPay: 40000, totalEmployerOnlyCost: 5000, totalNetPay: 33000, totalDisbursementFee: 0 },
       ],
     });
 

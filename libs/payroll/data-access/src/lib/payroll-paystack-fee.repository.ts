@@ -2,9 +2,17 @@ import { Injectable } from '@nestjs/common';
 import { PaymentMethodType } from '@prisma/client';
 import { PrismaService } from '@africahr/platform-database';
 
-/** Key format shared by both sides of the lookup - see buildPaystackFeeRateKey. */
+/**
+ * Key format shared by both sides of the lookup - see buildPaystackFeeRateKey.
+ * Uppercases currency defensively on both the storage side (findRatesByKey
+ * below) and the lookup side (PayRunService.resolveDisbursementFee) - the
+ * admin-facing upsert DTO already normalizes to uppercase before it's ever
+ * persisted, but normalizing again here means a mismatch can never silently
+ * resolve to "no Paystack real cost" just because the two sides disagreed
+ * on case.
+ */
 export function buildPaystackFeeRateKey(currency: string, channel: PaymentMethodType): string {
-  return `${currency}:${channel}`;
+  return `${currency.toUpperCase()}:${channel}`;
 }
 
 /**

@@ -1,6 +1,7 @@
 import { randomInt } from 'node:crypto';
 import { HttpException, Injectable } from '@nestjs/common';
 import * as argon2 from 'argon2';
+import { Prisma } from '@prisma/client';
 import { parse } from 'csv-parse/sync';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
@@ -151,10 +152,7 @@ export class EmployeeBulkImportService {
         result.created += 1;
 
         if (assignKioskPins) {
-          const pin = await this.generateUniquePin(tenantId, employee.id);
-          const clockInPinHash = await argon2.hash(pin);
-          const clockInPinLookupHash = hashPinForLookup(pin, this.pinLookupKey);
-          await this.employeeRepository.setClockInPinHash(tenantId, employee.id, clockInPinHash, clockInPinLookupHash);
+          const pin = await this.assignUniquePin(tenantId, employee.id);
           kioskPins.push({
             employeeId: employee.id,
             employeeNumber: employee.employeeNumber,
@@ -181,14 +179,32 @@ export class EmployeeBulkImportService {
    * at 6 generated digits (1,000,000 possible values) this essentially
    * never retries more than once even for a multi-thousand-employee batch,
    * but it's a hard guarantee either way, not just a low-probability hope.
+   *
+   * isPinLookupHashTaken is a fast pre-check, not the real guard - this
+   * import runs its rows sequentially, but a *different* request (a kiosk
+   * PIN reset via AttendanceKioskService.setPin) could still claim the same
+   * PIN between the check and this write. The database's partial unique
+   * index (see migration 20261114100000_unique_active_kiosk_pin_per_tenant)
+   * is what actually prevents that race; a P2002 here means this attempt
+   * lost it, so the loop simply generates a fresh PIN and tries again.
    */
-  private async generateUniquePin(tenantId: string, employeeId: string): Promise<string> {
+  private async assignUniquePin(tenantId: string, employeeId: string): Promise<string> {
     for (let attempt = 0; attempt < MAX_PIN_GENERATION_ATTEMPTS; attempt++) {
       const pin = generateKioskPin();
       const lookupHash = hashPinForLookup(pin, this.pinLookupKey);
       const taken = await this.employeeRepository.isPinLookupHashTaken(tenantId, lookupHash, employeeId);
-      if (!taken) {
+      if (taken) {
+        continue;
+      }
+      const clockInPinHash = await argon2.hash(pin);
+      try {
+        await this.employeeRepository.setClockInPinHash(tenantId, employeeId, clockInPinHash, lookupHash);
         return pin;
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+          continue;
+        }
+        throw error;
       }
     }
     throw new Error('Could not generate a unique kiosk PIN after several attempts');

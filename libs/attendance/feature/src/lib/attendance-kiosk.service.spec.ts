@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import * as argon2 from 'argon2';
-import { AttendanceRecord } from '@prisma/client';
+import { AttendanceRecord, Prisma } from '@prisma/client';
 import { AttendanceEmployeeRepository, AttendanceRecordRepository } from '@africahr/attendance-data-access';
 import { AppConfigService } from '@africahr/platform-core';
 import { AttendanceKioskService } from './attendance-kiosk.service';
@@ -93,6 +93,23 @@ describe('AttendanceKioskService', () => {
 
       await expect(service.setPin('tenant-1', 'emp-1', '4821')).rejects.toThrow(BadRequestException);
       expect(employees.setClockInPinHash).not.toHaveBeenCalled();
+    });
+
+    it('translates a lost race against the database unique index into the same friendly error', async () => {
+      // isPinLookupHashTaken's pre-check can pass for two concurrent
+      // setPin calls before either write commits - the database's partial
+      // unique index is what actually catches it, surfaced here as P2002.
+      employees.setClockInPinHash.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('unique violation', { code: 'P2002', clientVersion: '6.0.0' }),
+      );
+
+      await expect(service.setPin('tenant-1', 'emp-1', '4821')).rejects.toThrow(BadRequestException);
+    });
+
+    it('does not swallow an unrelated write error', async () => {
+      employees.setClockInPinHash.mockRejectedValue(new Error('DB blip'));
+
+      await expect(service.setPin('tenant-1', 'emp-1', '4821')).rejects.toThrow('DB blip');
     });
   });
 

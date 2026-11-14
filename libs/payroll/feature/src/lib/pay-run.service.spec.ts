@@ -1187,6 +1187,10 @@ describe('PayRunService', () => {
       await service.markPaid('tenant-1', 'run-1', 'mgr-1');
 
       expect(paystack.initiateTransfer).not.toHaveBeenCalled();
+      // The loser of the race already reserved netPay from the wallet in
+      // markPaid()'s own reservation before ever reaching disburse() - that
+      // money is never spent (no transfer sent), so it must come back.
+      expect(wallet.refund).toHaveBeenCalledWith('tenant-1', 'GHS', 856);
     });
 
     it('reserves the total net pay per currency against the wallet before disbursing', async () => {
@@ -1390,6 +1394,40 @@ describe('PayRunService', () => {
         'payslip-1',
         expect.objectContaining({ disbursementFeeAmount: 9, paystackFeeAmount: 8 }),
       );
+      // Exactly one read of the payment method for this whole markPaid()
+      // call - fee resolution (the totals loop) and disbursement
+      // (initiateDisbursements -> disburse) share the same read instead of
+      // each fetching their own, so the fee charged can never be costed
+      // against a different channel than the one the transfer actually
+      // uses.
+      expect(employees.findPaymentMethodByEmployeeId).toHaveBeenCalledTimes(1);
+    });
+
+    it("includes the total disbursement fee in the GL-posting event, alongside the payroll totals", async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PAID' }));
+      payslips.listByPayRun.mockResolvedValue([
+        makePayslip({ currency: 'GHS', netPay: new Prisma.Decimal(856) }),
+      ]);
+      subscriptionFees.findDisbursementFee.mockResolvedValue({ currency: 'GHS', disbursementFeeAmount: 1 });
+      paystackFees.findRatesByKey.mockResolvedValue(new Map([['GHS:BANK_ACCOUNT', 8]]));
+      employees.findPaymentMethodByEmployeeId.mockResolvedValue({
+        type: 'BANK_ACCOUNT',
+        bankCode: encrypt('040'),
+        accountNumber: encrypt('1234567890'),
+        accountName: encrypt('Kwame Asante'),
+        mobileMoneyNumber: null,
+        paystackRecipientCode: null,
+      });
+
+      await service.markPaid('tenant-1', 'run-1', 'mgr-1');
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        'payroll.pay_run.disbursed',
+        expect.objectContaining({
+          byCurrency: [expect.objectContaining({ currency: 'GHS', totalDisbursementFee: 9 })],
+        }),
+      );
     });
 
     it('refunds netPay plus the fee when an employee has no usable payment method', async () => {
@@ -1473,6 +1511,65 @@ describe('PayRunService', () => {
       );
 
       expect(paystack.createRecipient).not.toHaveBeenCalled();
+    });
+
+    it('rejects retrying a payslip with no net pay rather than charging it a fee', async () => {
+      payslips.findById.mockResolvedValue(
+        makePayslip({ disbursementStatus: 'NOT_INITIATED', currency: 'GHS', netPay: new Prisma.Decimal(0) }),
+      );
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'PAID' }));
+
+      await expect(service.retryDisbursement('tenant-1', 'payslip-1', 'mgr-1')).rejects.toThrow(
+        ConflictException,
+      );
+
+      expect(wallet.reserveForDisbursement).not.toHaveBeenCalled();
+      expect(paystack.createRecipient).not.toHaveBeenCalled();
+    });
+
+    it("disburses using the exact payment method the fee was costed against, not a fresh read", async () => {
+      // Regression test: resolveDisbursementFee and disburse() used to each
+      // independently call findPaymentMethodByEmployeeId - if the employee's
+      // channel changed in between, the fee charged wouldn't match the
+      // channel the transfer actually used. Now there is exactly one read.
+      payslips.findById.mockResolvedValue(
+        makePayslip({ disbursementStatus: 'FAILED', currency: 'GHS', netPay: new Prisma.Decimal(856) }),
+      );
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'PAID' }));
+      paystackFees.findRatesByKey.mockResolvedValue(new Map([['GHS:MOBILE_MONEY', 1]]));
+      employees.findPaymentMethodByEmployeeId.mockResolvedValue({
+        type: 'MOBILE_MONEY',
+        bankCode: encrypt('MTN'),
+        accountNumber: null,
+        accountName: encrypt('Kwame Asante'),
+        mobileMoneyNumber: encrypt('0244000000'),
+        paystackRecipientCode: null,
+      });
+      paystack.createRecipient.mockResolvedValue({ recipientCode: 'RCP_abc' });
+      employees.findById.mockResolvedValue({
+        id: 'emp-1',
+        organizationId: 'org-1',
+        firstName: 'Kwame',
+        lastName: 'Asante',
+        baseSalary: new Prisma.Decimal(1000),
+        currency: 'GHS',
+        annualRentPaid: null,
+        compensationType: 'SALARY' as const,
+        hourlyRate: null,
+        countryCode: 'GH',
+      });
+
+      await service.retryDisbursement('tenant-1', 'payslip-1', 'mgr-1');
+
+      // Exactly one read of the payment method for this whole retry - fee
+      // resolution and disbursement share it instead of each fetching their
+      // own.
+      expect(employees.findPaymentMethodByEmployeeId).toHaveBeenCalledTimes(1);
+      expect(payslips.recordDisbursementInitiated).toHaveBeenCalledWith(
+        'tenant-1',
+        'payslip-1',
+        expect.objectContaining({ disbursementFeeAmount: 1, paystackFeeAmount: 1 }),
+      );
     });
   });
 

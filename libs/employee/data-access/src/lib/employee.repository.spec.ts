@@ -93,4 +93,21 @@ describe('EmployeeRepository', () => {
       data: { employmentStatus: EmploymentStatus.TERMINATED, terminationDate, updatedBy: 'hr-1' },
     });
   });
+
+  describe('isPinLookupHashTaken', () => {
+    it('excludes terminated employees, matching the partial unique index backing this check', async () => {
+      await repository.isPinLookupHashTaken('tenant-1', 'hash-1', 'emp-1');
+
+      expect(tx.employee.findFirst).toHaveBeenCalledWith({
+        where: {
+          tenantId: 'tenant-1',
+          clockInPinLookupHash: 'hash-1',
+          deletedAt: null,
+          employmentStatus: { not: 'TERMINATED' },
+          id: { not: 'emp-1' },
+        },
+        select: { id: true },
+      });
+    });
+  });
 });

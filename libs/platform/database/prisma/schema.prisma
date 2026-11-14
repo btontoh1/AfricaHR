@@ -848,7 +848,11 @@ model Employee {
   @@index([organizationId])
   @@index([organizationUnitId])
   @@index([managerId])
-  @@index([tenantId, clockInPinLookupHash])
+  // No @@index/@@unique here for clockInPinLookupHash - the real
+  // constraint is a partial UNIQUE index scoped to active employees only
+  // (deletedAt IS NULL AND employmentStatus != TERMINATED), which Prisma's
+  // schema language can't express; see migration
+  // 20261114100000_unique_active_kiosk_pin_per_tenant.
   @@map("employees")
 }
 

@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { ConflictException, ForbiddenException } from '@nestjs/common';
-import { EmploymentType } from '@prisma/client';
+import { EmploymentType, Prisma } from '@prisma/client';
 import { RequestUser, SystemRole } from '@africahr/platform-auth';
 import { EmployeeRepository } from '@africahr/employee-data-access';
 import { AppConfigService } from '@africahr/platform-core';
@@ -248,6 +248,33 @@ describe('EmployeeBulkImportService', () => {
     expect(employeeRepository.isPinLookupHashTaken).toHaveBeenCalledTimes(2);
     expect(result.kioskPins).toHaveLength(1);
     expect(employeeRepository.setClockInPinHash).toHaveBeenCalledTimes(1);
+  });
+
+  it('generates a fresh PIN and retries when the write loses the race against a concurrent kiosk PIN set', async () => {
+    // isPinLookupHashTaken's pre-check can pass even though another
+    // request (e.g. AttendanceKioskService.setPin) claims the same PIN
+    // first - the database's partial unique index catches that as P2002.
+    employees.create.mockResolvedValueOnce({
+      id: 'emp-1',
+      employeeNumber: 'EMP-0001',
+      firstName: 'Ama',
+      lastName: 'Owusu',
+    } as never);
+    employeeRepository.setClockInPinHash
+      .mockRejectedValueOnce(
+        new Prisma.PrismaClientKnownRequestError('unique violation', { code: 'P2002', clientVersion: '6.0.0' }),
+      )
+      .mockResolvedValueOnce(undefined);
+    const csv = [
+      'firstName,lastName,jobTitle,employmentType,hireDate,countryCode',
+      'Ama,Owusu,Engineer,FULL_TIME,2026-01-01,GH',
+    ].join('\n');
+
+    const result = await service.import('tenant-1', 'org-1', csv, tenantAdmin, undefined, true);
+
+    expect(result.errors).toHaveLength(0);
+    expect(result.kioskPins).toHaveLength(1);
+    expect(employeeRepository.setClockInPinHash).toHaveBeenCalledTimes(2);
   });
 
   it('reports a row error rather than crashing the batch if no unique PIN can be found', async () => {

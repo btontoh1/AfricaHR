@@ -24,6 +24,16 @@ describe('PayrollPaystackFeeRepository', () => {
       expect(result.get(buildPaystackFeeRateKey('GHS', 'BANK_ACCOUNT'))).toBe(8);
     });
 
+    it('is case-insensitive on currency, so a stored lowercase code still matches an uppercase lookup', async () => {
+      prisma.paystackTransferFeeRate.findMany.mockResolvedValue([
+        { currency: 'ghs', channel: 'MOBILE_MONEY', feeAmount: new Prisma.Decimal(1) },
+      ]);
+
+      const result = await repository.findRatesByKey();
+
+      expect(result.get(buildPaystackFeeRateKey('GHS', 'MOBILE_MONEY'))).toBe(1);
+    });
+
     it('returns an empty map when no rates are configured', async () => {
       prisma.paystackTransferFeeRate.findMany.mockResolvedValue([]);
 

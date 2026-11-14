@@ -5410,6 +5410,8 @@ export interface components {
             /** @description Required (and only used) when compensationType is HOURLY. */
             hourlyRate?: number | null;
             baseSalary?: number | null;
+            /** @example GHS */
+            currency?: string | null;
             /** @example MONTHLY */
             payFrequency?: string | null;
             /** @description Annual rent paid - used only for Nigeria Rent Relief Allowance eligibility */
@@ -6788,7 +6790,7 @@ export interface components {
         };
         ManualJournalEntryLineDto: {
             /** @enum {string} */
-            accountCode: "1000" | "1100" | "2000" | "2100" | "2200" | "4000" | "5000" | "5900" | "4900" | "1500" | "1550" | "5200" | "2300";
+            accountCode: "1000" | "1100" | "2000" | "2100" | "2200" | "4000" | "5000" | "5900" | "4900" | "1500" | "1550" | "5200" | "5300" | "2300";
             /** @description Set exactly one of debit/credit per line, never both. */
             debit?: number;
             credit?: number;

@@ -54,6 +54,7 @@ export interface UpdateEmployeeInput {
   hireDate?: Date;
   baseSalary?: Prisma.Decimal | number | null;
   payFrequency?: string | null;
+  currency?: string | null;
   compensationType?: CompensationType;
   hourlyRate?: Prisma.Decimal | number | null;
   annualRentPaid?: Prisma.Decimal | number | null;
@@ -164,6 +165,7 @@ export class EmployeeRepository {
           hireDate: input.hireDate,
           baseSalary: input.baseSalary,
           payFrequency: input.payFrequency,
+          currency: input.currency,
           compensationType: input.compensationType,
           hourlyRate: input.hourlyRate,
           annualRentPaid: input.annualRentPaid,

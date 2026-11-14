@@ -3,11 +3,11 @@ import * as argon2 from 'argon2';
 import { Prisma } from '@prisma/client';
 import { AttendanceEmployeeRepository, AttendanceRecordRepository } from '@africahr/attendance-data-access';
 import { AppConfigService, deriveEncryptionKey, hashPinForLookup } from '@africahr/platform-core';
-
-const DUPLICATE_PIN_MESSAGE = 'This PIN is already used by another employee - choose a different one.';
 import { AttendanceRecordService } from './attendance-record.service';
 import { KioskEmployeeResponseDto } from './dto/kiosk-employee-response.dto';
 import { KioskClockResponseDto } from './dto/kiosk-clock-response.dto';
+
+const DUPLICATE_PIN_MESSAGE = 'This PIN is already used by another employee - choose a different one.';
 
 /**
  * Drives the shared physical kiosk device: listing employees for the

@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { randomUUID } from 'node:crypto';
 import {
@@ -7,6 +7,7 @@ import {
   PayslipDisbursementStatus,
   PayslipStatus,
   Prisma,
+  SystemRole,
 } from '@prisma/client';
 import { AppConfigService, decryptAesGcm, deriveEncryptionKey } from '@africahr/platform-core';
 import { AuditService } from '@africahr/platform-audit';
@@ -23,6 +24,7 @@ import {
   PayrollLeaveRequestRepository,
   PayrollSubscriptionFee,
   PayrollSubscriptionRepository,
+  PayrollUserRepository,
   PayrollWalletRepository,
   PayslipRepository,
   PayslipWithLineItems,
@@ -155,6 +157,12 @@ export interface PayRunDisbursedEvent {
   byCurrency: PayRunCurrencyTotals[];
 }
 
+// Mirrors notifications-feature's own PAYROLL_ROLES constant (same two
+// roles hold Permission.PAYROLL_MANAGE - see system-role.ts) - duplicated
+// rather than shared because scope:payroll cannot depend on
+// scope:notifications or scope:iam (Nx module boundary).
+const PAYROLL_MANAGE_ROLES: SystemRole[] = [SystemRole.TENANT_ADMIN, SystemRole.PAYROLL_MANAGER];
+
 @Injectable()
 export class PayRunService {
   private readonly logger = new Logger(PayRunService.name);
@@ -175,6 +183,7 @@ export class PayRunService {
     private readonly wallet: PayrollWalletRepository,
     private readonly subscriptionFees: PayrollSubscriptionRepository,
     private readonly paystackFees: PayrollPaystackFeeRepository,
+    private readonly users: PayrollUserRepository,
     config: AppConfigService,
   ) {
     // Derived once at construction (Nest instantiates providers eagerly).
@@ -342,6 +351,7 @@ export class PayRunService {
       ? await this.updateStatusOrThrow(tenantId, id, {
           fromStatus: PrismaPayRunStatus.DRAFT,
           status: PrismaPayRunStatus.PROCESSING,
+          processedBy: actorId,
           updatedBy: actorId,
         })
       : payRun;
@@ -456,6 +466,7 @@ export class PayRunService {
   async approve(tenantId: string, id: string, actorId?: string): Promise<PayRun> {
     const payRun = await this.findById(tenantId, id);
     this.assertTransition(payRun.status, PayRunStatus.APPROVED);
+    await this.assertNotSelfApproving(tenantId, payRun, actorId, 'approve');
 
     const payslips = await this.payslips.listByPayRun(tenantId, id);
     if (payslips.length === 0) {
@@ -482,9 +493,41 @@ export class PayRunService {
     return updated;
   }
 
+  /**
+   * Segregation of duties: whoever processed a pay run cannot also be the
+   * one who approves or pays it - a single PAYROLL_MANAGE holder could
+   * otherwise single-handedly take real money out the door with no
+   * second set of eyes. Waived only when no *other* active
+   * PAYROLL_MANAGE holder exists on the tenant at all, so a genuinely
+   * solo-admin tenant is never locked out of its own payroll; the moment
+   * a second qualifying user exists, the real separation kicks in
+   * automatically on the next approve/pay attempt.
+   */
+  private async assertNotSelfApproving(
+    tenantId: string,
+    payRun: PayRun,
+    actorId: string | undefined,
+    action: 'approve' | 'pay',
+  ): Promise<void> {
+    if (!actorId || !payRun.processedBy || actorId !== payRun.processedBy) {
+      return;
+    }
+    const someoneElseQualifies = await this.users.hasOtherActiveUserWithRole(
+      tenantId,
+      PAYROLL_MANAGE_ROLES,
+      actorId,
+    );
+    if (someoneElseQualifies) {
+      throw new ForbiddenException(
+        `Cannot ${action} a pay run you processed yourself - have another payroll manager or tenant admin ${action} it`,
+      );
+    }
+  }
+
   async markPaid(tenantId: string, id: string, actorId?: string): Promise<PayRun> {
     const payRun = await this.findById(tenantId, id);
     this.assertTransition(payRun.status, PayRunStatus.PAID);
+    await this.assertNotSelfApproving(tenantId, payRun, actorId, 'pay');
 
     const payslips = await this.payslips.listByPayRun(tenantId, id);
     const totalsByCurrency = new Map<string, PayRunCurrencyTotals>();

@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { PayRun, Prisma } from '@prisma/client';
+import { PayRun, Prisma, SystemRole } from '@prisma/client';
 import { AppConfigService, encryptAesGcm } from '@africahr/platform-core';
 import { AuditService } from '@africahr/platform-audit';
 import {
@@ -13,6 +13,7 @@ import {
   PayrollEmployeeRepository,
   PayrollLeaveRequestRepository,
   PayrollSubscriptionRepository,
+  PayrollUserRepository,
   PayrollWalletRepository,
   PayslipRepository,
   PayslipWithLineItems,
@@ -46,6 +47,7 @@ describe('PayRunService', () => {
   let wallet: jest.Mocked<PayrollWalletRepository>;
   let subscriptionFees: jest.Mocked<PayrollSubscriptionRepository>;
   let paystackFees: jest.Mocked<PayrollPaystackFeeRepository>;
+  let users: jest.Mocked<PayrollUserRepository>;
   let config: AppConfigService;
 
   function makePayslip(overrides: Partial<PayslipWithLineItems> = {}): PayslipWithLineItems {
@@ -197,6 +199,14 @@ describe('PayRunService', () => {
     paystackFees = {
       findRatesByKey: jest.fn().mockResolvedValue(new Map()),
     } as unknown as jest.Mocked<PayrollPaystackFeeRepository>;
+    // Defaults to "no one else qualifies" - irrelevant for the overwhelming
+    // majority of existing tests, whose PayRun fixtures don't set
+    // processedBy at all, so assertNotSelfApproving's early-return means
+    // this mock is never even called; tests exercising the segregation
+    // check itself override this per-case.
+    users = {
+      hasOtherActiveUserWithRole: jest.fn().mockResolvedValue(false),
+    } as unknown as jest.Mocked<PayrollUserRepository>;
     config = { paymentMethodEncryptionKey: validEncryptionKey } as unknown as AppConfigService;
 
     service = new PayRunService(
@@ -214,6 +224,7 @@ describe('PayRunService', () => {
       wallet,
       subscriptionFees,
       paystackFees,
+      users,
       config,
     );
   });
@@ -238,6 +249,7 @@ describe('PayRunService', () => {
           wallet,
           subscriptionFees,
           paystackFees,
+          users,
           badConfig,
         ),
     ).toThrow(/PAYMENT_METHOD_ENCRYPTION_KEY must be set/);
@@ -350,7 +362,7 @@ describe('PayRunService', () => {
       expect(payRuns.updateStatus).toHaveBeenCalledWith(
         'tenant-1',
         'run-1',
-        expect.objectContaining({ status: 'PROCESSING' }),
+        expect.objectContaining({ status: 'PROCESSING', processedBy: 'mgr-1' }),
       );
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'payroll.pay_run.processed' }),
@@ -909,6 +921,40 @@ describe('PayRunService', () => {
       expect(payslips.updateManyStatusByPayRun).toHaveBeenCalledWith('tenant-1', 'run-1', 'APPROVED', 'mgr-1');
       expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'payroll.pay_run.approved' }));
     });
+
+    it('rejects approving a pay run the same actor processed, when another payroll manager/admin exists', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'PROCESSING', processedBy: 'mgr-1' }));
+      payslips.listByPayRun.mockResolvedValue([{ id: 'payslip-1' }] as never);
+      users.hasOtherActiveUserWithRole.mockResolvedValue(true);
+
+      await expect(service.approve('tenant-1', 'run-1', 'mgr-1')).rejects.toThrow(ForbiddenException);
+
+      expect(users.hasOtherActiveUserWithRole).toHaveBeenCalledWith(
+        'tenant-1',
+        [SystemRole.TENANT_ADMIN, SystemRole.PAYROLL_MANAGER],
+        'mgr-1',
+      );
+      expect(payRuns.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('allows a solo admin to approve a pay run they processed themselves, when no one else qualifies', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'PROCESSING', processedBy: 'mgr-1' }));
+      payslips.listByPayRun.mockResolvedValue([{ id: 'payslip-1' }] as never);
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
+      users.hasOtherActiveUserWithRole.mockResolvedValue(false);
+
+      await expect(service.approve('tenant-1', 'run-1', 'mgr-1')).resolves.toBeDefined();
+    });
+
+    it('allows approving a pay run processed by someone else, without even checking for other managers', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'PROCESSING', processedBy: 'officer-1' }));
+      payslips.listByPayRun.mockResolvedValue([{ id: 'payslip-1' }] as never);
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'APPROVED' }));
+
+      await expect(service.approve('tenant-1', 'run-1', 'mgr-1')).resolves.toBeDefined();
+
+      expect(users.hasOtherActiveUserWithRole).not.toHaveBeenCalled();
+    });
   });
 
   describe('markPaid', () => {
@@ -925,6 +971,29 @@ describe('PayRunService', () => {
       await service.markPaid('tenant-1', 'run-1', 'mgr-1');
 
       expect(payslips.updateManyStatusByPayRun).toHaveBeenCalledWith('tenant-1', 'run-1', 'PAID', 'mgr-1');
+    });
+
+    it('rejects paying a pay run the same actor processed, when another payroll manager/admin exists', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED', processedBy: 'mgr-1' }));
+      users.hasOtherActiveUserWithRole.mockResolvedValue(true);
+
+      await expect(service.markPaid('tenant-1', 'run-1', 'mgr-1')).rejects.toThrow(ForbiddenException);
+
+      expect(users.hasOtherActiveUserWithRole).toHaveBeenCalledWith(
+        'tenant-1',
+        [SystemRole.TENANT_ADMIN, SystemRole.PAYROLL_MANAGER],
+        'mgr-1',
+      );
+      expect(payRuns.updateStatus).not.toHaveBeenCalled();
+      expect(wallet.reserveForDisbursement).not.toHaveBeenCalled();
+    });
+
+    it('allows a solo admin to pay a pay run they processed themselves, when no one else qualifies', async () => {
+      payRuns.findById.mockResolvedValue(makePayRun({ status: 'APPROVED', processedBy: 'mgr-1' }));
+      payRuns.updateStatus.mockResolvedValue(makePayRun({ status: 'PAID' }));
+      users.hasOtherActiveUserWithRole.mockResolvedValue(false);
+
+      await expect(service.markPaid('tenant-1', 'run-1', 'mgr-1')).resolves.toBeDefined();
     });
 
     it('throws ConflictException instead of re-disbursing when a concurrent request already moved the pay run out of APPROVED', async () => {

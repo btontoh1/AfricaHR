@@ -1054,6 +1054,14 @@ model PayRun {
   periodEnd      DateTime     @map("period_end")
   payDate        DateTime     @map("pay_date")
   status         PayRunStatus @default(DRAFT)
+  /// Who performed the DRAFT -> PROCESSING transition - set once, on
+  /// first processing only (re-processing while still PROCESSING, e.g.
+  /// after editing a line item, never overwrites it). Compared against
+  /// the approve()/markPaid() actor to enforce segregation of duties: the
+  /// person who processed a pay run cannot also approve or pay it, unless
+  /// no other PAYROLL_MANAGE-holding user exists on the tenant (see
+  /// PayRunService.assertNotSelfApproving).
+  processedBy    String?      @map("processed_by")
   approvedAt     DateTime?    @map("approved_at")
   approvedBy     String?      @map("approved_by")
   paidAt         DateTime?    @map("paid_at")
@@ -1166,13 +1174,13 @@ model Payslip {
   /// until a transfer is actually attempted (see PayRunService.disburse) -
   /// a payslip skipped before that point (no payment method on file) was
   /// never charged one.
-  disbursementFeeAmount Decimal? @map("disbursement_fee_amount")
+  disbursementFeeAmount     Decimal?                  @map("disbursement_fee_amount")
   /// The Paystack-real-cost portion of disbursementFeeAmount above, broken
   /// out so the UI can show "Paystack fee + ParotHR fee = total" rather
   /// than one opaque number. ParotHR's own margin is the remainder
   /// (disbursementFeeAmount - paystackFeeAmount). Null under the same
   /// condition as disbursementFeeAmount.
-  paystackFeeAmount Decimal? @map("paystack_fee_amount")
+  paystackFeeAmount         Decimal?                  @map("paystack_fee_amount")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")

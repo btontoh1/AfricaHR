@@ -241,6 +241,7 @@ export class EmployeeService {
         hireDate: dto.hireDate ? new Date(dto.hireDate) : undefined,
         baseSalary: dto.baseSalary,
         payFrequency: dto.payFrequency,
+        currency: dto.currency,
         compensationType: dto.compensationType,
         hourlyRate: dto.hourlyRate,
         annualRentPaid: dto.annualRentPaid,

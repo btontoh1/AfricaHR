@@ -31,6 +31,7 @@ export const updateEmployeeFormSchema = z.object({
   hourlyRate: z.string().optional().or(z.literal('')),
   baseSalary: z.string().optional().or(z.literal('')),
   payFrequency: z.string().optional().or(z.literal('')),
+  currency: z.string().optional().or(z.literal('')),
   annualRentPaid: z.string().optional().or(z.literal('')),
   countryCode: z.string().regex(/^[A-Z]{2}$/, '2-letter code, e.g. GH'),
   payslipSmsEnabled: z.boolean(),

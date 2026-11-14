@@ -81,6 +81,7 @@ export function CreateEmployeeForm() {
   const parentFields = useFieldArray({ control: form.control, name: 'parents' });
   const childFields = useFieldArray({ control: form.control, name: 'children' });
   const compensationType = form.watch('compensationType');
+  const isNigeria = form.watch('countryCode') === 'NG';
 
   async function onSubmit(values: EmployeeFormValues) {
     try {
@@ -116,7 +117,7 @@ export function CreateEmployeeForm() {
         baseSalary: values.compensationType === 'SALARY' && values.baseSalary ? Number(values.baseSalary) : undefined,
         payFrequency: toOptional(values.payFrequency),
         currency: toOptional(values.currency),
-        annualRentPaid: values.annualRentPaid ? Number(values.annualRentPaid) : undefined,
+        annualRentPaid: values.countryCode === 'NG' && values.annualRentPaid ? Number(values.annualRentPaid) : undefined,
         countryCode: values.countryCode,
         payslipSmsEnabled: values.payslipSmsEnabled,
         payslipWhatsappEnabled: values.payslipWhatsappEnabled,
@@ -657,7 +658,7 @@ export function CreateEmployeeForm() {
                 <FormItem>
                   <FormLabel>Annual rent paid (Nigeria only)</FormLabel>
                   <FormControl>
-                    <Input type="number" min={0} step="0.01" {...field} />
+                    <Input type="number" min={0} step="0.01" disabled={!isNigeria} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

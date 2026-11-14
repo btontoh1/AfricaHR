@@ -13,6 +13,7 @@ import {
 } from './update-employee-form-schema';
 import { PAY_FREQUENCY_OPTIONS } from './employee-form-schema';
 import { getApiErrorMessage } from '@/lib/api-error';
+import { AFRICAN_CURRENCIES } from '@/lib/african-countries';
 import type { Employee } from './types';
 import { OrganizationUnitPicker } from '@/features/organizations/organization-unit-picker';
 import { EmployeePicker } from './employee-picker';
@@ -62,6 +63,7 @@ export function UpdateEmployeeForm({ tenantId, employee }: { tenantId: string; e
       hourlyRate: employee.hourlyRate ?? '',
       baseSalary: employee.baseSalary ?? '',
       payFrequency: employee.payFrequency ?? '',
+      currency: employee.currency ?? '',
       annualRentPaid: employee.annualRentPaid ?? '',
       countryCode: employee.countryCode,
       payslipSmsEnabled: employee.payslipSmsEnabled,
@@ -72,6 +74,8 @@ export function UpdateEmployeeForm({ tenantId, employee }: { tenantId: string; e
   const parentFields = useFieldArray({ control: form.control, name: 'parents' });
   const childFields = useFieldArray({ control: form.control, name: 'children' });
   const compensationType = form.watch('compensationType');
+  const countryCode = form.watch('countryCode');
+  const isNigeria = countryCode === 'NG';
 
   async function onSubmit(values: UpdateEmployeeFormValues) {
     try {
@@ -105,7 +109,8 @@ export function UpdateEmployeeForm({ tenantId, employee }: { tenantId: string; e
         hourlyRate: values.compensationType === 'HOURLY' && values.hourlyRate ? Number(values.hourlyRate) : null,
         baseSalary: values.compensationType === 'SALARY' && values.baseSalary ? Number(values.baseSalary) : null,
         payFrequency: toOptional(values.payFrequency) ?? null,
-        annualRentPaid: values.annualRentPaid ? Number(values.annualRentPaid) : null,
+        currency: toOptional(values.currency) ?? null,
+        annualRentPaid: values.countryCode === 'NG' && values.annualRentPaid ? Number(values.annualRentPaid) : null,
         countryCode: values.countryCode,
         payslipSmsEnabled: values.payslipSmsEnabled,
         payslipWhatsappEnabled: values.payslipWhatsappEnabled,
@@ -529,12 +534,36 @@ export function UpdateEmployeeForm({ tenantId, employee }: { tenantId: string; e
         />
         <FormField
           control={form.control}
+          name="currency"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Currency</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select currency" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {AFRICAN_CURRENCIES.map((currency) => (
+                    <SelectItem key={currency.code} value={currency.code}>
+                      {currency.name} ({currency.code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
           name="annualRentPaid"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Annual rent paid (Nigeria only)</FormLabel>
               <FormControl>
-                <Input type="number" min={0} step="0.01" {...field} />
+                <Input type="number" min={0} step="0.01" disabled={!isNigeria} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

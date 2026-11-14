@@ -104,9 +104,21 @@ export function SubscriptionCard({ tenantId, tenantCurrency }: { tenantId: strin
           <Field
             label="Disbursement margin"
             value={
-              <button type="button" className="underline-offset-2 hover:underline" onClick={() => setFeeOpen(true)}>
-                {formatCurrency(subscription.disbursementFeeAmount, subscription.currency)} / transfer
-              </button>
+              <div className="space-y-0.5">
+                <button type="button" className="underline-offset-2 hover:underline" onClick={() => setFeeOpen(true)}>
+                  {formatCurrency(subscription.disbursementFeeAmount, subscription.currency)} / transfer
+                </button>
+                {subscription.disbursementFeeAmount > 0 && (
+                  <div className="text-xs text-muted-foreground">
+                    × {summary.activeEmployeeCount} active employee{summary.activeEmployeeCount === 1 ? '' : 's'} ={' '}
+                    {formatCurrency(
+                      subscription.disbursementFeeAmount * summary.activeEmployeeCount,
+                      subscription.currency,
+                    )}
+                    /run
+                  </div>
+                )}
+              </div>
             }
           />
         </div>

@@ -1,10 +1,21 @@
 import { isExpiringSoon, nextBillingPeriod } from './billing-period';
 
 describe('nextBillingPeriod', () => {
-  it('advances the period by one calendar month', () => {
+  it('advances the period by one calendar month by default', () => {
     const { start, end } = nextBillingPeriod(new Date('2026-08-01T00:00:00.000Z'));
     expect(start.toISOString()).toBe('2026-08-01T00:00:00.000Z');
     expect(end.toISOString()).toBe('2026-09-01T00:00:00.000Z');
+  });
+
+  it('advances the period by one calendar month for MONTHLY', () => {
+    const { end } = nextBillingPeriod(new Date('2026-08-01T00:00:00.000Z'), 'MONTHLY');
+    expect(end.toISOString()).toBe('2026-09-01T00:00:00.000Z');
+  });
+
+  it('advances the period by twelve calendar months for ANNUAL', () => {
+    const { start, end } = nextBillingPeriod(new Date('2026-08-01T00:00:00.000Z'), 'ANNUAL');
+    expect(start.toISOString()).toBe('2026-08-01T00:00:00.000Z');
+    expect(end.toISOString()).toBe('2027-08-01T00:00:00.000Z');
   });
 });
 

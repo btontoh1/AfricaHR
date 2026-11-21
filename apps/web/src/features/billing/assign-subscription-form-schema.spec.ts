@@ -6,6 +6,7 @@ describe('assignSubscriptionFormSchema', () => {
     currency: 'GHS',
     flatFeeAmount: '',
     includedEmployeeCount: '',
+    billingInterval: 'MONTHLY' as const,
   };
 
   it('accepts a valid submission', () => {
@@ -57,6 +58,18 @@ describe('assignSubscriptionFormSchema', () => {
   it('rejects a non-whole included employee count', () => {
     expect(
       assignSubscriptionFormSchema.safeParse({ ...validInput, includedEmployeeCount: '2.5' }).success,
+    ).toBe(false);
+  });
+
+  it('accepts an ANNUAL billing interval', () => {
+    expect(
+      assignSubscriptionFormSchema.safeParse({ ...validInput, billingInterval: 'ANNUAL' }).success,
+    ).toBe(true);
+  });
+
+  it('rejects an invalid billing interval', () => {
+    expect(
+      assignSubscriptionFormSchema.safeParse({ ...validInput, billingInterval: 'WEEKLY' }).success,
     ).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { InvoiceStatus, SubscriptionStatus, WalletTopUpStatus } from '@prisma/client';
+import { BillingInterval, InvoiceStatus, SubscriptionStatus, WalletTopUpStatus } from '@prisma/client';
 import { PrismaService } from '@africahr/platform-database';
 
 export interface CrossTenantSubscription {
@@ -14,6 +14,7 @@ export interface CrossTenantSubscription {
   paystackCustomerCode: string | null;
   flatFeeAmount: number;
   includedEmployeeCount: number;
+  billingInterval: BillingInterval;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -48,6 +49,7 @@ interface RawSubscriptionRow {
   paystackCustomerCode: string | null;
   flatFeeAmount: string | null;
   includedEmployeeCount: number | null;
+  billingInterval: BillingInterval;
   createdAt: Date;
   updatedAt: Date;
 }

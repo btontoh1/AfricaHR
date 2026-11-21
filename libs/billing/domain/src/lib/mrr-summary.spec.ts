@@ -17,4 +17,21 @@ describe('summarizeMonthlyRecurringRevenue', () => {
   it('returns an empty array when there are no active subscriptions', () => {
     expect(summarizeMonthlyRecurringRevenue([])).toEqual([]);
   });
+
+  it('divides an ANNUAL subscription by 12 before summing into monthly MRR', () => {
+    const result = summarizeMonthlyRecurringRevenue([
+      { currency: 'GHS', pricePerEmployee: 0, employeeCount: 0, flatFeeAmount: 1200, billingInterval: 'ANNUAL' },
+    ]);
+
+    expect(result).toEqual([{ currency: 'GHS', subscriptionCount: 1, mrr: 100 }]);
+  });
+
+  it('sums a MONTHLY subscription as-is alongside an ANNUAL one', () => {
+    const result = summarizeMonthlyRecurringRevenue([
+      { currency: 'GHS', pricePerEmployee: 50, employeeCount: 1, billingInterval: 'MONTHLY' },
+      { currency: 'GHS', pricePerEmployee: 0, employeeCount: 0, flatFeeAmount: 1200, billingInterval: 'ANNUAL' },
+    ]);
+
+    expect(result).toEqual([{ currency: 'GHS', subscriptionCount: 2, mrr: 150 }]);
+  });
 });

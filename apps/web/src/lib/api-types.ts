@@ -6347,6 +6347,11 @@ export interface components {
             flatFeeAmount: number;
             /** @description How many employees flatFeeAmount already covers before pricePerEmployee starts applying to the remainder */
             includedEmployeeCount: number;
+            /**
+             * @description How often this subscription is invoiced and its period advances - MONTHLY or ANNUAL (a period spans 12 months)
+             * @enum {string}
+             */
+            billingInterval: "MONTHLY" | "ANNUAL";
         };
         SubscriptionSummaryResponseDto: {
             subscription: components["schemas"]["SubscriptionResponseDto"];
@@ -6357,7 +6362,7 @@ export interface components {
         };
         AssignSubscriptionDto: {
             /**
-             * @description Monthly price per active employee beyond includedEmployeeCount (see that field) - the only charge for a pure per-seat tenant with no flat fee set.
+             * @description Price per active employee beyond includedEmployeeCount (see that field), for one full billing period (see billingInterval) - the only charge for a pure per-seat tenant with no flat fee set.
              * @example 10
              */
             pricePerEmployee: number;
@@ -6367,7 +6372,7 @@ export interface components {
              */
             currency: string;
             /**
-             * @description A fixed charge per billing period, independent of headcount - set this to put the tenant on a flat-rate plan instead of pure per-employee billing. Omit or 0 for pure per-seat billing.
+             * @description A fixed charge per billing period (see billingInterval), independent of headcount - set this to put the tenant on a flat-rate plan instead of pure per-employee billing. Omit or 0 for pure per-seat billing. This is the FULL charge for one period - an ANNUAL tenant on 499 is charged 499 once a year, not per month.
              * @example 499
              */
             flatFeeAmount?: number;
@@ -6376,6 +6381,12 @@ export interface components {
              * @example 10
              */
             includedEmployeeCount?: number;
+            /**
+             * @description How often this subscription is invoiced and its period advances - MONTHLY (the default) or ANNUAL, where one period spans 12 months.
+             * @example MONTHLY
+             * @enum {string}
+             */
+            billingInterval?: "MONTHLY" | "ANNUAL";
         };
         SetDisbursementFeeDto: {
             /**

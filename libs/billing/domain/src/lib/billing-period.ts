@@ -1,12 +1,24 @@
 /**
- * One calendar month forward from the current period's end - the standard
- * per-seat billing cadence for this v1 (platform-admin-assigned
- * subscriptions, no proration/annual-plan support yet).
+ * Plain string union mirroring Prisma's BillingInterval enum - domain code
+ * doesn't depend on the generated Prisma client, same posture as every
+ * other value type in this lib (e.g. RecurringRevenueEntry's own fields).
  */
-export function nextBillingPeriod(currentPeriodEnd: Date): { start: Date; end: Date } {
+export type BillingIntervalValue = 'MONTHLY' | 'ANNUAL';
+
+/**
+ * One calendar month forward for a MONTHLY subscription, or 12 for an
+ * ANNUAL one - the standard per-seat billing cadence for this v1
+ * (platform-admin-assigned subscriptions, no proration yet). Defaults to
+ * MONTHLY so every call site that predates ANNUAL support keeps behaving
+ * exactly as before.
+ */
+export function nextBillingPeriod(
+  currentPeriodEnd: Date,
+  interval: BillingIntervalValue = 'MONTHLY',
+): { start: Date; end: Date } {
   const start = new Date(currentPeriodEnd);
   const end = new Date(currentPeriodEnd);
-  end.setMonth(end.getMonth() + 1);
+  end.setMonth(end.getMonth() + (interval === 'ANNUAL' ? 12 : 1));
   return { start, end };
 }
 

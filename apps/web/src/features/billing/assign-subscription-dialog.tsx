@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export function AssignSubscriptionDialog({
   tenantId,
@@ -41,8 +42,12 @@ export function AssignSubscriptionDialog({
       currency: defaultCurrency,
       flatFeeAmount: '',
       includedEmployeeCount: '',
+      billingInterval: 'MONTHLY',
     },
   });
+
+  const billingInterval = form.watch('billingInterval');
+  const periodLabel = billingInterval === 'ANNUAL' ? 'year' : 'month';
 
   async function onSubmit(values: AssignSubscriptionFormValues) {
     try {
@@ -52,6 +57,7 @@ export function AssignSubscriptionDialog({
         flatFeeAmount: values.flatFeeAmount === '' ? undefined : Number(values.flatFeeAmount),
         includedEmployeeCount:
           values.includedEmployeeCount === '' ? undefined : Number(values.includedEmployeeCount),
+        billingInterval: values.billingInterval,
       });
       toast.success('Subscription assigned');
       form.reset();
@@ -71,10 +77,31 @@ export function AssignSubscriptionDialog({
           <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-4">
             <FormField
               control={form.control}
+              name="billingInterval"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Billing interval</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select billing interval" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="MONTHLY">Monthly</SelectItem>
+                      <SelectItem value="ANNUAL">Annual</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="pricePerEmployee"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Price per employee, per month</FormLabel>
+                  <FormLabel>Price per employee, per {periodLabel}</FormLabel>
                   <FormControl>
                     <Input type="number" min={0} step="0.01" placeholder="e.g. 10" {...field} />
                   </FormControl>
@@ -100,7 +127,7 @@ export function AssignSubscriptionDialog({
               name="flatFeeAmount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Flat fee per period (optional)</FormLabel>
+                  <FormLabel>Flat fee per {periodLabel} (optional)</FormLabel>
                   <FormControl>
                     <Input type="number" min={0} step="0.01" placeholder="e.g. 499" {...field} />
                   </FormControl>

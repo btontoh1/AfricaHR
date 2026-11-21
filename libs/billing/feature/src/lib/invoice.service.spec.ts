@@ -39,6 +39,7 @@ describe('InvoiceService', () => {
     paystackCustomerCode: null,
     flatFeeAmount: new Prisma.Decimal(0),
     includedEmployeeCount: 0,
+    billingInterval: 'MONTHLY',
     disbursementFeeAmount: new Prisma.Decimal(0),
     createdAt: new Date(),
     updatedAt: new Date(),

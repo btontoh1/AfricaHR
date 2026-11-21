@@ -274,7 +274,7 @@ export class InvoiceService {
     if (!subscription || subscription.id !== subscriptionId) {
       return;
     }
-    const { start, end } = nextBillingPeriod(subscription.currentPeriodEnd);
+    const { start, end } = nextBillingPeriod(subscription.currentPeriodEnd, subscription.billingInterval);
     await this.subscriptions.update(tenantId, subscriptionId, {
       currentPeriodStart: start,
       currentPeriodEnd: end,

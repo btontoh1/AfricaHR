@@ -47,6 +47,8 @@ export class SubscriptionService {
       currency: dto.currency,
       currentPeriodStart,
       currentPeriodEnd,
+      flatFeeAmount: dto.flatFeeAmount,
+      includedEmployeeCount: dto.includedEmployeeCount,
       createdBy: actorId,
     });
 
@@ -71,6 +73,8 @@ export class SubscriptionService {
       currentAmountDue: calculateInvoiceAmount(
         subscription.pricePerEmployee.toNumber(),
         activeEmployeeCount,
+        subscription.flatFeeAmount?.toNumber(),
+        subscription.includedEmployeeCount ?? undefined,
       ),
       isExpiringSoon: isExpiringSoon(subscription.currentPeriodEnd, new Date()),
     };

@@ -19,7 +19,14 @@ describe('PlatformBillingRepository', () => {
 
     expect(prisma.$queryRaw).toHaveBeenCalled();
     expect(result).toEqual([
-      { id: 'sub-1', tenantId: 'tenant-1', pricePerEmployee: 10.5, status: 'ACTIVE' },
+      {
+        id: 'sub-1',
+        tenantId: 'tenant-1',
+        pricePerEmployee: 10.5,
+        status: 'ACTIVE',
+        flatFeeAmount: 0,
+        includedEmployeeCount: 0,
+      },
     ]);
   });
 

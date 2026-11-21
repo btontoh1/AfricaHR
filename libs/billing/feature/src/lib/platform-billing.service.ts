@@ -47,6 +47,8 @@ export class PlatformBillingService {
         currency: subscription.currency,
         pricePerEmployee: subscription.pricePerEmployee,
         employeeCount: employeeCounts.get(subscription.tenantId) ?? 0,
+        flatFeeAmount: subscription.flatFeeAmount,
+        includedEmployeeCount: subscription.includedEmployeeCount,
       })),
     ).map((entry) => ({ currency: entry.currency, amount: entry.mrr }));
 
@@ -72,6 +74,8 @@ export class PlatformBillingService {
         amountDue: calculateInvoiceAmount(
           subscription.pricePerEmployee,
           employeeCounts.get(subscription.tenantId) ?? 0,
+          subscription.flatFeeAmount,
+          subscription.includedEmployeeCount,
         ),
       }))
       .sort((a, b) => a.currentPeriodEnd.getTime() - b.currentPeriodEnd.getTime());

@@ -167,6 +167,18 @@ model Subscription {
   id                   String             @id @default(uuid())
   tenantId             String             @unique @map("tenant_id")
   pricePerEmployee     Decimal            @map("price_per_employee")
+  /// A fixed charge per billing period, independent of headcount - lets a
+  /// tenant be put on a flat-rate plan (e.g. one covering up to 10
+  /// employees for a set price) instead of pure per-employee billing.
+  /// 0 (the default) preserves today's pure per-seat behaviour for every
+  /// existing tenant - see calculateInvoiceAmount's own doc comment for how
+  /// this combines with pricePerEmployee and includedEmployeeCount.
+  flatFeeAmount        Decimal?           @default(0) @map("flat_fee_amount")
+  /// How many employees flatFeeAmount already covers before
+  /// pricePerEmployee starts applying to the remainder (see
+  /// calculateInvoiceAmount). 0 (the default) means pricePerEmployee
+  /// applies to every employee, same as before this field existed.
+  includedEmployeeCount Int?              @default(0) @map("included_employee_count")
   currency             String
   status               SubscriptionStatus @default(ACTIVE)
   currentPeriodStart   DateTime           @map("current_period_start")
@@ -181,11 +193,11 @@ model Subscription {
   /// addition to passing through Paystack's real per-channel transfer cost
   /// (see PaystackTransferFeeRate) - together these make up
   /// Payslip.disbursementFeeAmount, reserved from the tenant's payroll
-  /// wallet alongside the employee's net pay. Null/0 (the default) means no
-  /// margin is charged - this must be explicitly set per tenant by a
-  /// platform admin, since it wasn't part of every existing tenant's
-  /// original pricing.
-  disbursementFeeAmount Decimal? @default(0) @map("disbursement_fee_amount")
+  /// wallet alongside the employee's net pay. Defaults to 1 (the baseline
+  /// per-transaction margin - see SetDisbursementFeeDto's own floor) and is
+  /// freely adjustable upward per tenant by a platform admin, e.g. to 2,
+  /// whenever pricing changes.
+  disbursementFeeAmount Decimal? @default(1) @map("disbursement_fee_amount")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

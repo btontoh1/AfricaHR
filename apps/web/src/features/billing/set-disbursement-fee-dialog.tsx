@@ -19,7 +19,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 
 const setDisbursementFeeFormSchema = z.object({
-  disbursementFeeAmount: z.string().min(1, 'Fee is required'),
+  disbursementFeeAmount: z
+    .string()
+    .min(1, 'Fee is required')
+    .refine((value) => Number(value) >= 1, 'Fee must be at least 1'),
 });
 
 type SetDisbursementFeeFormValues = z.infer<typeof setDisbursementFeeFormSchema>;
@@ -62,7 +65,8 @@ export function SetDisbursementFeeDialog({
           <DialogDescription>
             ParotHR&apos;s own flat margin charged per payroll disbursement transaction for this
             tenant, in {currency}, on top of Paystack&apos;s real transfer cost (set platform-wide
-            under Paystack Fees). 0 charges no margin.
+            under Paystack Fees). Every tenant is charged at least 1; raise it here whenever
+            pricing changes, e.g. to 2.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -74,7 +78,7 @@ export function SetDisbursementFeeDialog({
                 <FormItem>
                   <FormLabel>Margin per transaction ({currency})</FormLabel>
                   <FormControl>
-                    <Input type="number" min={0} step="0.01" {...field} />
+                    <Input type="number" min={1} step="0.01" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

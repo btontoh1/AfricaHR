@@ -36,7 +36,12 @@ export function AssignSubscriptionDialog({
 
   const form = useForm<AssignSubscriptionFormValues>({
     resolver: zodResolver(assignSubscriptionFormSchema),
-    defaultValues: { pricePerEmployee: '', currency: defaultCurrency },
+    defaultValues: {
+      pricePerEmployee: '',
+      currency: defaultCurrency,
+      flatFeeAmount: '',
+      includedEmployeeCount: '',
+    },
   });
 
   async function onSubmit(values: AssignSubscriptionFormValues) {
@@ -44,6 +49,9 @@ export function AssignSubscriptionDialog({
       await assignSubscription.mutateAsync({
         pricePerEmployee: Number(values.pricePerEmployee),
         currency: values.currency,
+        flatFeeAmount: values.flatFeeAmount === '' ? undefined : Number(values.flatFeeAmount),
+        includedEmployeeCount:
+          values.includedEmployeeCount === '' ? undefined : Number(values.includedEmployeeCount),
       });
       toast.success('Subscription assigned');
       form.reset();
@@ -82,6 +90,32 @@ export function AssignSubscriptionDialog({
                   <FormLabel>Currency</FormLabel>
                   <FormControl>
                     <Input maxLength={3} placeholder="e.g. GHS" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="flatFeeAmount"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Flat fee per period (optional)</FormLabel>
+                  <FormControl>
+                    <Input type="number" min={0} step="0.01" placeholder="e.g. 499" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="includedEmployeeCount"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Employees included in flat fee (optional)</FormLabel>
+                  <FormControl>
+                    <Input type="number" min={0} step="1" placeholder="e.g. 10" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

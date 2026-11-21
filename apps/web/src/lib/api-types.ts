@@ -6343,6 +6343,10 @@ export interface components {
             cancelAtPeriodEnd: boolean;
             /** @description ParotHR's own flat margin charged per payroll disbursement transaction, on top of Paystack's real transfer cost - 0 means none is charged */
             disbursementFeeAmount: number;
+            /** @description A fixed charge per billing period, independent of headcount - 0 means pure per-employee billing */
+            flatFeeAmount: number;
+            /** @description How many employees flatFeeAmount already covers before pricePerEmployee starts applying to the remainder */
+            includedEmployeeCount: number;
         };
         SubscriptionSummaryResponseDto: {
             subscription: components["schemas"]["SubscriptionResponseDto"];
@@ -6353,7 +6357,7 @@ export interface components {
         };
         AssignSubscriptionDto: {
             /**
-             * @description Monthly price per active employee
+             * @description Monthly price per active employee beyond includedEmployeeCount (see that field) - the only charge for a pure per-seat tenant with no flat fee set.
              * @example 10
              */
             pricePerEmployee: number;
@@ -6362,11 +6366,21 @@ export interface components {
              * @example GHS
              */
             currency: string;
+            /**
+             * @description A fixed charge per billing period, independent of headcount - set this to put the tenant on a flat-rate plan instead of pure per-employee billing. Omit or 0 for pure per-seat billing.
+             * @example 499
+             */
+            flatFeeAmount?: number;
+            /**
+             * @description How many employees flatFeeAmount already covers before pricePerEmployee starts applying to the remainder. Omit or 0 if every employee should be charged pricePerEmployee.
+             * @example 10
+             */
+            includedEmployeeCount?: number;
         };
         SetDisbursementFeeDto: {
             /**
-             * @description ParotHR's own flat margin to charge per payroll disbursement transaction for this tenant, on top of Paystack's real transfer cost. 0 charges no margin.
-             * @example 1
+             * @description ParotHR's own flat margin to charge per payroll disbursement transaction for this tenant, on top of Paystack's real transfer cost. Every tenant is charged at least 1 (the baseline); raise it here whenever pricing changes, e.g. to 2.
+             * @example 2
              */
             disbursementFeeAmount: number;
         };

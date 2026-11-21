@@ -4,6 +4,8 @@ export interface RecurringRevenueEntry {
   currency: string;
   pricePerEmployee: number;
   employeeCount: number;
+  flatFeeAmount?: number;
+  includedEmployeeCount?: number;
 }
 
 export interface RecurringRevenueByCurrency {
@@ -31,7 +33,12 @@ export function summarizeMonthlyRecurringRevenue(
     };
 
     summary.subscriptionCount += 1;
-    summary.mrr += calculateInvoiceAmount(entry.pricePerEmployee, entry.employeeCount);
+    summary.mrr += calculateInvoiceAmount(
+      entry.pricePerEmployee,
+      entry.employeeCount,
+      entry.flatFeeAmount,
+      entry.includedEmployeeCount,
+    );
 
     byCurrency.set(entry.currency, summary);
   }

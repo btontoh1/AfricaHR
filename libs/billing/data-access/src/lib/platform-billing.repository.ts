@@ -12,6 +12,8 @@ export interface CrossTenantSubscription {
   currentPeriodEnd: Date;
   cancelAtPeriodEnd: boolean;
   paystackCustomerCode: string | null;
+  flatFeeAmount: number;
+  includedEmployeeCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -44,6 +46,8 @@ interface RawSubscriptionRow {
   currentPeriodEnd: Date;
   cancelAtPeriodEnd: boolean;
   paystackCustomerCode: string | null;
+  flatFeeAmount: string | null;
+  includedEmployeeCount: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -136,7 +140,12 @@ export class PlatformBillingRepository {
     const rows = await this.prisma.$queryRaw<
       RawSubscriptionRow[]
     >`SELECT * FROM platform_list_subscriptions()`;
-    return rows.map((row) => ({ ...row, pricePerEmployee: Number(row.pricePerEmployee) }));
+    return rows.map((row) => ({
+      ...row,
+      pricePerEmployee: Number(row.pricePerEmployee),
+      flatFeeAmount: Number(row.flatFeeAmount ?? 0),
+      includedEmployeeCount: row.includedEmployeeCount ?? 0,
+    }));
   }
 
   async listActiveEmployeeCounts(): Promise<Map<string, number>> {

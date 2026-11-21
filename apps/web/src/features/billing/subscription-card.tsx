@@ -94,6 +94,23 @@ export function SubscriptionCard({ tenantId, tenantCurrency }: { tenantId: strin
             label="Price per employee"
             value={formatCurrency(subscription.pricePerEmployee, subscription.currency)}
           />
+          {subscription.flatFeeAmount > 0 && (
+            <Field
+              label="Flat fee per period"
+              value={
+                <>
+                  {formatCurrency(subscription.flatFeeAmount, subscription.currency)}
+                  {subscription.includedEmployeeCount > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      {' '}
+                      (covers {subscription.includedEmployeeCount} employee
+                      {subscription.includedEmployeeCount === 1 ? '' : 's'})
+                    </span>
+                  )}
+                </>
+              }
+            />
+          )}
           <Field label="Active employees" value={summary.activeEmployeeCount} />
           <Field
             label="Amount due next invoice"

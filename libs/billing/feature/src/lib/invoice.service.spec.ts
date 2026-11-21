@@ -37,6 +37,8 @@ describe('InvoiceService', () => {
     currentPeriodEnd: new Date('2026-09-01'),
     cancelAtPeriodEnd: false,
     paystackCustomerCode: null,
+    flatFeeAmount: new Prisma.Decimal(0),
+    includedEmployeeCount: 0,
     disbursementFeeAmount: new Prisma.Decimal(0),
     createdAt: new Date(),
     updatedAt: new Date(),

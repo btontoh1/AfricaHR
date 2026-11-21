@@ -87,7 +87,12 @@ export class InvoiceService {
     }
 
     const employeeCount = await this.employeeCounts.countActive(tenantId);
-    const amount = calculateInvoiceAmount(subscription.pricePerEmployee.toNumber(), employeeCount);
+    const amount = calculateInvoiceAmount(
+      subscription.pricePerEmployee.toNumber(),
+      employeeCount,
+      subscription.flatFeeAmount?.toNumber(),
+      subscription.includedEmployeeCount ?? undefined,
+    );
     const adminEmail = await this.tenantContacts.findAdminEmail(tenantId);
     if (!adminEmail) {
       throw new BadRequestException(`Tenant "${tenantId}" has no active tenant admin to bill`);

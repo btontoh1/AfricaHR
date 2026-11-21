@@ -167,6 +167,18 @@ model Subscription {
   id                   String             @id @default(uuid())
   tenantId             String             @unique @map("tenant_id")
   pricePerEmployee     Decimal            @map("price_per_employee")
+  /// A fixed charge per billing period, independent of headcount - lets a
+  /// tenant be put on a flat-rate plan (e.g. one covering up to 10
+  /// employees for a set price) instead of pure per-employee billing.
+  /// 0 (the default) preserves today's pure per-seat behaviour for every
+  /// existing tenant - see calculateInvoiceAmount's own doc comment for how
+  /// this combines with pricePerEmployee and includedEmployeeCount.
+  flatFeeAmount        Decimal?           @default(0) @map("flat_fee_amount")
+  /// How many employees flatFeeAmount already covers before
+  /// pricePerEmployee starts applying to the remainder (see
+  /// calculateInvoiceAmount). 0 (the default) means pricePerEmployee
+  /// applies to every employee, same as before this field existed.
+  includedEmployeeCount Int?              @default(0) @map("included_employee_count")
   currency             String
   status               SubscriptionStatus @default(ACTIVE)
   currentPeriodStart   DateTime           @map("current_period_start")

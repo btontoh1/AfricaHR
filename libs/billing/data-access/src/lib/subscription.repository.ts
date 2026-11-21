@@ -8,6 +8,8 @@ export interface CreateSubscriptionInput {
   currency: string;
   currentPeriodStart: Date;
   currentPeriodEnd: Date;
+  flatFeeAmount?: number;
+  includedEmployeeCount?: number;
   createdBy?: string;
 }
 
@@ -36,6 +38,8 @@ export class SubscriptionRepository {
           currency: input.currency,
           currentPeriodStart: input.currentPeriodStart,
           currentPeriodEnd: input.currentPeriodEnd,
+          flatFeeAmount: input.flatFeeAmount,
+          includedEmployeeCount: input.includedEmployeeCount,
           createdBy: input.createdBy,
           updatedBy: input.createdBy,
         },

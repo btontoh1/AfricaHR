@@ -157,6 +157,15 @@ enum SubscriptionStatus {
   CANCELLED
 }
 
+/// How often a subscription's period advances and gets invoiced - see
+/// nextBillingPeriod's own doc comment for how this changes period length,
+/// and summarizeMonthlyRecurringRevenue for why MRR divides an ANNUAL
+/// subscription's period amount by 12 before summing it in.
+enum BillingInterval {
+  MONTHLY
+  ANNUAL
+}
+
 /// One per tenant, per-employee pricing (see project memory: billing v1 is
 /// platform-admin-assigned, not tenant self-serve - there's no tenant-side
 /// checkout flow). The "amount currently due" isn't stored here - it's
@@ -179,6 +188,13 @@ model Subscription {
   /// calculateInvoiceAmount). 0 (the default) means pricePerEmployee
   /// applies to every employee, same as before this field existed.
   includedEmployeeCount Int?              @default(0) @map("included_employee_count")
+  /// MONTHLY (the default, preserving every existing tenant's current
+  /// behaviour) or ANNUAL - governs how far currentPeriodEnd advances on
+  /// assignment and renewal (see nextBillingPeriod) and the actual charge
+  /// a tenant sees per invoice: flatFeeAmount/pricePerEmployee are the
+  /// full amount for one period, however long that period is - an ANNUAL
+  /// tenant on flatFeeAmount: 499 is charged 499 once a year, not per month.
+  billingInterval      BillingInterval    @default(MONTHLY) @map("billing_interval")
   currency             String
   status               SubscriptionStatus @default(ACTIVE)
   currentPeriodStart   DateTime           @map("current_period_start")

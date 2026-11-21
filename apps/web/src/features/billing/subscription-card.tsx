@@ -78,6 +78,7 @@ export function SubscriptionCard({ tenantId, tenantCurrency }: { tenantId: strin
 
   const { subscription } = summary;
   const canCancel = subscription.status === 'ACTIVE' || subscription.status === 'PAST_DUE';
+  const periodLabel = subscription.billingInterval === 'ANNUAL' ? 'year' : 'month';
 
   return (
     <Card>
@@ -91,12 +92,16 @@ export function SubscriptionCard({ tenantId, tenantCurrency }: { tenantId: strin
       <CardContent className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-3">
           <Field
-            label="Price per employee"
+            label="Billing interval"
+            value={subscription.billingInterval === 'ANNUAL' ? 'Annual' : 'Monthly'}
+          />
+          <Field
+            label={`Price per employee, per ${periodLabel}`}
             value={formatCurrency(subscription.pricePerEmployee, subscription.currency)}
           />
           {subscription.flatFeeAmount > 0 && (
             <Field
-              label="Flat fee per period"
+              label={`Flat fee per ${periodLabel}`}
               value={
                 <>
                   {formatCurrency(subscription.flatFeeAmount, subscription.currency)}

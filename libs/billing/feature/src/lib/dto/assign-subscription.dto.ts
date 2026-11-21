@@ -1,11 +1,12 @@
 import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsNumber, IsOptional, IsPositive, IsString, Matches, Min } from 'class-validator';
+import { BillingInterval } from '@prisma/client';
+import { IsEnum, IsInt, IsNumber, IsOptional, IsPositive, IsString, Matches, Min } from 'class-validator';
 
 export class AssignSubscriptionDto {
   @ApiProperty({
     example: 10,
     description:
-      'Monthly price per active employee beyond includedEmployeeCount (see that field) - the only charge for a pure per-seat tenant with no flat fee set.',
+      'Price per active employee beyond includedEmployeeCount (see that field), for one full billing period (see billingInterval) - the only charge for a pure per-seat tenant with no flat fee set.',
   })
   @IsNumber()
   @IsPositive()
@@ -19,7 +20,7 @@ export class AssignSubscriptionDto {
   @ApiPropertyOptional({
     example: 499,
     description:
-      'A fixed charge per billing period, independent of headcount - set this to put the tenant on a flat-rate plan instead of pure per-employee billing. Omit or 0 for pure per-seat billing.',
+      'A fixed charge per billing period (see billingInterval), independent of headcount - set this to put the tenant on a flat-rate plan instead of pure per-employee billing. Omit or 0 for pure per-seat billing. This is the FULL charge for one period - an ANNUAL tenant on 499 is charged 499 once a year, not per month.',
   })
   @IsOptional()
   @IsNumber()
@@ -35,4 +36,14 @@ export class AssignSubscriptionDto {
   @IsInt()
   @Min(0)
   includedEmployeeCount?: number;
+
+  @ApiPropertyOptional({
+    enum: BillingInterval,
+    example: BillingInterval.MONTHLY,
+    description:
+      'How often this subscription is invoiced and its period advances - MONTHLY (the default) or ANNUAL, where one period spans 12 months.',
+  })
+  @IsOptional()
+  @IsEnum(BillingInterval)
+  billingInterval?: BillingInterval;
 }

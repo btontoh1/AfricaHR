@@ -1,8 +1,8 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { Subscription } from '@prisma/client';
+import { BillingInterval, Subscription } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import { BillingEmployeeCountRepository, SubscriptionRepository } from '@africahr/billing-data-access';
-import { calculateInvoiceAmount, isExpiringSoon } from '@africahr/billing-domain';
+import { calculateInvoiceAmount, isExpiringSoon, nextBillingPeriod } from '@africahr/billing-domain';
 import { AssignSubscriptionDto } from './dto/assign-subscription.dto';
 import { SetDisbursementFeeDto } from './dto/set-disbursement-fee.dto';
 
@@ -37,9 +37,14 @@ export class SubscriptionService {
       throw new ConflictException(`Tenant "${tenantId}" already has a subscription`);
     }
 
+    const billingInterval = dto.billingInterval ?? BillingInterval.MONTHLY;
     const currentPeriodStart = new Date();
-    const currentPeriodEnd = new Date(currentPeriodStart);
-    currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
+    // Reuses nextBillingPeriod for the very first period too, so the
+    // interval math (1 month vs 12) has a single source of truth - passing
+    // currentPeriodStart as its "currentPeriodEnd" arg is exactly "now" to
+    // "now + one interval", same shape nextBillingPeriod already returns
+    // for every renewal after this one.
+    const { end: currentPeriodEnd } = nextBillingPeriod(currentPeriodStart, billingInterval);
 
     const subscription = await this.subscriptions.create({
       tenantId,
@@ -49,6 +54,7 @@ export class SubscriptionService {
       currentPeriodEnd,
       flatFeeAmount: dto.flatFeeAmount,
       includedEmployeeCount: dto.includedEmployeeCount,
+      billingInterval,
       createdBy: actorId,
     });
 

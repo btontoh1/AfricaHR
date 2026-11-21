@@ -6,7 +6,8 @@ import { z } from 'zod';
 // converted to numbers at submission - same convention as benefits-form-
 // schema's contribution fields. flatFeeAmount and includedEmployeeCount are
 // both optional - an empty string means "pure per-employee billing", same
-// as omitting them from the API request.
+// as omitting them from the API request. billingInterval defaults to
+// MONTHLY, same as the backend does when it's omitted.
 export const assignSubscriptionFormSchema = z.object({
   pricePerEmployee: z
     .string()
@@ -26,6 +27,7 @@ export const assignSubscriptionFormSchema = z.object({
       (value) => value === '' || (Number.isInteger(Number(value)) && Number(value) >= 0),
       'Must be a non-negative whole number',
     ),
+  billingInterval: z.enum(['MONTHLY', 'ANNUAL']),
 });
 
 export type AssignSubscriptionFormValues = z.infer<typeof assignSubscriptionFormSchema>;

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { SubscriptionStatus } from '@prisma/client';
+import { BillingInterval, SubscriptionStatus } from '@prisma/client';
 
 export class SubscriptionResponseDto {
   @ApiProperty() id!: string;
@@ -25,6 +25,12 @@ export class SubscriptionResponseDto {
       'How many employees flatFeeAmount already covers before pricePerEmployee starts applying to the remainder',
   })
   includedEmployeeCount!: number;
+  @ApiProperty({
+    enum: Object.values(BillingInterval),
+    description:
+      'How often this subscription is invoiced and its period advances - MONTHLY or ANNUAL (a period spans 12 months)',
+  })
+  billingInterval!: BillingInterval;
 }
 
 export class SubscriptionSummaryResponseDto {

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Subscription, SubscriptionStatus } from '@prisma/client';
+import { BillingInterval, Subscription, SubscriptionStatus } from '@prisma/client';
 import { PrismaService } from '@africahr/platform-database';
 
 export interface CreateSubscriptionInput {
@@ -10,6 +10,7 @@ export interface CreateSubscriptionInput {
   currentPeriodEnd: Date;
   flatFeeAmount?: number;
   includedEmployeeCount?: number;
+  billingInterval?: BillingInterval;
   createdBy?: string;
 }
 
@@ -40,6 +41,7 @@ export class SubscriptionRepository {
           currentPeriodEnd: input.currentPeriodEnd,
           flatFeeAmount: input.flatFeeAmount,
           includedEmployeeCount: input.includedEmployeeCount,
+          billingInterval: input.billingInterval,
           createdBy: input.createdBy,
           updatedBy: input.createdBy,
         },

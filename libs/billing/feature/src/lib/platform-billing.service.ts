@@ -49,6 +49,7 @@ export class PlatformBillingService {
         employeeCount: employeeCounts.get(subscription.tenantId) ?? 0,
         flatFeeAmount: subscription.flatFeeAmount,
         includedEmployeeCount: subscription.includedEmployeeCount,
+        billingInterval: subscription.billingInterval,
       })),
     ).map((entry) => ({ currency: entry.currency, amount: entry.mrr }));
 

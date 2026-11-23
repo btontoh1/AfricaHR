@@ -12,10 +12,25 @@ import { CustomerInvoiceWithDetails } from '@africahr/invoicing-data-access';
 // one PDF template.
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: 'Helvetica', color: '#1a1a1a' },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
-  logo: { width: 64, height: 64, objectFit: 'contain', marginBottom: 8 },
-  orgName: { fontSize: 14, fontWeight: 700 },
-  invoiceTitle: { fontSize: 20, fontWeight: 700, textAlign: 'right' },
+  // Three slots - the organization's own logo, its name/address centered
+  // between them, and an optional secondary mark (e.g. IATA) on the right.
+  // Both logo slots keep their reserved width even when empty, so the
+  // center identity block stays visually centered either way.
+  logoBandRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  logoSlot: { width: 64, height: 64 },
+  logo: { width: 64, height: 64, objectFit: 'contain' },
+  orgIdentity: { flex: 1, alignItems: 'center', paddingHorizontal: 12 },
+  orgName: { fontSize: 14, fontWeight: 700, textAlign: 'center' },
+  orgAddress: { fontSize: 8, color: '#555555', textAlign: 'center', marginTop: 2 },
+  invoiceTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 24,
+    paddingTop: 12,
+    borderTop: '1pt solid #dddddd',
+  },
+  invoiceTitle: { fontSize: 20, fontWeight: 700 },
   invoiceMeta: { fontSize: 10, color: '#555555', textAlign: 'right', marginTop: 4 },
   section: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
   label: { fontSize: 9, color: '#888888', marginBottom: 2, textTransform: 'uppercase' },
@@ -64,21 +79,36 @@ export class InvoicePdfService {
   constructor(private readonly storage: StorageService) {}
 
   async render(invoice: CustomerInvoiceWithDetails): Promise<Buffer> {
-    const logoBytes = await this.safeGetLogoBytes(invoice.organization.logoStorageKey);
+    const [logoBytes, secondaryLogoBytes] = await Promise.all([
+      this.safeGetLogoBytes(invoice.organization.logoStorageKey),
+      this.safeGetLogoBytes(invoice.organization.secondaryLogoStorageKey),
+    ]);
 
-    const headerLeft = h(
+    const logoBand = h(
       View,
-      null,
-      logoBytes ? h(Image, { src: logoBytes, style: styles.logo }) : null,
-      h(Text, { style: styles.orgName }, invoice.organization.legalName),
+      { style: styles.logoBandRow },
+      logoBytes ? h(Image, { src: logoBytes, style: styles.logo }) : h(View, { style: styles.logoSlot }),
+      h(
+        View,
+        { style: styles.orgIdentity },
+        h(Text, { style: styles.orgName }, invoice.organization.legalName),
+        invoice.organization.address ? h(Text, { style: styles.orgAddress }, invoice.organization.address) : null,
+      ),
+      secondaryLogoBytes
+        ? h(Image, { src: secondaryLogoBytes, style: styles.logo })
+        : h(View, { style: styles.logoSlot }),
     );
 
-    const headerRight = h(
+    const invoiceTitleRow = h(
       View,
-      null,
+      { style: styles.invoiceTitleRow },
       h(Text, { style: styles.invoiceTitle }, 'INVOICE'),
-      h(Text, { style: styles.invoiceMeta }, invoice.invoiceNumber),
-      h(Text, { style: styles.statusBadge }, invoice.status),
+      h(
+        View,
+        null,
+        h(Text, { style: styles.invoiceMeta }, invoice.invoiceNumber),
+        h(Text, { style: styles.statusBadge }, invoice.status),
+      ),
     );
 
     const billTo = h(
@@ -150,7 +180,8 @@ export class InvoicePdfService {
     const page = h(
       Page,
       { size: 'A4', style: styles.page },
-      h(View, { style: styles.headerRow }, headerLeft, headerRight),
+      logoBand,
+      invoiceTitleRow,
       h(View, { style: styles.section }, billTo, dates),
       h(View, { style: styles.table }, tableHeader, ...rows),
       totals,

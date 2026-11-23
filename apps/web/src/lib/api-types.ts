@@ -478,6 +478,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/organizations/{id}/secondary-logo/upload-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["OrganizationController_requestSecondaryLogoUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/organizations/{id}/secondary-logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["OrganizationController_removeSecondaryLogo"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/organizations/{id}/secondary-logo-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OrganizationController_getSecondaryLogoUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/organization-units": {
         parameters: {
             query?: never;
@@ -4759,6 +4807,8 @@ export interface components {
             verifiedAt?: string;
             /** @description Storage key for the organization's own logo, shown on its invoices */
             logoStorageKey?: string;
+            /** @description Storage key for a second logo shown on the opposite side of the invoice header (e.g. an IATA/accreditation mark) */
+            secondaryLogoStorageKey?: string;
             createdAt: string;
             updatedAt: string;
         };
@@ -4871,6 +4921,20 @@ export interface components {
         };
         OrganizationLogoUrlResponseDto: {
             /** @description Short-lived signed URL, or null if no logo is set */
+            viewUrl?: string | null;
+        };
+        RequestOrganizationSecondaryLogoUploadDto: {
+            /** @example iata.png */
+            fileName: string;
+            /** @enum {string} */
+            contentType: "image/png" | "image/jpeg" | "image/webp" | "image/svg+xml";
+        };
+        RequestOrganizationSecondaryLogoUploadResponseDto: {
+            /** @description Short-lived signed URL — PUT the file bytes here directly, not through this API */
+            uploadUrl: string;
+        };
+        OrganizationSecondaryLogoUrlResponseDto: {
+            /** @description Short-lived signed URL, or null if no secondary logo is set */
             viewUrl?: string | null;
         };
         CreateOrganizationUnitDto: {
@@ -8820,6 +8884,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrganizationLogoUrlResponseDto"];
+                };
+            };
+        };
+    };
+    OrganizationController_requestSecondaryLogoUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestOrganizationSecondaryLogoUploadDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequestOrganizationSecondaryLogoUploadResponseDto"];
+                };
+            };
+        };
+    };
+    OrganizationController_removeSecondaryLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OrganizationController_getSecondaryLogoUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationSecondaryLogoUrlResponseDto"];
                 };
             };
         };

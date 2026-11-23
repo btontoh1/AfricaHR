@@ -165,7 +165,7 @@ export function EditOrganizationDialog({
                   <FormControl>
                     <Input placeholder="12 Independence Ave, Accra, Ghana" {...field} />
                   </FormControl>
-                  <FormDescription>Shown as the employer&apos;s address on payslips.</FormDescription>
+                  <FormDescription>Shown as the employer&apos;s address on payslips, and centered between the two logos on invoices.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

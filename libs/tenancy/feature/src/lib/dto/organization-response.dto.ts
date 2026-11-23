@@ -39,6 +39,12 @@ export class OrganizationResponseDto {
   @ApiPropertyOptional({ description: "Storage key for the organization's own logo, shown on its invoices" })
   logoStorageKey?: string | null;
 
+  @ApiPropertyOptional({
+    description:
+      'Storage key for a second logo shown on the opposite side of the invoice header (e.g. an IATA/accreditation mark)',
+  })
+  secondaryLogoStorageKey?: string | null;
+
   @ApiProperty()
   createdAt!: string;
 

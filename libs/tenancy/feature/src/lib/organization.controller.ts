@@ -25,6 +25,9 @@ import { DocumentViewUrlResponseDto } from './dto/document-view-url-response.dto
 import { RequestOrganizationLogoUploadDto } from './dto/request-organization-logo-upload.dto';
 import { RequestOrganizationLogoUploadResponseDto } from './dto/request-organization-logo-upload-response.dto';
 import { OrganizationLogoUrlResponseDto } from './dto/organization-logo-url-response.dto';
+import { RequestOrganizationSecondaryLogoUploadDto } from './dto/request-organization-secondary-logo-upload.dto';
+import { RequestOrganizationSecondaryLogoUploadResponseDto } from './dto/request-organization-secondary-logo-upload-response.dto';
+import { OrganizationSecondaryLogoUrlResponseDto } from './dto/organization-secondary-logo-url-response.dto';
 
 @ApiTags('organizations')
 @ApiBearerAuth()
@@ -189,6 +192,51 @@ export class OrganizationController {
     assertTenantScope(actor, tenantId);
     const organization = await this.organizations.findById(tenantId, id);
     const viewUrl = await this.organizations.getLogoUrl(organization);
+    return { viewUrl };
+  }
+
+  // Mirrors the logo/upload-url, logo, and logo-url endpoints above exactly
+  // - a second, independent slot (e.g. an IATA/accreditation mark), same
+  // INVOICING_MANAGE scoping since it's invoice branding, not legal-entity
+  // administration.
+  @Post(':id/secondary-logo/upload-url')
+  @RequirePermissions(Permission.INVOICING_MANAGE)
+  @ApiOkResponse({ type: RequestOrganizationSecondaryLogoUploadResponseDto })
+  requestSecondaryLogoUpload(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: RequestOrganizationSecondaryLogoUploadDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    assertOrganizationScope(actor, id);
+    return this.organizations.requestSecondaryLogoUpload(tenantId, id, dto, actor.sub);
+  }
+
+  @Delete(':id/secondary-logo')
+  @RequirePermissions(Permission.INVOICING_MANAGE)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async removeSecondaryLogo(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: RequestUser,
+  ): Promise<void> {
+    assertTenantScope(actor, tenantId);
+    assertOrganizationScope(actor, id);
+    await this.organizations.removeSecondaryLogo(tenantId, id, actor.sub);
+  }
+
+  @Get(':id/secondary-logo-url')
+  @RequirePermissions(Permission.ORGANIZATION_READ)
+  @ApiOkResponse({ type: OrganizationSecondaryLogoUrlResponseDto })
+  async getSecondaryLogoUrl(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    assertTenantScope(actor, tenantId);
+    const organization = await this.organizations.findById(tenantId, id);
+    const viewUrl = await this.organizations.getSecondaryLogoUrl(organization);
     return { viewUrl };
   }
 }

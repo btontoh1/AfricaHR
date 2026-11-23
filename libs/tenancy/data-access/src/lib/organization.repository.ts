@@ -98,6 +98,20 @@ export class OrganizationRepository {
     );
   }
 
+  updateSecondaryLogo(
+    tenantId: string,
+    id: string,
+    secondaryLogoStorageKey: string | null,
+    updatedBy?: string,
+  ): Promise<Organization> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.organization.update({
+        where: { id },
+        data: { secondaryLogoStorageKey, updatedBy },
+      }),
+    );
+  }
+
   submitForVerification(tenantId: string, id: string, updatedBy?: string): Promise<Organization> {
     return this.prisma.withTenantContext(tenantId, (tx) =>
       tx.organization.update({

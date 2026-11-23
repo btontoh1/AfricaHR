@@ -7,6 +7,7 @@ import type {
   CreateOrganizationInput,
   CreateOrganizationUnitInput,
   RequestOrganizationLogoUploadInput,
+  RequestOrganizationSecondaryLogoUploadInput,
   RequestVerificationDocumentUploadInput,
   UpdateOrganizationInput,
   UpdateOrganizationUnitInput,
@@ -30,6 +31,10 @@ function verificationDocumentsKey(tenantId: string, organizationId: string) {
 
 function organizationLogoUrlKey(tenantId: string, organizationId: string) {
   return ['organization-logo-url', tenantId, organizationId] as const;
+}
+
+function organizationSecondaryLogoUrlKey(tenantId: string, organizationId: string) {
+  return ['organization-secondary-logo-url', tenantId, organizationId] as const;
 }
 
 export function useOrganizations(tenantId: string) {
@@ -297,6 +302,52 @@ export function useRemoveOrganizationLogo(tenantId: string, organizationId: stri
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: organizationLogoUrlKey(tenantId, organizationId) });
+    },
+  });
+}
+
+// --- Secondary invoice logo (e.g. an IATA/accreditation mark, shown on the
+// opposite side of the invoice header from the organization's own logo) ---
+
+export function useOrganizationSecondaryLogoUrl(tenantId: string, organizationId: string) {
+  return useQuery({
+    queryKey: organizationSecondaryLogoUrlKey(tenantId, organizationId),
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET(
+        '/api/tenants/{tenantId}/organizations/{id}/secondary-logo-url',
+        { params: { path: { tenantId, id: organizationId } } },
+      );
+      if (error) throw error;
+      return data;
+    },
+    enabled: Boolean(organizationId),
+  });
+}
+
+export function useRequestOrganizationSecondaryLogoUpload(tenantId: string, organizationId: string) {
+  return useMutation({
+    mutationFn: async (input: RequestOrganizationSecondaryLogoUploadInput) => {
+      const { data, error } = await apiClient.POST(
+        '/api/tenants/{tenantId}/organizations/{id}/secondary-logo/upload-url',
+        { params: { path: { tenantId, id: organizationId } }, body: input },
+      );
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useRemoveOrganizationSecondaryLogo(tenantId: string, organizationId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await apiClient.DELETE('/api/tenants/{tenantId}/organizations/{id}/secondary-logo', {
+        params: { path: { tenantId, id: organizationId } },
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: organizationSecondaryLogoUrlKey(tenantId, organizationId) });
     },
   });
 }

@@ -42,6 +42,7 @@ describe('OrganizationService', () => {
     address: null,
     metadata: null,
     logoStorageKey: null,
+    secondaryLogoStorageKey: null,
     verificationStatus: OrganizationVerificationStatus.UNVERIFIED,
     verificationNote: null,
     verifiedAt: null,

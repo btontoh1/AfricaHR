@@ -11,5 +11,7 @@ export type VerificationDocument = components['schemas']['OrganizationVerificati
 export type RequestVerificationDocumentUploadInput = components['schemas']['RequestVerificationDocumentUploadDto'];
 export type RejectOrganizationInput = components['schemas']['RejectOrganizationDto'];
 export type RequestOrganizationLogoUploadInput = components['schemas']['RequestOrganizationLogoUploadDto'];
+export type RequestOrganizationSecondaryLogoUploadInput =
+  components['schemas']['RequestOrganizationSecondaryLogoUploadDto'];
 export type BulkUpdateOrganizationAddressesInput = components['schemas']['BulkUpdateOrganizationAddressesDto'];
 export type OrganizationAddressImportResult = components['schemas']['OrganizationAddressImportResultDto'];

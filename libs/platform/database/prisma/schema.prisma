@@ -444,6 +444,14 @@ model Organization {
   /// key off organizationId, not tenantId alone.
   logoStorageKey String? @map("logo_storage_key")
 
+  /// Object-storage key for a second mark shown on the opposite side of the
+  /// invoice header from logoStorageKey - e.g. an IATA/accreditation logo
+  /// for a travel agency, rendered alongside the organization's own logo
+  /// and address (see InvoicePdfService). Same upload/remove/view-url
+  /// pattern as logoStorageKey, just a second independent slot - entirely
+  /// optional, most organizations will never set this.
+  secondaryLogoStorageKey String? @map("secondary_logo_storage_key")
+
   /// KYB-style review: a PLATFORM_ADMIN verifies the legal-entity fields
   /// above (and any supporting documents) before the org is trusted.
   /// Nothing else in the app currently gates on this status - see the

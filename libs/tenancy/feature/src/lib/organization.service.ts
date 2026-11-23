@@ -8,6 +8,7 @@ import { OrganizationRepository, TenantRepository } from '@africahr/tenancy-data
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { RequestOrganizationLogoUploadDto } from './dto/request-organization-logo-upload.dto';
+import { RequestOrganizationSecondaryLogoUploadDto } from './dto/request-organization-secondary-logo-upload.dto';
 
 export interface RequestOrganizationLogoUploadResult {
   uploadUrl: string;
@@ -252,5 +253,57 @@ export class OrganizationService {
       return null;
     }
     return this.storage.getViewUrl(organization.logoStorageKey, 60 * 60);
+  }
+
+  // Mirrors requestLogoUpload/removeLogo/getLogoUrl exactly - a second,
+  // independent slot (see Organization.secondaryLogoStorageKey's own doc
+  // comment), not a variant of the primary logo's behaviour.
+  async requestSecondaryLogoUpload(
+    tenantId: string,
+    id: string,
+    dto: RequestOrganizationSecondaryLogoUploadDto,
+    actorId?: string,
+  ): Promise<RequestOrganizationLogoUploadResult> {
+    await this.findById(tenantId, id);
+
+    const storageKey = `organization-secondary-logos/${tenantId}/${id}/${randomUUID()}-${dto.fileName}`;
+    const uploadUrl = await this.storage.getUploadUrl(storageKey, dto.contentType);
+
+    await this.organizations.updateSecondaryLogo(tenantId, id, storageKey, actorId);
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'organization.secondary_logo_updated',
+      resourceType: 'Organization',
+      resourceId: id,
+    });
+
+    return { uploadUrl };
+  }
+
+  async removeSecondaryLogo(tenantId: string, id: string, actorId?: string): Promise<void> {
+    const organization = await this.findById(tenantId, id);
+    if (!organization.secondaryLogoStorageKey) {
+      return;
+    }
+
+    await this.storage.deleteObject(organization.secondaryLogoStorageKey);
+    await this.organizations.updateSecondaryLogo(tenantId, id, null, actorId);
+
+    await this.audit.record({
+      tenantId,
+      actorUserId: actorId ?? null,
+      action: 'organization.secondary_logo_removed',
+      resourceType: 'Organization',
+      resourceId: id,
+    });
+  }
+
+  async getSecondaryLogoUrl(organization: Organization): Promise<string | null> {
+    if (!organization.secondaryLogoStorageKey) {
+      return null;
+    }
+    return this.storage.getViewUrl(organization.secondaryLogoStorageKey, 60 * 60);
   }
 }

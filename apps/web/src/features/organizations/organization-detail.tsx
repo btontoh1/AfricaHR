@@ -42,9 +42,12 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 export function OrganizationDetail({
   tenantId,
   organizationId,
+  backHref = '/organizations',
 }: {
   tenantId: string;
   organizationId: string;
+  /** Platform admins viewing a tenant's organization from the platform-admin console link back to that tenant's page instead of the tenant's own /organizations list. */
+  backHref?: string;
 }) {
   const session = useSession();
   const { data: organization, isLoading, isError, error } = useOrganization(tenantId, organizationId);
@@ -97,7 +100,7 @@ export function OrganizationDetail({
       <PageHeader
         title={organization.legalName}
         description={organization.tradingName ? `Trading as ${organization.tradingName}` : undefined}
-        backHref="/organizations"
+        backHref={backHref}
         action={
           <div className="flex items-center gap-2">
             <OrganizationVerificationStatusBadge status={organization.verificationStatus} />

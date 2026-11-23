@@ -9,6 +9,7 @@ import { DeleteTenantDialog } from './delete-tenant-dialog';
 import { EditTenantDialog } from './edit-tenant-dialog';
 import { TenantUsersTable } from './tenant-users-table';
 import { AddOnsCard } from './add-ons-card';
+import { OrganizationsCard } from './organizations-card';
 import { TenantPayrollWalletCard } from './tenant-payroll-wallet-card';
 import type { TenantStatus } from './types';
 import { useSubscription } from '@/features/billing/queries';
@@ -108,6 +109,8 @@ export function TenantDetail({ tenantId }: { tenantId: string }) {
           {tenant.status === 'CLOSED' && <DeleteTenantDialog tenantId={tenantId} tenantName={tenant.name} />}
         </CardContent>
       </Card>
+
+      <OrganizationsCard tenantId={tenantId} />
 
       <SubscriptionCard tenantId={tenantId} tenantCurrency={tenant.currency} />
 

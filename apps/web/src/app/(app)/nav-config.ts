@@ -66,6 +66,7 @@ import {
   Laptop,
   PackageSearch,
   Percent,
+  ShieldPlus,
 } from 'lucide-react';
 import type { SessionUser } from '@/lib/session';
 
@@ -207,6 +208,9 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
           : []),
         ...(isPlatformAdmin
           ? [{ label: 'Paystack Fees', href: '/platform-admin/paystack-fees', icon: Percent }]
+          : []),
+        ...(isPlatformAdmin
+          ? [{ label: 'Platform Admins', href: '/platform-admin/admins', icon: ShieldPlus }]
           : []),
       ],
     },

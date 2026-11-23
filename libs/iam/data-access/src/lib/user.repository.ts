@@ -103,6 +103,21 @@ export class UserRepository {
     );
   }
 
+  /**
+   * Platform admins themselves (tenantId: null) - the counterpart to
+   * listByTenant() for the one role that isn't scoped to a tenant. Runs
+   * under withPlatformScope() like every other read of a platform-admin
+   * row (see the "users" table's tenant_isolation RLS policy).
+   */
+  listPlatformAdmins(): Promise<User[]> {
+    return withScope(this.prisma, null, (client) =>
+      client.user.findMany({
+        where: { tenantId: null, deletedAt: null },
+        orderBy: { createdAt: 'asc' },
+      }),
+    );
+  }
+
   create(input: CreateUserInput): Promise<User> {
     return withScope(this.prisma, input.tenantId, (client) =>
       client.user.create({

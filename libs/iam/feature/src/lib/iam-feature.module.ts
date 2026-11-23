@@ -11,6 +11,7 @@ import { UserController } from './user.controller';
 import { MyMfaController } from './my-mfa.controller';
 import { MyPasswordController } from './my-password.controller';
 import { PlatformTenantUsersController } from './platform-tenant-users.controller';
+import { PlatformAdminsController } from './platform-admins.controller';
 import { LogSmsDispatcher, SmsDispatcher } from './sms-dispatcher';
 
 @Module({
@@ -29,6 +30,7 @@ import { LogSmsDispatcher, SmsDispatcher } from './sms-dispatcher';
     MyPasswordController,
     UserController,
     PlatformTenantUsersController,
+    PlatformAdminsController,
   ],
   providers: [
     AuthService,

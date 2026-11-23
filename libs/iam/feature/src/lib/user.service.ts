@@ -19,6 +19,7 @@ import { AuditService } from '@africahr/platform-audit';
 import { RefreshTokenRepository, UserRepository } from '@africahr/iam-data-access';
 import { getPasswordRequirementErrors } from '@africahr/iam-domain';
 import { CreateUserDto } from './dto/create-user.dto';
+import { CreatePlatformAdminDto } from './dto/create-platform-admin.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 import { ImpersonationTokenResponseDto } from './dto/impersonation-token-response.dto';
@@ -370,6 +371,66 @@ export class UserService {
     await this.audit.record({
       tenantId,
       actorUserId: actorId ?? null,
+      action: isActive ? 'user.activated' : 'user.deactivated',
+      resourceType: 'User',
+      resourceId: id,
+    });
+
+    return user;
+  }
+
+  /**
+   * Platform-admin self-management: list every PLATFORM_ADMIN account
+   * (tenantId: null) - the one role list()/requireTenantScope() above can
+   * never reach, since there's no tenant to scope by. Gated by
+   * PLATFORM_ADMIN_MANAGE at the controller.
+   */
+  listPlatformAdmins(): Promise<User[]> {
+    return this.users.listPlatformAdmins();
+  }
+
+  /**
+   * Delegates to create() with role/tenantId fixed to PLATFORM_ADMIN/null,
+   * rather than exposing CreateUserDto's wider role/tenantId/organizationId
+   * surface to this narrower screen - actor.role is already guaranteed
+   * PLATFORM_ADMIN by the controller's PLATFORM_ADMIN_MANAGE guard (only
+   * that role ever holds the permission), so resolveCreateTenantId's
+   * PLATFORM_ADMIN branch always applies here.
+   */
+  createPlatformAdmin(dto: CreatePlatformAdminDto, actor: RequestUser): Promise<User> {
+    return this.create(
+      {
+        email: dto.email,
+        password: dto.password,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        role: SystemRole.PLATFORM_ADMIN,
+      },
+      actor,
+    );
+  }
+
+  /**
+   * Deactivating is how you remove a platform admin's access (there's no
+   * separate delete flow for this role) - blocking self-deactivation avoids
+   * an admin locking themselves out with no tenant-scoped fallback account
+   * to recover through, unlike every other role this app has.
+   */
+  async setPlatformAdminActive(actor: RequestUser, id: string, isActive: boolean): Promise<User> {
+    if (!isActive && id === actor.sub) {
+      throw new BadRequestException('You cannot deactivate your own account');
+    }
+
+    const existing = await this.users.findById(null, id);
+    if (!existing) {
+      throw new NotFoundException(`User "${id}" not found`);
+    }
+
+    const user = await this.users.setActive(null, id, isActive, actor.sub);
+
+    await this.audit.record({
+      tenantId: null,
+      actorUserId: actor.sub,
       action: isActive ? 'user.activated' : 'user.deactivated',
       resourceType: 'User',
       resourceId: id,

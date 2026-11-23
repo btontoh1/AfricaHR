@@ -41,6 +41,11 @@ export const Permission = {
   // an auditor, and the service agreement) to want a separately nameable
   // grant, even though today only PLATFORM_ADMIN holds either one.
   PLATFORM_USER_IMPERSONATE: 'platform:user:impersonate',
+  // Managing other PLATFORM_ADMIN accounts themselves (tenantId: null) -
+  // distinct from USER_MANAGE, which is tenant-scoped and can never reach
+  // these rows (see UserService.requireTenantScope). Only PLATFORM_ADMIN
+  // ever holds this, same as every other PLATFORM_* permission.
+  PLATFORM_ADMIN_MANAGE: 'platform:admin:manage',
   ORGANIZATION_MANAGE: 'organization:manage',
   // Added when Organization got its first read-only consumer (the
   // Employee frontend's organization picker) — Module 1 predates the
@@ -187,6 +192,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
   [SystemRole.PLATFORM_ADMIN]: [
     Permission.PLATFORM_TENANT_MANAGE,
     Permission.PLATFORM_USER_IMPERSONATE,
+    Permission.PLATFORM_ADMIN_MANAGE,
     Permission.ORGANIZATION_MANAGE,
     Permission.ORGANIZATION_READ,
     Permission.USER_MANAGE,

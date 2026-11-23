@@ -1064,6 +1064,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/platform-admin/admins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PlatformAdminsController_list"];
+        put?: never;
+        post: operations["PlatformAdminsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform-admin/admins/{id}/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["PlatformAdminsController_setActive"];
+        trace?: never;
+    };
     "/api/tenants/{slug}/login": {
         parameters: {
             query?: never;
@@ -5186,6 +5218,14 @@ export interface components {
             accessToken: string;
             /** @description No refresh token is issued for an impersonation session - once this expires, the session is simply over. */
             expiresInSeconds: number;
+        };
+        CreatePlatformAdminDto: {
+            /** @example engineer@parothr.com */
+            email: string;
+            /** @description Must satisfy password strength requirements */
+            password: string;
+            firstName: string;
+            lastName: string;
         };
         BroadcastNotificationDto: {
             /**
@@ -9799,6 +9839,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ImpersonationTokenResponseDto"];
+                };
+            };
+        };
+    };
+    PlatformAdminsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponseDto"][];
+                };
+            };
+        };
+    };
+    PlatformAdminsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePlatformAdminDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponseDto"];
+                };
+            };
+        };
+    };
+    PlatformAdminsController_setActive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUserActiveDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponseDto"];
                 };
             };
         };

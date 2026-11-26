@@ -18,6 +18,7 @@ import { HowItWorksFeatureModule } from '@africahr/how-it-works-feature';
 import { FinanceFeatureModule } from '@africahr/finance-feature';
 import { ApFeatureModule } from '@africahr/ap-feature';
 import { InventoryFeatureModule } from '@africahr/inventory-feature';
+import { IntranetFeatureModule } from '@africahr/intranet-feature';
 import { SetupModule } from './setup/setup.module';
 import { TenantAuthModule } from './tenant-auth/tenant-auth.module';
 import { PlatformBroadcastModule } from './platform-broadcast/platform-broadcast.module';
@@ -46,6 +47,7 @@ import { PlatformBroadcastModule } from './platform-broadcast/platform-broadcast
     FinanceFeatureModule,
     ApFeatureModule,
     InventoryFeatureModule,
+    IntranetFeatureModule,
   ],
 })
 export class AppModule {}

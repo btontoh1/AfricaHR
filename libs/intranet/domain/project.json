@@ -1,0 +1,19 @@
+{
+  "name": "intranet-domain",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/intranet/domain/src",
+  "projectType": "library",
+  "tags": ["scope:intranet", "type:domain"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/intranet/domain",
+        "main": "libs/intranet/domain/src/index.ts",
+        "tsConfig": "libs/intranet/domain/tsconfig.lib.json",
+        "assets": ["libs/intranet/domain/*.md"]
+      }
+    }
+  }
+}

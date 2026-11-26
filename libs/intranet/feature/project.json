@@ -1,0 +1,19 @@
+{
+  "name": "intranet-feature",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/intranet/feature/src",
+  "projectType": "library",
+  "tags": ["scope:intranet", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/intranet/feature",
+        "main": "libs/intranet/feature/src/index.ts",
+        "tsConfig": "libs/intranet/feature/tsconfig.lib.json",
+        "assets": ["libs/intranet/feature/*.md"]
+      }
+    }
+  }
+}

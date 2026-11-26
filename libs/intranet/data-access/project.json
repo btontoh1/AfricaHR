@@ -1,0 +1,19 @@
+{
+  "name": "intranet-data-access",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/intranet/data-access/src",
+  "projectType": "library",
+  "tags": ["scope:intranet", "type:data-access"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/intranet/data-access",
+        "main": "libs/intranet/data-access/src/index.ts",
+        "tsConfig": "libs/intranet/data-access/tsconfig.lib.json",
+        "assets": ["libs/intranet/data-access/*.md"]
+      }
+    }
+  }
+}

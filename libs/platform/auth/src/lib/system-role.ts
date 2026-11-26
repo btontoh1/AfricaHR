@@ -201,6 +201,13 @@ export const Permission = {
   // team" per the intranet project plan - narrower than the group-wide
   // TENANT_ADMIN/HR_MANAGER posting any audience scope).
   ANNOUNCEMENT_MANAGE: 'intranet:announcement:manage',
+  // Weekly report templates + head review/comments. Same broad set as
+  // ANNOUNCEMENT_MANAGE, but WeeklyReportTemplateService further restricts
+  // template CRUD to PLATFORM_ADMIN/TENANT_ADMIN/HR_MANAGER only ("Group HR
+  // ... set up ... departments" per the project plan) - UNIT_ADMIN keeps
+  // this permission only for reviewing/commenting on their own
+  // department's submitted reports.
+  WEEKLY_REPORT_MANAGE: 'intranet:weekly-report:manage',
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
@@ -253,6 +260,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.HOW_IT_WORKS_MANAGE,
     Permission.INTRANET_POLICY_MANAGE,
     Permission.ANNOUNCEMENT_MANAGE,
+    Permission.WEEKLY_REPORT_MANAGE,
   ],
   [SystemRole.TENANT_ADMIN]: [
     Permission.TENANT_BRANDING_MANAGE,
@@ -292,6 +300,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.INVENTORY_READ,
     Permission.INTRANET_POLICY_MANAGE,
     Permission.ANNOUNCEMENT_MANAGE,
+    Permission.WEEKLY_REPORT_MANAGE,
   ],
   [SystemRole.HR_MANAGER]: [
     Permission.ORGANIZATION_READ,
@@ -318,6 +327,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.AP_READ,
     Permission.INTRANET_POLICY_MANAGE,
     Permission.ANNOUNCEMENT_MANAGE,
+    Permission.WEEKLY_REPORT_MANAGE,
   ],
   [SystemRole.PAYROLL_MANAGER]: [
     Permission.ORGANIZATION_READ,
@@ -368,7 +378,11 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
   // than ORG_ADMIN above. ORGANIZATION_READ is needed to resolve their own
   // company/department names in the UI (e.g. the Announcements audience
   // badge) - read-only, no ORGANIZATION_MANAGE.
-  [SystemRole.UNIT_ADMIN]: [Permission.ANNOUNCEMENT_MANAGE, Permission.ORGANIZATION_READ],
+  [SystemRole.UNIT_ADMIN]: [
+    Permission.ANNOUNCEMENT_MANAGE,
+    Permission.ORGANIZATION_READ,
+    Permission.WEEKLY_REPORT_MANAGE,
+  ],
   [SystemRole.EMPLOYEE]: [],
   // Read-only Finance access and nothing else - see the role's own comment
   // above for why (no Employee record, external bookkeeper).

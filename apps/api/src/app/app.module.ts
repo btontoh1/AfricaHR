@@ -22,6 +22,7 @@ import { IntranetFeatureModule } from '@africahr/intranet-feature';
 import { SetupModule } from './setup/setup.module';
 import { TenantAuthModule } from './tenant-auth/tenant-auth.module';
 import { PlatformBroadcastModule } from './platform-broadcast/platform-broadcast.module';
+import { WeeklyReportReminderModule } from './weekly-report-reminder/weekly-report-reminder.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { PlatformBroadcastModule } from './platform-broadcast/platform-broadcast
     SetupModule,
     TenantAuthModule,
     PlatformBroadcastModule,
+    WeeklyReportReminderModule,
     IamFeatureModule,
     TenancyFeatureModule,
     EmployeeFeatureModule,

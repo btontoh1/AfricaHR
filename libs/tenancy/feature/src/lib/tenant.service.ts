@@ -39,10 +39,10 @@ export class TenantService {
       country: dto.country,
       currency: dto.currency,
       timezone: dto.timezone,
-      // RECRUITMENT/PERFORMANCE are on by default for every new tenant
-      // (see AddOnModule's own comment) - unlike INVOICING, which stays
-      // opt-in.
-      enabledAddOns: [AddOnModule.RECRUITMENT, AddOnModule.PERFORMANCE],
+      // RECRUITMENT/PERFORMANCE/INTRANET are on by default for every new
+      // tenant (see AddOnModule's own comment) - unlike INVOICING, which
+      // stays opt-in.
+      enabledAddOns: [AddOnModule.RECRUITMENT, AddOnModule.PERFORMANCE, AddOnModule.INTRANET],
       createdBy: actorId,
     });
 

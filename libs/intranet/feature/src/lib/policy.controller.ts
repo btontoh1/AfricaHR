@@ -1,12 +1,15 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { AddOnModule } from '@prisma/client';
 import {
+  AddOnGuard,
   assertTenantScope,
   CurrentUser,
   JwtAuthGuard,
   Permission,
   PermissionsGuard,
   RequestUser,
+  RequireAddOn,
   RequirePermissions,
 } from '@africahr/platform-auth';
 import { PolicyService } from './policy.service';
@@ -25,8 +28,9 @@ import { PolicyAcknowledgementResponseDto } from './dto/policy-acknowledgement-r
  */
 @ApiTags('intranet')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, AddOnGuard)
 @RequirePermissions(Permission.INTRANET_POLICY_MANAGE)
+@RequireAddOn(AddOnModule.INTRANET)
 @Controller('tenants/:tenantId/policies')
 export class PolicyController {
   constructor(private readonly policies: PolicyService) {}

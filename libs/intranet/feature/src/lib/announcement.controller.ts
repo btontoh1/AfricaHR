@@ -1,12 +1,15 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { AddOnModule } from '@prisma/client';
 import {
+  AddOnGuard,
   assertTenantScope,
   CurrentUser,
   JwtAuthGuard,
   Permission,
   PermissionsGuard,
   RequestUser,
+  RequireAddOn,
   RequirePermissions,
 } from '@africahr/platform-auth';
 import { AnnouncementService } from './announcement.service';
@@ -26,8 +29,9 @@ import { SetAnnouncementPinnedDto } from './dto/set-announcement-pinned.dto';
  */
 @ApiTags('intranet')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, AddOnGuard)
 @RequirePermissions(Permission.ANNOUNCEMENT_MANAGE)
+@RequireAddOn(AddOnModule.INTRANET)
 @Controller('tenants/:tenantId/announcements')
 export class AnnouncementController {
   constructor(private readonly announcements: AnnouncementService) {}

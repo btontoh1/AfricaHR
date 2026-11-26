@@ -64,6 +64,12 @@ enum AddOnModule {
   /// Opt-in, off by default - same convention as INVOICING/FINANCE. See
   /// InventoryProduct and friends near the end of this file.
   INVENTORY
+  /// Policies/Announcements/Weekly Reports. Same convention as RECRUITMENT/
+  /// PERFORMANCE above - existed as a core feature before add-on gating was
+  /// introduced here, so every tenant gets it by default (see the backfill
+  /// migration, and TenantService.create) and a platform admin opts a
+  /// tenant OUT rather than in.
+  INTRANET
 }
 
 /// The SaaS account. Platform-root table — no tenantId, no RLS.
@@ -173,36 +179,36 @@ enum BillingInterval {
 /// employee count (see BillingHeadcountRepository), so it's never stale
 /// between invoices.
 model Subscription {
-  id                   String             @id @default(uuid())
-  tenantId             String             @unique @map("tenant_id")
-  pricePerEmployee     Decimal            @map("price_per_employee")
+  id                    String             @id @default(uuid())
+  tenantId              String             @unique @map("tenant_id")
+  pricePerEmployee      Decimal            @map("price_per_employee")
   /// A fixed charge per billing period, independent of headcount - lets a
   /// tenant be put on a flat-rate plan (e.g. one covering up to 10
   /// employees for a set price) instead of pure per-employee billing.
   /// 0 (the default) preserves today's pure per-seat behaviour for every
   /// existing tenant - see calculateInvoiceAmount's own doc comment for how
   /// this combines with pricePerEmployee and includedEmployeeCount.
-  flatFeeAmount        Decimal?           @default(0) @map("flat_fee_amount")
+  flatFeeAmount         Decimal?           @default(0) @map("flat_fee_amount")
   /// How many employees flatFeeAmount already covers before
   /// pricePerEmployee starts applying to the remainder (see
   /// calculateInvoiceAmount). 0 (the default) means pricePerEmployee
   /// applies to every employee, same as before this field existed.
-  includedEmployeeCount Int?              @default(0) @map("included_employee_count")
+  includedEmployeeCount Int?               @default(0) @map("included_employee_count")
   /// MONTHLY (the default, preserving every existing tenant's current
   /// behaviour) or ANNUAL - governs how far currentPeriodEnd advances on
   /// assignment and renewal (see nextBillingPeriod) and the actual charge
   /// a tenant sees per invoice: flatFeeAmount/pricePerEmployee are the
   /// full amount for one period, however long that period is - an ANNUAL
   /// tenant on flatFeeAmount: 499 is charged 499 once a year, not per month.
-  billingInterval      BillingInterval    @default(MONTHLY) @map("billing_interval")
-  currency             String
-  status               SubscriptionStatus @default(ACTIVE)
-  currentPeriodStart   DateTime           @map("current_period_start")
-  currentPeriodEnd     DateTime           @map("current_period_end")
-  cancelAtPeriodEnd    Boolean            @default(false) @map("cancel_at_period_end")
+  billingInterval       BillingInterval    @default(MONTHLY) @map("billing_interval")
+  currency              String
+  status                SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart    DateTime           @map("current_period_start")
+  currentPeriodEnd      DateTime           @map("current_period_end")
+  cancelAtPeriodEnd     Boolean            @default(false) @map("cancel_at_period_end")
   /// Paystack's customer code, minted lazily on the first invoice - not
   /// known until then, since assigning a plan doesn't itself talk to Paystack.
-  paystackCustomerCode String?            @map("paystack_customer_code")
+  paystackCustomerCode  String?            @map("paystack_customer_code")
 
   /// ParotHR's own flat margin (in this subscription's own currency) charged
   /// on top of each individual payroll disbursement transaction, in
@@ -550,20 +556,20 @@ model OrganizationUnit {
   createdBy String?   @map("created_by")
   updatedBy String?   @map("updated_by")
 
-  organization    Organization       @relation(fields: [organizationId], references: [id])
-  parent          OrganizationUnit?  @relation("OrganizationUnitToParent", fields: [parentId], references: [id])
-  children        OrganizationUnit[] @relation("OrganizationUnitToParent")
-  employees       Employee[]
-  jobRequisitions JobRequisition[]
-  journalEntries  GlJournalEntry[]
+  organization         Organization          @relation(fields: [organizationId], references: [id])
+  parent               OrganizationUnit?     @relation("OrganizationUnitToParent", fields: [parentId], references: [id])
+  children             OrganizationUnit[]    @relation("OrganizationUnitToParent")
+  employees            Employee[]
+  jobRequisitions      JobRequisition[]
+  journalEntries       GlJournalEntry[]
   /// UNIT_ADMIN users scoped to this department - see User.organizationUnitId.
-  unitAdmins      User[]
+  unitAdmins           User[]
   /// Policies with audienceScope ORGANIZATION_UNIT scoped to this
   /// department - see Policy.organizationUnitId.
-  policies        Policy[]
+  policies             Policy[]
   /// Announcements with audienceScope ORGANIZATION_UNIT scoped to this
   /// department - see Announcement.organizationUnitId.
-  announcements   Announcement[]
+  announcements        Announcement[]
   /// This department's weekly-report question set, if customized - see
   /// WeeklyReportTemplate.organizationUnitId.
   weeklyReportTemplate WeeklyReportTemplate?
@@ -626,8 +632,8 @@ enum MfaMethod {
 /// resolve a user from email+password alone, without first knowing which
 /// tenant to look in.
 model User {
-  id             String     @id @default(uuid())
-  tenantId       String?    @map("tenant_id")
+  id                 String     @id @default(uuid())
+  tenantId           String?    @map("tenant_id")
   // Deliberately not @unique here: uniqueness is enforced by a partial
   // index (WHERE deleted_at IS NULL) added via raw SQL migration instead,
   // since Prisma's schema DSL can't express a filtered unique constraint.
@@ -635,22 +641,22 @@ model User {
   // that email from ever being reused - find_user_for_login() already
   // treats deleted_at IS NULL as "the email is free," so the DB
   // constraint needs to agree.
-  email          String
-  passwordHash   String     @map("password_hash")
-  firstName      String     @map("first_name")
-  lastName       String     @map("last_name")
-  role           SystemRole
+  email              String
+  passwordHash       String     @map("password_hash")
+  firstName          String     @map("first_name")
+  lastName           String     @map("last_name")
+  role               SystemRole
   /// Set only when role is ORG_ADMIN - which single Organization (within
   /// tenantId) this user administers. Null for every other role, including
   /// TENANT_ADMIN/HR_MANAGER/PAYROLL_MANAGER, which stay tenant-wide.
-  organizationId String?    @map("organization_id")
+  organizationId     String?    @map("organization_id")
   /// Set only when role is UNIT_ADMIN - which single OrganizationUnit
   /// (department) this user administers, narrower than ORG_ADMIN's whole-
   /// Organization scope. Null for every other role. See
   /// assertOrganizationUnitScope (platform-auth).
-  organizationUnitId String? @map("organization_unit_id")
-  isActive       Boolean    @default(true) @map("is_active")
-  lastLoginAt    DateTime?  @map("last_login_at")
+  organizationUnitId String?    @map("organization_unit_id")
+  isActive           Boolean    @default(true) @map("is_active")
+  lastLoginAt        DateTime?  @map("last_login_at")
 
   /// mfaSecretEncrypted is set as soon as setup() generates a secret (before
   /// the user has proven they scanned it), but mfaEnabled only flips to true
@@ -3402,9 +3408,9 @@ model Policy {
 
   /// Object-storage key for the uploaded PDF/Word file - same signed-URL
   /// pattern as every other upload in this app (see StorageService).
-  storageKey String  @map("storage_key")
-  fileName   String  @map("file_name")
-  version    Int     @default(1)
+  storageKey   String  @map("storage_key")
+  fileName     String  @map("file_name")
+  version      Int     @default(1)
   /// The version this one replaces, if any - kept, never deleted, so
   /// existing acknowledgements stay meaningful history rather than being
   /// retargeted at content staff never actually saw.
@@ -3462,10 +3468,10 @@ model PolicyAcknowledgement {
 /// AnnouncementService - department heads "post to their team" per the
 /// project plan, which group-level HR/admin roles aren't limited to).
 model Announcement {
-  id    String @id @default(uuid())
+  id       String @id @default(uuid())
   tenantId String @map("tenant_id")
-  title String
-  body  String
+  title    String
+  body     String
 
   /// Object-storage key for an optional picture/attachment - same
   /// signed-URL pattern as Policy.storageKey. Null when no attachment.
@@ -3528,7 +3534,7 @@ model WeeklyReportTemplate {
   organizationUnitId String @unique @map("organization_unit_id")
   /// Ordered array of question strings - answers on WeeklyReport are
   /// positional (answers[i] answers questions[i]).
-  questions Json
+  questions          Json
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -3552,15 +3558,15 @@ enum WeeklyReportStatus {
 /// intranet-domain's isReportLate), not stored, since lateness depends on
 /// the current time, which keeps changing meaning for the same row.
 model WeeklyReport {
-  id         String             @id @default(uuid())
-  tenantId   String             @map("tenant_id")
-  employeeId String             @map("employee_id")
+  id          String             @id @default(uuid())
+  tenantId    String             @map("tenant_id")
+  employeeId  String             @map("employee_id")
   /// Monday 00:00 of the reporting week (see intranet-domain's getWeekStart).
-  weekStart  DateTime           @map("week_start") @db.Date
+  weekStart   DateTime           @map("week_start") @db.Date
   /// Positional answers - answers[i] answers the template's questions[i].
-  answers    Json
-  status     WeeklyReportStatus @default(SUBMITTED)
-  submittedAt DateTime?         @map("submitted_at")
+  answers     Json
+  status      WeeklyReportStatus @default(SUBMITTED)
+  submittedAt DateTime?          @map("submitted_at")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -3568,7 +3574,7 @@ model WeeklyReport {
   createdBy String?   @map("created_by")
   updatedBy String?   @map("updated_by")
 
-  employee Employee               @relation(fields: [employeeId], references: [id])
+  employee Employee              @relation(fields: [employeeId], references: [id])
   comments WeeklyReportComment[]
 
   @@unique([employeeId, weekStart])

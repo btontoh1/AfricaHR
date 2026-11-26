@@ -1,12 +1,15 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { AddOnModule } from '@prisma/client';
 import {
+  AddOnGuard,
   assertTenantScope,
   CurrentUser,
   JwtAuthGuard,
   Permission,
   PermissionsGuard,
   RequestUser,
+  RequireAddOn,
   RequirePermissions,
 } from '@africahr/platform-auth';
 import { WeeklyReportService } from './weekly-report.service';
@@ -25,8 +28,9 @@ import { WeeklyReportCommentResponseDto } from './dto/weekly-report-comment-resp
  */
 @ApiTags('intranet')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, AddOnGuard)
 @RequirePermissions(Permission.WEEKLY_REPORT_MANAGE)
+@RequireAddOn(AddOnModule.INTRANET)
 @Controller('tenants/:tenantId/weekly-reports')
 export class WeeklyReportController {
   constructor(private readonly reports: WeeklyReportService) {}

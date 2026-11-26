@@ -174,17 +174,24 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
   // as Performance/Recruitment above.
   const hasInventoryAddOn = enabledAddOns.includes('INVENTORY');
   const hasInventoryAccess = isTenantMember && user.role === 'TENANT_ADMIN' && hasInventoryAddOn;
+  // Intranet (Policies/Announcements/Weekly Reports) - gated the same way
+  // as Performance/Recruitment/Inventory above: the backend now blocks
+  // every intranet route (admin and self-service alike) when this add-on
+  // is off for the tenant, see RequireAddOn on the intranet-feature
+  // controllers.
+  const hasIntranetAddOn = enabledAddOns.includes('INTRANET');
   // Matches Permission.INTRANET_POLICY_MANAGE in system-role.ts
   // (PLATFORM_ADMIN/TENANT_ADMIN/HR_MANAGER) - UNIT_ADMIN is deliberately
   // excluded, same as hasLeaveAdminAccess above.
   const hasPolicyAdminAccess =
-    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
+    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER') && hasIntranetAddOn;
   // Matches Permission.ANNOUNCEMENT_MANAGE in system-role.ts - broader than
   // hasPolicyAdminAccess: UNIT_ADMIN (department head) may post too,
   // restricted server-side to their own department (see AnnouncementService).
   const hasAnnouncementAdminAccess =
     isTenantMember &&
-    (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER' || user.role === 'UNIT_ADMIN');
+    (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER' || user.role === 'UNIT_ADMIN') &&
+    hasIntranetAddOn;
   // Matches Permission.WEEKLY_REPORT_MANAGE - same set as
   // hasAnnouncementAdminAccess (UNIT_ADMIN reviews/comments on their own
   // team's reports; the other three may also set up each department's form).
@@ -340,19 +347,19 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
       label: 'Intranet',
       items: [
         ...(hasPolicyAdminAccess ? [{ label: 'Policies', href: '/intranet/policies', icon: FileStack }] : []),
-        ...(isEmployeeSelfService
+        ...(isEmployeeSelfService && hasIntranetAddOn
           ? [{ label: 'My Policies', href: '/intranet/my-policies', icon: BookOpenCheck }]
           : []),
         ...(hasAnnouncementAdminAccess
           ? [{ label: 'Announcements', href: '/intranet/announcements', icon: Megaphone }]
           : []),
-        ...(isEmployeeSelfService
+        ...(isEmployeeSelfService && hasIntranetAddOn
           ? [{ label: 'My Announcements', href: '/intranet/my-announcements', icon: Megaphone }]
           : []),
         ...(hasWeeklyReportAdminAccess
           ? [{ label: 'Weekly Reports', href: '/intranet/weekly-reports', icon: FileText }]
           : []),
-        ...(isEmployeeSelfService
+        ...(isEmployeeSelfService && hasIntranetAddOn
           ? [{ label: 'My Weekly Report', href: '/intranet/my-weekly-reports', icon: ClipboardCheck }]
           : []),
       ],

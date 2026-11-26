@@ -1,6 +1,15 @@
 import { Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { assertTenantScope, CurrentUser, JwtAuthGuard, PermissionsGuard, RequestUser } from '@africahr/platform-auth';
+import { AddOnModule } from '@prisma/client';
+import {
+  AddOnGuard,
+  assertTenantScope,
+  CurrentUser,
+  JwtAuthGuard,
+  PermissionsGuard,
+  RequestUser,
+  RequireAddOn,
+} from '@africahr/platform-auth';
 import { PolicyService } from './policy.service';
 import { PolicyResponseDto } from './dto/policy-response.dto';
 import { PolicyViewUrlResponseDto } from './dto/policy-view-url-response.dto';
@@ -16,7 +25,8 @@ import { PolicyViewUrlResponseDto } from './dto/policy-view-url-response.dto';
  */
 @ApiTags('intranet')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, AddOnGuard)
+@RequireAddOn(AddOnModule.INTRANET)
 @Controller('tenants/:tenantId/policies/me')
 export class MyPolicyController {
   constructor(private readonly policies: PolicyService) {}

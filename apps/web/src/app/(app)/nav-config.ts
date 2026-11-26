@@ -185,6 +185,10 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
   const hasAnnouncementAdminAccess =
     isTenantMember &&
     (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER' || user.role === 'UNIT_ADMIN');
+  // Matches Permission.WEEKLY_REPORT_MANAGE - same set as
+  // hasAnnouncementAdminAccess (UNIT_ADMIN reviews/comments on their own
+  // team's reports; the other three may also set up each department's form).
+  const hasWeeklyReportAdminAccess = hasAnnouncementAdminAccess;
 
   const groups: NavGroup[] = [
     {
@@ -344,6 +348,12 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
           : []),
         ...(isEmployeeSelfService
           ? [{ label: 'My Announcements', href: '/intranet/my-announcements', icon: Megaphone }]
+          : []),
+        ...(hasWeeklyReportAdminAccess
+          ? [{ label: 'Weekly Reports', href: '/intranet/weekly-reports', icon: FileText }]
+          : []),
+        ...(isEmployeeSelfService
+          ? [{ label: 'My Weekly Report', href: '/intranet/my-weekly-reports', icon: ClipboardCheck }]
           : []),
       ],
     },

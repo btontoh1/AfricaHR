@@ -4866,6 +4866,118 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/weekly-report-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["WeeklyReportTemplateController_listAll"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/weekly-report-templates/{organizationUnitId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["WeeklyReportTemplateController_getForUnit"];
+        put: operations["WeeklyReportTemplateController_upsert"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/weekly-reports/me/template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyWeeklyReportController_getTemplate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/weekly-reports/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyWeeklyReportController_list"];
+        put?: never;
+        post: operations["MyWeeklyReportController_submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/weekly-reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["WeeklyReportController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/weekly-reports/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["WeeklyReportController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/weekly-reports/{id}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["WeeklyReportController_listComments"];
+        put?: never;
+        post: operations["WeeklyReportController_addComment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -8167,6 +8279,57 @@ export interface components {
         };
         SetAnnouncementPinnedDto: {
             pinned: boolean;
+        };
+        WeeklyReportTemplateResponseDto: {
+            organizationUnitId: string;
+            questions: string[];
+            /** @description True when this department has no custom template and is using the default questions */
+            isDefault: boolean;
+        };
+        UpsertWeeklyReportTemplateDto: {
+            /**
+             * @example [
+             *       "What did you do this week?",
+             *       "What problems did you face?",
+             *       "What is your plan for next week?"
+             *     ]
+             */
+            questions: string[];
+        };
+        WeeklyReportQuestionsResponseDto: {
+            questions: string[];
+        };
+        WeeklyReportResponseDto: {
+            id: string;
+            employeeId: string;
+            employeeName?: string;
+            organizationUnitId?: string | null;
+            weekStart: string;
+            answers: string[];
+            /** @enum {string} */
+            status: "DRAFT" | "SUBMITTED";
+            submittedAt?: string | null;
+            isLate: boolean;
+            createdAt: string;
+        };
+        SubmitWeeklyReportDto: {
+            /**
+             * @description Any date within the week being reported - normalized to that week's Monday server-side.
+             * @example 2026-11-23
+             */
+            weekStart: string;
+            /** @description Positional - answers[i] answers the department's template question[i]. */
+            answers: string[];
+        };
+        WeeklyReportCommentResponseDto: {
+            id: string;
+            authorName: string;
+            body: string;
+            createdAt: string;
+        };
+        AddWeeklyReportCommentDto: {
+            /** @example Great progress this week - keep it up. */
+            body: string;
         };
     };
     responses: never;
@@ -17584,6 +17747,237 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AnnouncementAttachmentViewUrlResponseDto"];
+                };
+            };
+        };
+    };
+    WeeklyReportTemplateController_listAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeeklyReportTemplateResponseDto"][];
+                };
+            };
+        };
+    };
+    WeeklyReportTemplateController_getForUnit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                organizationUnitId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeeklyReportTemplateResponseDto"];
+                };
+            };
+        };
+    };
+    WeeklyReportTemplateController_upsert: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                organizationUnitId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertWeeklyReportTemplateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeeklyReportTemplateResponseDto"];
+                };
+            };
+        };
+    };
+    MyWeeklyReportController_getTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeeklyReportQuestionsResponseDto"];
+                };
+            };
+        };
+    };
+    MyWeeklyReportController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeeklyReportResponseDto"][];
+                };
+            };
+        };
+    };
+    MyWeeklyReportController_submit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitWeeklyReportDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeeklyReportResponseDto"];
+                };
+            };
+        };
+    };
+    WeeklyReportController_list: {
+        parameters: {
+            query?: {
+                organizationUnitId?: string;
+                /** @description Any date within the week - omit for every week. */
+                weekStart?: string;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeeklyReportResponseDto"][];
+                };
+            };
+        };
+    };
+    WeeklyReportController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeeklyReportResponseDto"];
+                };
+            };
+        };
+    };
+    WeeklyReportController_listComments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeeklyReportCommentResponseDto"][];
+                };
+            };
+        };
+    };
+    WeeklyReportController_addComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddWeeklyReportCommentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeeklyReportCommentResponseDto"];
                 };
             };
         };

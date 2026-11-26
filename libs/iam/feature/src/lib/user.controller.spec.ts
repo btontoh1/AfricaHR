@@ -48,13 +48,25 @@ describe('UserController', () => {
   it('delegates updateRole with the id, role, actor, and organizationId', () => {
     controller.updateRole('user-2', { role: SystemRole.HR_MANAGER }, actor);
 
-    expect(userService.updateRole).toHaveBeenCalledWith(actor, 'user-2', SystemRole.HR_MANAGER, undefined);
+    expect(userService.updateRole).toHaveBeenCalledWith(
+      actor,
+      'user-2',
+      SystemRole.HR_MANAGER,
+      undefined,
+      undefined,
+    );
   });
 
   it('passes organizationId through to updateRole when set', () => {
     controller.updateRole('user-2', { role: SystemRole.ORG_ADMIN, organizationId: 'org-1' }, actor);
 
-    expect(userService.updateRole).toHaveBeenCalledWith(actor, 'user-2', SystemRole.ORG_ADMIN, 'org-1');
+    expect(userService.updateRole).toHaveBeenCalledWith(
+      actor,
+      'user-2',
+      SystemRole.ORG_ADMIN,
+      'org-1',
+      undefined,
+    );
   });
 
   it('delegates setActive with the id, flag, and actor', () => {

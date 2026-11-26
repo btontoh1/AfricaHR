@@ -43,18 +43,20 @@ const ROLE_LABEL: Record<Exclude<SystemRole, 'PLATFORM_ADMIN'>, string> = {
   PAYROLL_MANAGER: 'Payroll Manager',
   PAYROLL_OFFICER: 'Payroll Officer',
   ORG_ADMIN: 'Org Admin',
+  UNIT_ADMIN: 'Unit Admin',
   EMPLOYEE: 'Employee',
   ACCOUNTANT: 'Accountant',
   KIOSK: 'Kiosk device',
 };
 
-// ORG_ADMIN is excluded from the selectable set - this inline dropdown has
-// nowhere to collect the organizationId it requires, same reasoning as
-// team-members-list.tsx's RoleControl. An existing ORG_ADMIN row renders
-// ROLE_LABEL as fixed text instead of this Select (see below).
+// ORG_ADMIN/UNIT_ADMIN are excluded from the selectable set - this inline
+// dropdown has nowhere to collect the organizationId/organizationUnitId
+// they require, same reasoning as team-members-list.tsx's RoleControl. An
+// existing ORG_ADMIN/UNIT_ADMIN row renders ROLE_LABEL as fixed text
+// instead of this Select (see below).
 const ASSIGNABLE_ROLES = (
   Object.keys(ROLE_LABEL) as (keyof typeof ROLE_LABEL)[]
-).filter((role) => role !== 'ORG_ADMIN');
+).filter((role) => role !== 'ORG_ADMIN' && role !== 'UNIT_ADMIN');
 
 export function TenantUsersTable({ tenantId }: { tenantId: string }) {
   const { data: users, isLoading, isError, error } = useTenantUsers(tenantId);
@@ -121,8 +123,8 @@ export function TenantUsersTable({ tenantId }: { tenantId: string }) {
                 {user.email}
               </TableCell>
               <TableCell>
-                {user.role === 'ORG_ADMIN' ? (
-                  <span className="text-sm">{ROLE_LABEL.ORG_ADMIN}</span>
+                {user.role === 'ORG_ADMIN' || user.role === 'UNIT_ADMIN' ? (
+                  <span className="text-sm">{ROLE_LABEL[user.role]}</span>
                 ) : (
                   <Select
                     value={user.role}

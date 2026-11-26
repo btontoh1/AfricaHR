@@ -68,7 +68,7 @@ export class PlatformTenantUsersController {
     @Body() dto: UpdateUserRoleDto,
     @CurrentUser() actor: RequestUser,
   ) {
-    return this.users.updateRoleForTenant(tenantId, id, dto.role, actor.sub, dto.organizationId);
+    return this.users.updateRoleForTenant(tenantId, id, dto.role, actor.sub, dto.organizationId, dto.organizationUnitId);
   }
 
   @Patch(':id/active')

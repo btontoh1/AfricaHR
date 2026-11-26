@@ -24,6 +24,7 @@ interface AuthenticatableUser {
   id: string;
   tenantId: string | null;
   organizationId: string | null;
+  organizationUnitId: string | null;
   email: string;
   passwordHash: string;
   role: SystemRole;
@@ -110,6 +111,7 @@ export class AuthService {
         role: user.role,
         tenantId: user.tenantId,
         organizationId: user.organizationId,
+        organizationUnitId: user.organizationUnitId,
       },
       context,
     );
@@ -205,6 +207,7 @@ export class AuthService {
         role: user.role,
         tenantId: user.tenantId,
         organizationId: user.organizationId,
+        organizationUnitId: user.organizationUnitId,
       },
       context,
     );
@@ -243,6 +246,7 @@ export class AuthService {
         role: user.role,
         tenantId: user.tenantId,
         organizationId: user.organizationId,
+        organizationUnitId: user.organizationUnitId,
       },
       context,
     );
@@ -284,6 +288,7 @@ export class AuthService {
       role: SystemRole;
       tenantId: string | null;
       organizationId: string | null;
+      organizationUnitId: string | null;
     },
     context: RequestContext,
   ): Promise<AuthResponseDto> {
@@ -293,6 +298,7 @@ export class AuthService {
       role: user.role,
       tenantId: user.tenantId,
       organizationId: user.organizationId,
+      organizationUnitId: user.organizationUnitId,
     });
 
     const rawRefreshToken = randomBytes(32).toString('hex');

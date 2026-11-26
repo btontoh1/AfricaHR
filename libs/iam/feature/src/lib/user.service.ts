@@ -58,6 +58,9 @@ export class UserService {
     const organizationId = tenantId
       ? await this.resolveOrganizationId(tenantId, dto.role, dto.organizationId)
       : null;
+    const organizationUnitId = tenantId
+      ? await this.resolveOrganizationUnitId(tenantId, dto.role, dto.organizationUnitId)
+      : null;
 
     const passwordErrors = getPasswordRequirementErrors(dto.password);
     if (passwordErrors.length > 0) {
@@ -74,6 +77,7 @@ export class UserService {
     const user = await this.users.create({
       tenantId,
       organizationId,
+      organizationUnitId,
       email: dto.email,
       passwordHash,
       firstName: dto.firstName,
@@ -107,7 +111,13 @@ export class UserService {
     return this.users.listByTenant(tenantId);
   }
 
-  async updateRole(actor: RequestUser, id: string, role: SystemRole, organizationId?: string): Promise<User> {
+  async updateRole(
+    actor: RequestUser,
+    id: string,
+    role: SystemRole,
+    organizationId?: string,
+    organizationUnitId?: string,
+  ): Promise<User> {
     const tenantId = this.requireTenantScope(actor);
     await this.findById(actor, id);
 
@@ -116,7 +126,15 @@ export class UserService {
     }
 
     const resolvedOrganizationId = await this.resolveOrganizationId(tenantId, role, organizationId);
-    const user = await this.users.updateRole(tenantId, id, role, resolvedOrganizationId, actor.sub);
+    const resolvedOrganizationUnitId = await this.resolveOrganizationUnitId(tenantId, role, organizationUnitId);
+    const user = await this.users.updateRole(
+      tenantId,
+      id,
+      role,
+      resolvedOrganizationId,
+      resolvedOrganizationUnitId,
+      actor.sub,
+    );
 
     await this.audit.record({
       tenantId,
@@ -336,6 +354,7 @@ export class UserService {
     role: SystemRole,
     actorId?: string,
     organizationId?: string,
+    organizationUnitId?: string,
   ): Promise<User> {
     const existing = await this.users.findById(tenantId, id);
     if (!existing) {
@@ -346,7 +365,15 @@ export class UserService {
     }
 
     const resolvedOrganizationId = await this.resolveOrganizationId(tenantId, role, organizationId);
-    const user = await this.users.updateRole(tenantId, id, role, resolvedOrganizationId, actorId);
+    const resolvedOrganizationUnitId = await this.resolveOrganizationUnitId(tenantId, role, organizationUnitId);
+    const user = await this.users.updateRole(
+      tenantId,
+      id,
+      role,
+      resolvedOrganizationId,
+      resolvedOrganizationUnitId,
+      actorId,
+    );
 
     await this.audit.record({
       tenantId,
@@ -476,6 +503,7 @@ export class UserService {
       role: target.role,
       tenantId: target.tenantId,
       organizationId: target.organizationId,
+      organizationUnitId: target.organizationUnitId,
       act: { sub: actor.sub, email: actor.email },
     });
 
@@ -551,6 +579,31 @@ export class UserService {
     }
 
     return organizationId;
+  }
+
+  /** Same reasoning as resolveOrganizationId above, for UNIT_ADMIN/organizationUnitId. */
+  private async resolveOrganizationUnitId(
+    tenantId: string,
+    role: SystemRole,
+    organizationUnitId?: string,
+  ): Promise<string | null> {
+    if (role !== SystemRole.UNIT_ADMIN) {
+      if (organizationUnitId) {
+        throw new BadRequestException('organizationUnitId is only accepted when role is UNIT_ADMIN');
+      }
+      return null;
+    }
+
+    if (!organizationUnitId) {
+      throw new BadRequestException('organizationUnitId is required when role is UNIT_ADMIN');
+    }
+
+    const belongsToTenant = await this.users.organizationUnitExistsInTenant(tenantId, organizationUnitId);
+    if (!belongsToTenant) {
+      throw new NotFoundException(`Organization unit "${organizationUnitId}" not found`);
+    }
+
+    return organizationUnitId;
   }
 
   /**

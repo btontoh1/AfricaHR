@@ -10,6 +10,14 @@ export interface JwtPayload {
   /** Set only for ORG_ADMIN; null for every other role. */
   organizationId: string | null;
   /**
+   * Set only for UNIT_ADMIN; null or undefined for every other role.
+   * Optional (unlike organizationId) so the many existing RequestUser test
+   * fixtures that predate this role don't all need updating - every real
+   * token-signing call site still sets it explicitly (see auth.service.ts,
+   * user.service.ts).
+   */
+  organizationUnitId?: string | null;
+  /**
    * Present only on an impersonation token (see JwtTokenService.
    * signImpersonationToken) - names the platform admin actually driving
    * this session, per RFC 8693's "act" (actor) claim pattern. `sub` above

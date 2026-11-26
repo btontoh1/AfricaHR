@@ -74,7 +74,7 @@ export class UserController {
     @Body() dto: UpdateUserRoleDto,
     @CurrentUser() actor: RequestUser,
   ) {
-    return this.users.updateRole(actor, id, dto.role, dto.organizationId);
+    return this.users.updateRole(actor, id, dto.role, dto.organizationId, dto.organizationUnitId);
   }
 
   @Patch(':id/active')

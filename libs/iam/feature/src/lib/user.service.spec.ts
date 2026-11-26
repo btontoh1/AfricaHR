@@ -64,6 +64,7 @@ describe('UserService', () => {
       softDelete: jest.fn(),
       updatePassword: jest.fn(),
       organizationExistsInTenant: jest.fn(),
+      organizationUnitExistsInTenant: jest.fn(),
     } as unknown as jest.Mocked<UserRepository>;
 
     refreshTokens = { revokeAllForUser: jest.fn() } as unknown as jest.Mocked<RefreshTokenRepository>;
@@ -219,7 +220,14 @@ describe('UserService', () => {
 
       await service.updateRole(tenantAdmin, 'user-2', SystemRole.HR_MANAGER);
 
-      expect(users.updateRole).toHaveBeenCalledWith('tenant-1', 'user-2', SystemRole.HR_MANAGER, null, 'actor-1');
+      expect(users.updateRole).toHaveBeenCalledWith(
+        'tenant-1',
+        'user-2',
+        SystemRole.HR_MANAGER,
+        null,
+        null,
+        'actor-1',
+      );
     });
 
     it('rejects ORG_ADMIN with no organizationId', async () => {
@@ -244,6 +252,34 @@ describe('UserService', () => {
         'user-2',
         SystemRole.ORG_ADMIN,
         'org-1',
+        null,
+        'actor-1',
+      );
+    });
+
+    it('rejects UNIT_ADMIN with no organizationUnitId', async () => {
+      users.findById.mockResolvedValue({ id: 'user-2' } as User);
+
+      await expect(service.updateRole(tenantAdmin, 'user-2', SystemRole.UNIT_ADMIN)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(users.updateRole).not.toHaveBeenCalled();
+    });
+
+    it('promotes a user to UNIT_ADMIN scoped to a valid organization unit', async () => {
+      users.findById.mockResolvedValue({ id: 'user-2' } as User);
+      users.organizationUnitExistsInTenant.mockResolvedValue(true);
+      users.updateRole.mockResolvedValue({ id: 'user-2', role: SystemRole.UNIT_ADMIN } as User);
+
+      await service.updateRole(tenantAdmin, 'user-2', SystemRole.UNIT_ADMIN, undefined, 'unit-1');
+
+      expect(users.organizationUnitExistsInTenant).toHaveBeenCalledWith('tenant-1', 'unit-1');
+      expect(users.updateRole).toHaveBeenCalledWith(
+        'tenant-1',
+        'user-2',
+        SystemRole.UNIT_ADMIN,
+        null,
+        'unit-1',
         'actor-1',
       );
     });
@@ -413,6 +449,7 @@ describe('UserService', () => {
         'user-2',
         SystemRole.HR_MANAGER,
         null,
+        null,
         'actor-2',
       );
       expect(audit.record).toHaveBeenCalledWith(
@@ -506,6 +543,7 @@ describe('UserService', () => {
       id: 'user-2',
       tenantId: 'tenant-9',
       organizationId: null,
+      organizationUnitId: null,
       email: 'sheriff.armarh@nalag.com',
       role: SystemRole.TENANT_ADMIN,
       isActive: true,
@@ -545,6 +583,7 @@ describe('UserService', () => {
         role: SystemRole.TENANT_ADMIN,
         tenantId: 'tenant-9',
         organizationId: null,
+        organizationUnitId: null,
         act: { sub: 'actor-2', email: 'ops@africahr.com' },
       });
       expect(result.accessToken).toBe('impersonation-jwt');

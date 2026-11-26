@@ -8,6 +8,7 @@ export class UserResponseDto {
   @ApiProperty() id!: string;
   @ApiPropertyOptional({ nullable: true }) tenantId?: string | null;
   @ApiPropertyOptional({ nullable: true }) organizationId?: string | null;
+  @ApiPropertyOptional({ nullable: true }) organizationUnitId?: string | null;
   @ApiProperty() email!: string;
   @ApiProperty() firstName!: string;
   @ApiProperty() lastName!: string;

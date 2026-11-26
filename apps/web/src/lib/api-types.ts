@@ -5169,19 +5169,22 @@ export interface components {
             firstName: string;
             lastName: string;
             /** @enum {string} */
-            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "PAYROLL_OFFICER" | "ORG_ADMIN" | "EMPLOYEE" | "ACCOUNTANT" | "KIOSK";
+            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "PAYROLL_OFFICER" | "ORG_ADMIN" | "UNIT_ADMIN" | "EMPLOYEE" | "ACCOUNTANT" | "KIOSK";
             /** @description Required when role is ORG_ADMIN (which Organization they administer); rejected otherwise. */
             organizationId?: string;
+            /** @description Required when role is UNIT_ADMIN (which Organization Unit they administer); rejected otherwise. */
+            organizationUnitId?: string;
         };
         UserResponseDto: {
             id: string;
             tenantId?: string | null;
             organizationId?: string | null;
+            organizationUnitId?: string | null;
             email: string;
             firstName: string;
             lastName: string;
             /** @enum {string} */
-            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "PAYROLL_OFFICER" | "ORG_ADMIN" | "EMPLOYEE" | "ACCOUNTANT" | "KIOSK";
+            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "PAYROLL_OFFICER" | "ORG_ADMIN" | "UNIT_ADMIN" | "EMPLOYEE" | "ACCOUNTANT" | "KIOSK";
             isActive: boolean;
             lastLoginAt?: string | null;
             createdAt: string;
@@ -5199,9 +5202,11 @@ export interface components {
         };
         UpdateUserRoleDto: {
             /** @enum {string} */
-            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "PAYROLL_OFFICER" | "ORG_ADMIN" | "EMPLOYEE" | "ACCOUNTANT" | "KIOSK";
+            role: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "HR_MANAGER" | "PAYROLL_MANAGER" | "PAYROLL_OFFICER" | "ORG_ADMIN" | "UNIT_ADMIN" | "EMPLOYEE" | "ACCOUNTANT" | "KIOSK";
             /** @description Required when role is ORG_ADMIN (which Organization they administer); rejected otherwise. */
             organizationId?: string;
+            /** @description Required when role is UNIT_ADMIN (which Organization Unit they administer); rejected otherwise. */
+            organizationUnitId?: string;
         };
         UpdateUserActiveDto: {
             isActive: boolean;

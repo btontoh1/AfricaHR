@@ -13,6 +13,11 @@ export const SystemRole = {
   // Scoped to exactly one Organization within the tenant (User.organizationId)
   // - see assertOrganizationScope. Every other role here is tenant-wide.
   ORG_ADMIN: 'ORG_ADMIN',
+  // Scoped to exactly one OrganizationUnit within the tenant
+  // (User.organizationUnitId) - narrower than ORG_ADMIN above. See
+  // assertOrganizationUnitScope. Holds no permissions yet (see
+  // ROLE_PERMISSIONS below) - added ahead of the feature that will use it.
+  UNIT_ADMIN: 'UNIT_ADMIN',
   EMPLOYEE: 'EMPLOYEE',
   // Read-only, Finance-only - an external bookkeeper/accountant a tenant
   // invites without giving them any other tenant-admin capability. No
@@ -341,6 +346,12 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.AP_MANAGE,
     Permission.AP_READ,
   ],
+  // Scoped to one OrganizationUnit (assertOrganizationUnitScope), narrower
+  // than ORG_ADMIN above. Empty for now - added ahead of the intranet
+  // feature (department-level policies/announcements/reports/KPIs) that
+  // will grant it permissions once built, same "role exists before its
+  // permissions" posture as a brand-new role always starts with.
+  [SystemRole.UNIT_ADMIN]: [],
   [SystemRole.EMPLOYEE]: [],
   // Read-only Finance access and nothing else - see the role's own comment
   // above for why (no Employee record, external bookkeeper).

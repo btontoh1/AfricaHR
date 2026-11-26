@@ -44,6 +44,7 @@ describe('PlatformTenantUsersController', () => {
       SystemRole.HR_MANAGER,
       'ops-1',
       undefined,
+      undefined,
     );
   });
 

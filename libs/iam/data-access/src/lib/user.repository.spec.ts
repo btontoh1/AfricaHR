@@ -162,21 +162,30 @@ describe('UserRepository', () => {
 
   describe('updateRole', () => {
     it('writes both role and organizationId', async () => {
-      await repository.updateRole('tenant-1', 'user-1', SystemRole.ORG_ADMIN, 'org-1', 'actor-1');
+      await repository.updateRole('tenant-1', 'user-1', SystemRole.ORG_ADMIN, 'org-1', null, 'actor-1');
 
       expect(withTenantContext).toHaveBeenCalledWith('tenant-1', expect.any(Function));
       expect(userDelegate.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
-        data: { role: SystemRole.ORG_ADMIN, organizationId: 'org-1', updatedBy: 'actor-1' },
+        data: { role: SystemRole.ORG_ADMIN, organizationId: 'org-1', organizationUnitId: null, updatedBy: 'actor-1' },
       });
     });
 
     it('clears organizationId when moving a user off ORG_ADMIN', async () => {
-      await repository.updateRole('tenant-1', 'user-1', SystemRole.HR_MANAGER, null, 'actor-1');
+      await repository.updateRole('tenant-1', 'user-1', SystemRole.HR_MANAGER, null, null, 'actor-1');
 
       expect(userDelegate.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
-        data: { role: SystemRole.HR_MANAGER, organizationId: null, updatedBy: 'actor-1' },
+        data: { role: SystemRole.HR_MANAGER, organizationId: null, organizationUnitId: null, updatedBy: 'actor-1' },
+      });
+    });
+
+    it('writes organizationUnitId for UNIT_ADMIN', async () => {
+      await repository.updateRole('tenant-1', 'user-1', SystemRole.UNIT_ADMIN, null, 'unit-1', 'actor-1');
+
+      expect(userDelegate.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { role: SystemRole.UNIT_ADMIN, organizationId: null, organizationUnitId: 'unit-1', updatedBy: 'actor-1' },
       });
     });
   });

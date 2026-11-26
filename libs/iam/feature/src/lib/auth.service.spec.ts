@@ -21,6 +21,7 @@ describe('AuthService', () => {
     id: 'user-1',
     tenantId: 'tenant-1',
     organizationId: null,
+    organizationUnitId: null,
     email: 'hr@acme.com',
     passwordHash: 'hashed',
     firstName: 'Kofi',

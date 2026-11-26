@@ -21,11 +21,13 @@ export interface SessionUser {
     | 'PAYROLL_MANAGER'
     | 'PAYROLL_OFFICER'
     | 'ORG_ADMIN'
+    | 'UNIT_ADMIN'
     | 'EMPLOYEE'
     | 'ACCOUNTANT'
     | 'KIOSK';
   tenantId: string | null;
   organizationId: string | null;
+  organizationUnitId?: string | null;
   iat: number;
   exp: number;
   /**

@@ -6,6 +6,7 @@ import { withScope } from './tenant-scoped';
 export interface CreateUserInput {
   tenantId: string | null;
   organizationId?: string | null;
+  organizationUnitId?: string | null;
   email: string;
   passwordHash: string;
   firstName: string;
@@ -32,6 +33,7 @@ export interface UserForLogin {
   id: string;
   tenantId: string | null;
   organizationId: string | null;
+  organizationUnitId: string | null;
   email: string;
   passwordHash: string;
   firstName: string;
@@ -124,6 +126,7 @@ export class UserRepository {
         data: {
           tenantId: input.tenantId,
           organizationId: input.organizationId,
+          organizationUnitId: input.organizationUnitId,
           email: input.email,
           passwordHash: input.passwordHash,
           firstName: input.firstName,
@@ -143,20 +146,22 @@ export class UserRepository {
   }
 
   /**
-   * organizationId is always written (not merged) alongside role - a role
-   * change away from ORG_ADMIN must clear it, same as a change into it must
-   * set it, so the caller (UserService) always passes the field it wants,
-   * never omits it to "leave as-is".
+   * organizationId/organizationUnitId are always written (not merged)
+   * alongside role - a role change away from ORG_ADMIN/UNIT_ADMIN must
+   * clear the one it no longer needs, same as a change into one must set
+   * it, so the caller (UserService) always passes both fields it wants,
+   * never omits either to "leave as-is".
    */
   updateRole(
     tenantId: string | null,
     id: string,
     role: SystemRole,
     organizationId: string | null,
+    organizationUnitId: string | null,
     updatedBy?: string,
   ): Promise<User> {
     return withScope(this.prisma, tenantId, (client) =>
-      client.user.update({ where: { id }, data: { role, organizationId, updatedBy } }),
+      client.user.update({ where: { id }, data: { role, organizationId, organizationUnitId, updatedBy } }),
     );
   }
 
@@ -173,6 +178,14 @@ export class UserRepository {
       tx.organization.findFirst({ where: { id: organizationId, deletedAt: null }, select: { id: true } }),
     );
     return org !== null;
+  }
+
+  /** Same reasoning as organizationExistsInTenant above, for UNIT_ADMIN assignment. */
+  async organizationUnitExistsInTenant(tenantId: string, organizationUnitId: string): Promise<boolean> {
+    const unit = await this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.organizationUnit.findFirst({ where: { id: organizationUnitId, deletedAt: null }, select: { id: true } }),
+    );
+    return unit !== null;
   }
 
   setActive(

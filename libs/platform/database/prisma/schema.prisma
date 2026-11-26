@@ -550,6 +550,8 @@ model OrganizationUnit {
   employees       Employee[]
   jobRequisitions JobRequisition[]
   journalEntries  GlJournalEntry[]
+  /// UNIT_ADMIN users scoped to this department - see User.organizationUnitId.
+  unitAdmins      User[]
 
   @@index([tenantId])
   @@index([organizationId])
@@ -578,6 +580,12 @@ enum SystemRole {
   /// is tenant-wide. See RLS_CONVENTION.md for why this scoping is
   /// app-level (assertOrganizationScope) rather than a new RLS dimension.
   ORG_ADMIN
+  /// Scoped to exactly one OrganizationUnit (User.organizationUnitId) -
+  /// narrower than ORG_ADMIN's whole-Organization scope. App-level
+  /// scoping via assertOrganizationUnitScope, same reasoning as ORG_ADMIN
+  /// above. Holds no permissions yet (see ROLE_PERMISSIONS in
+  /// system-role.ts) - added ahead of the feature that will use it.
+  UNIT_ADMIN
   EMPLOYEE
   /// Read-only, Finance-only - an external bookkeeper/accountant, no
   /// Employee record expected or required. See SystemRole.ts (platform-auth)
@@ -621,6 +629,11 @@ model User {
   /// tenantId) this user administers. Null for every other role, including
   /// TENANT_ADMIN/HR_MANAGER/PAYROLL_MANAGER, which stay tenant-wide.
   organizationId String?    @map("organization_id")
+  /// Set only when role is UNIT_ADMIN - which single OrganizationUnit
+  /// (department) this user administers, narrower than ORG_ADMIN's whole-
+  /// Organization scope. Null for every other role. See
+  /// assertOrganizationUnitScope (platform-auth).
+  organizationUnitId String? @map("organization_unit_id")
   isActive       Boolean    @default(true) @map("is_active")
   lastLoginAt    DateTime?  @map("last_login_at")
 
@@ -651,6 +664,7 @@ model User {
 
   tenant            Tenant?            @relation(fields: [tenantId], references: [id])
   organization      Organization?      @relation(fields: [organizationId], references: [id])
+  organizationUnit  OrganizationUnit?  @relation(fields: [organizationUnitId], references: [id])
   refreshTokens     RefreshToken[]
   employee          Employee?
   notifications     Notification[]
@@ -659,6 +673,7 @@ model User {
 
   @@index([tenantId])
   @@index([organizationId])
+  @@index([organizationUnitId])
   @@map("users")
 }
 

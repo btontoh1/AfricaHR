@@ -11,6 +11,7 @@ describe('assertOrganizationScope', () => {
       role: SystemRole.ORG_ADMIN,
       tenantId: 'tenant-1',
       organizationId: 'org-1',
+      organizationUnitId: null,
       iat: 1,
       exp: 2,
       ...overrides,

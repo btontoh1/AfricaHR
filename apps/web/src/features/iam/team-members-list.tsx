@@ -58,6 +58,12 @@ function RoleControl({ id, role }: { id: string; role: SystemRole }) {
     return <span className="text-sm">ORG ADMIN</span>;
   }
 
+  // Same reasoning as ORG_ADMIN above - UNIT_ADMIN carries data
+  // (organizationUnitId) this inline control has no way to collect either.
+  if (role === 'UNIT_ADMIN') {
+    return <span className="text-sm">UNIT ADMIN</span>;
+  }
+
   return (
     <Select value={role} onValueChange={handleChange} disabled={updateRole.isPending}>
       <SelectTrigger className="w-40">

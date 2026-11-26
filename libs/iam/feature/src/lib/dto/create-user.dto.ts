@@ -39,4 +39,11 @@ export class CreateUserDto {
   @IsOptional()
   @IsUUID()
   organizationId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Required when role is UNIT_ADMIN (which Organization Unit they administer); rejected otherwise.',
+  })
+  @IsOptional()
+  @IsUUID()
+  organizationUnitId?: string;
 }

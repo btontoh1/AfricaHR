@@ -112,7 +112,12 @@
       "@africahr/inventory-data-access": [
         "./libs/inventory/data-access/src/index.ts"
       ],
-      "@africahr/inventory-feature": ["./libs/inventory/feature/src/index.ts"]
+      "@africahr/inventory-feature": ["./libs/inventory/feature/src/index.ts"],
+      "@africahr/intranet-domain": ["./libs/intranet/domain/src/index.ts"],
+      "@africahr/intranet-data-access": [
+        "./libs/intranet/data-access/src/index.ts"
+      ],
+      "@africahr/intranet-feature": ["./libs/intranet/feature/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

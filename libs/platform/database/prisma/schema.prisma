@@ -499,6 +499,9 @@ model Organization {
   purchaseRequisitions    InventoryPurchaseRequisition[]
   purchaseOrders          InventoryPurchaseOrder[]
   companyAssets           CompanyAsset[]
+  /// Policies with audienceScope ORGANIZATION or ORGANIZATION_UNIT scoped
+  /// to this company - see Policy.organizationId.
+  policies                Policy[]
 
   @@index([tenantId])
   @@map("organizations")
@@ -552,6 +555,9 @@ model OrganizationUnit {
   journalEntries  GlJournalEntry[]
   /// UNIT_ADMIN users scoped to this department - see User.organizationUnitId.
   unitAdmins      User[]
+  /// Policies with audienceScope ORGANIZATION_UNIT scoped to this
+  /// department - see Policy.organizationUnitId.
+  policies        Policy[]
 
   @@index([tenantId])
   @@index([organizationId])
@@ -891,6 +897,7 @@ model Employee {
   reviewedPurchaseRequisitions  InventoryPurchaseRequisition[] @relation("RequisitionReviewedBy")
   requestedStock                InventoryStockRequest[]        @relation("StockRequestRequestedBy")
   reviewedStockRequests         InventoryStockRequest[]        @relation("StockRequestReviewedBy")
+  policyAcknowledgements        PolicyAcknowledgement[]
   assignedCompanyAssets         CompanyAsset[]
   companyAssetAssignments       CompanyAssetAssignment[]
 
@@ -3356,4 +3363,84 @@ model CompanyAssetAssignment {
   @@index([assetId])
   @@index([employeeId])
   @@map("company_asset_assignments")
+}
+
+/// Who a Policy/Announcement/etc. is visible to - the whole tenant (every
+/// Organization under it, i.e. the "group" in multi-company terms), one
+/// Organization ("company"), or one OrganizationUnit ("department"). Shared
+/// across every intranet content type rather than redefined per model.
+enum AudienceScope {
+  TENANT
+  ORGANIZATION
+  ORGANIZATION_UNIT
+}
+
+/// An HR policy document (leave, conduct, finance, ...), scoped to the
+/// whole tenant or to one Organization/OrganizationUnit via audienceScope.
+/// Updating a policy never overwrites the old version - see supersedesId -
+/// so staff who already read an earlier version keep that acknowledgement
+/// on record, and the new version gets its own read-tracking from scratch.
+model Policy {
+  id       String @id @default(uuid())
+  tenantId String @map("tenant_id")
+  title    String
+  /// Free-form grouping for the staff-facing folder view (e.g. "Leave",
+  /// "Conduct", "Finance") - not a foreign key, same posture as
+  /// InventoryProduct's category being a separate concern from folders here.
+  folder   String
+
+  /// Object-storage key for the uploaded PDF/Word file - same signed-URL
+  /// pattern as every other upload in this app (see StorageService).
+  storageKey String  @map("storage_key")
+  fileName   String  @map("file_name")
+  version    Int     @default(1)
+  /// The version this one replaces, if any - kept, never deleted, so
+  /// existing acknowledgements stay meaningful history rather than being
+  /// retargeted at content staff never actually saw.
+  supersedesId String? @unique @map("supersedes_id")
+
+  audienceScope      AudienceScope @map("audience_scope")
+  /// Set when audienceScope is ORGANIZATION or ORGANIZATION_UNIT; null for
+  /// TENANT.
+  organizationId     String?       @map("organization_id")
+  /// Set only when audienceScope is ORGANIZATION_UNIT; null otherwise.
+  organizationUnitId String?       @map("organization_unit_id")
+
+  publishedAt DateTime @default(now()) @map("published_at")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+
+  supersedes       Policy?                 @relation("PolicySupersedes", fields: [supersedesId], references: [id])
+  supersededBy     Policy?                 @relation("PolicySupersedes")
+  organization     Organization?           @relation(fields: [organizationId], references: [id])
+  organizationUnit OrganizationUnit?       @relation(fields: [organizationUnitId], references: [id])
+  acknowledgements PolicyAcknowledgement[]
+
+  @@index([tenantId])
+  @@index([organizationId])
+  @@index([organizationUnitId])
+  @@map("policies")
+}
+
+/// One row per (policy, employee) who has read and ticked "I have read
+/// this" - existence of the row is the acknowledgement; there's nothing to
+/// update afterward, so no updatedAt/deletedAt.
+model PolicyAcknowledgement {
+  id         String   @id @default(uuid())
+  tenantId   String   @map("tenant_id")
+  policyId   String   @map("policy_id")
+  employeeId String   @map("employee_id")
+  readAt     DateTime @default(now()) @map("read_at")
+
+  policy   Policy   @relation(fields: [policyId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([policyId, employeeId])
+  @@index([tenantId])
+  @@index([employeeId])
+  @@map("policy_acknowledgements")
 }

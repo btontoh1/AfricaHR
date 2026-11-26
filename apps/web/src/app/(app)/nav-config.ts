@@ -67,6 +67,7 @@ import {
   PackageSearch,
   Percent,
   ShieldPlus,
+  BookOpenCheck,
 } from 'lucide-react';
 import type { SessionUser } from '@/lib/session';
 
@@ -173,6 +174,11 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
   // as Performance/Recruitment above.
   const hasInventoryAddOn = enabledAddOns.includes('INVENTORY');
   const hasInventoryAccess = isTenantMember && user.role === 'TENANT_ADMIN' && hasInventoryAddOn;
+  // Matches Permission.INTRANET_POLICY_MANAGE in system-role.ts
+  // (PLATFORM_ADMIN/TENANT_ADMIN/HR_MANAGER) - UNIT_ADMIN is deliberately
+  // excluded, same as hasLeaveAdminAccess above.
+  const hasPolicyAdminAccess =
+    isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
 
   const groups: NavGroup[] = [
     {
@@ -319,6 +325,15 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
               ? [{ label: 'My Assets', href: '/inventory/assets/mine', icon: Laptop }]
               : []),
           ],
+    },
+    {
+      label: 'Intranet',
+      items: [
+        ...(hasPolicyAdminAccess ? [{ label: 'Policies', href: '/intranet/policies', icon: FileStack }] : []),
+        ...(isEmployeeSelfService
+          ? [{ label: 'My Policies', href: '/intranet/my-policies', icon: BookOpenCheck }]
+          : []),
+      ],
     },
     {
       label: 'Finance',

@@ -4674,6 +4674,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/policies/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyPolicyController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/policies/me/{id}/view-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyPolicyController_getViewUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/policies/me/{id}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MyPolicyController_acknowledge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PolicyController_listAll"];
+        put?: never;
+        post: operations["PolicyController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/policies/{id}/view-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PolicyController_getViewUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/policies/{id}/acknowledgements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PolicyController_listAcknowledgements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7879,6 +7975,56 @@ export interface components {
         };
         ReturnAssetDto: {
             returnNote?: string;
+        };
+        PolicyResponseDto: {
+            id: string;
+            title: string;
+            folder: string;
+            fileName: string;
+            version: number;
+            supersedesId?: string | null;
+            /** @enum {string} */
+            audienceScope: "TENANT" | "ORGANIZATION" | "ORGANIZATION_UNIT";
+            organizationId?: string | null;
+            organizationUnitId?: string | null;
+            publishedAt: string;
+            createdAt: string;
+            updatedAt: string;
+            acknowledgedByMe?: boolean;
+        };
+        PolicyViewUrlResponseDto: {
+            viewUrl: string;
+        };
+        CreatePolicyDto: {
+            /** @example Annual Leave Policy */
+            title: string;
+            /**
+             * @description Free-form folder for the staff-facing view, e.g. Leave, Conduct, Finance
+             * @example Leave
+             */
+            folder: string;
+            /** @example annual-leave-policy.pdf */
+            fileName: string;
+            /** @enum {string} */
+            contentType: "application/pdf" | "application/msword" | "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            /** @enum {string} */
+            audienceScope: "TENANT" | "ORGANIZATION" | "ORGANIZATION_UNIT";
+            /** @description Required when audienceScope is ORGANIZATION; rejected otherwise. */
+            organizationId?: string;
+            /** @description Required when audienceScope is ORGANIZATION_UNIT; rejected otherwise. */
+            organizationUnitId?: string;
+            /** @description The earlier version this replaces, if any - that version is kept (not deleted) so its existing read receipts stay meaningful history. */
+            supersedesId?: string;
+        };
+        CreatePolicyResponseDto: {
+            uploadUrl: string;
+            policyId: string;
+        };
+        PolicyAcknowledgementResponseDto: {
+            employeeId: string;
+            firstName: string;
+            lastName: string;
+            readAt: string;
         };
     };
     responses: never;
@@ -16986,6 +17132,159 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CompanyAssetAssignmentResponseDto"][];
+                };
+            };
+        };
+    };
+    MyPolicyController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyResponseDto"][];
+                };
+            };
+        };
+    };
+    MyPolicyController_getViewUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyViewUrlResponseDto"];
+                };
+            };
+        };
+    };
+    MyPolicyController_acknowledge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PolicyController_listAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyResponseDto"][];
+                };
+            };
+        };
+    };
+    PolicyController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePolicyDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatePolicyResponseDto"];
+                };
+            };
+        };
+    };
+    PolicyController_getViewUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyViewUrlResponseDto"];
+                };
+            };
+        };
+    };
+    PolicyController_listAcknowledgements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyAcknowledgementResponseDto"][];
                 };
             };
         };

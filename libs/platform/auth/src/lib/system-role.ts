@@ -189,6 +189,12 @@ export const Permission = {
   // credentials being exposed only ever risks someone clocking an employee
   // in/out by PIN, never reading or editing anything else.
   ATTENDANCE_KIOSK_CLOCK: 'attendance:kiosk:clock',
+  // HR policy documents (intranet) - uploading/superseding one is "Group
+  // HR's" job per the intranet project plan, same TENANT_ADMIN/HR_MANAGER
+  // pairing as most *_MANAGE permissions. Reading/acknowledging your own
+  // visible policies needs no permission at all - self-service, same
+  // posture as HOW_IT_WORKS_MANAGE's read side (see MyPolicyController).
+  INTRANET_POLICY_MANAGE: 'intranet:policy:manage',
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
@@ -239,6 +245,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.PLATFORM_NOTIFICATION_READ,
     Permission.PLATFORM_NOTIFICATION_BROADCAST,
     Permission.HOW_IT_WORKS_MANAGE,
+    Permission.INTRANET_POLICY_MANAGE,
   ],
   [SystemRole.TENANT_ADMIN]: [
     Permission.TENANT_BRANDING_MANAGE,
@@ -276,6 +283,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.AP_READ,
     Permission.INVENTORY_MANAGE,
     Permission.INVENTORY_READ,
+    Permission.INTRANET_POLICY_MANAGE,
   ],
   [SystemRole.HR_MANAGER]: [
     Permission.ORGANIZATION_READ,
@@ -300,6 +308,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.INVOICING_READ,
     Permission.AP_MANAGE,
     Permission.AP_READ,
+    Permission.INTRANET_POLICY_MANAGE,
   ],
   [SystemRole.PAYROLL_MANAGER]: [
     Permission.ORGANIZATION_READ,

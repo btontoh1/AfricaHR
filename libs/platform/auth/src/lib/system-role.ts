@@ -195,6 +195,12 @@ export const Permission = {
   // visible policies needs no permission at all - self-service, same
   // posture as HOW_IT_WORKS_MANAGE's read side (see MyPolicyController).
   INTRANET_POLICY_MANAGE: 'intranet:policy:manage',
+  // Group/company announcements - unlike INTRANET_POLICY_MANAGE, UNIT_ADMIN
+  // holds this too, restricted in AnnouncementService to posting only to
+  // their own OrganizationUnit ("company/department head: post to their
+  // team" per the intranet project plan - narrower than the group-wide
+  // TENANT_ADMIN/HR_MANAGER posting any audience scope).
+  ANNOUNCEMENT_MANAGE: 'intranet:announcement:manage',
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
@@ -246,6 +252,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.PLATFORM_NOTIFICATION_BROADCAST,
     Permission.HOW_IT_WORKS_MANAGE,
     Permission.INTRANET_POLICY_MANAGE,
+    Permission.ANNOUNCEMENT_MANAGE,
   ],
   [SystemRole.TENANT_ADMIN]: [
     Permission.TENANT_BRANDING_MANAGE,
@@ -284,6 +291,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.INVENTORY_MANAGE,
     Permission.INVENTORY_READ,
     Permission.INTRANET_POLICY_MANAGE,
+    Permission.ANNOUNCEMENT_MANAGE,
   ],
   [SystemRole.HR_MANAGER]: [
     Permission.ORGANIZATION_READ,
@@ -309,6 +317,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.AP_MANAGE,
     Permission.AP_READ,
     Permission.INTRANET_POLICY_MANAGE,
+    Permission.ANNOUNCEMENT_MANAGE,
   ],
   [SystemRole.PAYROLL_MANAGER]: [
     Permission.ORGANIZATION_READ,
@@ -356,11 +365,10 @@ export const ROLE_PERMISSIONS: Record<SystemRole, Permission[]> = {
     Permission.AP_READ,
   ],
   // Scoped to one OrganizationUnit (assertOrganizationUnitScope), narrower
-  // than ORG_ADMIN above. Empty for now - added ahead of the intranet
-  // feature (department-level policies/announcements/reports/KPIs) that
-  // will grant it permissions once built, same "role exists before its
-  // permissions" posture as a brand-new role always starts with.
-  [SystemRole.UNIT_ADMIN]: [],
+  // than ORG_ADMIN above. ORGANIZATION_READ is needed to resolve their own
+  // company/department names in the UI (e.g. the Announcements audience
+  // badge) - read-only, no ORGANIZATION_MANAGE.
+  [SystemRole.UNIT_ADMIN]: [Permission.ANNOUNCEMENT_MANAGE, Permission.ORGANIZATION_READ],
   [SystemRole.EMPLOYEE]: [],
   // Read-only Finance access and nothing else - see the role's own comment
   // above for why (no Employee record, external bookkeeper).

@@ -4770,6 +4770,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/announcements/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyAnnouncementController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/announcements/me/{id}/attachment-view-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyAnnouncementController_getAttachmentViewUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/announcements/me/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MyAnnouncementController_markRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/announcements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AnnouncementController_listAll"];
+        put?: never;
+        post: operations["AnnouncementController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/announcements/{id}/pin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AnnouncementController_setPinned"];
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/announcements/{id}/attachment-view-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AnnouncementController_getAttachmentViewUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -8025,6 +8121,52 @@ export interface components {
             firstName: string;
             lastName: string;
             readAt: string;
+        };
+        AnnouncementResponseDto: {
+            id: string;
+            title: string;
+            body: string;
+            attachmentFileName?: string | null;
+            /** @enum {string} */
+            audienceScope: "TENANT" | "ORGANIZATION" | "ORGANIZATION_UNIT";
+            organizationId?: string | null;
+            organizationUnitId?: string | null;
+            pinned: boolean;
+            createdAt: string;
+            updatedAt: string;
+            isRead?: boolean;
+        };
+        AnnouncementAttachmentViewUrlResponseDto: {
+            viewUrl: string;
+        };
+        CreateAnnouncementDto: {
+            /** @example Office closed Friday */
+            title: string;
+            /** @example The office will be closed for the public holiday on Friday. */
+            body: string;
+            /**
+             * @description Required together with attachmentContentType; omit for no attachment.
+             * @example notice.pdf
+             */
+            attachmentFileName?: string;
+            /** @enum {string} */
+            attachmentContentType?: "application/pdf" | "application/msword" | "application/vnd.openxmlformats-officedocument.wordprocessingml.document" | "image/png" | "image/jpeg";
+            /** @enum {string} */
+            audienceScope: "TENANT" | "ORGANIZATION" | "ORGANIZATION_UNIT";
+            /** @description Required when audienceScope is ORGANIZATION; rejected otherwise. */
+            organizationId?: string;
+            /** @description Required when audienceScope is ORGANIZATION_UNIT; rejected otherwise. */
+            organizationUnitId?: string;
+            /** @description Pinned posts sort first in every feed. */
+            pinned?: boolean;
+        };
+        CreateAnnouncementResponseDto: {
+            announcementId: string;
+            /** @description Present only when the post included an attachment. */
+            uploadUrl?: string;
+        };
+        SetAnnouncementPinnedDto: {
+            pinned: boolean;
         };
     };
     responses: never;
@@ -17285,6 +17427,163 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PolicyAcknowledgementResponseDto"][];
+                };
+            };
+        };
+    };
+    MyAnnouncementController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementResponseDto"][];
+                };
+            };
+        };
+    };
+    MyAnnouncementController_getAttachmentViewUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementAttachmentViewUrlResponseDto"];
+                };
+            };
+        };
+    };
+    MyAnnouncementController_markRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AnnouncementController_listAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementResponseDto"][];
+                };
+            };
+        };
+    };
+    AnnouncementController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAnnouncementDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateAnnouncementResponseDto"];
+                };
+            };
+        };
+    };
+    AnnouncementController_setPinned: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetAnnouncementPinnedDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementResponseDto"];
+                };
+            };
+        };
+    };
+    AnnouncementController_getAttachmentViewUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementAttachmentViewUrlResponseDto"];
                 };
             };
         };

@@ -2,25 +2,31 @@
 
 import { Badge } from '@/components/ui/badge';
 import { useOrganizations, useAllOrganizationUnits } from '@/features/organizations/queries';
-import type { Policy } from './types';
+import type { AudienceScope } from './types';
 
-export function AudienceBadge({ tenantId, policy }: { tenantId: string; policy: Policy }) {
+interface AudienceTargeted {
+  audienceScope: AudienceScope;
+  organizationId?: string | null;
+  organizationUnitId?: string | null;
+}
+
+export function AudienceBadge({ tenantId, item }: { tenantId: string; item: AudienceTargeted }) {
   const { data: organizations } = useOrganizations(tenantId);
   const organizationIds = (organizations ?? []).map((o) => o.id);
   const { data: units } = useAllOrganizationUnits(
     tenantId,
-    policy.audienceScope === 'ORGANIZATION_UNIT' ? organizationIds : [],
+    item.audienceScope === 'ORGANIZATION_UNIT' ? organizationIds : [],
   );
 
-  if (policy.audienceScope === 'TENANT') {
+  if (item.audienceScope === 'TENANT') {
     return <Badge variant="secondary">Everyone</Badge>;
   }
 
-  if (policy.audienceScope === 'ORGANIZATION') {
-    const organization = organizations?.find((o) => o.id === policy.organizationId);
+  if (item.audienceScope === 'ORGANIZATION') {
+    const organization = organizations?.find((o) => o.id === item.organizationId);
     return <Badge variant="secondary">{organization?.legalName ?? 'Company'}</Badge>;
   }
 
-  const unit = units.find((u) => u.id === policy.organizationUnitId);
+  const unit = units.find((u) => u.id === item.organizationUnitId);
   return <Badge variant="secondary">{unit?.name ?? 'Department'}</Badge>;
 }

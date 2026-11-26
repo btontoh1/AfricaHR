@@ -11,3 +11,4 @@ export * from './lib/require-add-on.decorator';
 export * from './lib/current-user.decorator';
 export * from './lib/assert-tenant-scope';
 export * from './lib/assert-organization-scope';
+export * from './lib/assert-organization-unit-scope';

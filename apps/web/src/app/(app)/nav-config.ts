@@ -179,6 +179,12 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
   // excluded, same as hasLeaveAdminAccess above.
   const hasPolicyAdminAccess =
     isTenantMember && (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER');
+  // Matches Permission.ANNOUNCEMENT_MANAGE in system-role.ts - broader than
+  // hasPolicyAdminAccess: UNIT_ADMIN (department head) may post too,
+  // restricted server-side to their own department (see AnnouncementService).
+  const hasAnnouncementAdminAccess =
+    isTenantMember &&
+    (user.role === 'TENANT_ADMIN' || user.role === 'HR_MANAGER' || user.role === 'UNIT_ADMIN');
 
   const groups: NavGroup[] = [
     {
@@ -332,6 +338,12 @@ export function buildNavGroups(user: SessionUser, enabledAddOns: string[] = []):
         ...(hasPolicyAdminAccess ? [{ label: 'Policies', href: '/intranet/policies', icon: FileStack }] : []),
         ...(isEmployeeSelfService
           ? [{ label: 'My Policies', href: '/intranet/my-policies', icon: BookOpenCheck }]
+          : []),
+        ...(hasAnnouncementAdminAccess
+          ? [{ label: 'Announcements', href: '/intranet/announcements', icon: Megaphone }]
+          : []),
+        ...(isEmployeeSelfService
+          ? [{ label: 'My Announcements', href: '/intranet/my-announcements', icon: Megaphone }]
           : []),
       ],
     },

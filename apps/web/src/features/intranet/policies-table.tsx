@@ -90,7 +90,7 @@ export function PoliciesTable({ tenantId }: { tenantId: string }) {
                         <Badge variant="outline">v{policy.version}</Badge>
                       </TableCell>
                       <TableCell>
-                        <AudienceBadge tenantId={tenantId} policy={policy} />
+                        <AudienceBadge tenantId={tenantId} item={policy} />
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {new Date(policy.publishedAt).toLocaleDateString()}

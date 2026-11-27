@@ -431,6 +431,17 @@ model Organization {
   tenantId                String  @map("tenant_id")
   legalName               String  @map("legal_name")
   tradingName             String? @map("trading_name")
+  /// URL-friendly identifier for this organization's own sign-in link
+  /// (/login/:tenantSlug/:slug on the web app) - cosmetic branding only,
+  /// same as Tenant.slug: it does not restrict who can log in there, it
+  /// just shows this organization's name instead of the tenant's on that
+  /// page. Auto-generated from tradingName/legalName at creation (see
+  /// OrganizationService.create), using the same slugify()/isValidSlug()
+  /// helpers as Tenant.slug. Unlike Tenant.slug (globally unique, since
+  /// it's the only thing in that URL segment), this only needs to be
+  /// unique within the owning tenant - the tenant slug already
+  /// disambiguates across tenants, see the @@unique below.
+  slug                    String  @map("slug")
   countryCode             String  @map("country_code")
   registrationNumber      String  @map("registration_number")
   taxIdentificationNumber String? @map("tax_identification_number")
@@ -512,6 +523,7 @@ model Organization {
   /// scoped to this company - see Announcement.organizationId.
   announcements           Announcement[]
 
+  @@unique([tenantId, slug])
   @@index([tenantId])
   @@map("organizations")
 }

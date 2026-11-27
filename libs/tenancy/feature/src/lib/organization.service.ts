@@ -3,7 +3,12 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { Organization, Prisma } from '@prisma/client';
 import { AuditService } from '@africahr/platform-audit';
 import { StorageService } from '@africahr/platform-storage';
-import { canTransitionOrganizationVerificationStatus, OrganizationVerificationStatus } from '@africahr/tenancy-domain';
+import {
+  canTransitionOrganizationVerificationStatus,
+  isValidSlug,
+  OrganizationVerificationStatus,
+  slugify,
+} from '@africahr/tenancy-domain';
 import { OrganizationRepository, TenantRepository } from '@africahr/tenancy-data-access';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
@@ -33,9 +38,12 @@ export class OrganizationService {
       throw new NotFoundException(`Tenant "${tenantId}" not found`);
     }
 
+    const slug = await this.generateUniqueSlug(tenantId, dto.tradingName ?? dto.legalName);
+
     const organization = await this.organizations.create(tenantId, {
       legalName: dto.legalName,
       tradingName: dto.tradingName,
+      slug,
       countryCode: dto.countryCode,
       registrationNumber: dto.registrationNumber,
       taxIdentificationNumber: dto.taxIdentificationNumber,
@@ -61,6 +69,36 @@ export class OrganizationService {
       throw new NotFoundException(`Organization "${id}" not found`);
     }
     return organization;
+  }
+
+  /** Public, unauthenticated lookup for this organization's own sign-in link - see OrganizationPublicController. */
+  async findBySlugForLogin(tenantId: string, slug: string): Promise<Organization> {
+    const organization = await this.organizations.findBySlug(tenantId, slug);
+    if (!organization) {
+      throw new NotFoundException(`Organization "${slug}" not found`);
+    }
+    return organization;
+  }
+
+  /**
+   * Auto-generated at creation, not user-supplied (see Organization.slug's
+   * own doc comment) - derives a base slug from the name, then appends
+   * -2/-3/... on a collision within the tenant, same idea as the
+   * id-suffix collision handling in this field's backfill migration, just
+   * using small counters instead since this runs one organization at a
+   * time rather than backfilling a whole table at once.
+   */
+  private async generateUniqueSlug(tenantId: string, name: string): Promise<string> {
+    const base = slugify(name);
+    const candidateBase = isValidSlug(base) ? base : 'org';
+
+    let candidate = candidateBase;
+    let suffix = 2;
+    while (await this.organizations.findBySlug(tenantId, candidate)) {
+      candidate = `${candidateBase}-${suffix}`;
+      suffix += 1;
+    }
+    return candidate;
   }
 
   listByTenant(tenantId: string): Promise<Organization[]> {

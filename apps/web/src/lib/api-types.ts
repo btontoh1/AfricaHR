@@ -318,6 +318,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/public/{tenantSlug}/organizations/{orgSlug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Look up an organization's public display info by slug, for its own sign-in link */
+        get: operations["OrganizationPublicController_findBySlug"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/organizations": {
         parameters: {
             query?: never;
@@ -5131,6 +5148,8 @@ export interface components {
             id: string;
             legalName: string;
             tradingName?: string;
+            /** @description URL-friendly identifier used in this organization's own sign-in link */
+            slug: string;
             countryCode: string;
             registrationNumber: string;
             taxIdentificationNumber?: string;
@@ -5163,6 +5182,12 @@ export interface components {
         };
         DocumentViewUrlResponseDto: {
             viewUrl: string;
+        };
+        OrganizationPublicResponseDto: {
+            /** @example Baffour & Egyir Ringlife Ltd */
+            name: string;
+            /** @example baffour-egyir-ringlife-ltd */
+            slug: string;
         };
         CreateOrganizationDto: {
             /** @example Acme Ghana Ltd */
@@ -9101,6 +9126,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentViewUrlResponseDto"];
+                };
+            };
+        };
+    };
+    OrganizationPublicController_findBySlug: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantSlug: string;
+                orgSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationPublicResponseDto"];
                 };
             };
         };

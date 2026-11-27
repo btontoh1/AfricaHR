@@ -5,6 +5,7 @@ import { PrismaService } from '@africahr/platform-database';
 export interface CreateOrganizationInput {
   legalName: string;
   tradingName?: string;
+  slug: string;
   countryCode: string;
   registrationNumber: string;
   taxIdentificationNumber?: string;
@@ -35,6 +36,7 @@ export class OrganizationRepository {
           tenantId,
           legalName: input.legalName,
           tradingName: input.tradingName,
+          slug: input.slug,
           countryCode: input.countryCode,
           registrationNumber: input.registrationNumber,
           taxIdentificationNumber: input.taxIdentificationNumber,
@@ -50,6 +52,13 @@ export class OrganizationRepository {
   findById(tenantId: string, id: string): Promise<Organization | null> {
     return this.prisma.withTenantContext(tenantId, (tx) =>
       tx.organization.findFirst({ where: { id, tenantId, deletedAt: null } }),
+    );
+  }
+
+  /** Scoped within the owning tenant - see Organization.slug's own doc comment on why this isn't a global lookup. */
+  findBySlug(tenantId: string, slug: string): Promise<Organization | null> {
+    return this.prisma.withTenantContext(tenantId, (tx) =>
+      tx.organization.findFirst({ where: { tenantId, slug, deletedAt: null } }),
     );
   }
 

@@ -15,6 +15,9 @@ export class OrganizationResponseDto {
   @ApiPropertyOptional()
   tradingName?: string | null;
 
+  @ApiProperty({ description: "URL-friendly identifier used in this organization's own sign-in link" })
+  slug!: string;
+
   @ApiProperty()
   countryCode!: string;
 

@@ -36,6 +36,7 @@ describe('OrganizationService', () => {
     tenantId: 'tenant-1',
     legalName: 'Acme Ghana Ltd',
     tradingName: null,
+    slug: 'acme-ghana-ltd',
     countryCode: 'GH',
     registrationNumber: 'BN-12345',
     taxIdentificationNumber: null,
@@ -58,6 +59,7 @@ describe('OrganizationService', () => {
     organizations = {
       create: jest.fn(),
       findById: jest.fn(),
+      findBySlug: jest.fn(),
       listByTenant: jest.fn(),
       update: jest.fn(),
       softDelete: jest.fn(),
@@ -98,8 +100,9 @@ describe('OrganizationService', () => {
       expect(organizations.create).not.toHaveBeenCalled();
     });
 
-    it('creates the organization when the tenant exists', async () => {
+    it('creates the organization when the tenant exists, deriving the slug from the name', async () => {
       tenants.findById.mockResolvedValue(tenant);
+      organizations.findBySlug.mockResolvedValue(null);
       organizations.create.mockResolvedValue(organization);
 
       const result = await service.create('tenant-1', {
@@ -111,8 +114,43 @@ describe('OrganizationService', () => {
       expect(result).toEqual(organization);
       expect(organizations.create).toHaveBeenCalledWith(
         'tenant-1',
-        expect.objectContaining({ legalName: 'Acme Ghana Ltd' }),
+        expect.objectContaining({ legalName: 'Acme Ghana Ltd', slug: 'acme-ghana-ltd' }),
       );
+    });
+
+    it('appends a numeric suffix when the derived slug is already taken within the tenant', async () => {
+      tenants.findById.mockResolvedValue(tenant);
+      organizations.findBySlug.mockImplementation(async (_tenantId, slug) =>
+        slug === 'acme-ghana-ltd' ? organization : null,
+      );
+      organizations.create.mockResolvedValue(organization);
+
+      await service.create('tenant-1', {
+        legalName: 'Acme Ghana Ltd',
+        countryCode: 'GH',
+        registrationNumber: 'BN-12345',
+      });
+
+      expect(organizations.create).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ slug: 'acme-ghana-ltd-2' }),
+      );
+    });
+  });
+
+  describe('findBySlugForLogin', () => {
+    it('throws NotFoundException when no organization matches the slug within the tenant', async () => {
+      organizations.findBySlug.mockResolvedValue(null);
+
+      await expect(service.findBySlugForLogin('tenant-1', 'missing')).rejects.toThrow(NotFoundException);
+    });
+
+    it('returns the organization when found', async () => {
+      organizations.findBySlug.mockResolvedValue(organization);
+
+      const result = await service.findBySlugForLogin('tenant-1', 'acme-ghana-ltd');
+
+      expect(result).toEqual(organization);
     });
   });
 

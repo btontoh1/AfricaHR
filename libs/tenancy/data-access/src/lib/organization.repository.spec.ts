@@ -32,6 +32,7 @@ describe('OrganizationRepository', () => {
   it('creates an organization within the tenant context', async () => {
     await repository.create('tenant-1', {
       legalName: 'Acme Ghana Ltd',
+      slug: 'acme-ghana-ltd',
       countryCode: 'GH',
       registrationNumber: 'BN-12345',
     });
@@ -41,6 +42,7 @@ describe('OrganizationRepository', () => {
       data: expect.objectContaining({
         tenantId: 'tenant-1',
         legalName: 'Acme Ghana Ltd',
+        slug: 'acme-ghana-ltd',
         registrationNumber: 'BN-12345',
       }),
     });
@@ -51,6 +53,14 @@ describe('OrganizationRepository', () => {
 
     expect(tx.organization.findFirst).toHaveBeenCalledWith({
       where: { id: 'org-1', tenantId: 'tenant-1', deletedAt: null },
+    });
+  });
+
+  it('scopes findBySlug to the tenant and excludes soft-deleted rows', async () => {
+    await repository.findBySlug('tenant-1', 'acme-ghana-ltd');
+
+    expect(tx.organization.findFirst).toHaveBeenCalledWith({
+      where: { tenantId: 'tenant-1', slug: 'acme-ghana-ltd', deletedAt: null },
     });
   });
 

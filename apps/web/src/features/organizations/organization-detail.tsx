@@ -1,9 +1,12 @@
 'use client';
 
-import { Building2, FileText } from 'lucide-react';
+import { useState } from 'react';
+import { Building2, Check, Copy, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSession } from '@/app/(app)/session-provider';
 import { useOrganization, useOrganizationUnits, useSubmitForVerification, useVerificationDocuments } from './queries';
+import { useMyTenant } from '@/features/settings/queries';
+import { useTenant } from '@/features/platform-tenants/queries';
 import { CreateOrganizationUnitForm } from './create-organization-unit-form';
 import { EditOrganizationDialog } from './edit-organization-dialog';
 import { EditOrganizationUnitDialog } from './edit-organization-unit-dialog';
@@ -15,7 +18,8 @@ import { getApiErrorMessage } from '@/lib/api-error';
 import { apiClient } from '@/lib/api-client';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { CardSkeleton } from '@/components/loading-state';
 import { ErrorState } from '@/components/error-state';
 import { EmptyState } from '@/components/empty-state';
@@ -54,6 +58,16 @@ export function OrganizationDetail({
   const { data: units } = useOrganizationUnits(tenantId, organizationId);
   const { data: documents } = useVerificationDocuments(tenantId, organizationId);
   const submitForVerification = useSubmitForVerification(tenantId);
+  const isPlatformAdmin = session.role === 'PLATFORM_ADMIN';
+  // A platform admin here is viewing some other tenant's organization, not
+  // their own - /api/tenants/me would resolve the wrong tenant (or none),
+  // so they go through the platform-admin-only /api/tenants/{id} lookup
+  // instead. Every other role can only ever reach this page for their own
+  // tenant's organization, so /api/tenants/me is always correct for them.
+  const { data: myTenant } = useMyTenant({ enabled: !isPlatformAdmin });
+  const { data: tenantById } = useTenant(isPlatformAdmin ? tenantId : '');
+  const tenant = isPlatformAdmin ? tenantById : myTenant;
+  const [copied, setCopied] = useState(false);
   const canEdit = session.role === 'TENANT_ADMIN' || session.role === 'PLATFORM_ADMIN';
   // Broader than canEdit - invoice branding is granted to ORG_ADMIN too
   // (see INVOICING_MANAGE's doc comment in system-role.ts), but only for
@@ -95,6 +109,18 @@ export function OrganizationDetail({
     window.open(data.viewUrl, '_blank', 'noopener,noreferrer');
   }
 
+  async function handleCopyLoginUrl() {
+    if (!tenant || !organization) return;
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/login/${tenant.slug}/${organization.slug}`);
+      setCopied(true);
+      toast.success('Login URL copied');
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error('Could not copy to clipboard');
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -127,6 +153,34 @@ export function OrganizationDetail({
           <Field label="Address" value={organization.address} />
         </CardContent>
       </Card>
+
+      {tenant && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Sign-in link</CardTitle>
+            <CardDescription>
+              Share this link with this organization&apos;s own team — it takes them straight to a sign-in page
+              branded for {organization.tradingName ?? organization.legalName}, rather than{' '}
+              {tenant.name}&apos;s general one. Anyone with a login in this tenant can still use it; it only
+              changes the page they see, not who can sign in.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              <Input
+                readOnly
+                value={`${window.location.origin}/login/${tenant.slug}/${organization.slug}`}
+                className="font-mono text-sm"
+                onFocus={(e) => e.target.select()}
+              />
+              <Button type="button" variant="outline" onClick={handleCopyLoginUrl}>
+                {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+                {copied ? 'Copied' : 'Copy'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {canManageInvoicing && <OrganizationLogoCard tenantId={tenantId} organizationId={organizationId} />}
 
